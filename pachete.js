@@ -462,6 +462,30 @@ function trecere(o) {
     text: 'Firma ' + F + ' trece de la ' + _pePachet(a, pV) + ' la ' + _pePachet(n, pN) + ', din ' + dataLunga(deLa) + '. Până atunci rămâne pachetul ' + a.nume + '.' +
       (n.cod === 'start' ? ' Pe Start, RA Insight îl are doar administratorul, cu răspunsuri pe butoane, fără AI.' : '') + ' ' + FINAL_CONFIRMARE });
 }
+// Schimbarea pachetului de către NOI, din fila „Acces" a firmei (13.11, Alin: „1. DA"). Fereastra spune exact ce se întâmplă:
+// de azi (de la miezul nopții, ora României — ca trecerea făcută de client; serverul scrie așa și în istoric) și rândurile RA Insight
+// de pe factura din 1 a lunii următoare, pe care serverul le socotește cu ACEEAȘI funcție ca factura (liniiFactura), pe istoricul
+// care ar rezulta. Prețul = cel de listă de azi (Alin, 13.11: „prețul e cel pe care l-am decis ultima dată").
+// o = { actual (pachetFirma), la (cod), pretNou, firma, acum, linii ([{ desc, pret }]), cuMasini, modulOprit }.
+// Întoarce { refuz } sau { titlu, text, ok, sens } — `text` e ce confirmă omul; serverul îl compară la scriere.
+function textSchimbareNoi(o) {
+  const n = dupaCod(o.la), a = o.actual || Object.assign(dupaCod('start'), { pretRON: 0 });
+  if (!n) return { refuz: 'Pachetul ales nu există. Pachetele: Start, Basic, Pro, Business.' };
+  if (a.cod === n.cod) return { refuz: 'Firma are deja pachetul ' + n.nume + '.' };
+  const acum = Number(o.acum) || Date.now(), F = String(o.firma || 'Firma').trim();
+  const pV = r2(a.pretRON != null ? a.pretRON : a.pret), pN = n.ai ? r2(o.pretNou) : 0;
+  const urm = LUNI[ziuaRo(acum).luna % 12];
+  const linii = Array.isArray(o.linii) ? o.linii : [];
+  let text = F + ' trece de azi de la ' + _pePachet(a, pV) + ' la ' + _pePachet(n, pN) + '.';
+  if (n.cod === 'start') text += ' Pe Start, RA Insight îl are doar administratorul, pe butoane.';
+  if (a.urmator) text += ' Trecerea la pachetul ' + a.urmator.nume + ', programată de administratorul firmei din ' + dataLunga(a.urmator.deLa) + ', se anulează.';
+  if (o.modulOprit) text += ' Modulul RA Insight e oprit la firma asta: pachetul nu se facturează cât timp e oprit.';
+  else if (!o.cuMasini) text += ' Firma nu are încă nicio mașină pornită: pachetul intră pe factură odată cu abonamentul, de la prima mașină care transmite.';
+  else if (linii.length) text += ' Pe factura din 1 ' + urm + ', la RA Insight: ' + linii.map(function (l) { return '„' + l.desc + '” ' + _bani(l.pret); }).join(' și ') + ', fără TVA.';
+  else text += ' De pe factura din 1 ' + urm + ', RA Insight nu mai apare pe factură.';
+  if (ORDINE[n.cod] < ORDINE[a.cod]) text += ' Ce s-a facturat deja nu se schimbă: nu se dau bani înapoi.';
+  return { titlu: 'Pachetul ' + n.nume + '?', text: text, ok: 'Trece pe ' + n.nume, sens: ORDINE[n.cod] > ORDINE[a.cod] ? 'sus' : 'jos' };
+}
 // Ce scrie serverul după confirmare (ecranul doar îl arată). `email` = { trimis, catre } — cum a plecat confirmarea.
 function textDupaTrecere(t, email) {
   const conf = email && email.trimis ? ' Confirmarea a plecat pe email (' + email.catre + '), în PDF.'
@@ -634,4 +658,5 @@ module.exports = {
   COST_INTREBARE_LEI, CLAUZA_TRECERE, CHEI_PRET, eticheta, descriere, marja, preturiLista,
   ORDINE, FINAL_CONFIRMARE, ziuaRo, ziRo, zileLuna, inceputZi, inceputLunaUrm, dataScurta, dataLunga,
   istoricFirma, adaugaIstoric, consolideaza, pretLa, pretAvans, bucatiLuna, liniiFactura, trecere, textDupaTrecere, butonTrecere, rezumatTrecere,
+  textSchimbareNoi,
 };

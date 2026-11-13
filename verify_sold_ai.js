@@ -402,7 +402,12 @@ async function peServer() {
     T('la 100%: al doilea anunț, „warning"; a treia trecere nu mai anunță', an.length === 2 && an.some((x) => /și-a terminat întrebările lunii/.test(x.title) && x.severity === 'warning') &&
       !(((await cere('POST', '/api/test/ceasuri', S, { sold: true })).j.sold || {}).firme || []).length, J(an));
     T('…și iese din „Ce cere atenție" la 80–99% (are rândul lui de 100%)', !((await cere('GET', '/api/admin/ai-usage', S)).j.pachete.aproape || []).length);
-    T('administratorul firmei: tot un singur anunț în lună (nu și la 100%)', (await anunturi(C, 'ai_intrebari_firma')).length === (golLuna ? 0 : 1));
+    // La 100% (13.11, Alin: „6. DA"): al doilea anunț, „s-au terminat", o dată; a treia trecere nu mai anunță.
+    anC = await anunturi(C, 'ai_intrebari_firma');
+    T('administratorul firmei: la 100%, al doilea anunț — „s-au terminat întrebările", „warning"', golLuna ? !anC.length : (anC.length === 2 && anC.some((x) => x.title === 'RA Insight: s-au terminat întrebările din ' + luna && x.severity === 'warning'
+      && /^Ați folosit cele 200 de întrebări ale pachetului Basic\. Se reîncarcă pe 1 [a-zî]+, fără niciun cost în plus\. Până atunci, RA Insight răspunde la întrebările de pe butoane/.test(x.body))), J(anC.map((x) => x.title)));
+    t1 = (await cere('POST', '/api/test/ceasuri', S, { sold: true })).j;
+    T('…și nu se mai repetă', !((t1.sold || {}).admini || []).length && (await anunturi(C, 'ai_intrebari_firma')).length === (golLuna ? 0 : 2));
     // Pe Start: răspunsurile pe butoane (50). 39 = 78% → nimic; 40 = 80% → anunțul, cu drumul spre Basic.
     const coS = (await cere('POST', '/api/companies', S, { name: 'Start Mic SRL' })).j;
     const uS = (await cere('POST', '/api/users', S, { username: 'sef@startmic.ro', full_name: 'Ana Start', role: 'company_admin', company_id: coS.id })).j;
@@ -415,6 +420,16 @@ async function peServer() {
     t1 = (await cere('POST', '/api/test/ceasuri', S, { sold: true })).j;
     const anS = await anunturi(CS, 'ai_intrebari_firma');
     T('Start, 40 din 50 (80%): „au mai rămas 10 răspunsuri", cu drumul spre Basic', golLuna ? !anS.length : (anS.length === 1 && anS[0].title === 'RA Insight: au mai rămas 10 răspunsuri în ' + luna && /Cu Basic/.test(anS[0].body)), J(anS));
+    // O firmă care sare direct la capăt (0 → 200 din 200 între două treceri) primește DOAR anunțul de capăt.
+    const coJ = (await cere('POST', '/api/companies', S, { name: 'Salt Direct SRL' })).j;
+    await cere('PUT', '/api/companies/' + coJ.id + '/settings', S, { ai_pachet: { cod: 'basic' } });
+    const uJ = (await cere('POST', '/api/users', S, { username: 'sef@salt.ro', full_name: 'Dan Salt', role: 'company_admin', company_id: coJ.id })).j;
+    await puneParola(uJ, PAROLA, B);
+    const CJ = await login('sef@salt.ro', PAROLA);
+    for (let i = 0; i < 200; i++) await cere('POST', '/api/test/ai-usage', S, { companyId: coJ.id, userId: uJ.id, kind: 'insight' });
+    t1 = (await cere('POST', '/api/test/ceasuri', S, { sold: true })).j;
+    const anJ = await anunturi(CJ, 'ai_intrebari_firma');
+    T('sărit direct la capăt (200 din 200): un singur anunț, cel de capăt', golLuna ? !anJ.length : (anJ.length === 1 && anJ[0].title === 'RA Insight: s-au terminat întrebările din ' + luna), J(anJ.map((x) => x.title)));
 
     // ── Drepturile ──
     T('clientul nu scrie soldul și nu vede banii (403)', (await cere('PUT', '/api/admin/insight/sold', C, { usd: 1 })).s === 403 && (await cere('GET', '/api/admin/ai-usage', C)).s === 403);

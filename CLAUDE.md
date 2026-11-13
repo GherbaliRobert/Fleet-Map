@@ -195,8 +195,8 @@ vehicul) → `sendReport`. Numele: „RA-Track - Raport Traseu {nume · număr} 
 
 ## Poarta de dinaintea livrării (`.github/workflows/ci.yml`) — să nu moară în tăcere
 
-Pe GitHub, fiecare împingere trece prin patru pași, **în serie, cu oprire la primul eșec**: Lint →
-Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pas oprește tot restul.**
+Pe GitHub, fiecare împingere trece prin cinci pași, **în serie, cu oprire la primul eșec**: Lint → Telefonul
+(`tsc`, din 13.11) → Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pas oprește tot restul.**
 
 - **Așa a stat roșie o săptămână** (36 de commit-uri, 15–22.09): `node --check billing.js`, după ce
   `billing.js` fusese șters odată cu Stripe. Cădea în 20 de secunde; nici `npm test`, nici probele
@@ -212,8 +212,10 @@ Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pa
   de pe GitHub (`gen-can-icons.js --check`) a picat după unire. Înainte de livrare rulează și pasul Unit din `ci.yml`, nu doar `npm test`.
 - **Telefonul se verifică întreg ca la APK: `tsc --noEmit` pe `mobile/`** (13.11). Pe 11.11 un nume rămas după o scoatere (`q.seatPriceRON` în
   „Abonament & plăți") a trecut de `npm test` și de poartă — probele traduc fișierele fără să le verifice —, iar ecranul ar fi crăpat și APK-ul
-  nu s-ar fi făcut. Poarta de pe GitHub NU are pasul ăsta (nehotărât, 13.11). Când schimbi ceva pe telefon: modulele lui într-o copie
-  (`npm ci --ignore-scripts` în scratchpad, cu `package.json` + `package-lock.json` + `tsconfig.json`), `src/` copiat, `npx tsc --noEmit`.
+  nu s-ar fi făcut. **Din 13.11 (Alin: „5. DA") poarta de pe GitHub are pasul „Telefonul (TypeScript, ca la APK)"**, imediat după Lint:
+  `npm ci --ignore-scripts` + `npx tsc --noEmit` în `mobile/`, apoi `rm -rf node_modules` — probele de după citesc altfel telefonul cu modulele
+  lui alături. Păzit de `verify_poarta.js` (pasul, ordinea, fișierele). Ca să nu afli abia pe GitHub, când schimbi ceva pe telefon: modulele lui
+  într-o copie (`npm ci --ignore-scripts` în scratchpad, cu `package.json` + `package-lock.json` + `tsconfig.json`), `src/` copiat, `npx tsc --noEmit`.
 - **O probă care „crapă" poate raporta că a trecut.** `verify_notif_idor.js` scria „4/5 trecute" și
   părea aproape bună — de fapt murea ÎNAINTE de verificarea care conta. Numărul de verificări
   trecute nu spune nimic dacă suita n-a ajuns la capăt: **citește și codul de ieșire**. La `npm test`, cifra din rândul
@@ -1385,7 +1387,10 @@ Fără pagină „Memoria mea", fără memoria firmei, fără butoane noi în ch
   atenție”), butoanele „Scrie soldul” și „Reîncărcarea automată” (`raxAiReincarcare`, „5 / 20”); „Ce cere atenție” primește `pachete.aproape`.
 - **Anunțurile** (`soldAnuntTick`, la 15 minute; în probe `/api/test/ceasuri { sold: true }`): `ai_sold` (o dată pe prag și pe soldul scris),
   `ai_intrebari` (o dată pe firmă, lună și prag; 100% marchează și 80%), cheile în setarea `ai_anunturi`. Firmele = `_intrebariFirmeAi()` —
-  O socoteală (pachet cu AI, rândurile lunii din ai_usage), în anunț, pe „Acasă” și în control.
+  O socoteală (pachet cu AI, rândurile lunii din ai_usage), în anunț, pe „Acasă” și în control. **Un clic pe anunțurile noastre despre RA
+  Insight** (`ai_sold|ai_intrebari|ai_plasa|ai_refuz|ai_refuz_gata`, după TIP, și pe cele vechi) → „RA Insight · control” (13.11, Alin: „4. DA"):
+  web `notifAiControl` (`goSistem('agents')`), telefon `TIPURI_AI_NOI` → `/admin/ai-usage` (lib/push.ts). Un anunț NOU al nostru despre RA
+  Insight intră în ambele liste. Păzit de `verify_telefon_lot5.js`.
 - **Alarma refuzului:** `ai.js` recunoaște refuzul în `_rawCall` (`soldAi.felRefuz`; eroarea poartă `refuzAnthropic`) și spune fiecare
   rezultat unui SINGUR ascultător (`ai.setLaStare(_dupaAnthropic)`). Starea: setarea `ai_refuz` ({ fel, la, ultimaLa, refuzate, anuntatLa });
   anunț `ai_refuz` pe loc la un fel nou, apoi cel mult o dată la 6 ore; primul răspuns bun o stinge, cu anunț `ai_refuz_gata`. Lista modelelor
@@ -1501,7 +1506,15 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   5 / 8 lei, `REZERVA_APROFUNDAT_LEI`, ruta `/api/admin/insight/aprofundat`) a ieșit pe 28.10; marja pachetelor (`pachete.marja`) =
   preț − întrebări × `COST_INTREBARE_LEI` (9,02 / 17,06 / 25,10 lei). NU o pune înapoi fără Alin.
 - **Pachetul îl punem NOI:** fila „Acces" a firmei (`raxCfgPachet` → `PUT /api/companies/:id/settings { ai_pachet: { cod } }`,
-  doar super-admin, `curataPachet`, 400 pe cod necunoscut, rând în audit de la cât la cât; un `ai_quota` rămas se aruncă la orice salvare). Limita pe om:
+  doar super-admin, `curataPachet`, 400 pe cod necunoscut, rând în audit de la cât la cât; un `ai_quota` rămas se aruncă la orice salvare).
+  **Fereastra de confirmare o scrie SERVERUL** (13.11, Alin: „1. DA"): `GET /api/companies/:id/pachet-schimbare?cod=` → `_schimbarePachetNoi` →
+  `pachete.textSchimbareNoi` (prima frază cu prețurile, apoi rândurile RA Insight de pe factura din 1 a lunii următoare, socotite de
+  `_liniiPachetDinImp` — ACEEAȘI funcție ca `_liniiAbonament`, deci fereastra nu poate spune altceva decât factura; cazurile: mai mic = „nu se
+  dau bani înapoi", Start, fără mașini pornite, modul oprit, trecerea programată de administrator anulată). Pagina și telefonul (CompanyEdit,
+  `Api.pachetSchimbare`) doar arată textul; la salvare trimit `textSchimbare`, iar serverul refăce textul — altul → 409 `{ schimbare }`, care se
+  confirmă din nou. NU scrie fraze despre factură în pagină. **Trecerea pusă de noi pornește la `pachete.inceputZi(acum)`** (miezul nopții
+  României, ca la client); prețul = lista din „Prețurile noastre" (`_preturiPachete`; Alin, 13.11: „cel pe care l-am decis ultima dată").
+  Datele de pe ecran (`din …`) cu `timeZone: 'Europe/Bucharest'`. Păzit de `verify_pachete.js`, `verify_telefon_pachete.js`. Limita pe om:
   `PUT /api/users/:id/ai-limita` (administratorul firmei; Pro / Business; suma ≤ întrebările pachetului; stingerea locului o șterge).
 - `plans.FEATURE_IMPLICIT.ai_assistant = true` (Start inclus la toate firmele); unde l-am oprit noi, rămâne oprit. Suma fixă
   veche „Asistent AI" (`custom_plan.aiAssistantRON`) a ieșit pe 11.11: RA Insight se plătește doar prin pachet.
@@ -1516,9 +1529,11 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   15.10) + `cartonase` (doar pentru telefonul de azi), oamenii (rolul cu `_incRolEt`, `folositeText`, `nuPoate` = `refuzLoc`), nota
   (`notaConturi`). Conturile și limitele pleacă pe rutele lor (`ai-seat`, `ai-limita`) — NU face a doua cale. Vezi și „Pachetul în
   ofertă și conturile la client", mai jos.
-- **Anunțul pentru administratorul FIRMEI la 80%** (13.11, Alin: „1. DA"): `pachete.anuntAproape` (textele, ce face RA Insight la capăt, drumul
-  spre „Vezi pachetele" doar dacă există un pachet mai mare) + `anuntAdminiAproapeTick` (server; chemat din `soldAnuntTick`, la 15 minute): o dată pe
-  firmă și pe lună (setarea `ai_anunturi_admini`), doar administratorii activi (`pachete.esteAdmin`), tipul `ai_intrebari_firma`, `data.pachet` →
+- **Anunțurile pentru administratorul FIRMEI, la 80% și la capăt** (13.11, Alin: „1. DA", „6. DA"): `pachete.anuntAproape` (textele: la 80%
+  „au mai rămas …", la 100% „s-au terminat …"; ce face RA Insight la capăt, drumul spre „Vezi pachetele" doar dacă există un pachet mai mare) +
+  `anuntAdminiAproapeTick` (server; chemat din `soldAnuntTick`, la 15 minute): o dată pe firmă, lună și PRAG (setarea `ai_anunturi_admini`, cheile
+  `id|luna|80` / `id|luna|100`; o cheie veche `id|luna` = 80; la capăt se marchează și 80 — firma care sare direct la capăt primește doar anunțul
+  de la capăt), doar administratorii activi (`pachete.esteAdmin`), tipul `ai_intrebari_firma`, `data.pachet` →
   web `openNotifDetail` → `insightPachetConturi`, telefon `adresaAnunt` → `/insight/pachet`. Start inclus (răspunsurile pe butoane). Socoteala
   e UNA cu anunțul nostru: `_folositeFirme` (din ea `_intrebariFirmeAi`). În primele ore din 1 ale lunii (ora României ≠ luna UTC a rândurilor)
   așteaptă. Păzit de `verify_sold_ai.js`, `verify_telefon_lot5.js`.

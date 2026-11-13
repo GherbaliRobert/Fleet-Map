@@ -89,6 +89,15 @@ if (fs.existsSync(P('can_icons.js'))) {
     b.toString().split('\r\n').length - 1 + ' rânduri CRLF');
 }
 
+sect('5. Telefonul se verifică întreg, ca la APK (13.11)');
+// Pe 11.11 o greșeală pe telefon (un nume rămas după o scoatere) a trecut de toate probele și ar fi oprit APK-ul. Pasul care o prinde
+// (`tsc --noEmit` pe `mobile/`) trebuie să rămână în poartă, iar modulele telefonului să nu rămână instalate pentru pașii de după.
+const pasTel = (ci.match(/- name: Telefonul \(TypeScript, ca la APK\)[\s\S]*?(?=\n\s*-\s+name:|\n\s*#\s*2\))/) || [''])[0];
+T('poarta are pasul telefonului: în `mobile/`, cu `npm ci` și `tsc --noEmit`', /working-directory:\s*mobile/.test(pasTel) && /npm ci --ignore-scripts/.test(pasTel) && /npx tsc --noEmit -p tsconfig\.json/.test(pasTel), pasTel.slice(0, 200));
+T('…și șterge modulele telefonului după (probele din `npm test` sunt gândite fără ele)', /rm -rf node_modules/.test(pasTel));
+T('…înaintea pasului „Smoke" (oprire la prima greșeală)', ci.indexOf('Telefonul (TypeScript, ca la APK)') > 0 && ci.indexOf('Telefonul (TypeScript, ca la APK)') < ci.indexOf('name: Smoke tests'));
+T('telefonul are ce verifica: `tsconfig.json` și `package-lock.json` în `mobile/`', fs.existsSync(P('mobile/tsconfig.json')) && fs.existsSync(P('mobile/package-lock.json')));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);

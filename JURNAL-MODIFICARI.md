@@ -404,7 +404,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   grupe, cu prețul pe o întrebare) și `inToate` (lista de jos). De arătat ca pe web; telefonul n-are încă ecranul, deci nu se strică nimic.
   **13.11:** APK-ul următor ia și (5) „Abonament & plăți" fără caseta „Agenți AI" și cu rândul „+ RA Insight Pro" în prețul lunar, (6) anunțul
   de 80% care duce în „Pachet și conturi". ⚠ În „Abonament & plăți" rămăsese pe 11.11 un nume scos odată cu regula veche: APK-ul nu s-ar fi
-  putut face (`tsc` pica). Reparat pe 13.11; telefonul trece acum `tsc --noEmit` întreg.
+  putut face (`tsc` pica). Reparat pe 13.11; telefonul trece acum `tsc --noEmit` întreg. **Tot 13.11, după-amiază:** (7) în fișa firmei →
+  „Acces", fereastra pachetului cu textul de la server (rândurile de pe factură), (8) anunțurile noastre despre RA Insight duc în „RA Insight ·
+  control", (9) anunțul de la capăt (100%) al administratorului duce în „Pachet și conturi". De acum, poarta de pe GitHub verifică și telefonul
+  întreg (`tsc --noEmit`), ca la APK.
 - [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Din lotul 3: 8, 10, 11 și, din 7, „Pachet și conturi". Din lotul 4: 15 și capătul lui 14 (ecranul Alerte). Rămâne APK-ul.** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
@@ -595,6 +598,64 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-13
+
+### FONDATOR · Fila „Acces": fereastra pachetului spune exact rândurile de pe factură; trecerea pornește de la începutul zilei
+*Alin, 13.11: „1. … DA" (punctul 3 din explicația cu poze); „2. Prețul e cel pe care l-am decis ultima dată — acela să fie."*
+
+**Ce am schimbat:**
+- **Fereastra de la clic pe alt pachet** (Companii → firmă → „Acces" → „Pachet RA Insight") o scrie acum **serverul**, din aceeași socoteală
+  ca factura: de la ce pachet la ce pachet trece firma, cu prețurile, apoi **rândurile RA Insight de pe factura din 1 a lunii următoare**, cu
+  sumele. Exemplu (Basic → Pro pe 13.11): „Pe factura din 1 decembrie, la RA Insight: „RA Insight Pro — decembrie 2026” 20,00 lei și „RA
+  Insight — trecerea la pachetul Pro, 13–30.11.2026 (18 zile)” 6,00 lei, fără TVA." Spune și cazurile: pachet mai mic („nu se dau bani
+  înapoi"), Start, firmă fără nicio mașină pornită, modulul RA Insight oprit, trecerea programată de administrator (se anulează).
+  Fraza veche, „Pe factură ajunge odată cu oferta pe pachete", a ieșit — era din 14.10 și nu mai era adevărată.
+- **Trecerea pusă de noi pornește de la începutul zilei** (ora României), ca cea făcută de client: ziua de azi se numără întreagă, oricând
+  ai apăsa (la ora 15 ieșeau 16 zile în loc de 17).
+- La „Trece pe …", serverul refăce socoteala; dacă s-a schimbat între timp (altă trecere, o mașină care a început să transmită), nu salvează
+  și arată textul nou, care se confirmă din nou.
+- **Prețul pus rămâne cel de listă** din „Prețurile noastre" (azi 10 / 20 / 30 de lei) — neschimbat (Alin: „cel pe care l-am decis ultima dată").
+- Data „Acum: …, din …" de sub butoane se scrie pe ora României, oriunde ar fi calculatorul (pe un calculator pe ora Londrei, o trecere de la
+  miezul nopții României apărea cu o zi mai devreme).
+- Telefonul (fișa firmei → „Acces"): aceeași fereastră, cu textul serverului (APK-ul următor).
+- Probe: `verify_pachete.js` (textele pe cazuri; pe server pornit: textul, 400 pe același pachet, 403 pentru client, 409 pe un text vechi,
+  trecerea de la miezul nopții), `verify_telefon_pachete.js` (fereastra paginii rulată: textul, 409, textul nou; telefonul).
+
+**Ce vede fondatorul:** în fila „Acces", la clic pe alt pachet, fereastra cu rândurile și sumele exacte de pe factura următoare.
+
+**Ce vede clientul:** nimic (pe factură, aceleași reguli ca până acum).
+
+### CLIENT · RA Insight: administratorul primește și al doilea anunț, când s-au terminat întrebările
+*Alin, 13.11: „6. DA".*
+
+**Ce am schimbat:**
+- Pe lângă anunțul de la 80%, **administratorii firmei** primesc și unul **la capăt**: „RA Insight: s-au terminat întrebările din noiembrie" —
+  „Ați folosit cele 600 de întrebări ale pachetului Pro. Se reîncarcă pe 1 decembrie, fără niciun cost în plus. Până atunci, RA Insight
+  răspunde la întrebările de pe butoane… Pentru mai multe întrebări pe lună, puteți trece la un pachet mai mare, din „Vezi pachetele”."
+  (pe Start: răspunsurile pe butoane, iar RA Insight nu mai răspunde până pe 1).
+- Fiecare anunț vine o dată pe lună; dacă firma sare dintr-odată de sub 80% la capăt, vine doar cel de la capăt. Un clic duce în „Pachet și
+  conturi". (Cheile din setarea `ai_anunturi_admini` sunt acum pe prag; cele scrise azi dimineață se socotesc anunțul de 80%.)
+- Probe: `verify_sold_ai.js` (pe server pornit: 80%, apoi capătul, fără repetare; o firmă care sare de la 0 la 200 din 200 primește doar
+  anunțul de la capăt).
+
+**Ce vede fondatorul:** nimic nou.
+
+**Ce vede clientul:** administratorul firmei primește și anunțul de la capăt; restul oamenilor, nimic nou.
+
+### FONDATOR · Anunțurile noastre despre RA Insight duc în „RA Insight · control"; poarta de pe GitHub verifică și telefonul
+*Alin, 13.11: „4. DA", „5. DA".*
+
+**Ce am schimbat:**
+- **Un clic pe anunțurile noastre despre RA Insight** — soldul Anthropic, întrebările firmelor (80% / 100%), plafonul de cost, Anthropic a
+  refuzat / a revenit — **deschide „RA Insight · control"**, pe web și pe telefon. Până acum se deschidea fereastra obișnuită a anunțurilor,
+  făcută pentru o mașină pe hartă (anunțurile astea n-au nicio mașină).
+- **Poarta de pe GitHub are un pas nou**, „Telefonul (TypeScript, ca la APK)", imediat după Lint: verifică aplicația de telefon întreagă, cum o
+  verifică APK-ul. Așa n-ar mai fi trecut greșeala din 11.11 (un nume rămas în „Abonament & plăți", pe care probele nu-l prindeau). Păzit de
+  `verify_poarta.js` (pasul trebuie să existe, înaintea probelor, cu fișierele lui).
+- Probe: `verify_telefon_lot5.js` (unde duce fiecare anunț, pe web și pe telefon), `verify_poarta.js`.
+
+**Ce vede fondatorul:** clicul pe anunțurile despre RA Insight duce în „RA Insight · control".
+
+**Ce vede clientul:** nimic.
 
 ### CLIENT · RA Insight: administratorul firmei e anunțat la 80% din întrebările lunii
 *Alin, 13.11: „1. DA" (la „Clientul nu e avertizat înainte să i se termine întrebările").*

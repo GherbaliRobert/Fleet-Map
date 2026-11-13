@@ -71,6 +71,17 @@ jobs:
           # în 20 de secunde, la FIECARE împingere, timp de 36 de commit-uri. Nimic din ce urmează
           # (unit, smoke, securitate) n-a mai rulat în tot acest timp. Păzit de `verify_poarta.js`.
 
+      # 1b) Telefonul, verificat ÎNTREG, ca la APK (13.11, Alin: „5. DA"). Pe 11.11 un nume rămas după o scoatere (în
+      # „Abonament & plăți") a trecut de toate probele — ele traduc fișierele telefonului fără să le verifice —, iar ecranul ar fi
+      # crăpat și APK-ul nu s-ar fi putut face. Modulele telefonului se șterg la final: probele din `npm test` își schimbă felul
+      # când le găsesc (desenează ecrane cu preact), iar în CI sunt gândite fără ele.
+      - name: Telefonul (TypeScript, ca la APK)
+        working-directory: mobile
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx tsc --noEmit -p tsconfig.json
+          rm -rf node_modules
+
       # 2) Unit — deterministe, fără server/rețea: parser codec, agenți, consum, taxe de drum.
       # Rulează toate și cade la final, ca la pasul 4: o probă picată nu le ascunde pe celelalte.
       - name: Unit tests (codec + agenți + consum)

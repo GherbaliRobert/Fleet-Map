@@ -4,7 +4,7 @@ import { showToast } from '../app/store';
 import { Icon } from './Icon';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { contacte, type Contact, MODULE_FIRMA, MOD_ALES, MOD_INAPOI, modulAutoText } from '../lib/companii';
-import { NOTA_PACHET_FIRMA, acumPachetFirma, butonPachetFirma, confirmarePachetFirma } from '../lib/insightPachet';
+import { NOTA_PACHET_FIRMA, acumPachetFirma, butonPachetFirma } from '../lib/insightPachet';
 import { Confirma } from './FlotaUi';
 import { Gros } from './InsightText';
 import '../screens/admin.css';
@@ -146,7 +146,7 @@ export function CompanyAcces({ companyId, onChanged, onOferta }: {
   const [setate, setSetate] = useState<Record<string, boolean>>({});
   const [flotaGrea, setFlotaGrea] = useState(false);
   const [ags, setAgs] = useState<string[]>([]);
-  const [pkAles, setPkAles] = useState<any | null>(null);   // pachetul de confirmat
+  const [pkAles, setPkAles] = useState<any | null>(null);   // { p: pachetul ales, t: textul ferestrei, de la server }
   useInapoiInchide(!!pkAles, () => { setPkAles(null); return true; });
 
   // Răspunsul serverului e adevărul: comutatoarele și „automat / ales de noi".
@@ -198,16 +198,25 @@ export function CompanyAcces({ companyId, onChanged, onOferta }: {
     try { await Api.saveCompanySettingsOf(companyId, { enabled_agents: arr }); showToast('Agent ' + (on ? 'activat' : 'dezactivat')); }
     catch (e: any) { setAgs(prev); showToast(e?.message || 'Eroare', true); }
   }
-  // Pachetul RA Insight al firmei (web: raxCfgPachet). Serverul îl scrie.
-  async function punePachet(p: any) {
+  // Pachetul RA Insight al firmei (web: raxCfgPachet). Textul ferestrei îl scrie serverul (13.11): de azi și rândurile RA Insight de pe
+  // factura din 1 a lunii următoare. La salvare pleacă și textul confirmat; la 409 vine textul nou, de confirmat din nou.
+  async function alegePachet(p: any) {
+    try { const t: any = await Api.pachetSchimbare(companyId, p.cod); setPkAles({ p, t }); }
+    catch (e: any) { showToast(e?.message || 'Eroare', true); }
+  }
+  async function punePachet() {
+    const c = pkAles; if (!c) return;
     setPkAles(null);
     try {
-      const j: any = await Api.saveCompanySettingsOf(companyId, { ai_pachet: { cod: p.cod } });
+      const j: any = await Api.saveCompanySettingsOf(companyId, { ai_pachet: { cod: c.p.cod }, textSchimbare: c.t.text });
       const a = j && j.ai_pachet;
-      setCfg((c: any) => Object.assign({}, c, { ai_pachet: a ? { cod: a.cod, nume: p.nume, pretRON: a.pretRON, deLa: a.de_la } : null }));
-      showToast('Pachet RA Insight ' + p.nume);
+      setCfg((x: any) => Object.assign({}, x, { ai_pachet: a ? { cod: a.cod, nume: c.p.nume, pretRON: a.pretRON, deLa: a.de_la } : null }));
+      showToast('Pachet RA Insight ' + c.p.nume);
       onChanged();
-    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
+    } catch (e: any) {
+      if (e && e.status === 409 && e.data && e.data.schimbare) { setPkAles({ p: c.p, t: e.data.schimbare }); return; }
+      showToast(e?.message || 'Eroare', true);
+    }
   }
 
   const agOff = !feats.agents;
@@ -230,7 +239,7 @@ export function CompanyAcces({ companyId, onChanged, onOferta }: {
             <div class="co-pk">
               {cfg.pachete.map((p: any) => {
                 const al = !!(cfg.ai_pachet && cfg.ai_pachet.cod === p.cod);
-                return <button class={'fm-btn' + (al ? ' acc' : '')} aria-pressed={al ? 'true' : undefined} onClick={() => { if (!al) setPkAles(p); }}>{butonPachetFirma(p)}</button>;
+                return <button class={'fm-btn' + (al ? ' acc' : '')} aria-pressed={al ? 'true' : undefined} onClick={() => { if (!al) alegePachet(p); }}>{butonPachetFirma(p)}</button>;
               })}
             </div>
             <div class="co-note"><Gros text={acumPachetFirma(cfg)} /> {NOTA_PACHET_FIRMA}</div>
@@ -270,9 +279,9 @@ export function CompanyAcces({ companyId, onChanged, onOferta }: {
 
         </div>
       )}
-      {pkAles && (() => { const c = confirmarePachetFirma(pkAles); return (
-        <Confirma title={c.titlu} text={c.text} okLabel={c.ok} onCancel={() => setPkAles(null)} onOk={() => punePachet(pkAles)} />
-      ); })()}
+      {pkAles && (
+        <Confirma title={pkAles.t.titlu} text={pkAles.t.text} okLabel={pkAles.t.ok} onCancel={() => setPkAles(null)} onOk={() => punePachet()} />
+      )}
     </>
   );
 }

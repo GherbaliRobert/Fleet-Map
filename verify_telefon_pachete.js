@@ -349,15 +349,28 @@ function parteaUtilizatorilor() {
       T('…aceeași notă', tw.replace(/\s+/g, ' ') === tl.replace(/\s+/g, ' '), tw + ' // ' + tl);
       T('…fără limita AI a regulii vechi (a ieșit pe 11.11)', !/rax-cfg-ailimit|regula veche|Limită AI lunară/.test(w), w.slice(0, 160));
     }
-    let cerut = null;
+    // Fereastra (13.11, Alin: „1. DA"): textul îl scrie serverul; pagina îl arată, îl trimite înapoi și, la 409, arată textul nou.
+    const vazute = [], trimise = [];
+    const raspunsuri = [
+      { status: 200, ok: true, j: { titlu: 'Pachetul Pro?', text: 'TEXTUL 1', ok: 'Trece pe Pro' } },
+      { status: 409, ok: false, j: { error: 'Socoteala s-a schimbat', schimbare: { titlu: 'Pachetul Pro?', text: 'TEXTUL 2', ok: 'Trece pe Pro' } } },
+      { status: 200, ok: true, j: { ok: true, ai_pachet: { cod: 'pro', pretRON: 20, de_la: 5 } } },
+    ];
+    const cfgW = { id: 7, pachet: null, pachete: PK };
     const pune = new Function('_raxCfg', 'raConfirm', 'fetch', 'window', 'document', '_raxRenderCfg', 'var w = {}; ' + functie(html, 'window.raxCfgPachet = async function (cod)').replace('window.raxCfgPachet =', 'w.f =') + '; return w.f;')(
-      { id: 7, pachet: null, pachete: PK }, async (m, o) => { cerut = { m, o }; return false; }, async () => ({ json: async () => ({}) }), {}, {}, () => {});
-    for (const p of PK) {
-      await pune(p.cod);
-      const c = L.confirmarePachetFirma(p);
-      T('confirmarea pachetului ' + p.nume + ': aceleași cuvinte ca raxCfgPachet', cerut.m === c.text && cerut.o.title === c.titlu && cerut.o.okLabel === c.ok, cerut.m + ' / ' + c.text);
-    }
-    T('fila „Acces": butoanele pachetului, nota și confirmarea; fără limita AI veche', /butonPachetFirma\(p\)/.test(S.acces) && /saveCompanySettingsOf\(companyId, \{ ai_pachet: \{ cod: p\.cod \} \}\)/.test(S.acces)
+      cfgW, async (m, o) => { vazute.push({ m, o }); return true; },
+      async (u, o) => { trimise.push({ u, b: o && o.body ? JSON.parse(o.body) : null }); const r = raspunsuri.shift(); return { status: r.status, ok: r.ok, json: async () => r.j }; },
+      { raxToast() {} }, {}, () => {});
+    await pune('pro');
+    T('fereastra din „Acces": textul de la server, trimis înapoi la salvare; la 409, textul nou, confirmat din nou',
+      vazute.map((x) => x.m).join('|') === 'TEXTUL 1|TEXTUL 2' && vazute[0].o.title === 'Pachetul Pro?' && vazute[0].o.okLabel === 'Trece pe Pro'
+      && /\/api\/companies\/7\/pachet-schimbare\?cod=pro$/.test(trimise[0].u) && trimise[1].b && trimise[1].b.textSchimbare === 'TEXTUL 1' && trimise[2].b.textSchimbare === 'TEXTUL 2'
+      && cfgW.pachet && cfgW.pachet.cod === 'pro', JSON.stringify({ v: vazute.map((x) => x.m), t: trimise.map((x) => x.b) }));
+    T('…telefonul la fel: textul din `Api.pachetSchimbare`, trimis înapoi (`textSchimbare`), la 409 fereastra cu textul nou; nicio frază a lui',
+      /Api\.pachetSchimbare\(companyId, p\.cod\)/.test(S.acces) && /saveCompanySettingsOf\(companyId, \{ ai_pachet: \{ cod: c\.p\.cod \}, textSchimbare: c\.t\.text \}\)/.test(S.acces)
+      && /e\.status === 409 && e\.data && e\.data\.schimbare\) \{ setPkAles\(\{ p: c\.p, t: e\.data\.schimbare \}\)/.test(S.acces) && /pachetSchimbare: \(id: number, cod: string\) => api<[^>]*>\(`\/api\/companies\/\$\{id\}\/pachet-schimbare\?cod=\$\{encodeURIComponent\(cod\)\}`\)/.test(S.endpoints)
+      && typeof L.confirmarePachetFirma === 'undefined' && (S.acces + S.lib).indexOf('Pe factură ajunge odată') < 0);
+    T('fila „Acces": butoanele pachetului, nota și confirmarea; fără limita AI veche', /butonPachetFirma\(p\)/.test(S.acces) && /alegePachet\(p\)/.test(S.acces)
       && !/peRegulaVeche|setCompanyAiLimit|Limită AI lunară|ai_monthly_limit/.test(S.acces + S.lib + S.endpoints) && html.indexOf('Limită AI lunară') < 0 && !/raxCfgSaveAiLimit/.test(html));
     T('„Abonament & plăți": doar drumul spre „Acces", ca pe web; întrebările pe cont și „Asistent AI" au ieșit', /Se vinde pe pachete; pachetul firmei se alege din fila „Acces”\./.test(S.abon) && html.indexOf('Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.') >= 0 && /rutaFisa\(id, 'acces'\), true/.test(S.abon)
       && !/ai_regula_veche|ai_quota|aiAssistantRON|questionsPerSeat/.test(S.abon) && !/ai_regula_veche/.test(server) && !/raxSaveAiQuota|rax-aiq-n|aiAssistantRON/.test(html));

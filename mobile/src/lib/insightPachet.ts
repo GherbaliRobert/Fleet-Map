@@ -131,18 +131,13 @@ export const NOTA_PACHET_FIRMA = 'Start = doar administratorul, pe butoane (făr
 export function butonPachetFirma(p: any): string {
   return p.nume + ' · ' + (p.pret ? p.pret + (p.pret % 100 >= 20 || p.pret % 100 === 0 ? ' de lei' : ' lei') : 'inclus');
 }
-// „Acum: …" (cu **îngroșat**); fără pachet scris, firma e pe Start (web: _raxRenderCfg).
+// „Acum: …" (cu **îngroșat**); fără pachet scris, firma e pe Start (web: _raxRenderCfg). Ziua pe ora României: din 13.11 schimbarea
+// pusă de noi pornește de la miezul nopții de acolo, iar un telefon pe alt fus ar fi arătat ziua dinainte.
 export function acumPachetFirma(s: any): string {
   const a = s && s.ai_pachet;
-  return (a ? 'Acum: **' + a.nume + '**' + (a.deLa ? ', din ' + new Date(a.deLa).toLocaleDateString('ro-RO') : '') + '.' : 'Acum: **Start**.')
+  return (a ? 'Acum: **' + a.nume + '**' + (a.deLa ? ', din ' + new Date(a.deLa).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '') + '.' : 'Acum: **Start**.')
     + (a && a.urmator ? ' **' + a.urmator + '**' : '');
 }
-export function confirmarePachetFirma(p: any): { titlu: string; text: string; ok: string } {
-  return {
-    titlu: 'Pachetul ' + p.nume + '?',
-    text: 'RA Insight trece pe loc pe pachetul ' + p.nume + (p.cod === 'start' ? ' (doar administratorul, pe butoane).'
-      : ' (' + (p.conturi == null ? 'conturi nelimitate' : 'până la ' + p.conturi + ' ' + (p.conturi === 1 ? 'cont' : 'conturi')) + ', ' + p.intrebari + (p.intrebari % 100 >= 20 || p.intrebari % 100 === 0 ? ' de' : '') + ' întrebări pe lună).')
-      + ' Pe factură ajunge odată cu oferta pe pachete.',
-    ok: 'Trece pe ' + p.nume,
-  };
-}
+// Fereastra de confirmare a schimbării de pachet NU se scrie pe telefon (13.11): textul îl dă serverul
+// (`Api.pachetSchimbare` → GET /api/companies/:id/pachet-schimbare), cu rândurile exacte de pe factura din 1 a lunii următoare,
+// iar la salvare pleacă înapoi (`textSchimbare`); la 409 vine textul nou (`data.schimbare`), care se confirmă din nou. Ca pe web.

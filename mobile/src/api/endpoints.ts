@@ -155,6 +155,8 @@ export const Api = {
   // Setările unei firme anume (agenții aprinși, cota RA Insight). PUT-ul schimbă doar cheile trimise.
   companySettingsOf: (id: number) => api<any>(`/api/companies/${id}/settings`),
   saveCompanySettingsOf: (id: number, b: any) => api<any>(`/api/companies/${id}/settings`, { method: 'PUT', body: b }),
+  // Fereastra din „Acces" (13.11): textul schimbării de pachet, scris de server (web: raxCfgPachet).
+  pachetSchimbare: (id: number, cod: string) => api<{ titlu: string; text: string; ok: string; sens: string }>(`/api/companies/${id}/pachet-schimbare?cod=${encodeURIComponent(cod)}`),
   // Oferta firmei: serverul o ÎNLOCUIEȘTE întreagă — trimite și câmpurile pe care ecranul nu le arată.
   setCompanyOferta: (id: number, oferta: any) => api<any>(`/api/companies/${id}/oferta`, { method: 'PUT', body: { oferta } }),
   // Suspendare / reactivare manuală. Motivul e obligatoriu la suspendare (îl cere și serverul).

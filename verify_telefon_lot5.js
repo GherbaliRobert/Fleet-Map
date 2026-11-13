@@ -832,7 +832,11 @@ async function parteaAnunturi() {
   T('„Au mai rămas … întrebări" (administratorul firmei, la 80% — 13.11) → RA Insight, „Pachet și conturi" (web: insightPachetConturi)',
     P.adresaAnunt('ai_intrebari_firma', { pachet: true, procent: 81 }) === '/insight/pachet' && /_notifDate\[id\]\.pachet\) \{ closeNotifications\(\); if \(window\.insightPachetConturi\) window\.insightPachetConturi\(\); return; \}/.test(html) &&
     /const isPachet = !!\(nd && nd\.pachet\);/.test(html) && /title="Deschide RA Insight → Pachet și conturi"/.test(html) && /isPachet\s*\?\s*'<i class="fas fa-layer-group"/.test(html));
-  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['ai_intrebari_firma', 'aparate_noi', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema']) &&
+  T('anunțurile NOASTRE despre RA Insight (soldul, refuzul, firmele la 80% / 100%, plafonul — 13.11) → „RA Insight · control", pe telefon și pe web',
+    ['ai_sold', 'ai_intrebari', 'ai_plasa', 'ai_refuz', 'ai_refuz_gata'].every((t) => P.adresaAnunt(t, { ai: true, company_id: 3 }) === '/admin/ai-usage')
+    && /const isAiNoi = \/\^ai_\(sold\|intrebari\|plasa\|refuz\|refuz_gata\)\$\/\.test\(n\.type\);/.test(html) && /function notifAiControl\(\) \{ closeNotifications\(\); goSistem\('agents'\); \}/.test(html)
+    && /isAiNoi\s*\?\s*`onclick="notifAiControl\(\)" title="Deschide RA Insight · control"`/.test(html));
+  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['ai_intrebari', 'ai_intrebari_firma', 'ai_plasa', 'ai_refuz', 'ai_refuz_gata', 'ai_sold', 'aparate_noi', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema']) &&
     P.TIPURI_CU_LOC.every((t) => P.adresaAnunt(t, { company_id: 3 }) !== null));
   {
     const u = P.adresaAnunt('aparate_noi', { imeis: [A1, A2, 'TEST111'], company_id: 42 });

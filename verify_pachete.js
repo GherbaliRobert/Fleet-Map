@@ -191,7 +191,7 @@ T('…conturile și limitele pleacă pe rutele lor (ai-seat, ai-limita), nu pe o
 // Din 28.10 (Alin: „1 da") analiza aprofundată pe Sonnet a ieșit: comutatorul ei nu mai e în tablou, ruta nu mai există.
 T('tabloul nostru: blocul pachetelor și rândul pachetului în amănuntul firmei, din cifrele serverului (fără comutatorul analizei pe Sonnet)', /function _aiuPachete\(p\)/.test(PAG) && /function _aiuPachetRand\(r\)/.test(PAG) && /_aiuPachete\(d\.pachete\)/.test(PAG) && PAG.indexOf('/api/admin/insight/aprofundat') < 0 && SRV.indexOf("'/api/admin/insight/aprofundat'") < 0 && /fetch\('\/api\/admin\/insight\/sold', \{ method: 'PUT'/.test(PAG));
 T('anunțul pentru noi la 60% din plasă și la plasă: o dată pe firmă, lună și prag, ținut minte în setări', /const PLASA_ANUNT_PROCENT = 60;/.test(SRV) && /_anuntaSuperadmini\(supers, 'ai_plasa'/.test(SRV) && /db\.setSetting\('ai_plasa_anuntat'/.test(SRV) && /setInterval\(\(\) => plasaAnuntTick\(\)/.test(SRV));
-T('fila „Acces" a firmei: pachetul se pune de aici (super-admin), cu întrebare', /window\.raxCfgPachet = async function \(cod\)/.test(PAG) && /body: JSON\.stringify\(\{ ai_pachet: \{ cod: cod \} \}\)/.test(PAG));
+T('fila „Acces" a firmei: pachetul se pune de aici (super-admin), cu întrebare — textul ei îl scrie serverul și pleacă înapoi la salvare (13.11)', /window\.raxCfgPachet = async function \(cod\)/.test(PAG) && /body: JSON\.stringify\(\{ ai_pachet: \{ cod: cod \}, textSchimbare: t\.text \}\)/.test(PAG));
 T('„Dai RA Insight acestui cont?" pe un pachet nu mai spune că se facturează un cont în plus', /Prețul pachetului rămâne același, oricâte conturi dai\./.test(PAG));
 const plans = require('./plans');
 T('RA Insight e pornit implicit (Start inclus); unde l-am oprit noi, rămâne oprit', plans.featuresFor({ settings: {} }).ai_assistant === true && plans.featuresFor({ settings: { features: { ai_assistant: false } } }).ai_assistant === false);
@@ -292,6 +292,22 @@ T('același pachet: refuz; cu o trecere programată, alegerea lui = anularea ei'
   && /se anulează/.test(P.trecere({ actual: pk('pro', 20, { urmator: { cod: 'basic', nume: 'Basic', pretRON: 10, deLa: P.inceputLunaUrm(T14) } }), la: 'pro', pretNou: 20, acum: T14 }).text || ''));
 T('un pachet plătit fără preț nu se poate alege (nu pornește pe 0 lei)', /n-are încă preț/.test(P.trecere({ actual: pk('basic', 10), la: 'pro', pretNou: 0, acum: T14 }).refuz || ''));
 T('fără pachetul de acum citit, trecerea nu se face (și se spune pe față)', /Nu am putut citi pachetul firmei/.test(P.trecere({ actual: null, la: 'pro', pretNou: 20 }).refuz || ''));
+// Fereastra din fila „Acces" (13.11, Alin: „1. DA"): schimbarea pusă de NOI spune exact ce se întâmplă — de azi și rândurile RA
+// Insight de pe factura din 1 a lunii următoare (le socotește serverul cu liniiFactura, aceeași ca factura; aici le dăm de mână).
+const L14 = [{ desc: 'RA Insight Pro — noiembrie 2026', pret: 20 }, { desc: 'RA Insight — trecerea la pachetul Pro, 14–31.10.2026 (18 zile)', pret: 5.81 }];
+const sN = P.textSchimbareNoi({ actual: pk('basic', 10), la: 'pro', pretNou: 20, firma: 'Zebra SRL', acum: T14, linii: L14, cuMasini: true });
+T('„Acces", mai mare (Basic → Pro pe 14.10): de azi, apoi exact rândurile de pe factura din 1 noiembrie',
+  sN.sens === 'sus' && sN.titlu === 'Pachetul Pro?' && sN.ok === 'Trece pe Pro' &&
+  sN.text === 'Zebra SRL trece de azi de la pachetul RA Insight Basic (10 lei pe lună, fără TVA) la pachetul RA Insight Pro (20 de lei pe lună, fără TVA). Pe factura din 1 noiembrie, la RA Insight: „RA Insight Pro — noiembrie 2026” 20,00 lei și „RA Insight — trecerea la pachetul Pro, 14–31.10.2026 (18 zile)” 5,81 lei, fără TVA.', sN.text);
+const sJ2 = P.textSchimbareNoi({ actual: pk('pro', 20), la: 'basic', pretNou: 10, firma: 'Zebra SRL', acum: T14, linii: [{ desc: 'RA Insight Basic — noiembrie 2026', pret: 10 }], cuMasini: true });
+T('…mai mic (Pro → Basic): tot de azi (pus de noi), Basic din noiembrie, „nu se dau bani înapoi"', sJ2.sens === 'jos' && /^Zebra SRL trece de azi de la pachetul RA Insight Pro \(20 de lei pe lună, fără TVA\) la pachetul RA Insight Basic \(10 lei pe lună, fără TVA\)\. Pe factura din 1 noiembrie, la RA Insight: „RA Insight Basic — noiembrie 2026” 10,00 lei, fără TVA\. Ce s-a facturat deja nu se schimbă: nu se dau bani înapoi\.$/.test(sJ2.text), sJ2.text);
+const sS = P.textSchimbareNoi({ actual: pk('pro', 20), la: 'start', firma: 'Zebra SRL', acum: T14, linii: [], cuMasini: true });
+T('…la Start: inclus, doar administratorul, iar de pe factura din 1 noiembrie RA Insight nu mai apare', /la pachetul RA Insight Start \(inclus, fără cost\)\. Pe Start, RA Insight îl are doar administratorul, pe butoane\. De pe factura din 1 noiembrie, RA Insight nu mai apare pe factură\. Ce s-a facturat deja/.test(sS.text), sS.text);
+T('…fără nicio mașină pornită: pachetul intră pe factură odată cu abonamentul', /Firma nu are încă nicio mașină pornită: pachetul intră pe factură odată cu abonamentul, de la prima mașină care transmite\.$/.test(P.textSchimbareNoi({ actual: pk('basic', 10), la: 'pro', pretNou: 20, acum: T14, linii: [], cuMasini: false }).text));
+T('…cu modulul RA Insight oprit: nu se facturează', /Modulul RA Insight e oprit la firma asta: pachetul nu se facturează cât timp e oprit\./.test(P.textSchimbareNoi({ actual: pk('basic', 10), la: 'pro', pretNou: 20, acum: T14, modulOprit: true, cuMasini: true }).text));
+T('…o trecere programată de administratorul firmei se anulează (și se spune); același pachet = refuz',
+  /Trecerea la pachetul Basic, programată de administratorul firmei din 1 noiembrie 2026, se anulează\./.test(P.textSchimbareNoi({ actual: pk('pro', 20, { urmator: { cod: 'basic', nume: 'Basic', pretRON: 10, deLa: P.inceputLunaUrm(T14) } }), la: 'business', pretNou: 30, acum: T14, linii: [], cuMasini: true }).text)
+  && P.textSchimbareNoi({ actual: pk('pro', 20), la: 'pro', pretNou: 20, acum: T14 }).refuz === 'Firma are deja pachetul Pro.' && /nu există/.test(P.textSchimbareNoi({ actual: pk('pro', 20), la: 'gold', acum: T14 }).refuz || ''));
 // Pachetul programat devine pachetul firmei din clipa lui (fără ceas care să-l mute).
 const sP = { ai_pachet: { cod: 'pro', pretRON: 20, de_la: 1 }, ai_pachet_urmator: { cod: 'basic', pretRON: 10, de_la: P.inceputLunaUrm(T14) } };
 const inainte = P.pachetFirma(sP, T14), dupa = P.pachetFirma(sP, P.inceputLunaUrm(T14) + 1000);
@@ -351,15 +367,21 @@ T('o schimbare nouă înlocuiește ce era programat după ea', P.adaugaIstoric(s
     JSON.stringify(f(sR, 2026, 11)) === JSON.stringify([{ desc: 'RA Insight Basic — noiembrie 2026', pret: 10 }]), JSON.stringify(f(sR, 2026, 11)));
   T('intrările de dinainte de 02.11 (fără clipa hotărârii) se socotesc ca înainte', JSON.stringify(P.liniiFactura({ istoric: [{ de_la: 0, cod: 'basic', pretRON: 10 }, { de_la: ro(2026, 12, 1), cod: 'pro', pretRON: 20 }],
     an: 2026, luna: 12, intreaga: true, anterioaraIntreaga: true })) === JSON.stringify([{ desc: 'RA Insight Pro — decembrie 2026', pret: 20 }]));
-  T('pe server, clipa hotărârii se scrie la toate trei: pachetul pus de noi, trecerea în sus, trecerea programată',
-    /adaugaIstoric\(next, ap \? \{ de_la: ap\.de_la, cod: ap\.cod, pretRON: ap\.pretRON, hotarat_la: acum \} : \{ de_la: acum, cod: 'start', pretRON: 0, hotarat_la: acum \}\)/.test(SRV)
+  T('pe server, clipa hotărârii se scrie la toate trei: pachetul pus de noi (de azi, de la miezul nopții — 13.11), trecerea în sus, trecerea programată',
+    /adaugaIstoric\(next, ap \? \{ de_la: ap\.de_la, cod: ap\.cod, pretRON: ap\.pretRON, hotarat_la: acum \} : \{ de_la: pachete\.inceputZi\(acum\), cod: 'start', pretRON: 0, hotarat_la: acum \}\)/.test(SRV)
+    && /if \(ap && ap\.de_la == null\) ap\.de_la = pachete\.inceputZi\(acum\);/.test(SRV)
     && /adaugaIstoric\(next, \{ de_la: t\.deLa, cod: t\.la, pretRON: t\.pretNou, hotarat_la: Date\.now\(\) \}\)/.test(SRV)
     && /next\.ai_pachet_urmator = \{ cod: t\.la, pretRON: t\.pretNou, de_la: t\.deLa, hotarat_la: Date\.now\(\) \}/.test(SRV));
 })();
-T('pe server: factura lunii ia pachetul din istoric (nu prețul de azi) și o singură regulă pentru rânduri',
-  /pachete\.liniiFactura\(\{ istoric: pachete\.istoricFirma\(setariCo\)/.test(SRV) && /settings: Object\.assign\(\{\}, setariCo, \{ ai_pachet: null, ai_pachet_urmator: null, ai_pachet_istoric: null \}\)/.test(SRV));
+T('pe server: factura lunii ia pachetul din istoric (nu prețul de azi) și o singură regulă pentru rânduri — aceeași pentru factură și pentru fereastra din „Acces" (13.11)',
+  /_liniiPachetDinImp\(pachete\.istoricFirma\(setariCo\), imp\)/.test(SRV) && (SRV.match(/pachete\.liniiFactura\(/g) || []).length === 1 && /function _liniiPachetDinImp\(istoric, imp\) \{\s*return pachete\.liniiFactura\(\{ istoric: istoric,/.test(SRV)
+  && /_liniiPachetDinImp\(istoric, abonament\.imparte\(aparate, urm\.an, urm\.luna\)\)/.test(SRV)
+  && /settings: Object\.assign\(\{\}, setariCo, \{ ai_pachet: null, ai_pachet_urmator: null, ai_pachet_istoric: null \}\)/.test(SRV));
+// (Al treilea `adaugaIstoric` e în fereastra din „Acces", `_schimbarePachetNoi`: doar socoate istoricul care AR rezulta, nu scrie nimic.)
+const _fereastraAcces = (SRV.match(/async function _schimbarePachetNoi\([\s\S]*?\n\}/) || [''])[0];
 T('o singură scriere a pachetului pe firmă (_applyCompanySettingsPatch), cu istoricul la fiecare schimbare',
-  (SRV.match(/pachete\.adaugaIstoric\(/g) || []).length === 2 && /if \(body\.ai_pachet_trecere && opts && opts\.trecere\)/.test(SRV) && (SRV.match(/\{ trecere: true \}/g) || []).length === 1);
+  (SRV.match(/pachete\.adaugaIstoric\(/g) || []).length === 3 && (_fereastraAcces.match(/pachete\.adaugaIstoric\(/g) || []).length === 1 && !/setCompanySettings|UPDATE companies|_applyCompanySettingsPatch/.test(_fereastraAcces)
+  && /if \(body\.ai_pachet_trecere && opts && opts\.trecere\)/.test(SRV) && (SRV.match(/\{ trecere: true \}/g) || []).length === 1);
 T('după confirmare, textul îl scrie serverul (cu emailul, așa cum a plecat)',
   /a plecat pe email \(a@b\.ro\), în PDF/.test(P.textDupaTrecere(tSus, { trimis: true, catre: 'a@b.ro' })) && /emailul n-a plecat: x/.test(P.textDupaTrecere(tJos, { trimis: false, motiv: 'x' })));
 const tConf = (function () { const c = carton(); require('./contract_pdf').scrieConfirmarePachet(c.d, { trecere: { id: 7, creat_la: T14, text: tSus.text, user_nume: 'Ion Pop', ip: '10.0.0.1', aplicat_de_la: tSus.deLa },
@@ -679,6 +701,20 @@ const LUNA = P.reincarcare(Date.now()).luna;
   const laV = await json('PUT', '/api/companies/' + coV.id + '/settings', S, { ai_pachet: { cod: 'pro' } });
   const qV2 = await cota(vAdm);
   T('pachetul pus din „Acces" (Pro, 600)', laV.status === 200 && !('ai_quota' in laV.j) && qV2.pachet && qV2.pachet.cod === 'pro' && qV2.questions === 600, JSON.stringify(qV2.pachet || {}).slice(0, 120));
+  // Fereastra din „Acces" (13.11): textul îl scrie serverul; la salvare se trimite înapoi, iar un text vechi primește 409 cu cel nou.
+  const tsV = await json('GET', '/api/companies/' + coV.id + '/pachet-schimbare?cod=business', S);
+  T('„Acces": serverul scrie fereastra (Pro → Business, de azi, cu factura sau fără mașini pornite)', tsV.status === 200 && tsV.j.titlu === 'Pachetul Business?' && tsV.j.ok === 'Trece pe Business'
+    && /^Firma Veche SRL trece de azi de la pachetul RA Insight Pro \(20 de lei pe lună, fără TVA\) la pachetul RA Insight Business \(30 de lei pe lună, fără TVA\)\. /.test(tsV.j.text || '')
+    && /Pe factura din 1 [a-zî]+, la RA Insight: „RA Insight Business — |nicio mașină pornită/.test(tsV.j.text || ''), tsV.status + ' ' + (tsV.j.text || tsV.j.error));
+  T('…același pachet: 400; clientul nu are voie (403)', (await json('GET', '/api/companies/' + coV.id + '/pachet-schimbare?cod=pro', S)).status === 400
+    && (await json('GET', '/api/companies/' + coV.id + '/pachet-schimbare?cod=business', vAdm.ck)).status === 403);
+  const tsVechi = await json('PUT', '/api/companies/' + coV.id + '/settings', S, { ai_pachet: { cod: 'business' }, textSchimbare: 'un text vechi' });
+  T('…un text care nu mai e cel de acum: 409 cu textul nou, iar pachetul nu se schimbă', tsVechi.status === 409 && tsVechi.j.schimbare && tsVechi.j.schimbare.text === tsV.j.text && (await cota(vAdm)).pachet.cod === 'pro');
+  const tsBun = await json('PUT', '/api/companies/' + coV.id + '/settings', S, { ai_pachet: { cod: 'business' }, textSchimbare: tsV.j.text });
+  T('…textul confirmat: Business, de la miezul nopții de azi (ora României), ca la trecerea făcută de client', tsBun.status === 200 && tsBun.j.ai_pachet && tsBun.j.ai_pachet.cod === 'business'
+    && tsBun.j.ai_pachet.de_la === P.inceputZi(Date.now()) && (await cota(vAdm)).pachet.cod === 'business', JSON.stringify(tsBun.j.ai_pachet));
+  T('…pagina: fereastra ia textul de la server și îl trimite înapoi (nicio frază despre factură scrisă în pagină)', /fetch\('\/api\/companies\/' \+ id \+ '\/pachet-schimbare\?cod=' \+ encodeURIComponent\(cod\)/.test(PAG)
+    && /JSON\.stringify\(\{ ai_pachet: \{ cod: cod \}, textSchimbare: t\.text \}\)/.test(PAG) && /r\.status === 409 && j && j\.schimbare/.test(PAG) && PAG.indexOf('Pe factură ajunge odată cu oferta pe pachete') < 0);
   const laS = await json('PUT', '/api/companies/' + coB.id + '/settings', S, { ai_pachet: null });
   T('null = înapoi la Start', laS.status === 200 && laS.j.ai_pachet === null && (await cota(bAdm)).pachet.cod === 'start');
   const aud = await json('GET', '/api/audit?limit=200', S);

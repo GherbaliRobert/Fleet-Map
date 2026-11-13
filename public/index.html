@@ -15051,7 +15051,12 @@ const pozitii = await r.json();</code></pre>
         const isCerere = /^cerere_(echipa|preluata|programata|rezolvata)$/.test(n.type);
         // „Au mai rămas … întrebări" (administratorul firmei, 13.11) → RA Insight, „Pachet și conturi" (n-are hartă).
         const isPachet = !!(nd && nd.pachet);
-        const clickAttr = isPachet
+        // Anunțurile NOASTRE despre RA Insight (soldul Anthropic, refuzul, firmele la 80% / 100%, plafonul) — 13.11, Alin: „4. DA": duc
+        // în „RA Insight · control", nu în fereastra cu hartă (n-au poziție). Felul se recunoaște după tip (și pe anunțurile vechi).
+        const isAiNoi = /^ai_(sold|intrebari|plasa|refuz|refuz_gata)$/.test(n.type);
+        const clickAttr = isAiNoi
+          ? `onclick="notifAiControl()" title="Deschide RA Insight · control"`
+          : isPachet
           ? `onclick="openNotifDetail(${Number(n.id)})" title="Deschide RA Insight → Pachet și conturi"`
           : isCerere
           ? `onclick="notifCerere(${Number(n.id)})" title="Deschide cererea"`
@@ -15070,6 +15075,8 @@ const pozitii = await r.json();</code></pre>
           ? '<i class="fas fa-file-lines" style="color:var(--accent);opacity:.8;"></i>'
           : isPachet
           ? '<i class="fas fa-layer-group" style="color:var(--accent);opacity:.8;"></i>'
+          : isAiNoi
+          ? '<i class="fas fa-wand-magic-sparkles" style="color:var(--accent);opacity:.8;"></i>'
           : '<i class="fas fa-map-location-dot" style="color:var(--accent);opacity:.7;"></i>';
         const reportBtn = (n.type === 'report_ready')
           ? `<button class="btn-sm btn-primary" style="padding:3px 8px;white-space:nowrap;" title="Mergi la rapoarte generate" onclick="notifGoReports()"><i class="fas fa-arrow-right"></i> Rapoarte</button>`
@@ -15102,6 +15109,7 @@ const pozitii = await r.json();</code></pre>
       if (typeof showView === 'function') showView('administrare');
       setTimeout(function () { if (window.raxDevDeschideNeasignate) raxDevDeschideNeasignate({ imeis: d.imeis || [], firma: d.company_id != null ? d.company_id : null }); }, 180);
     }
+    function notifAiControl() { closeNotifications(); goSistem('agents'); }
     function notifCerere(id) {
       const d = _notifDate[id] || {};
       closeNotifications();
@@ -24376,7 +24384,7 @@ const pozitii = await r.json();</code></pre>
             var al = !!(s.pachet && s.pachet.cod === p.cod);
             return '<button class="rax-btn' + (al ? ' primary' : '') + '"' + (al ? ' aria-pressed="true"' : '') + ' onclick="raxCfgPachet(\'' + esc(p.cod) + '\')">' + esc(p.nume) + ' · ' + (p.pret ? p.pret + (p.pret % 100 >= 20 || p.pret % 100 === 0 ? ' de lei' : ' lei') : 'inclus') + '</button>';
           }).join('') + '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">' + (s.pachet ? 'Acum: <b>' + esc(s.pachet.nume) + '</b>' + (s.pachet.deLa ? ', din ' + new Date(s.pachet.deLa).toLocaleDateString('ro-RO') : '') + '.' : 'Acum: <b>Start</b>.') +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:5px;">' + (s.pachet ? 'Acum: <b>' + esc(s.pachet.nume) + '</b>' + (s.pachet.deLa ? ', din ' + new Date(s.pachet.deLa).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '') + '.' : 'Acum: <b>Start</b>.') +
           (s.pachet && s.pachet.urmator ? ' <b>' + esc(s.pachet.urmator) + '</b>' : '') +
           ' Start = doar administratorul, pe butoane (fără AI); Basic, Pro, Business = cu AI și ramuri. Pe factură: un rând fix pe lună; o trecere în cursul lunii se socotește pe zile. Administratorul firmei își schimbă singur pachetul, din „Vezi pachetele”.</div></div>';
       }
@@ -24423,19 +24431,34 @@ const pozitii = await r.json();</code></pre>
       } catch (e) { alert('Eroare: ' + e.message); }
     };
     // Pune pachetul RA Insight pe firmă (super-admin). Serverul îl scrie și scoate regula veche, pe cont.
+    // Schimbarea pachetului (13.11, Alin: „1. DA"): textul ferestrei îl scrie serverul — de azi și rândurile RA Insight de pe factura
+    // din 1 a lunii următoare, socotite ca factura. La salvare pleacă și textul confirmat; dacă socoteala s-a schimbat între timp,
+    // serverul răspunde 409 cu textul nou, care se confirmă din nou. Pagina nu scrie nicio frază despre factură.
     window.raxCfgPachet = async function (cod) {
       if (!_raxCfg) return;
       var p = (_raxCfg.pachete || []).filter(function (x) { return x.cod === cod; })[0]; if (!p) return;
       if (_raxCfg.pachet && _raxCfg.pachet.cod === cod) return;
-      var ok = await raConfirm('RA Insight trece pe loc pe pachetul ' + p.nume + (p.cod === 'start' ? ' (doar administratorul, pe butoane).' : ' (' + (p.conturi == null ? 'conturi nelimitate' : 'până la ' + p.conturi + ' ' + (p.conturi === 1 ? 'cont' : 'conturi')) + ', ' + p.intrebari + (p.intrebari % 100 >= 20 || p.intrebari % 100 === 0 ? ' de' : '') + ' întrebări pe lună).') + ' Pe factură ajunge odată cu oferta pe pachete.', { title: 'Pachetul ' + p.nume + '?', danger: false, okLabel: 'Trece pe ' + p.nume, icon: 'fa-wand-magic-sparkles' });
-      if (!ok) return;
+      var id = _raxCfg.id, toast = window.raxToast || function (m) { alert(m); };
+      var t = null;
       try {
-        var j = await fetch('/api/companies/' + _raxCfg.id + '/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ ai_pachet: { cod: cod } }) }).then(function (r) { return r.json(); });
-        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
-        _raxCfg.pachet = j.ai_pachet ? { cod: j.ai_pachet.cod, nume: p.nume, pretRON: j.ai_pachet.pretRON, deLa: j.ai_pachet.de_la } : null;
-        _raxRenderCfg();
-        (window.raxToast || function () {})('Pachet RA Insight ' + p.nume, 'success');
-      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
+        var r0 = await fetch('/api/companies/' + id + '/pachet-schimbare?cod=' + encodeURIComponent(cod), { credentials: 'same-origin' });
+        t = await r0.json();
+        if (!r0.ok || !t || t.error) { toast((t && t.error) || 'Eroare', 'error'); return; }
+      } catch (e) { toast('Eroare: ' + e.message, 'error'); return; }
+      for (var pas = 0; pas < 3; pas++) {
+        var ok = await raConfirm(t.text, { title: t.titlu, danger: false, okLabel: t.ok, icon: 'fa-wand-magic-sparkles' });
+        if (!ok) return;
+        try {
+          var r = await fetch('/api/companies/' + id + '/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ ai_pachet: { cod: cod }, textSchimbare: t.text }) });
+          var j = await r.json();
+          if (r.status === 409 && j && j.schimbare) { t = j.schimbare; continue; }
+          if (!r.ok || j.error) { toast(j.error || 'Eroare', 'error'); return; }
+          _raxCfg.pachet = j.ai_pachet ? { cod: j.ai_pachet.cod, nume: p.nume, pretRON: j.ai_pachet.pretRON, deLa: j.ai_pachet.de_la } : null;
+          _raxRenderCfg();
+          toast('Pachet RA Insight ' + p.nume, 'success');
+          return;
+        } catch (e) { toast('Eroare: ' + e.message, 'error'); return; }
+      }
     };
     window.raxCfgToggleAgent = async function (key, on) {
       if (!_raxCfg) return;
