@@ -232,30 +232,29 @@ T('firma care n-a transmis niciodată e strigată', /niciodată/.test(co.activit
 T('firma fără vehicule nu e trasă la răspundere', /fără vehicule/.test(co.activitate(F({ device_count: 0 }))));
 
 sect('6. Venitul lunar — aceeași socoteală ca pe factură');
-const bucataQ = taie(server, 'function _aiQuotaFromSettings(settings) {', '\n// ─── Câte conturi');
-const bucataL = taie(server, 'function _lunaAcum()', '\nasync function _urcaSeatsPeak');
 const bucataV = taie(server, '// ── începe „Venitul lunar pe firmă"', '// ── sfârșit „Venitul lunar pe firmă" ──');
 // `contracte` = regula păstrării istoricului (24.09): 24/36 de luni plătite intră și în venitul lunar.
-const _venitLunar = new Function('plans', 'contracte', bucataQ + '\n' + bucataL + '\n' + bucataV + '\n; return _venitLunar;')(require('./plans.js'), require('./contracts.js'));
-const LUNA = new Date().toISOString().slice(0, 7);
+const _venitLunar = new Function('plans', 'contracte', bucataV + '\n; return _venitLunar;')(require('./plans.js'), require('./contracts.js'));
 const firmaPret = (o) => ({ id: 1, name: 'X', custom_plan: o, settings: {} });
-T('preț pe vehicul × vehicule', _venitLunar(firmaPret({ priceNoneRON: 30 }), { none: 3, can: 0, fms: 0 }, 0) === 90,
-  String(_venitLunar(firmaPret({ priceNoneRON: 30 }), { none: 3, can: 0, fms: 0 }, 0)));
-T('vehiculele cu CAN au prețul lor', _venitLunar(firmaPret({ priceNoneRON: 30, priceCanRON: 45 }), { none: 1, can: 2, fms: 0 }, 0) === 120,
-  String(_venitLunar(firmaPret({ priceNoneRON: 30, priceCanRON: 45 }), { none: 1, can: 2, fms: 0 }, 0)));
+T('preț pe vehicul × vehicule', _venitLunar(firmaPret({ priceNoneRON: 30 }), { none: 3, can: 0, fms: 0 }) === 90,
+  String(_venitLunar(firmaPret({ priceNoneRON: 30 }), { none: 3, can: 0, fms: 0 })));
+T('vehiculele cu CAN au prețul lor', _venitLunar(firmaPret({ priceNoneRON: 30, priceCanRON: 45 }), { none: 1, can: 2, fms: 0 }) === 120,
+  String(_venitLunar(firmaPret({ priceNoneRON: 30, priceCanRON: 45 }), { none: 1, can: 2, fms: 0 })));
 // Fără OFERTĂ, firma n-are preț — deci ZERO, nu un preț implicit inventat dintr-un tabel de planuri.
 // (Cât timp exista tabelul, o firmă nouă apărea în registru cu 29 lei/vehicul pe care nu-i cerea nimeni.)
 T('fără ofertă, firma nu aduce nimic',
-  _venitLunar({ id: 2, settings: {} }, { none: 5, can: 0, fms: 0 }, 0) === 0,
-  String(_venitLunar({ id: 2, settings: {} }, { none: 5, can: 0, fms: 0 }, 0)));
+  _venitLunar({ id: 2, settings: {} }, { none: 5, can: 0, fms: 0 }) === 0,
+  String(_venitLunar({ id: 2, settings: {} }, { none: 5, can: 0, fms: 0 })));
 T('nici măcar dacă are vehicule și un plan scris în coloană',
-  _venitLunar({ id: 2, plan: 'premium', settings: {} }, { none: 5, can: 2, fms: 1 }, 0) === 0);
-const cuInsight = { id: 3, custom_plan: { priceNoneRON: 30 }, settings: { ai_quota: { questionsPerSeat: 50, seatPriceRON: 15 } } };
-T('conturile de RA Insight se adaugă', _venitLunar(cuInsight, { none: 2, can: 0, fms: 0 }, 3) === 105,
-  String(_venitLunar(cuInsight, { none: 2, can: 0, fms: 0 }, 3)));
-const cuVarf = { id: 4, custom_plan: { priceNoneRON: 30 }, settings: { ai_quota: { questionsPerSeat: 50, seatPriceRON: 15, seatsPeak: { luna: LUNA, n: 4 } } } };
-T('se ia vârful lunii, ca pe factură', _venitLunar(cuVarf, { none: 2, can: 0, fms: 0 }, 2) === 120,
-  String(_venitLunar(cuVarf, { none: 2, can: 0, fms: 0 }, 2)));
+  _venitLunar({ id: 2, plan: 'premium', settings: {} }, { none: 5, can: 2, fms: 1 }) === 0);
+// RA Insight se plătește prin pachet, fix pe firmă (regula veche, „pe cont", a ieșit pe 11.11).
+const cuPachet = { id: 3, custom_plan: { priceNoneRON: 30 }, settings: { ai_pachet: { cod: 'pro', pretRON: 20 } } };
+T('pachetul RA Insight se adaugă, o dată pe firmă', _venitLunar(cuPachet, { none: 2, can: 0, fms: 0 }) === 80,
+  String(_venitLunar(cuPachet, { none: 2, can: 0, fms: 0 })));
+const cuVechi = { id: 4, custom_plan: { priceNoneRON: 30 }, settings: { ai_quota: { questionsPerSeat: 50, seatPriceRON: 15, seatsPeak: { luna: '2026-11', n: 4 } } } };
+T('un `ai_quota` rămas (conturi, vârful lunii) nu mai aduce bani: firma e pe Start', _venitLunar(cuVechi, { none: 2, can: 0, fms: 0 }) === 60,
+  String(_venitLunar(cuVechi, { none: 2, can: 0, fms: 0 })));
+T('„Lunar" nu mai citește conturile RA Insight', !/aiSeatsByCompany/.test(server) && /_venitLunar\(c, peFirma\[c\.id\]\)/.test(server));
 T('clasificatorul de CAN e cel adevărat, nu o copie',
   /classifyDeviceCan\(\{ can_interface: b\.can_interface/.test(server));
 T('ruta de bani e declarată ÎNAINTEA rutelor cu :id (altfel „mrr" ar fi luat drept un id)',

@@ -490,7 +490,7 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
 
 Alin a arătat două capturi: „câți km a făcut B 154 UIP săptămâna trecută?" → „nu apare în flotă"; apoi „Dacia Logan 3" →
 „ce vrei să afli?". Modelul primea mașinile doar cu NUMELE și fiecare mesaj pleca singur. Hotărât cu el: RA Insight e
-SINGURUL asistent care costă (pe cont, ca azi); „AI Raport" din Rapoarte e gratuit, pe reguli; cei 6 agenți rămân.
+SINGURUL asistent care costă (atunci pe cont; din 14.10 pe pachete); „AI Raport" din Rapoarte e gratuit, pe reguli; cei 6 agenți rămân.
 Planul în pași: 1 numerele + memoria (livrat), 2 secțiunea proprie + AI Raport, 3 Safe Drive & costuri, 4 celelalte ramuri
 + scrisoarea de luni; creierul puternic și acțiunile — abia după măsurătoare și după ce stabilim prețul.
 
@@ -886,10 +886,9 @@ sau „Domenii ▸". NU pune înapoi pe ecran ce a plecat de acolo (al doilea lo
 - **Stânga:** Conversație nouă, „Caută în conversații" (un rând → caseta), conversațiile pe zile, **„Domenii ▸"** (`pagini()` =
   ramurile livrate, fără `general` și fără `meniu: true` — ghidul stă în „⋯"; închise, cu suma numerelor; deschise când stai pe una —
   `insightPagini`, `paginiDeschise()`) și **un rând cu pachetul** (`deseneazaPachet`: `nume · scurt`, amănuntul — `text`, `textOm`,
-  `reincarcare` — în `title`; administratorul ajunge din el în „Pachet și conturi"). Regula veche, pe cont, tot pe un rând (textele ei
-  rămân: „oprit până pe …, fără niciun cost în plus"; „Un cont în plus aduce încă N" în `title`).
+  `reincarcare` — în `title`; administratorul ajunge din el în „Pachet și conturi"). (Contorul regulii vechi, „pe cont", a ieșit pe 11.11.)
 - **Contorul fondatorului** (Alin: „nici nu văd contorul… chiar dacă am admin de fondator"): fără pachet și fără limită, `textContor`
-  dă „Fondator · fără limită" (`S.fondator` = `currentUser.isSuper`; un client pe regula veche nelimitată: „Fără limită") — jos și
+  dă „Fondator · fără limită" (`S.fondator` = `currentUser.isSuper`; orice firmă are un pachet, deci la client contorul e mereu al pachetului) — jos și
   lângă casetă (`S.contor`).
 - **Răspunsul:** „Am înțeles" = **titlu scurt** (`_insightExtra` partea `'inteles'` → `.ins-tit`, ce vine din discuție cu creierașul
   verde), cel mult **două** butoane spre rapoarte (`surse.slice(0, 2)`), Copiază · 👍 · 👎 · „Din raportul…" la trecerea cu mouse-ul
@@ -1121,7 +1120,7 @@ Nouă cauze, toate în aplicație. Reparațiile și regulile lor — NU le stric
 - **„RA Insight · control" (fondatorii):** rândul sus în meniu (nu într-un grup; grupul se cheamă „Module"), `_RAX_NUME.agents`. Pagina:
   `_aiuPachete` (4 cifre) → `_aiuAtentie` (plasa, întrebările terminate, 👎 7 zile — `db.aiJosPeFirma`, doar numărul —, partea instant)
   → `_aiuTabel` (un rând pe firmă, `raxAiRand` deschide amănuntul; jos, de unde dă firma conturile — `_aiuUndeConturi`: pe pachet din
-  „Pachet și conturi", pe regula veche din Utilizatori) → `_aiuControale` → istoricul (buton). **Panoul vechi „Mai multe cifre" a ieșit
+  „Pachet și conturi"; pe Start întreabă doar administratorul) → `_aiuControale` → istoricul (buton). **Panoul vechi „Mai multe cifre" a ieșit
   pe 19.10** (punctul 5, cu Alin): `_aiuKpiuri`, `_aiuCard`, `_aiuTendinta`, `_aiuSageata`, `_aiuStare`, `raxAiToate`, `raxAiMaiMulte`.
   Pe telefon au ieșit pe 02.11 (lotul 3; intră cu APK-ul următor). NU pune panoul înapoi în pagină (proba pică).
 - „Proba modelelor" primește `verificare: { perioada, cifre, rescris }` (doar la probă) — câte răspunsuri au avut cifre greșite.
@@ -1400,7 +1399,7 @@ caută și pe internet ce nu e în aplicație. **Numele pe ecran e „Sursă ext
 - **Regulile și TEXTELE stau în `sursa_externa.js`** (curat): `stare` (trei comutatoare, fiecare îl oprește pe cel de sub el: noi pe platformă —
   `oprita` / `noi` / `firme`, setarea `sursa_externa`; administratorul pentru firmă — `settings.sursa_externa_oprita`; omul pentru discuția lui —
   pagina; plus modelul: `model.ok === false` = nu apare nimănui), `PE_PACHET` (Basic 10 / Pro 30 / Business 50 de întrebări pe lună, pe firmă;
-  Start și regula veche 0), `verifica` (ce n-are voie să plece: numere de înmatriculare — regula și numerele flotei —, numele șoferilor și ale
+  Start 0), `verifica` (ce n-are voie să plece: numere de înmatriculare — regula și numerele flotei —, numele șoferilor și ale
   oamenilor firmei, adrese cu număr, telefoane, emailuri, IMEI / CNP / cont, VIN, căutări de persoane; numele firmei NU se oprește),
   `UNEALTA`, `INSTRUCTIUNI` (întâi ce arată aplicația, apoi ce a găsit căutarea, cu site-ul lângă fiecare cifră — FĂRĂ titluri de parte: Alin,
   29.10, „scoate din text: Din sursă externă"; `faraTitluri` scoate titlul rămas din obișnuință din răspuns, în `_raInsight`, și din
@@ -1454,7 +1453,7 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
 - **Monedă dublă:** toate sumele apar în lei ȘI euro, la cursul dat de `GET /api/fx`. Clientul are
   `window.raFx()` → `{ eur, date, sursa }`.
 - **RA Insight se vinde în PACHETE pe firmă** (din 14.10, pasul 5) — vezi „Pachetele RA Insight" mai jos. Grila pe cont după
-  mărimea flotei a ieșit din ofertă; ofertele VECHI, pe cont, se redeschid pe Basic (de verificat prețul înainte de salvare).
+  mărimea flotei a ieșit din ofertă; o ofertă fără pachet scris se redeschide pe Start (regula veche a ieșit de tot pe 11.11).
 - **Cei 6 agenți NU se facturează** (reguli fixe, zero tokeni). Scoși din calculator; `pAiAg` = 0.
   ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
   ar schimba facturarea unor clienți existenți.
@@ -1469,8 +1468,8 @@ reîncarcă pe 1; FĂRĂ pachete de
 mașină). Ordinea construcției (aprobată): 1 regula ✅ · 2 chatul ✅ · 3 „Pachet și conturi" ✅ · 4 tabloul nostru ✅ · 5 oferta,
 contractul (prețurile pachetelor + clauza de trecere), factura (rând fix, pe zile) ✅ · 6 trecerea din aplicație (confirmare cu
 bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + site, pe site FĂRĂ prețuri, „Cere ofertă") ✅ · 8 telefonul.
-- **Regula stă O DATĂ în `pachete.js`** (curat): `PACHETE`, `pachetFirma(settings, limitaVeche)` (fără nimic scris = Start;
-  `ai_quota` cu întrebări pe cont / cotă fixă sau `companies.ai_monthly_limit` = regula VECHE → null, o citește codul vechi),
+- **Regula stă O DATĂ în `pachete.js`** (curat): `PACHETE`, `pachetFirma(settings, acum)` (fără nimic scris = Start; regula veche
+  „pe cont" a ieșit pe 11.11 — un `ai_quota` rămas nu contează),
   `refuzLoc` (Start doar administratorul; conturile pline → drumul spre pachetul următor), `refuzLimita`, `stare` (motivele, în
   ordine: plasa → cota firmei → limita omului → partea la comun; limita și partea la comun doar cu `peOm`), `alegeModel`, textele
   (`textBlocat`, `textDoarButoane`, `textRamase`, `textScurt`, `textOm`, `ramaseAfisate` — la plasă ecranul arată 0),
@@ -1497,11 +1496,10 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   5 / 8 lei, `REZERVA_APROFUNDAT_LEI`, ruta `/api/admin/insight/aprofundat`) a ieșit pe 28.10; marja pachetelor (`pachete.marja`) =
   preț − întrebări × `COST_INTREBARE_LEI` (9,02 / 17,06 / 25,10 lei). NU o pune înapoi fără Alin.
 - **Pachetul îl punem NOI:** fila „Acces" a firmei (`raxCfgPachet` → `PUT /api/companies/:id/settings { ai_pachet: { cod } }`,
-  doar super-admin, `curataPachet`, 400 pe cod necunoscut, scoate `ai_quota`, rând în audit de la cât la cât). Limita pe om:
+  doar super-admin, `curataPachet`, 400 pe cod necunoscut, rând în audit de la cât la cât; un `ai_quota` rămas se aruncă la orice salvare). Limita pe om:
   `PUT /api/users/:id/ai-limita` (administratorul firmei; Pro / Business; suma ≤ întrebările pachetului; stingerea locului o șterge).
-- `plans.FEATURE_IMPLICIT.ai_assistant = true` (Start inclus la toate firmele); unde l-am oprit noi, rămâne oprit. „Asistent AI"
-  (suma fixă veche din `custom_plan`) se plătește DOAR unde modulul e pornit de noi (`featuresSetate`), și în previzualizarea din
-  „Abonament & plăți" (`_raxClientPrice(…, setate)`).
+- `plans.FEATURE_IMPLICIT.ai_assistant = true` (Start inclus la toate firmele); unde l-am oprit noi, rămâne oprit. Suma fixă
+  veche „Asistent AI" (`custom_plan.aiAssistantRON`) a ieșit pe 11.11: RA Insight se plătește doar prin pachet.
 - **Pe ecran** (blocul „secțiunea RA Insight"): `incarcaPachet` / `deseneazaPachet` / `actualizeazaCaseta` (doar textele serverului:
   `pachet.text`, `scurt`, `textOm`, `reincarcare`), ramurile cu `pachet: true` încuiate pe Start (`ramuraIncuiata`,
   `deseneazaIncuiata`), „+" în casetă (din 15.10), `CARDURI_REGULI` pe butoane, mesajul pachetului (`limita` /
@@ -1519,18 +1517,18 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `ai_plasa` (`plasaAnuntTick`, la 15 min; `PLASA_ANUNT_PROCENT` = 60 și 100; cheia `firma|lună|prag` în setarea
   `ai_plasa_anuntat`), doar la super-admini. Soldul Anthropic: vezi „Banii pentru AI, la zi” (04.11) — un singur loc, `_soldAnthropic`, la zi.
   NU pune înapoi „luna ÷ ziua lunii" (pe 1 nu știa nimic) și nici suma neatinsă.
-  Avertismentele vechi („fără preț pe cont") — doar pe regula veche.
+  Avertismentul „pachet RA Insight cu AI la 0 lei" (prețul se pune din fila „Acces") — pe web și pe telefon.
 - **Pasul 5, oferta → contract → firmă → factură:** prețurile de listă = `tarife_lista.pkBasic / pkPro / pkBusiness` („Prețurile
   noastre"), citite DOAR prin `pachete.preturiLista` (serverul: `_preturiPachete`; gol / 0 / text → prețul din cod, niciodată 0).
   În ofertă: cartea 3, `of-aiPachet` (pornește pe Start; din 15.10 ASCUNS, sub cele patru cartonașe) + `of-pPachet` (propus din listă prin `_ofPropunePachet`, negociabil) —
   blocul „pachetele RA Insight în ofertă" (`_ofPachetMarja` = `pachete.marja`, „ce rămâne la noi" DOAR pentru noi; ce primește
   pachetul din `_ofMeta.pachete`, de la `_ofMetaPachete`, aceeași pentru telefon). UN rând `fel: 'ai'` cu `pachet` în `_ofCalc`;
-  ofertele vechi (pe cont) se socotesc pe ramura veche. Hârtia ofertei: „ce include" + condiția cu toate prețurile și
+  Hârtia ofertei: „ce include" + condiția cu toate prețurile și
   `pachete.CLAUZA_TRECERE` (pentru „administratorul firmei"). Contractul: `annex.aiPachet = { cod, nume, pretRON, lista }`
   (`contracte.facAnexa`, păstrat de `dinAnexaDePastrat`) + paragraful din IV cu clauza. Pe firmă: `_aplicaOfertaPeFirma` scrie
   `ai_pachet` DOAR dacă firma n-are deja un pachet cu AI. Ce pachet are o firmă = O regulă: `plans.pachetAi(company, acum)`
-  (`aiVechi` = regula veche), folosită de `_pachetCo`. Prețul lunar: `computeCompanyPrice` → `breakdown.aiPachet` +
-  `aiPachetEticheta` („RA Insight Pro") → factura (`buildInvoiceLines`, înaintea regulii pe cont) și registrul. „Contract ↔
+  folosită de `_pachetCo` (fără pachet scris = Start). Prețul lunar: `computeCompanyPrice` → `breakdown.aiPachet` +
+  `aiPachetEticheta` („RA Insight Pro") → factura (`buildInvoiceLines`) și registrul. „Contract ↔
   factură": pachetul din contract lângă rândul facturii. Telefonul de dinainte de pachete trimite încă bifa `aiA` la socoteala
   ofertei: serverul o citește ca Basic (`_ofSocoteste`), până la APK-ul nou.
 - **Pasul 6, trecerea din aplicație** (administratorul firmei, NU noi — noi punem pachetul din fila „Acces"): „Vezi pachetele" →
@@ -1539,7 +1537,7 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   1 a lunii următoare (`ai_pachet_urmator`, programat; `pachetFirma(…, acum)` îl ia din clipa lui, fără ceas), refuzat cu mai
   mulți oameni cu RA Insight decât are pachetul cel mic; același pachet cu o trecere programată = anularea ei. Prețul pentru firmă:
   `_preturiPachetFirma` (lista de azi, peste ea prețurile din contract și prețul pachetului de acum). Rutele:
-  `GET/POST /api/insight/pachet-trecere` (`manageUsers`, nu super-admin, nu demo, nu regula veche — `_poateSchimbaPachet`; POST
+  `GET/POST /api/insight/pachet-trecere` (`manageUsers`, nu super-admin, nu demo — `_poateSchimbaPachet`; POST
   cere `acord: true` și ACELAȘI text, altfel 409 cu textul nou), `GET /api/insight/pachet-trecere/:id/pdf` (firma ei sau noi; altfel
   404). Se scrie O DATĂ, prin `_applyCompanySettingsPatch` (`opts.trecere`), iar orice schimbare de pachet (și cea pusă de noi)
   intră în `settings.ai_pachet_istoric` (`pachete.adaugaIstoric`, `consolideaza`). Dovada: tabela `pachet_treceri` (cine, când,
@@ -1579,9 +1577,9 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   pentru noi." Nu ajunge pe hârtia clientului (păzit). Telefonul n-are cartonașele: ruta `/api/admin/offers/calc` pune înaintea
   rândului descrierea pachetului ales (`pachete.descriere`).
 - **Conturile RA Insight se dau DOAR din „Pachet și conturi"** pe o firmă cu pachet: în Utilizatori, pe rândul omului, doar eticheta
-  `.rau-ra` „RA Insight" + capul listei cu „Schimbă în Pachet și conturi →"; butonul baghetă (`raxAiSeat`) rămâne DOAR pe regula
-  veche (pe cont, `_usrPachet` gol) și la fondator. Omul fără cont află drumul: `_mesajFaraLoc(companyId)` →
-  `MESAJ_FARA_LOC_PACHET` („…din RA Insight → „Pachet și conturi”") pe pachet, `MESAJ_FARA_LOC_AI` („din Utilizatori") pe regula veche.
+  `.rau-ra` „RA Insight" + capul listei cu „Schimbă în Pachet și conturi →"; butonul baghetă al regulii vechi (`raxAiSeat`, pe
+  telefon `arataBagheta`) a ieșit pe 11.11. Omul fără cont află drumul: `_mesajFaraLoc()` → `MESAJ_FARA_LOC_PACHET` („…din RA Insight →
+  „Pachet și conturi”"); `MESAJ_FARA_LOC_AI` („din Utilizatori") a ieșit și el.
 - **Pe om: „Fără limită" / „Cel mult … pe lună"** (`select.pkc-sel` + caseta cifrei doar la „Cel mult"), NU „la comun". Aceleași
   cuvinte în textele serverului: `refuzLimita`, `textBlocat` (motivul `comun`), `textOm`, `notaConturi`, cartonașul `limite` („Date cu
   limită"). Sus, `pachete.rezumatConturi` (unul-două rânduri) + bara, în locul cartonașelor. Descrierea pachetului Basic de pe site
@@ -1602,22 +1600,26 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   cel mult 25 de rânduri, starea live cel mult 200 de mașini — `FLOTA_IN_RASPUNS`). Haiku 5.5: 0,43–0,49 bani obișnuită,
   1,2–1,3 bani grea, 3,7–4,6 bani cea mai rea. Sonnet 5.5: ~9 / ~25 / 70–87 de bani. Scripturile de măsurat nu sunt în depozit.
 
-### Regula VECHE, pe cont (11.09–14.10) — doar pentru firmele scrise așa
-Din 14.10 RA Insight se vinde pe pachete (mai sus); grila pe cont (cinci trepte după mărimea flotei, `AIQ_PRET_LOC`, „cât ne costă
-o întrebare" măsurat pe Haiku 4.5, `aiqPana10…` în „Prețurile noastre") a ieșit din ofertă la pasul 5 și cheile ei cad din
-`tarife_lista` la prima salvare. NU construi lucruri noi pe ea. Ce rămâne în cod, pentru firmele deja pe cont (`ai_quota`):
-- Fondul lunii = conturi aprinse × întrebări pe cont (`questionsPerSeat`; 0 = nelimitat), factura pe vârful lunii (`seatsPeak`),
-  „RA Insight — conturi (N × preț)". Peste fond NU se vinde nimic (comutatoarele vechi `overage*` se aruncă; `acceptExtra` e
-  ignorat — păzit de `verify_paritate_telefon.js`). Clientul vede „Întrebările lunii s-au terminat: până pe … doar răspunsuri pe loc,
-  fără niciun cost în plus" (din 11.11 fără „fondul", Alin: nu există încă firme pe regula asta — „suntem în dezvoltare").
-- „Un cont în plus aduce încă N" se scrie DOAR pe regula pe cont, cu cifra firmei — fără `|| 50` de rezervă.
-- **Casetele ei din fișa firmei** („Întrebări / cont / lună" în „Abonament & plăți", „Limită AI lunară" în „Acces") se arată DOAR pe
-  firmele aflate deja pe regula veche (fișa dă `ai_regula_veche`; în „Acces", `!s.pachet`). Pe o firmă cu pachet (și Start e un pachet)
-  serverul le refuză (`_mesajRegulaVeche`, 400) — salvate, ar fi mutat firma pe regula veche și i-ar fi schimbat factura (găsit 19.10,
-  Alin: „rezolvăm acum"). O mutare DELIBERATĂ pe regula veche se cere pe față, cu `regula_veche: true` (ca `confirmaStergere`): nicio
-  pagină și niciun telefon nu o trimit; o trimit probele regulii vechi. Golirea (`ai_quota: null`, limita `null`) merge oricând.
-- O ofertă veche (cu `aiA` / `aiqN` / `aiqSeats`) redeschisă se socotește pe ramura ei din `_ofCalc` (`p.pAiA` — rămas în
-  `_OF_PRETURI_DEF` DOAR pentru ele) și se redeschide în formular pe Basic.
+### Regula veche, „pe cont" (11.09–14.10) — SCOASĂ DE TOT pe 11.11 (Alin: „Nu avem nicio firmă pe regula veche… Scoate")
+Aplicația nu e lansată (vezi sus), deci nu era nimeni pe ea. Orice firmă e pe un pachet: fără nimic scris, Start. NU o pune la loc
+și NU construi „pentru firmele scrise așa" — nu există. Ce a ieșit, peste tot (server, pagină, telefon, contract, ofertă, factură, probe):
+- fondul pe cont (`ai_quota`: `questionsPerSeat`, `seatPriceRON`, cota fixă `questions`, vârful lunii `seatsPeak`) și limita lunară
+  veche (`companies.ai_monthly_limit` — coloana a rămas în bază, necitită; ruta `PUT /api/companies/:id/ai-limit` a ieșit → 404);
+- suma fixă „Asistent AI" (`custom_plan.aiAssistantRON`), rândul de factură „RA Insight — conturi (N × preț)", venitul pe conturi din
+  „Lunar" (`_venitLunar` nu mai primește conturi), anunțul „a activat încă un cont" (`ai_seat_on`; în jurnal rămâne);
+- casetele din fișa firmei („Întrebări / cont / lună", „Limită AI lunară"), `ai_regula_veche`, `_mesajRegulaVeche`, bagheta din
+  Utilizatori (`raxAiSeat` / `arataBagheta`) — conturile se dau DOAR din „Pachet și conturi" — și `MESAJ_FARA_LOC_AI` („din Utilizatori");
+- contorul vechi („Întrebări · N din M", „Un cont în plus aduce încă N"), `_fondEpuizat` / `aiQuotaState` pe cont, `vechi` din
+  „Pachet și conturi", ramurile „pe cont" din „RA Insight · control" (web + telefon) și „conturile facturate" din istoric;
+- în ofertă: `pAiA`, `_aiqFond`, ramura `cfg.aiA` din `_ofCalc`; o ofertă fără `aiPachet` se redeschide pe Start; pe hârtia ofertei și în
+  contract (`annex.aiSeatPriceRON` / `aiQuestionsPerSeat`, clauza „Prețul unui cont de RA Insight") — nimic „pe cont".
+Ce a RĂMAS, dinadins:
+- `pachete.pachetFirma(settings, acum)` (fără al doilea argument vechi) și `plans.pachetAi(company, acum)` — un `ai_quota` rămas scris pe
+  o firmă nu mai contează, iar `_applyCompanySettingsPatch` îl aruncă la ORICE salvare (`delete next.ai_quota`).
+- Pentru telefoanele NOASTRE cu APK vechi (până la APK-ul următor, Robert): bifa `aiA` din oferta trimisă de telefonul vechi e citită ca
+  Basic (`_ofSocoteste`); `cfg.aiA` = „s-a vândut RA Insight cu AI" (pastila „AI" de pe rândul ofertei) rămâne.
+- Peste pachet NU se vinde nimic: `acceptExtra` e ignorat, iar la capătul întrebărilor RA Insight trece pe butoane (motorul pe reguli),
+  cu `pachete.textBlocat` — păzit de `verify_paritate_telefon.js` (firma de probă e pe Basic, cu 198 de întrebări puse dinainte).
 
 ### Pâlnia de oferte (21.09) — stările stau pe SERVER
 O ofertă avea doar nume, client și o sumă. Acum are traseu: **ciornă → trimisă → acceptată/pierdută**.
@@ -1924,10 +1926,9 @@ pe un șir. JavaScript nu se plânge; scrie „NaN" și merge mai departe.
 - Câmpurile numerice din ofertă sunt generate cu `fNum(id, val, ph, w, step)`; pentru valori zecimale
   (ex. €/apel) **trebuie dat `step`** — altfel browserul respinge valoarea (step implicit = 1).
 - **RA Insight se vinde pe PACHETE pe firmă (din 14.10)** — `settings.ai_pachet = { cod, pretRON, de_la }` (+ `ai_pachet_urmator`,
-  `ai_pachet_istoric`), vezi „Pachetele RA Insight". Regula de dinainte, pe CONT (`settings.ai_quota = { questionsPerSeat,
-  seatPriceRON }`, vârful lunii `seatsPeak`, forma și mai veche `questions`), rămâne respectată pentru firmele scrise așa. Locul
-  de cont stă pe om: `users.ai_seat`, aprins de administratorul firmei din „Pachet și conturi" (pe un pachet, DOAR de acolo — din
-  15.10) sau, pe regula veche, din **Utilizatori**.
+  `ai_pachet_istoric`), vezi „Pachetele RA Insight". Regula de dinainte, pe CONT (`settings.ai_quota`), a ieșit de tot pe
+  11.11 — vezi „Regula veche, „pe cont"". Contul stă pe om: `users.ai_seat`, aprins de administratorul firmei DOAR din „Pachet și
+  conturi" (din 15.10).
 
 ## Contracte — dosarul juridic (reguli din 23.09)
 
@@ -1968,14 +1969,14 @@ Ecranul **Contracte** (Business, între Ofertare și Companii) e **lista**; locu
 - Păzit de `verify_reparatii_lista.js`.
 
 ### Anexa nr. 1 are DOUĂ părți, amândouă semnate
-`annex = { vehicles, vehiculeOferta, servicii, monthlyTotal, aiSeatPriceRON, aiQuestionsPerSeat }`
+`annex = { vehicles, vehiculeOferta, servicii, monthlyTotal, aiPachet, pastrareLuni, chirie }` (prețul unui cont, `aiSeatPriceRON` /
+`aiQuestionsPerSeat`, a ieșit pe 11.11, cu regula veche)
 (`contracts.js` → `facAnexa`).
 - `vehicles` = aparatele bifate; cât lista e goală, ține loc `vehiculeOferta` (câte mașini de fiecare fel).
 - `servicii` = ce se plătește lunar fără să țină de o mașină: RA Insight, păstrarea datelor, agenții
   (incluși, 0 lei). Fiecare rând are `fel` (`ai` / `ret` / `agenti` / `plain` / `can` / `fms`).
 - **Totalul se socotește din rânduri.** „Salvează anexa" trimite doar aparatele; serverul păstrează
   restul (`dinAnexaDePastrat`). Până pe 23.09 totalul cădea de la 271 la 193 de lei la prima bifare.
-- `aiQuestionsPerSeat: 0` = **nelimitat** (ca pe firmă). NU pune `|| 50` de rezervă.
 - Rândurile din ofertă se folosesc doar dacă se adună la suma acceptată (`_randuriLunareDinOferta`).
 
 ### Contractul SEMNAT se încuie (și actul adițional semnat)
@@ -2993,8 +2994,8 @@ ascundă ce se întâmplă. Dezactivarea rămâne, în fișă (*Status cont*), p
   de-aia contează ce scrie în fereastra de mai sus. Păzit de `verify_utilizatori.js`.
 - **Nu adăuga o a doua cale de ștergere.** `deleteUser` a fost scos tocmai fiindcă sărea peste pasul
   de mai sus.
-- **Ordinea contează la bani:** RA Insight se facturează pe vârful lunii, deci la o înlocuire se scoate
-  ÎNTÂI omul care pleacă. Scrie pe butonul de aprindere a locului.
+- **La o înlocuire, întâi se scoate omul care pleacă:** pachetul are un număr de conturi (Basic 2, Pro 5), iar contul celui nou se
+  dă din „Pachet și conturi". (Vârful lunii, „se facturează câte conturi ai avut", a ieșit pe 11.11 cu regula pe cont.)
 - **Schimbarea adresei pe un cont FOLOSIT** (`last_login` scris) cere confirmare: istoricul rămâne pe
   cont, iar adresa de autentificare (`users.username`) NU se schimbă din câmpul „Email".
 

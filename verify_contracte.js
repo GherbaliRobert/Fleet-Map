@@ -316,11 +316,10 @@ T('serverul leagă oferta de firmă și de contract la creare',
   /await db\.legOferta\(oferta\.id, \{ company_id: id, contract_id: c\.id \}\)/.test(server));
 T('prețul din ofertă intră în anexa contractului',
   /date\.annex = contracte\.facAnexa\(\[\], \{[\s\S]{0,120}monthlyTotal: Number\(oferta\.monthly_total\)/.test(server));
-// Din 14.10: oferta nouă duce PACHETUL RA Insight (cu prețurile celorlalte); cea veche, pe cont, prețul contului.
+// Din 14.10: oferta duce PACHETUL RA Insight (cu prețurile celorlalte). Prețul unui cont (regula veche) a ieșit pe 11.11.
 T('și pachetul RA Insight (cu prețul lui și al celorlalte), ca regula să fie semnată',
   /aiPachet: _cfgOf\.aiPachet \? \{ cod: _cfgOf\.aiPachet, pretRON: _cfgOf\.aiPachetPret,/.test(server));
-T('iar la o ofertă veche, pe cont, prețul unui cont',
-  /aiSeatPriceRON: !_cfgOf\.aiPachet && _cfgOf\.aiA \?/.test(server) && /aiQuestionsPerSeat: !_cfgOf\.aiPachet \? \(Number\(_cfgOf\.aiqN\) \|\| 0\) : 0/.test(server));
+T('și nimic „pe cont" (prețul unui cont, întrebările pe cont)', !/aiSeatPriceRON|aiQuestionsPerSeat/.test(server));
 T('dar aparatele NU vin din ofertă (acolo sunt doar numere)',
   /Aparatele NU vin din ofertă/.test(server));
 T('traseul „client nou" poate porni dintr-o ofertă', /window\.coNouDinOferta = function \(offerId\)/.test(html));
@@ -515,21 +514,21 @@ T('numerele se scriu ca lumea: 1 lună, 12 luni, 24 de luni, 100 de întrebări,
   C.numar(100, 'întrebare', 'întrebări') === '100 de întrebări' && C.numar(101, 'întrebare', 'întrebări') === '101 întrebări');
 
 sect('10. Anexa: mașinile ȘI serviciile lunare, amândouă semnate (23.09)');
-const SERV = [{ fel: 'ai', nume: 'RA Insight — 2 conturi', cant: 2, pret: 14, total: 28 },
+const SERV = [{ fel: 'ai', nume: 'RA Insight Business', cant: 1, pret: 28, total: 28 },
   { fel: 'agenti', nume: 'Agenți automați (6) — incluși', cant: 1, pret: 0, total: 0, inclus: true },
   { fel: 'ret', nume: 'Păstrare date 24 de luni', cant: 1, pret: 50, total: 50 }];
 const VO = [{ fel: 'plain', nume: 'Vehicule GPS (fără CAN)', cant: 2, pret: 29, total: 58 }, { fel: 'can', nume: 'Vehicule cu CAN', cant: 3, pret: 45, total: 135 }];
-const dinOf = C.facAnexa([], { monthlyTotal: 271, servicii: SERV, vehiculeOferta: VO, aiSeatPriceRON: 14, aiQuestionsPerSeat: 100 });
+const dinOf = C.facAnexa([], { monthlyTotal: 271, servicii: SERV, vehiculeOferta: VO, aiPachet: { cod: 'business', pretRON: 28, lista: { basic: 10, pro: 20, business: 30 } } });
 T('din ofertă: totalul = mașinile din ofertă + serviciile', dinOf.monthlyTotal === 271, String(dinOf.monthlyTotal));
 T('și ține minte din ce se face', dinOf.servicii.length === 3 && dinOf.vehiculeOferta.length === 2);
 const cuAparate = C.facAnexa([{ imei: '1', monthlyRON: 29 }, { imei: '2', monthlyRON: 29 }, { imei: '3', monthlyRON: 45 }, { imei: '4', monthlyRON: 45 }, { imei: '5', monthlyRON: 45 }],
   Object.assign({ currency: 'RON' }, C.dinAnexaDePastrat(dinOf)));
 T('după bifarea aparatelor, totalul NU mai cade la 193 (serviciile rămân)', cuAparate.monthlyTotal === 271, String(cuAparate.monthlyTotal));
-T('și regula RA Insight rămâne', cuAparate.aiSeatPriceRON === 14 && cuAparate.aiQuestionsPerSeat === 100);
+T('și pachetul RA Insight rămâne (Business, 28 de lei negociați)', !!cuAparate.aiPachet && cuAparate.aiPachet.cod === 'business' && cuAparate.aiPachet.pretRON === 28, JSON.stringify(cuAparate.aiPachet));
 T('ce se păstrează la re-salvare NU sunt aparatele sau totalul vechi',
   !('vehicles' in C.dinAnexaDePastrat(dinOf)) && !('monthlyTotal' in C.dinAnexaDePastrat(dinOf)));
-T('RA Insight nelimitat (0) rămâne 0 pe hârtie, nu „50"',
-  C.facAnexa([], { monthlyTotal: 14, aiSeatPriceRON: 14, aiQuestionsPerSeat: 0 }).aiQuestionsPerSeat === 0);
+T('anexa nu mai ține nimic „pe cont" (prețul unui cont, întrebările pe cont) — regula veche a ieșit pe 11.11',
+  (function (a) { return !('aiSeatPriceRON' in a) && !('aiQuestionsPerSeat' in a) && !('aiSeatPriceRON' in C.dinAnexaDePastrat(Object.assign({ aiSeatPriceRON: 14 }, a))); })(C.facAnexa([], { monthlyTotal: 14, aiSeatPriceRON: 14, aiQuestionsPerSeat: 0 })));
 T('o anexă veche (doar suma) își păstrează suma', C.facAnexa([], { monthlyTotal: 271 }).monthlyTotal === 271);
 T('un rând inclus nu adaugă bani', C.facAnexa([], { servicii: [SERV[1]] }).monthlyTotal === 0);
 T('felul rândului se păstrează (pentru comparația cu factura)', dinOf.servicii[0].fel === 'ai');
@@ -599,7 +598,7 @@ const cartonTot = Object.assign({}, carton, { _pagini: 1, x: 50, y: 50,
 CP.scrieContract(cartonTot, {
   contract: { number: 'RAT-C-2026-0009', status: 'aprobat', signed_at: start2, start_at: start2, months: 24,
     end_at: C.calcSfarsit(start2, 24), auto_renew: false, notice_days: 30, gdpr: { kind: 'anexa' },
-    annex: C.facAnexa([], { monthlyTotal: 271, servicii: SERV, vehiculeOferta: VO, aiSeatPriceRON: 14, aiQuestionsPerSeat: 0 }),
+    annex: C.facAnexa([], { monthlyTotal: 271, servicii: SERV, vehiculeOferta: VO, aiPachet: { cod: 'business', pretRON: 28, lista: { basic: 10, pro: 20, business: 30 } } }),
     montaj: { items: [{ tip: 'gps', eticheta: 'Instalare dispozitiv GPS', um: 'buc', buc: 5, pretClient: 100, total: 500 }], totalClient: 500, currency: 'RON' } },
   firma: { name: 'Transport Zebra SRL', cui: 'RO1' }, emitent: { name: 'RA TRACKS SRL', vat_rate: 19 }
 });
@@ -607,9 +606,9 @@ const tot = texte.join(' ');
 T('cu montaj, textul trimite la acordul GDPR ca Anexa nr. 3', /cele din Anexa nr\. 3 — Acord de prelucrare/.test(tot) && /ANEXA nr\. 3 — Acord de prelucrare/.test(tot));
 T('și nicăieri la „Anexa nr. 2" pentru acord', !/Anexa nr\. 2 — Acord/.test(tot) && !/Anexei nr\. 2/.test(tot));
 T('cuvântul „plan" nu apare pe contract', !/\bplan(ul)?\b/i.test(tot));
-T('RA Insight nelimitat se scrie „nelimitat"', /Numărul de întrebări nu este limitat\./.test(tot) && !/aduce 50/.test(tot));
+T('RA Insight se scrie ca pachet (Business), cu clauza de trecere; nimic „pe cont"', /RA Insight: pachetul Business/.test(tot) && !/Prețul unui cont de RA Insight|Numărul de întrebări nu este limitat|aduce 50/.test(tot));
 T('durata: „24 de luni"', /durată de 24 de luni/.test(tot));
-T('Anexa 1 are și serviciile lunare', texte.indexOf('Servicii lunare') >= 0 && texte.some(t => /^RA Insight — 2 conturi/.test(t)) && texte.some(t => /^Păstrare date 24 de luni/.test(t)));
+T('Anexa 1 are și serviciile lunare', texte.indexOf('Servicii lunare') >= 0 && texte.some(t => /^RA Insight Business/.test(t)) && texte.some(t => /^Păstrare date 24 de luni/.test(t)));
 T('și mașinile din ofertă, cât aparatele nu sunt bifate', texte.indexOf('Vehicule monitorizate') >= 0 && texte.some(t => /^Vehicule cu CAN/.test(t)));
 T('prețul spune că le cuprinde', /cuprinde abonamentul vehiculelor și serviciile lunare/.test(tot));
 const texteAct = [];
@@ -650,7 +649,7 @@ function gata() {
   };
   // Oferta și clientul, ca din „Client nou din ofertă" (cu socoteala pe care o trimite ecranul).
   const of = (await R('POST', '/api/admin/offers', { name: 'CI Ofertă', client_name: 'CI Contract SRL', monthly_total: 271, currency: 'RON',
-    config: { cfg: { aiA: true, aiqN: 100, aiqSeats: 2, aiqSeat: 14, contractMonths: 24, montaj: {}, devices: {} }, prices: { pAiA: 14 } } })).j;
+    config: { cfg: { aiA: true, aiPachet: 'business', aiPachetPret: 28, contractMonths: 24, montaj: {}, devices: {} }, prices: { pkBasic: 10, pkPro: 20, pkBusiness: 30 } } })).j;
   await R('PUT', '/api/admin/offers/' + of.id + '/stare', { status: 'trimisa' });
   const co = (await R('POST', '/api/companies', { name: 'CI Contract SRL' })).j;
   const c1 = await R('POST', '/api/companies/' + co.id + '/contract', { offer_id: of.id, months: 24,
@@ -678,7 +677,7 @@ function gata() {
   const cid = c1.j.id;
   T('act adițional la un contract nesemnat: refuzat', (await R('POST', '/api/contracts/' + cid + '/acte', { obiect: 'x' })).s === 400);
   const an = await R('PUT', '/api/contracts/' + cid, { annex: { vehicles: [{ imei: '1', monthlyRON: 29 }, { imei: '2', monthlyRON: 29 }, { imei: '3', monthlyRON: 45 }, { imei: '4', monthlyRON: 45 }, { imei: '5', monthlyRON: 45 }], currency: 'RON' } });
-  T('„Salvează anexa" păstrează serviciile și totalul', an.s === 200 && an.j.annex.monthlyTotal === 271 && an.j.annex.aiSeatPriceRON === 14, JSON.stringify(an.j && an.j.annex && an.j.annex.monthlyTotal));
+  T('„Salvează anexa" păstrează serviciile, totalul și pachetul', an.s === 200 && an.j.annex.monthlyTotal === 271 && an.j.annex.aiPachet && an.j.annex.aiPachet.cod === 'business', JSON.stringify(an.j && an.j.annex && [an.j.annex.monthlyTotal, an.j.annex.aiPachet]));
   const semn = await R('PUT', '/api/contracts/' + cid, { status: 'activ', signed_at: Date.now() });
   T('se semnează', semn.s === 200 && semn.j.status === 'activ');
   T('anexa semnată nu se mai rescrie', (await R('PUT', '/api/contracts/' + cid, { annex: { vehicles: [], currency: 'RON' } })).s === 400);

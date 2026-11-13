@@ -5274,20 +5274,9 @@ async function deviceCanBits() {
       WHERE d.company_id IS NOT NULL AND COALESCE(d.status,'') <> 'archived'`);
   return r.rows;
 }
-// Câte conturi de RA Insight are aprinse fiecare firmă (doar oameni activi) — pentru venitul lunar.
-async function aiSeatsByCompany() {
-  const r = await pool.query(
-    `SELECT company_id, COUNT(*)::int AS n
-       FROM users
-      WHERE company_id IS NOT NULL AND ai_seat = true AND active IS NOT false
-      GROUP BY company_id`);
-  const out = {};
-  r.rows.forEach(function (x) { out[x.company_id] = Number(x.n) || 0; });
-  return out;
-}
 // Consumul RA Insight LUNĂ DE LUNĂ (toate firmele), pentru istoricul din panoul fondatorului.
 // `dela` = momentul de la care începem (epoch ms sau Date). Luna e cheia „AAAA-LL", în UTC — aceeași
-// convenție ca vârful de conturi, ca să nu iasă două adevăruri pe granița lunii.
+// convenție ca rândurile din ai_usage, ca să nu iasă două adevăruri pe granița lunii.
 async function getAiUsageByMonth(dela, kinds) {
   const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
   const d = dela instanceof Date ? dela : new Date(Number(dela) || 0);
@@ -7362,7 +7351,7 @@ module.exports = {
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS, AI_KINDS_COST_FIRMA, sursaExternaLuna, sursaExternaLunaToate,
   setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata, costAiDeLa, costAiPeZile, aiLunaPeFel,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
-  getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits, aiSeatsByCompany,
+  getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits,
   setCompanyOferta,
   recordPayment, getPayments, getAllPayments, platiIntre, facturiEmise,
   nextInvoiceNumber, createInvoice, getInvoice, getInvoices, updateInvoice, payInvoiceAtomic, incaseazaProforma,

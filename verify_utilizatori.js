@@ -273,10 +273,10 @@ U.fereastra._usrSort('nume');
 sect('10. Conturile cu RA Insight, numărate sus');
 T('fără niciun cont aprins, nu scrie nimic', U._usrSeatsHtml([om({})]) === '');
 T('cu conturi aprinse, spune câte', /<b>1<\/b> cont cu RA Insight/.test(U._usrSeatsHtml(lot)));
-T('și spune ce se facturează, fără jargon', (function () {
+T('și nu mai vorbește de factură (regula pe cont a ieșit pe 11.11; pe un pachet prețul e fix), fără jargon', (function () {
   // Ne uităm la ce CITEȘTE omul, nu la numele claselor din cod.
   const vizibil = U._usrSeatsHtml(lot).replace(/<[^>]*>/g, ' ');
-  return /vârful lunii/.test(vizibil) && !/seat|MRR|peak/i.test(vizibil);
+  return !/vârful lunii|factur/.test(vizibil) && !/seat|MRR|peak/i.test(vizibil);
 })(), U._usrSeatsHtml(lot).replace(/<[^>]*>/g, ' ').trim());
 T('acordul e corect la mai multe conturi',
   /<b>2<\/b> conturi cu RA Insight/.test(U._usrSeatsHtml([om({ ai_seat: true }), om({ ai_seat: true })])));
@@ -334,8 +334,8 @@ T('și nici trecerea automată a drepturilor', !/_usrDuceMaiDeparte/.test(html))
 T('stilul benzii a plecat și el', css.indexOf('.rau-inlocuire') < 0);
 
 sect('11d. Două avertismente care lipseau');
-T('la aprinderea RA Insight se spune ordinea corectă la o înlocuire',
-  /scoate-l întâi pe cel care pleacă/.test(html));
+T('la darea unui cont RA Insight (din „Pachet și conturi") se spune că prețul pachetului nu se schimbă; avertismentul vechi, „pe cont", a ieșit',
+  /Prețul pachetului rămâne același, oricâte conturi dai\./.test(html) && !/scoate-l întâi pe cel care pleacă/.test(html));
 T('schimbarea adresei unui cont FOLOSIT e oprită cu explicație',
   /Schimbi adresa unui cont folosit\?/.test(html));
 T('și explicația spune amândouă lucrurile ascunse (istoricul + adresa de autentificare)',

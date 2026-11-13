@@ -58,7 +58,7 @@ fs.writeFileSync(PRELOAD, [
   '  const out = _load.apply(this, arguments);',
   "  if (request === './db' && out && !out.__proba) {",
   '    out.__proba = true;',
-  "    for (const fn of ['getAiMonthUsage', 'getAiSeats']) {",
+  "    for (const fn of ['getAiMonthUsage', 'getAiSeatHolders']) {",
   '      const orig = out[fn];',
   "      out[fn] = function () { if (steag() === 'cade:' + fn) return Promise.reject(new Error('proba: baza nu raspunde')); return orig.apply(this, arguments); };",
   '    }',
@@ -201,8 +201,8 @@ function formularWeb(cookie, eSuper, proprii) {
   const co = (await json('POST', '/api/companies', S, { name: 'Firma Paritate SRL' })).j;
   const co2 = (await json('POST', '/api/companies', S, { name: 'Alta Firma SRL' })).j;
   T('companiile de probă se creează', !!co.id && !!co2.id);
-  const cfg = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 2, overage: false }, regula_veche: true });
-  T('firma are RA Insight, 2 întrebări pe cont, fără depășire', cfg.status === 200, cfg.status + ' ' + cfg.text.slice(0, 80));
+  const cfg = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_pachet: { cod: 'basic' } });
+  T('firma are RA Insight, pachetul Basic (200 de întrebări pe lună, fără depășire)', cfg.status === 200 && cfg.j.ai_pachet && cfg.j.ai_pachet.cod === 'basic', cfg.status + ' ' + cfg.text.slice(0, 80));
   const cheie = await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
   T('asistentul AI e „configurat" (cheie de probă)', cheie.status === 200 && cheie.j.enabled === true, cheie.text.slice(0, 80));
 
@@ -412,74 +412,70 @@ function formularWeb(cookie, eSuper, proprii) {
   for (const cale of ['/api/ai/chat', '/api/ai/reports-agent']) {
     const w = await json('POST', cale, ckFara, { message: Q });
     T(cale + ', web: refuz cu motivul adevărat (contul, nu planul)',
-      w.status === 403 && w.j.error === 'ai_seat_missing' && /contul tău nu are încă acces/.test(w.j.message || '') && /Administratorul firmei îl poate porni din Utilizatori/.test(w.j.message || '') && !/planul/.test(w.text),
+      w.status === 403 && w.j.error === 'ai_seat_missing' && /contul tău nu are încă acces/.test(w.j.message || '') && /Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”/.test(w.j.message || '') && !/planul|Utilizatori/.test(w.text),
       w.status + ' ' + w.text.slice(0, 120));
     T(cale + ', mesajul nu spune de două ori același lucru', (w.j.message || '').split(/administrator/i).length === 2, w.j.message);
     T(cale + ', web: textul e și în „reply" (web-ul îl afișează de acolo)', w.j.reply === w.j.message);
     const t = await json('POST', cale, telFara, { message: Q });
     T(cale + ', telefon: motivul ajunge în „reply", singurul câmp citit de aplicația veche',
-      t.status === 200 && t.j.seatMissing === true && /Administratorul firmei îl poate porni din Utilizatori/.test(t.j.reply || ''), t.status + ' ' + t.text.slice(0, 120));
+      t.status === 200 && t.j.seatMissing === true && /Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”/.test(t.j.reply || ''), t.status + ' ' + t.text.slice(0, 120));
   }
   // „Rezumă raportul" e tot o întrebare către RA Insight (se numără din întrebările firmei): până pe 14.10 o putea
   // pune și omul fără cont, consumând din ce au plătit colegii (Alin, 14.10: „rezolvăm"). Același refuz ca la uși.
   const rezFara = await json('POST', '/api/ai/report-summary', ckFara, { type: 'tabel', report: { columns: ['Vehicul', 'Km'], rows: [['AR-01-PAR', '120']] } });
   T('„Rezumă raportul", omul fără cont: același refuz (contul, nu planul), fără model',
-    rezFara.status === 403 && rezFara.j.error === 'ai_seat_missing' && rezFara.j.reply === rezFara.j.message && /Administratorul firmei îl poate porni din Utilizatori/.test(rezFara.j.reply || ''),
+    rezFara.status === 403 && rezFara.j.error === 'ai_seat_missing' && rezFara.j.reply === rezFara.j.message && /Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”/.test(rezFara.j.reply || ''),
     rezFara.status + ' ' + rezFara.text.slice(0, 120));
   T('nimic nu a ajuns la model', apeluriAi() === 0, apeluriAi());
 
   const ion = await om('ion@paritate.ro', 'manager', co.id, ckSef);
   const loc = await json('PUT', '/api/users/' + ion.id + '/ai-seat', ckSef, { on: true });
-  T('adminul îi dă RA Insight lui Ion → fondul firmei = 1 cont × 2 întrebări', loc.status === 200 && loc.j.seats === 1, loc.text.slice(0, 80));
+  T('adminul îi dă RA Insight lui Ion (pachetul Basic: 200 de întrebări pe toată firma)', loc.status === 200 && loc.j.seats === 1, loc.text.slice(0, 80));
   const ckIon = await login('ion@paritate.ro', PAROLA);
   const telIon = await loginTelefon('ion@paritate.ro', PAROLA);
   const folosite = async () => (await json('GET', '/api/ai/quota', ckIon)).j.used;
+  // Regula veche, „pe cont" (cu 2 întrebări pe cont), a ieșit pe 11.11: firma e pe Basic. Ca să nu întrebăm modelul de 200 de
+  // ori, 198 de întrebări se scriu dinainte (ruta de probă), iar proba pune ea a 199-a și a 200-a.
+  const BAZA = 198;
+  for (let k = 0; k < BAZA; k++) await json('POST', '/api/test/ai-usage', S, { companyId: co.id, userId: null, kind: 'insight' });
+  T('(pregătire) firma are deja ' + BAZA + ' de întrebări folosite luna asta', (await folosite()) === BAZA, await folosite());
 
   r = await json('POST', '/api/ai/chat', telIon, { message: Q });
   await sleep(400);
-  T('cu fond disponibil, „Asistent AI" răspunde', r.status === 200 && r.j.reply === 'RASPUNS_DE_PROBA', r.status + ' ' + r.text.slice(0, 80));
-  T('și întrebarea se numără din fondul firmei', apeluriAi() === 1 && (await folosite()) === 1, apeluriAi() + ' / ' + (await folosite()));
+  T('cu întrebări rămase, „Asistent AI" răspunde', r.status === 200 && r.j.reply === 'RASPUNS_DE_PROBA', r.status + ' ' + r.text.slice(0, 80));
+  T('și întrebarea se numără din întrebările firmei', apeluriAi() === 1 && (await folosite()) === BAZA + 1, apeluriAi() + ' / ' + (await folosite()));
 
   await json('POST', '/api/test/ai-usage', S, { companyId: co.id, userId: ion.id, kind: 'insight' });
-  T('fondul lunii s-a terminat (2 din 2)', (await folosite()) === 2, await folosite());
+  T('întrebările lunii s-au terminat (200 din 200)', (await folosite()) === 200, await folosite());
 
-  // Firma NU are voie să depășească: se oprește, cu explicația.
+  // Firma NU are voie să depășească: RA Insight trece pe butoane (motorul pe reguli), cu explicația.
+  // 11.11 (Alin): clientul nu citește „fondul" — „Ați folosit cele 200 de întrebări…", reîncărcarea și ce merge mai departe.
   const opritChat = await json('POST', '/api/ai/chat', telIon, { message: Q });
   const opritInsight = await json('POST', '/api/ai/reports-agent', ckIon, { message: Q });
-  // 11.11 (Alin): clientul nu mai citește „Fondul de întrebări” — „Întrebările lunii s-au terminat”, apoi ce merge mai departe (pe loc).
-  T('„Asistent AI" se oprește la epuizare, cu explicația (fără „fond”)', opritChat.j.limited === true && !!opritChat.j.fondEpuizat && /Întrebările lunii s-au terminat/.test(opritChat.j.reply || '') && /Până atunci răspund pe loc/.test(opritChat.j.reply || '') && !/[Ff]ond/.test(opritChat.j.reply || ''), opritChat.text.slice(0, 120));
-  T('exact ca RA Insight (aceleași câmpuri)', chei(opritChat.j) === chei(opritInsight.j) && !!opritInsight.j.fondEpuizat, chei(opritChat.j) + ' | ' + chei(opritInsight.j));
+  const peButoane = (x) => x.j.source === 'reguli' && x.j.limita === true && /Ați folosit cele 200 de întrebări/.test(x.j.reply || '') && /fără niciun cost în plus/.test(x.j.reply || '') && /Până atunci răspund la întrebările de pe butoane/.test(x.j.reply || '') && !/fond/i.test(x.j.reply || '');
+  T('„Asistent AI" trece pe butoane la capătul întrebărilor, cu explicația (fără „fond")', peButoane(opritChat), opritChat.text.slice(0, 160));
+  T('exact ca RA Insight (aceleași câmpuri)', chei(opritChat.j) === chei(opritInsight.j) && peButoane(opritInsight), chei(opritChat.j) + ' | ' + chei(opritInsight.j));
   T('nu mai scrie „contactați administratorul platformei"', !/administratorul platformei/.test(opritChat.text));
-  T('nimic nu pleacă spre model, nimic nu se numără', apeluriAi() === 1 && (await folosite()) === 2, apeluriAi() + ' / ' + (await folosite()));
+  T('nimic nu pleacă spre model, nimic nu se numără', apeluriAi() === 1 && (await folosite()) === 200, apeluriAi() + ' / ' + (await folosite()));
 
-  // ── PESTE FOND NU SE VINDE NIMIC (hotărât 11.09) ──────────────────────────────────────────────
+  // ── PESTE PACHET NU SE VINDE NIMIC (hotărât 11.09, rămâne pe pachete) ──────────────────────────
   // Până atunci exista o casetă „mai vrei? costă atât pe întrebare", iar un `acceptExtra` trimis de
   // ecran deschidea robinetul. A fost scoasă DELIBERAT: clientul nu trebuie să vadă prețuri pe
-  // întrebare. Când fondul se termină, RA Insight SE OPREȘTE până luna următoare. Atât.
-  //
-  // Până pe 23.09, bucățile de mai jos cereau traseul VECHI (acord → întrebarea pleacă → se
-  // facturează) și de-aia picau — nu fiindcă serverul ar fi greșit. Sunt rescrise pe regula de azi
-  // și țintite pe ce contează: nimic nu trebuie să poată redeschide ușa pe furiș.
-  T('la epuizare nu se mai cere niciun acord',
+  // întrebare. Când întrebările se termină, RA Insight răspunde doar pe butoane până luna următoare. Atât.
+  T('la capătul întrebărilor nu se mai cere niciun acord',
     opritChat.j.needsExtraConsent === undefined && opritInsight.j.needsExtraConsent === undefined,
     chei(opritChat.j));
   T('și nu i se arată niciun preț pe întrebare',
     !/pretLei|overagePrice|lei\/întrebare|€\/apel/i.test(JSON.stringify(opritChat.j) + JSON.stringify(opritInsight.j)),
     opritChat.text.slice(0, 140));
 
-  // 1. Comutatorul VECHI nu mai poate fi nici măcar SALVAT: serverul îl aruncă din setări.
-  //
-  // ⚠ Se verifică în SURSĂ, nu prin răspunsul rutei: `GET /settings` trece cota prin
-  // `_aiQuotaFromSettings`, care scrie doar câmpurile pe care le cunoaște — deci `overage` n-ar
-  // apărea acolo nici dacă ar fi salvat, iar proba ar trece liniștită și cu ștergerea scoasă.
-  // (Prima formă a asertiunii ăsteia chiar era goală: am sabotat ștergerea și n-a pățit nimic.)
+  // 1. Comutatorul VECHI nu mai poate fi nici măcar SALVAT: tot ce era „pe cont" (`ai_quota`, cu `overage`) se aruncă.
   const SRV = fs.readFileSync(require('path').join(__dirname, 'server.js'), 'utf8');
-  T('serverul aruncă comutatoarele vechi din cota firmei',
-    /\['overage', 'overagePriceEur', 'extraAcceptedMonth'\]\.forEach\(function \(k\) \{ delete q\[k\]; \}\);/.test(SRV));
+  T('serverul aruncă tot ce era „pe cont" (`ai_quota`, cu comutatoarele de depășire)', /delete next\.ai_quota;/.test(SRV) && !/overage/.test(SRV));
   await json('PUT', '/api/companies/' + co.id + '/settings', S, { ai_quota: { overage: true, overagePriceEur: 0.5 }, regula_veche: true });
   const dupaComutator = await json('POST', '/api/ai/chat', telIon, { message: Q });
   T('și, oricum ar fi trimis, ușa rămâne închisă',
-    dupaComutator.j.limited === true && !!dupaComutator.j.fondEpuizat, dupaComutator.text.slice(0, 140));
+    peButoane(dupaComutator) && dupaComutator.j.reply !== 'RASPUNS_DE_PROBA', dupaComutator.text.slice(0, 140));
 
   // 2. ⚠ RÂNDUL CEL MAI IMPORTANT DIN SUITĂ. Un `acceptExtra` trimis de un ecran vechi, de aplicația
   // de telefon nedeactualizată sau de mână NU are voie să treacă. Dacă trece, un client plătește o
@@ -487,48 +483,46 @@ function formularWeb(cookie, eSuper, proprii) {
   const cuAcord = await json('POST', '/api/ai/chat', telIon, { message: Q, acceptExtra: true });
   await sleep(400);
   T('`acceptExtra` e IGNORAT pe „Asistent AI" — întrebarea tot nu pleacă',
-    cuAcord.j.limited === true && cuAcord.j.reply !== 'RASPUNS_DE_PROBA', cuAcord.text.slice(0, 140));
+    peButoane(cuAcord) && cuAcord.j.reply !== 'RASPUNS_DE_PROBA', cuAcord.text.slice(0, 140));
   const cuAcordIns = await json('POST', '/api/ai/reports-agent', ckIon, { message: Q, acceptExtra: true });
   await sleep(400);
   T('și pe RA Insight, la fel',
-    cuAcordIns.j.limited === true && cuAcordIns.j.reply !== 'RASPUNS_DE_PROBA', cuAcordIns.text.slice(0, 140));
+    peButoane(cuAcordIns) && cuAcordIns.j.reply !== 'RASPUNS_DE_PROBA', cuAcordIns.text.slice(0, 140));
   T('nimic nu a ajuns la model și nimic nu s-a numărat',
-    apeluriAi() === 1 && (await folosite()) === 2, apeluriAi() + ' / ' + (await folosite()));
+    apeluriAi() === 1 && (await folosite()) === 200, apeluriAi() + ' / ' + (await folosite()));
 
-  // 3. Insistat de mai multe ori: fondul nu se tocmește.
+  // 3. Insistat de mai multe ori: pachetul nu se tocmește.
   // ⚠ Trei, nu zece: cererile refuzate intră și ele la numărătoarea de „prea multe întrebări pe
   // minut", iar o buclă lungă face ca bucata URMĂTOARE să primească 429 și să pară că pică din
   // alt motiv. Trei ajung ca să se vadă că insistența nu deschide nimic.
   for (let i2 = 0; i2 < 3; i2++) await json('POST', '/api/ai/chat', telIon, { message: Q + ' ' + i2, acceptExtra: true });
   await sleep(400);
   T('insistat de trei ori, cu acord cu tot, nu trece niciuna',
-    apeluriAi() === 1 && (await folosite()) === 2, apeluriAi() + ' / ' + (await folosite()));
+    apeluriAi() === 1 && (await folosite()) === 200, apeluriAi() + ' / ' + (await folosite()));
 
   // 4. Nicio notificare despre bani în plus — fiindcă nu există bani în plus.
   const notif = await json('GET', '/api/notifications', ckSef);
   T('nicio notificare de „cost suplimentar"', !/ai_cost_extra/.test(notif.text), notif.status);
 
-  // Baza nu răspunde când se citește fondul (firma e peste fond, fără acord luna asta). Înainte, o citire
-  // eșuată arăta „fond gol = nelimitat" și întrebarea pleca spre model și pe factură.
+  // Baza nu răspunde când se citesc întrebările pachetului. Înainte, o citire eșuată arăta „fond gol = nelimitat" și
+  // întrebarea pleca spre model și pe factură. Pe pachete (_starePachet, citit „strict"), întrebarea NU pleacă.
   const inainte = await folosite();
-  // ⚠ Câte apeluri s-au făcut până aici se CITEȘTE, nu se scrie de mână. Era scris „3" — numărul
-  // de pe vremea când acordul lăsa întrebările să treacă; de când nu mai trec, e 1, iar proba pica
-  // pe o cifră învechită, nu pe un defect (23.09).
+  // ⚠ Câte apeluri s-au făcut până aici se CITEȘTE, nu se scrie de mână (23.09).
   const apelInainte = apeluriAi();
-  for (const fn of ['getAiMonthUsage', 'getAiSeats']) {
+  for (const fn of ['getAiMonthUsage', 'getAiSeatHolders']) {
     steag('cade:' + fn);
     const a = await json('POST', '/api/ai/chat', telIon, { message: Q });
     const b = await json('POST', '/api/ai/reports-agent', ckIon, { message: Q });
     steag('');
-    T('fondul nu se poate citi (' + fn + ') → „încearcă din nou", pe ambele căi', a.status === 503 && b.status === 503 && /Încearcă din nou/.test(a.j.reply || '') && /Încearcă din nou/.test(b.j.error || ''), a.status + ' ' + a.text.slice(0, 80) + ' | ' + b.status);
+    T('întrebările pachetului nu se pot citi (' + fn + ') → „încearcă din nou", pe ambele căi', a.status >= 500 && b.status >= 500 && /Încearcă din nou/.test(a.j.reply || '') && /Încearcă din nou/.test(b.j.reply || ''), a.status + ' ' + a.text.slice(0, 80) + ' / ' + b.status + ' ' + b.text.slice(0, 80));
   }
   await sleep(400);
   T('și întrebarea nu ajunge la model și nu se numără',
     apeluriAi() === apelInainte && (await folosite()) === inainte,
     apeluriAi() + ' / ' + (await folosite()) + ' (înainte ' + apelInainte + ' / ' + inainte + ')');
   r = await json('POST', '/api/ai/chat', telIon, { message: Q });
-  T('când baza își revine, regula obișnuită e la loc: tot oprit, fără acord de nicăieri',
-    r.j.limited === true && !!r.j.fondEpuizat && r.j.needsExtraConsent === undefined, r.text.slice(0, 120));
+  T('când baza își revine, regula obișnuită e la loc: tot pe butoane, fără acord de nicăieri',
+    peButoane(r) && r.j.needsExtraConsent === undefined, r.text.slice(0, 120));
 
   // ───────────────────────────────────────────────────────────────────────────────────────────────
   console.log('\n4. Tokenii și modelul AI rămân la fondatori');
@@ -573,10 +567,9 @@ function formularWeb(cookie, eSuper, proprii) {
   T('altă firmă nu-l găsește', (await cerere('GET', '/api/documents/' + act1.j.id + '/file', ckAlt)).status === 404);
 
   // Agenții live: APK-ul vechi apasă „Rulează" pe unul singur → nu mai cumpără rezumat AI.
-  // ⚠ Firma și-a consumat fondul în probele de mai sus, iar de când peste fond NU se mai vinde
-  // nimic, rezumatul agenților n-ar avea din ce să se facă — și proba ar pica pe regula cea nouă,
-  // nu pe un defect. Deci i se dă fond înapoi înainte de bucata asta (23.09).
-  const agSet = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { agents: true, ai_assistant: true }, enabled_agents: ['care'], ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
+  // ⚠ Firma și-a terminat întrebările Basic în probele de mai sus, iar peste pachet NU se vinde nimic: rezumatul agenților
+  // n-ar avea din ce să se facă — și proba ar pica pe regula cea nouă, nu pe un defect. Deci firma trece pe Pro (600) înainte.
+  const agSet = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { agents: true, ai_assistant: true }, enabled_agents: ['care'], ai_pachet: { cod: 'pro' } });
   T('firma are RA Care pornit', agSet.status === 200, agSet.status + ' ' + agSet.text.slice(0, 80));
   const inainteAg = apeluriAi();
   const unu = await json('POST', '/api/agents/run', ckSef, { agent: 'care' });
@@ -658,9 +651,10 @@ function formularWeb(cookie, eSuper, proprii) {
   const idsDupa = (condDupa.geofenceIds || []).map(Number);
   T('zona ștearsă iese din regula care o urmărea, cealaltă rămâne', !!regZ.id && delZ.status === 200 && idsDupa.length === 1 && idsDupa[0] === zRamas.id, delZ.status + ' ' + JSON.stringify(condDupa));
 
-  // Un `acceptExtra` rătăcit nu strică nimic nici când fondul E disponibil: întrebarea merge ca
-  // inclusă, se numără normal, și NU pre-aprobă nimic pentru când se va termina fondul.
-  await json('PUT', '/api/companies/' + co2.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 1 }, regula_veche: true });
+  // Un `acceptExtra` rătăcit nu strică nimic nici când mai sunt întrebări: întrebarea merge ca inclusă, se numără normal, și
+  // NU pre-aprobă nimic pentru când se vor termina. Firma a doua e pe Basic, cu 199 de întrebări folosite dinainte.
+  await json('PUT', '/api/companies/' + co2.id + '/settings', S, { features: { ai_assistant: true }, ai_pachet: { cod: 'basic' } });
+  for (let k = 0; k < 199; k++) await json('POST', '/api/test/ai-usage', S, { companyId: co2.id, userId: null, kind: 'insight' });
   const sefAlt = lista((await json('GET', '/api/users', ckAlt)).j).find((x) => x.username === 'sef@alta.ro') || {};
   const locAlt = await json('PUT', '/api/users/' + sefAlt.id + '/ai-seat', ckAlt, { on: true });
   // Din 02.10, „Asistent AI" de pe telefonul vechi trece prin RA Insight, care avea deja regula: fără nicio
@@ -676,25 +670,25 @@ function formularWeb(cookie, eSuper, proprii) {
   const inainteB = apeluriAi();
   const primul = await json('POST', '/api/ai/chat', ckAlt, { message: Q, acceptExtra: true });
   await sleep(500);
-  T('acceptExtra cu fond disponibil: întrebarea merge ca inclusă', locAlt.status === 200 && primul.j.reply === 'RASPUNS_DE_PROBA' && apeluriAi() === inainteB + 1, locAlt.status + ' ' + primul.text.slice(0, 80));
+  T('acceptExtra cu întrebări rămase: întrebarea merge ca inclusă (a 200-a)', locAlt.status === 200 && primul.j.reply === 'RASPUNS_DE_PROBA' && apeluriAi() === inainteB + 1, locAlt.status + ' ' + primul.text.slice(0, 80));
   const alDoilea = await json('POST', '/api/ai/chat', ckAlt, { message: Q });
-  T('iar când fondul s-a terminat SE OPREȘTE — nimic nu trece tăcut pe factură',
-    alDoilea.j.limited === true && !!alDoilea.j.fondEpuizat && apeluriAi() === inainteB + 1,
+  T('iar când s-au terminat, trece pe butoane — nimic nu ajunge la model și nimic nu trece tăcut pe factură',
+    alDoilea.j.source === 'reguli' && alDoilea.j.limita === true && alDoilea.j.reply !== 'RASPUNS_DE_PROBA' && apeluriAi() === inainteB + 1,
     alDoilea.text.slice(0, 120));
 
-  // „Rezumat raport" se numără în același fond: peste fond nu pleacă spre model, orice i-ai trimite.
+  // „Rezumat raport" se numără din aceleași întrebări: peste pachet nu pleacă spre model, orice i-ai trimite.
   //
-  // ⚠ Fondul a fost dat înapoi mai sus, pentru rezumatul agenților. Îl strângem la loc, ca bucata
-  // asta să probeze chiar ce spune în titlu: PESTE fond. Altfel trecea liniștită, pe fond plin.
-  await json('PUT', '/api/companies/' + co.id + '/settings', S, { ai_quota: { questionsPerSeat: 1 }, regula_veche: true });
-  T('fondul firmei e iar epuizat (1 pe cont, dar deja folosite mai multe)',
-    (await folosite()) > 1, 'folosite: ' + (await folosite()));
+  // ⚠ Firma a trecut pe Pro mai sus, pentru rezumatul agenților. O punem înapoi pe Basic (200, deja folosite), ca bucata
+  // asta să probeze chiar ce spune în titlu: PESTE pachet. Altfel trecea liniștită, cu întrebări rămase.
+  await json('PUT', '/api/companies/' + co.id + '/settings', S, { ai_pachet: { cod: 'basic' } });
+  const qIon = (await json('GET', '/api/ai/quota', ckIon)).j;
+  T('întrebările firmei sunt iar terminate (Basic, 200 folosite)', qIon.blocked === true && (await folosite()) >= 200, 'folosite: ' + (await folosite()) + ', blocked: ' + qIon.blocked);
   const RAP = { type: 'tabel', report: { columns: ['Vehicul', 'Km'], rows: [['AR-01-PAR', '120']] } };
   const inainteR = apeluriAi();
   const rez = await json('POST', '/api/ai/report-summary', ckIon, RAP);
   await sleep(300);
-  T('„Rezumat raport" peste fond se oprește, ca întrebările',
-    rez.j.limited === true && rez.j.summary !== 'RASPUNS_DE_PROBA' && apeluriAi() === inainteR,
+  T('„Rezumat raport" peste pachet se face pe butoane (din cifrele tabelului), fără model, ca întrebările',
+    rez.j.reguli === true && !!rez.j.summary && rez.j.summary !== 'RASPUNS_DE_PROBA' && apeluriAi() === inainteR,
     rez.status + ' ' + rez.text.slice(0, 120));
   const rezOk = await json('POST', '/api/ai/report-summary', ckIon, Object.assign({ acceptExtra: true }, RAP));
   await sleep(500);
@@ -754,9 +748,9 @@ function formularWeb(cookie, eSuper, proprii) {
   T('un aparat arhivat nu se mai mută în altă firmă', arh.status === 200 && mut.status === 409, arh.status + ' / ' + mut.status + ' ' + mut.text.slice(0, 80));
   await json('PUT', '/api/devices/350000000024702/status', S, { status: 'active' });
 
-  // Limita AI veche e în întrebări, nu în tokeni (APK-ul vechi scria „tok/lună").
+  // Limita AI veche (APK-ul vechi o scria „tok/lună") a ieșit pe 11.11, cu regula veche „pe cont": ruta nu mai există.
   const lim = await json('PUT', '/api/companies/' + co.id + '/ai-limit', telS, { limit: 1000000 });
-  T('limita AI absurdă (un milion) e refuzată, cu explicația', lim.status === 400 && /întrebări/.test(lim.j.error || ''), lim.status + ' ' + lim.text.slice(0, 80));
+  T('limita AI veche nu mai are rută (404): telefonul vechi nu mai poate scrie nimic acolo', lim.status === 404, lim.status + ' ' + lim.text.slice(0, 80));
 
   // Agenții: fără cuvântul „plan" (planurile au fost scoase pe 15.09).
   await json('PUT', '/api/companies/' + co.id + '/settings', S, { enabled_agents: [] });

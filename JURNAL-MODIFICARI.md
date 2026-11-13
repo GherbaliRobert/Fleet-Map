@@ -374,8 +374,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
 - [ ] **Voi: pachetul RA Insight pe firmele care întreabă cu AI. Adăugat pe 14.10 (pachetele, pașii 1–2).** De la livrarea
   asta, orice firmă fără pachet scris e pe **Start** (doar administratorul, 50 de răspunsuri pe butoane, fără AI). Firmele
   care trebuie să întrebe RA Insight cu AI — și firma noastră, pe care probați — se pun pe Basic, Pro sau Business din
-  Companii → firma → fila **„Acces"** → „Pachet RA Insight". Firmele rămase pe regula veche, pe cont (întrebări pe cont
-  scrise în „Abonament & plăți"), merg ca până acum până le mutați. **Din pașii 5–6 (14.10)** pachetul ajunge și pe factură
+  Companii → firma → fila **„Acces"** → „Pachet RA Insight". (Regula veche, pe cont, nu mai există din 13.11 — Alin, 11.11:
+  „Scoate".) **Din pașii 5–6 (14.10)** pachetul ajunge și pe factură
   (un rând fix pe lună), iar o firmă cu pachet își poate schimba singură pachetul din aplicație.
 - [x] **HOTĂRÂT (27.10): fără analiza aprofundată pe Sonnet** (Alin: „nu o mai vreau. avem haiku care face deja treaba foarte bine
   și poate face și el analiza aprofundată. propune cum"). Scoasă din ce promit pachetele pe 28.10; varianta pe Haiku e rândul de mai jos.
@@ -590,6 +590,45 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
 
 ---
+
+## 2026-11-13
+
+### AMÂNDOI · RA Insight: regula veche, „pe cont", scoasă de tot — doar pachete, peste tot
+*Alin, 11.11: „Nu avem nicio firmă pe regula veche. Nu am dat drumul încă. Memorează asta odată. Scoate." Memorat în CLAUDE.md:
+aplicația nu e lansată, deci nu păstrăm reguli vechi „pentru firmele scrise așa".*
+
+**Ce am schimbat:**
+- **Orice firmă e pe un pachet** (fără nimic scris, Start). Au ieșit: întrebările pe cont și prețul unui cont, cota fixă pe firmă, limita
+  lunară veche (cu ruta ei), vârful lunii, suma fixă „Asistent AI" și rândul „RA Insight — conturi (N × preț)" de pe factură. Ce rămăsese scris
+  pe o firmă (`ai_quota`) nu mai contează și se aruncă la prima salvare.
+- **Fișa firmei, la noi (web și telefon):** au plecat casetele „Întrebări / cont / lună", „Preț / cont", „Asistent AI" (Abonament & plăți) și
+  „Limită AI lunară" (Acces); rămâne drumul spre fila „Acces", unde se pune pachetul.
+- **Utilizatori:** bagheta care dădea RA Insight a ieșit (și de pe telefon); conturile se dau doar din RA Insight → „Pachet și conturi". Omul
+  fără cont e trimis tot acolo.
+- **RA Insight · control (web și telefon):** fără „preț pe cont", „fondul lunii", „conturi facturate"; avertismentul nou e „pachet cu AI la 0 lei"
+  (prețul se pune din „Acces"); nota istoricului spune „estimată din pachetele firmelor". „Lunar" din Companii nu mai citește conturile.
+- **Oferta, contractul, hârtiile:** fără prețul unui cont (anexă, clauză, hârtia ofertei); o ofertă fără pachet scris se redeschide pe Start.
+- **Contract ↔ factură pe telefon:** avea doar rândul vechi „pe cont"; acum arată pachetul din contract lângă factură, ca pe web.
+- **Găsite pe drum, de probe, și reparate în același lucru:** o funcție mică (luna de acum) scoasă din greșeală, care ar fi oprit „RA Insight ·
+  control"; ordinea argumentelor la „ce pachet are firma"; o sumă care ar fi ieșit „NaN" în panoul nostru.
+- Probe rescrise pe regula de azi (nu slăbite): pachete, tarife, panoul RA Insight, „RA Insight · control" web ↔ telefon, paritatea telefonului
+  (firma de probă e pe Basic: la capătul celor 200 de întrebări RA Insight trece pe butoane, nicio „acceptare" nu redeschide ușa), factura,
+  Companii, contractele (web și telefon), oferta pe telefon, păstrarea, chiria, Utilizatori, pachetele pe telefon.
+
+**Ce vede fondatorul:** fișa firmei fără casetele vechi (pachetul se alege din „Acces"); „RA Insight · control" fără rândurile „pe cont";
+în contracte și oferte, doar pachetul.
+
+**Ce vede clientul:** practic nimic nou — toate firmele erau deja pe pachete. Contorul, conturile și mesajele sunt cele ale pachetului.
+
+### CLIENT · Termeni: la încetare, 30 de zile ca să ceri datele înapoi
+*Alin, 11.11: „2. Da".*
+
+**Ce am schimbat:** pe pagina Termeni, „un termen rezonabil" a devenit **30 de zile** (export), apoi datele se șterg — aceeași cifră ca în
+contract și în Confidențialitate. Legată de cifra din cod (`ZILE_DATE_DUPA_INCETARE`) în `verify_site_public.js`.
+
+**Ce vede fondatorul:** nimic nou.
+
+**Ce vede clientul:** pagina Termeni, cu cifra limpede.
 
 ## 2026-11-11
 

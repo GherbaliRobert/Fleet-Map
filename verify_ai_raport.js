@@ -365,9 +365,11 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
   const PAROLA = 'Str4da-Verde-2026';
   const co = (await json('POST', '/api/companies', S, { name: 'Firma Raport SRL' })).j;
   const co2 = (await json('POST', '/api/companies', S, { name: 'Alta Firma Raport SRL' })).j;
-  // Firma 1 ARE RA Insight pe regula veche (ca să vedem că fondul nu se mișcă); firma 2 n-are nimic scris = pachetul Start
-  // (14.10): AI Raport îi răspunde administratorului, din cele 50 de răspunsuri pe butoane.
-  await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
+  // Firma 1 are RA Insight Business (ca să vedem că întrebările lunii nu se mișcă: pe butoane nu se scad); firma 2 n-are nimic
+  // scris = pachetul Start (14.10): AI Raport îi răspunde administratorului, din cele 50 de răspunsuri pe butoane. Regula veche,
+  // „pe cont" (AI Raport pentru oricine din firmă), a ieșit pe 11.11: pe un pachet, AI Raport cere contul RA Insight — deci
+  // managerul, dispecerul și viewerul primesc cont (Business are conturi nelimitate).
+  await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_pachet: { cod: 'business' } });
   await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
   async function om(username, role, companyId, loc) {
     const res = await json('POST', '/api/users', S, { username, full_name: username.split('@')[0], role, company_id: companyId });
@@ -376,13 +378,13 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
     return res.j;
   }
   await om('sef@raport.ro', 'admin', co.id, true);
-  await om('manager@raport.ro', 'manager', co.id, false);
-  await om('dispecer@raport.ro', 'dispatcher', co.id, false);
+  await om('manager@raport.ro', 'manager', co.id, true);
+  await om('dispecer@raport.ro', 'dispatcher', co.id, true);
   await om('sef@alta-raport.ro', 'admin', co2.id, false);
-  await om('rafala@raport.ro', 'viewer', co.id, false);
+  await om('rafala@raport.ro', 'viewer', co.id, true);
   const ckSef = await login('sef@raport.ro', PAROLA), ckMan = await login('manager@raport.ro', PAROLA), ckDisp = await login('dispecer@raport.ro', PAROLA);
   const ckAlt = await login('sef@alta-raport.ro', PAROLA), ckRaf = await login('rafala@raport.ro', PAROLA);
-  T('pregătire: o firmă cu RA Insight (șef cu loc), una fără; manager, dispecer, viewer — toți intră', !!(co.id && co2.id && ckSef && ckMan && ckDisp && ckAlt && ckRaf));
+  T('pregătire: o firmă cu RA Insight Business (toți cu cont), una pe Start; manager, dispecer, viewer — toți intră', !!(co.id && co2.id && ckSef && ckMan && ckDisp && ckAlt && ckRaf));
   await json('POST', '/api/devices/import', S, { rows: DEV.map((d) => ({ imei: d.imei, nume: d.name, nr_inmatriculare: d.plate })).concat([{ imei: '350000000051009', nume: 'Ford Transit', nr_inmatriculare: 'CJ 99 ALT' }]) });
   for (const d of DEV) await json('PUT', '/api/devices/' + d.imei + '/company', S, { company_id: co.id });
   await json('PUT', '/api/devices/350000000051009/company', S, { company_id: co2.id });
@@ -478,7 +480,7 @@ const cereriModel = () => fs.readFileSync(AI_LOG, 'utf8').split('\n').filter(Boo
   // e) modelul nu a fost chemat, fondul nu s-a mișcat
   T('modelul NU a fost chemat deloc', cereriModel() === 0, cereriModel());
   T('fondul RA Insight al firmei nu s-a mișcat', (await json('GET', '/api/ai/quota', ckSef)).j.used === fond0);
-  // f) fără loc RA Insight și într-o firmă fără RA Insight: merge
+  // f) firma pe Start (fără AI): administratorul primește singur contul, iar AI Raport îi răspunde pe butoane
   const q5 = await json('POST', '/api/reports/ai-raport', ckAlt, { text: 'km săptămâna asta' });
   T('firma pe Start: AI Raport răspunde administratorului și se numără din cele 50', q5.status === 200 && !!q5.j.raspuns && /Flota a parcurs|a parcurs/.test(q5.j.raspuns.text || '') && q5.j.pachet && q5.j.pachet.cod === 'start' && q5.j.pachet.ramase < 50, q5.text.slice(0, 160));
   // g) nimeni nu vede mașinile altei firme

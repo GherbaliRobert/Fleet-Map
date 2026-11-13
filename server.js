@@ -8285,15 +8285,14 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
 // ── începe „Venitul lunar pe firmă" ──────────────────────────────────────────────────────────────
 // „Cât facturez lunar firmei ăsteia" e cifra după care se conduce afacerea, și nu se vedea nicăieri:
 // coloana „Plăți" arăta cât s-a încasat DE LA ÎNCEPUT. Aici o socotim cu ACELAȘI motor de preț care
-// face factura (`plans.computeCompanyPrice` + conturile de RA Insight) — dacă ecranul ar socoti
+// face factura (`plans.computeCompanyPrice`, cu pachetul RA Insight în el) — dacă ecranul ar socoti
 // altfel decât factura, am afla de la client, nu de la noi.
 //
-// Funcție CURATĂ (fără bază, fără await): primește firma, vehiculele ei clasificate și conturile
-// de RA Insight, întoarce suma lunară. Se poate proba cu cifre inventate.
+// Funcție CURATĂ (fără bază, fără await): primește firma și vehiculele ei clasificate, întoarce suma lunară.
+// Se poate proba cu cifre inventate. (Conturile RA Insight nu mai intră în bani: regula „pe cont" a ieșit pe 11.11.)
 //   c        = firma
 //   nrCan    = { none, can, fms } — câte vehicule din fiecare fel
-//   conturi  = câte conturi de RA Insight are aprinse
-function _venitLunar(c, nrCan, conturi) {
+function _venitLunar(c, nrCan) {
   const feats = plans ? plans.featuresFor(c) : {};
   const p = plans ? plans.computeCompanyPrice(c, nrCan, { features: feats }) : { monthlyTotal: 0 };
   let lei = Number(p.monthlyTotal) || 0;
@@ -8311,8 +8310,8 @@ function _venitLunar(c, nrCan, conturi) {
 // socoteală care se uită la toate vehiculele din platformă.
 let _mrrCache = { la: 0, date: null };
 async function _venitLunarToate(lista) {
-  const [list, bits, seats] = await Promise.all([
-    lista ? Promise.resolve(lista) : db.getCompanies(), db.deviceCanBits(), db.aiSeatsByCompany()
+  const [list, bits] = await Promise.all([
+    lista ? Promise.resolve(lista) : db.getCompanies(), db.deviceCanBits()
   ]);
   const peFirma = {};
   (bits || []).forEach(function (b) {
@@ -8330,7 +8329,7 @@ async function _venitLunarToate(lista) {
   (list || []).filter(function (c) { return !c.is_demo; }).forEach(function (c) {
     // Fără nicio mașină pornită, factura n-are nimic (nici RA Insight, păstrarea, chiria sau tariful fix — pornesc odată
     // cu prima mașină, abonament.js), deci nici „Lunar".
-    const lei = peFirma[c.id] ? _venitLunar(c, peFirma[c.id], seats[c.id] || 0) : 0;
+    const lei = peFirma[c.id] ? _venitLunar(c, peFirma[c.id]) : 0;
     out.firme[c.id] = lei;
     out.totalLei += lei;
   });

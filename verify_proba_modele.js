@@ -153,7 +153,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     const S = await login('admin', 'test1234');
     const co = (await json('POST', '/api/companies', S, { name: 'Firma Proba SRL' })).j;
     const gol = (await json('POST', '/api/companies', S, { name: 'Firma Fara Masini SRL' })).j;
-    await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
+    await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_pachet: { cod: 'business' } });
     await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
     const u = (await json('POST', '/api/users', S, { username: 'sef@proba.ro', full_name: 'Sef Proba', role: 'admin', company_id: co.id })).j;
     await puneParola(u, 'Str4da-Verde-2026', B);
@@ -241,7 +241,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     // panourile până pe 12.10, ar fi ieșit 1,20 $ — de trei ori mai mult.
     console.log('\n4. Panourile de cost, pe modelul fiecărui răspuns');
     const cf = (await json('POST', '/api/companies', S, { name: 'Firma Cost Model SRL' })).j;
-    await json('PUT', '/api/companies/' + cf.id + '/settings', S, { features: { ai_assistant: true }, ai_quota: { questionsPerSeat: 50 }, regula_veche: true });
+    await json('PUT', '/api/companies/' + cf.id + '/settings', S, { features: { ai_assistant: true }, ai_pachet: { cod: 'business' } });
     await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 100000 } });
     await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 1000000 }, model: 'claude-haiku-5-5' });
     await json('POST', '/api/test/ai-usage', S, { companyId: cf.id, kind: 'insight', usage: { input_tokens: 100000 }, model: 'claude-sonnet-5-5' });
