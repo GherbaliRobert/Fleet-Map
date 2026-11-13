@@ -264,10 +264,11 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     T('rândurile vechi, fără model scris, se socotesc ca Haiku 4.5 (modelul de atunci), nu ca modelul de azi',
       /const MODEL_RANDURI_VECHI = 'claude-haiku-4-5';/.test(DBS) && /r\.model \|\| MODEL_RANDURI_VECHI/.test(DBS));
     // Din 19.10 (Alin, punctul 5) costul AI stă într-un singur loc: „RA Insight · control". Acolo costul unei firme vine gata
-    // de la server (/api/admin/ai-usage, pe modelul fiecărui răspuns); „Dashboard platformă" nu-l mai arată (nici tokenii, nici
-    // limita veche pe firmă) și nu mai are nicio socoteală pe prețul Haiku 4.5.
+    // de la server (/api/admin/ai-usage, din plasa pachetului, pe modelul fiecărui răspuns — regula veche „pe cont" a ieșit pe
+    // 11.11); „Dashboard platformă" nu-l mai arată (nici tokenii, nici limita veche pe firmă) și nu mai are nicio socoteală pe
+    // prețul Haiku 4.5.
     T('pagina ia costul firmei de la server, într-un singur loc („RA Insight · control"); Dashboard platformă nu-l mai socotește',
-      /var cost = x\.pachet \? \(x\.plasa \? x\.plasa\.costLei : 0\) : x\.costEur \* fx;/.test(PAG) && !/_raxCostRand|function _raxCost\(|RAX_TOK_IN_RATE|raxSetAiLimit|Consum AI \(30z\)/.test(PAG));
+      /var cost = x\.plasa \? x\.plasa\.costLei : 0;/.test(PAG) && !/_raxCostRand|function _raxCost\(|RAX_TOK_IN_RATE|raxSetAiLimit|Consum AI \(30z\)/.test(PAG));
     // Venituri (Alin, 20.10: „rezolvăm acum"): pagina citea câmpuri de pe vremea planurilor (`active_subs`, `by_plan`), pe care
     // serverul nu le trimite — „Abonamente active" stătea pe 0 și scria „Niciun venit estimat încă" cu venit lunar de 20 de lei.
     const rv = ov.j.revenue || {};
