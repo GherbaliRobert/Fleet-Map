@@ -494,15 +494,9 @@ function _ofIncluse(o) {
   L.push('Aplicație de telefon (Android), cu aceleași date ca în calculator');
   if (o.tahograf) L.push('Modulul Tahograf: descărcarea fișierelor .DDD și urmărirea termenelor legale');
   if (o.etransport) L.push('Modulul e-Transport: generarea codurilor UIT și raportarea poziției către ANAF');
-  // Pachetul RA Insight (14.10, pasul 5): ce primește clientul, din pachete.js. Ofertele vechi (pe cont), ca înainte.
+  // Pachetul RA Insight (14.10, pasul 5): ce primește clientul, din pachete.js.
   const pkO = o.aiPachet && o.aiPachet.cod ? require('./pachete').dupaCod(o.aiPachet.cod) : null;
   if (pkO) L.push('RA Insight ' + pkO.nume + ': ' + require('./pachete').descriere(pkO) + (pkO.ai ? '' : ' (inclus)'));
-  else if (o.aiA) {
-    const n = Math.max(1, Number(o.aiqConturi) || 1), f = Number(o.aiqFond) || 0;
-    L.push('RA Insight, pe ' + n + ' ' + (n === 1 ? 'cont' : 'conturi') + ': '
-      + (f > 0 ? f + ' ' + _ofDe(f) + 'întrebări pe lună, dintr-un fond comun al companiei'
-               : 'întrebări nelimitate'));
-  }
   if (o.agenti) L.push('Cei șase agenți automați care supraveghează flota și semnalează abaterile');
   L.push('Actualizările aplicației și asistență tehnică, incluse');
   return L;
@@ -697,10 +691,6 @@ function renderOfertaPdf(doc, o) {
       return v != null ? x.nume + ' — ' + _bani(v, 'lei') + '/lună' : null;
     }).filter(Boolean);
     conditii.splice(2, 0, 'RA Insight: pachetul ' + pkC.nume + '. Pachetele: ' + toate.join(' · ') + '. ' + PKc.CLAUZA_TRECERE.replace('administratorul Beneficiarului', 'administratorul firmei'));
-  } else if (o.aiA && Number(o.pretCont) > 0) {
-    conditii.splice(2, 0, 'Prețul unui cont de RA Insight este ' + _bani(o.pretCont, 'lei')
-      + '/lună. Numărul de conturi se modifică oricând din aplicație, iar factura urmează numărul de conturi active în luna respectivă. '
-      + 'Când se termină întrebările lunii, până la reînnoire RA Insight răspunde doar pe loc — nu există costuri suplimentare.');
   }
   // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA") — doar dacă oferta are montaj. Pusă ULTIMA în
   // cod, pe locul 2: imediat după plata costului unic, înaintea abonamentului și a RA Insight.

@@ -50,8 +50,9 @@ export function Comparatie({ cmp, semnat }: { cmp: any; semnat: boolean }) {
     <div class={'ctr-band ' + (bine ? 'ok' : 'warn')}>
       <div class="ctr-band-t">{bine ? 'Contractul și factura spun același lucru' : 'Contractul și factura nu spun același lucru'}</div>
       <div>Mașini: contractul <b>{lei(m.contract.lei)}</b> pe lună ({nrMasini(m.contract.nr)}{m.contract.dinOferta ? ', din ofertă' : ''}) · factura de luna asta <b>{lei(m.factura.lei)}</b> ({nrMasini(m.factura.nr)})</div>
-      {ai && (
-        <div style="margin-top:4px">RA Insight: {ai.contractPretCont ? lei(ai.contractPretCont) + ' pe cont în contract' : 'nu e în contract'} · acum {ai.facturaConturi === 1 ? '1 cont activ' : (ai.facturaConturi || 0) + ' conturi active'} — se facturează după câte conturi folosește clientul în lună.</div>
+      {/* Pachetul RA Insight: din contract lângă rândul de pe factură, ca pe web (regula veche, „pe cont", a ieșit pe 11.11). */}
+      {ai && ai.pachet && (
+        <div style="margin-top:4px">RA Insight: contractul — pachetul <b>{ai.contractNume || ''}</b>{ai.contractLei > 0 ? ', ' + lei(ai.contractLei) + ' pe lună' : ' (inclus)'} · pe factură {ai.facturaLei ? <b>{lei(ai.facturaLei)}</b> : 'nimic'}</div>
       )}
       <RandPastrare t={v.pastrare} />
       {v.probleme.length > 0 && (

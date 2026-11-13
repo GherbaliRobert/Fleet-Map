@@ -217,9 +217,8 @@ async function pachetSiContorul() {
     ['Sursă externă terminată', { pachet: PK(), sursa: Object.assign({}, SE, { poate: false, contor: '0 din 10' }) }, false],
     ['Sursă externă fără voie', { pachet: PK(), sursa: Object.assign({}, SE, { vede: false }) }, false],
     ['fondator', { unlimited: true, questions: 0 }, true],
-    ['client fără limită', { unlimited: true, questions: 0 }, false],
-    ['regula veche', { questions: 100, remaining: 42, questionsPerSeat: 50 }, false],
-    ['regula veche, oprită', { questions: 1, remaining: 0, blocked: true, periodEnd: '2026-12-01T00:00:00.000Z', questionsPerSeat: 0 }, false],
+    // Un cont fără pachet care nu e fondator (o cerere stricată): nimic, pe amândouă.
+    ['fără pachet, nefondator', { unlimited: true, questions: 0 }, false],
     ['eroare', { error: 'x' }, false],
     ['fără răspuns', null, false],
   ];
@@ -545,7 +544,10 @@ function parteaTextelor() {
     'Adaugă mașina, perioada sau un raport', 'La ultimul mesaj', 'Cifrele le-am luat din rapoarte.', 'Cifrele le-am luat din aplicație și din sursele de mai sus.', 'Din raportul ', 'Din rapoartele ', 'Am copiat răspunsul.', 'Eroare de rețea: ', 'Nu s-a putut face.', 'Nu s-a putut anula.'];
   ET.forEach((t) => T('„' + t.slice(0, 60) + '": același cuvânt pe web și pe telefon', (INSP + COMUNE).indexOf(t) >= 0 && (S.lib + S.ecran + S.bula + S.prop).indexOf(t) >= 0, ((INSP + COMUNE).indexOf(t) >= 0 ? 'lipsește pe telefon' : 'lipsește pe web')));
   T('placeholder-ele casetei, aceleași', ['Scrie o întrebare sau cere un raport…', 'Scrie o întrebare…', 'Apasă „+" sau scrie o întrebare…', 'Apasă „+" ca să alegi…'].every((t) => INSP.indexOf(t) >= 0 && S.lib.indexOf(t) >= 0));
-  T('regula veche: aceleași cuvinte', ['Întrebările lunii s-au terminat: până pe ', ' doar răspunsuri pe loc, fără niciun cost în plus.', 'Întrebări · ', 'Un cont în plus aduce încă ', 'Fondator · fără limită', 'Fără limită'].every((t) => INSP.indexOf(t) >= 0 && S.lib.indexOf(t) >= 0));
+  T('fondatorul: același cuvânt pe web și pe telefon', INSP.indexOf('Fondator · fără limită') >= 0 && S.lib.indexOf('Fondator · fără limită') >= 0);
+  // Regula veche, „pe cont", a fost scoasă pe 11.11 (Alin: „Scoate"): cuvintele contorului ei nu mai sunt nici pe web, nici pe telefon.
+  T('regula veche, scoasă: contorul ei nu mai e nici pe web, nici pe telefon',
+    ['Întrebările lunii s-au terminat: până pe ', 'Întrebări · ', 'Un cont în plus aduce încă ', 'questionsPerSeat'].every((t) => INSP.indexOf(t) < 0 && S.lib.indexOf(t) < 0));
   // Niciun HTML de la server.
   [['lib', S.lib], ['ecranul', S.ecran], ['bula', S.bula], ['cartonașul', S.prop], ['textul', S.text]].forEach(([n, s]) => {
     T(n + ': fără innerHTML / dangerouslySetInnerHTML', !/dangerouslySetInnerHTML|innerHTML/.test(faraComentarii(s)));

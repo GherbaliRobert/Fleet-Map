@@ -11,7 +11,7 @@ import './detail.css';
 import './admin.css';
 import { nrDe } from '../lib/numar';
 import { rutaRamura } from '../lib/insight';
-import { LINK_CONTURI, TITLU_RA, arataBagheta, arataEticheta, cuPachetFirmei, randConturi } from '../lib/insightPachet';
+import { LINK_CONTURI, TITLU_RA, arataEticheta, cuPachetFirmei, randConturi } from '../lib/insightPachet';
 
 // PAROLA NU EXISTĂ (decizie 16.09): nimeni nu scrie parola altcuiva. Contul se deschide pe o adresă de email,
 // omul primește un link și își pune singur parola. Dacă emailul nu poate pleca, serverul întoarce linkul și îl
@@ -83,7 +83,6 @@ export function AdminUsers() {
   const [formErr, setFormErr] = useState('');
   const [scoate, setScoate] = useState<Scoate | null>(null);
   const [accessFor, setAccessFor] = useState<AccessTarget | null>(null);
-  const [seatBusy, setSeatBusy] = useState<number | null>(null);
   const [linkBusy, setLinkBusy] = useState<number | null>(null);
   const [linkSheet, setLinkSheet] = useState<LinkSheet | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -395,23 +394,6 @@ export function AdminUsers() {
     finally { setSaving(false); }
   }
 
-  // RA Insight se plătește PE CONT → confirmare la pornire (se facturează), fără confirmare la oprire. Ca pe web.
-  // Se facturează VÂRFUL lunii: la o înlocuire, ordinea contează.
-  async function toggleSeat(u: any) {
-    const on = !u.ai_seat;
-    if (on && !confirm('Dai RA Insight acestui cont?\n\nContul primește RA Insight — asistentul care răspunde la întrebări despre flotă.\n\n'
-      + 'Se facturează ca un cont în plus, în fiecare lună, până când îl retragi.\n\n'
-      + 'Dacă înlocuiești pe cineva: scoate-l întâi pe cel care pleacă. Altfel luna asta se socotesc două conturi, nu unul.')) return;
-    setSeatBusy(u.id);
-    try {
-      const j = await Api.setUserAiSeat(u.id, on);
-      const n = Number(j && j.seats) || 0;
-      showToast(on ? 'RA Insight pornit ✓ (' + n + ' ' + (n === 1 ? 'cont' : 'conturi') + ' în total)' : 'RA Insight oprit pe acest cont');
-      await reload();
-    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
-    finally { setSeatBusy(null); }
-  }
-
   // Super-admin: filtru pe companie (ca selectorul de pe web), când lista are mai multe firme.
   const coGroups = useMemo(() => {
     const g: Record<string, { name: string; n: number }> = {};
@@ -606,17 +588,6 @@ export function AdminUsers() {
                       style={'width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid ' + (vaz.niciodata ? 'var(--orange);color:var(--orange)' : 'var(--border);color:var(--text-muted)')}>
                       {linkBusy === u.id ? <div class="spin" style="width:14px;height:14px;border-width:2px" /> : <Icon name="mail" size={17} />}
                     </button>
-                    {/* Bagheta: doar pe regula veche (un cont aprins se facturează) și la fondator; pe un pachet, conturile se dau din „Pachet și conturi". */}
-                    {arataBagheta(u, pachetRa) && (
-                      <button type="button"
-                        aria-label={u.ai_seat ? 'Are RA Insight — apasă ca să i-l retragi' : 'Nu are RA Insight — apasă ca să i-l dai'}
-                        title={u.ai_seat ? 'Are RA Insight — apasă ca să i-l retragi' : 'Nu are RA Insight — apasă ca să i-l dai (se facturează un cont în plus)'}
-                        disabled={seatBusy === u.id}
-                        onClick={(e) => { e.stopPropagation(); toggleSeat(u); }}
-                        style={'width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid ' + (u.ai_seat ? 'var(--accent);color:var(--accent);background:rgba(63,224,125,.12)' : 'var(--border);color:var(--text-muted);opacity:.55')}>
-                        {seatBusy === u.id ? <div class="spin" style="width:14px;height:14px;border-width:2px" /> : <Icon name="sparkles" size={17} />}
-                      </button>
-                    )}
                     <Icon name="chevronR" size={18} color="var(--text-muted)" />
                   </span>
                 </div>

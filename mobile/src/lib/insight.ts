@@ -50,23 +50,18 @@ export function grup(ts: any, acum: number = Date.now()): string {
 }
 
 // ── Pachetul și contorul, din GET /api/ai/quota (web: incarcaPachet, textContor, deseneazaPachet) ──
-function nrI(n: any): string { const v = Number(n) || 0; const r = Math.abs(v) % 100; return v === 1 ? '1 întrebare' : v + ((r === 0 && v) || r >= 20 ? ' de ' : ' ') + 'întrebări'; }
+// Orice firmă are un pachet (Start, dacă nu i-am pus altul): contorul e al pachetului. Fără pachet suntem doar noi, fondatorii.
+// Regula veche, „pe cont", a fost scoasă pe 11.11 (Alin: „Scoate").
 export function textContor(q: any, pachet: any, fondator: boolean): string {
   if (pachet) return String(pachet.scurt || '');
-  if (q && !q.error && (q.unlimited || !q.questions)) return fondator ? 'Fondator · fără limită' : 'Fără limită';
+  if (fondator && q && !q.error && q.unlimited) return 'Fondator · fără limită';
   return '';
 }
 // Rândul de jos din sertar: un rând (`text`); amănuntul (pe web, la trecerea cu mouse-ul) se deschide la o apăsare (`detaliu`).
 export function randFond(q: any, pachet: any, contor: string): { text: string; detaliu: string; avert: boolean } | null {
   if (pachet) return { text: pachet.nume + ' · ' + String(pachet.scurt || ''), detaliu: [pachet.text, pachet.textOm, pachet.reincarcare].filter(Boolean).join(' · '), avert: !!(q && q.blocked) };
   if (contor) return { text: contor, detaliu: '', avert: false };
-  if (!q || q.error || q.unlimited || !q.questions) return null;
-  // Regula veche, pe cont: oprit până pe 1, fără niciun cost în plus; „Un cont în plus…" doar cu cifra firmei.
-  const reset = q.periodEnd ? new Date(q.periodEnd).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : '';
-  const peCont = Number(q.questionsPerSeat) || 0;
-  const inPlus = peCont > 0 ? 'Un cont în plus aduce încă ' + nrI(peCont) + ' pe lună.' : '';
-  const opr = !!(q.blocked || q.remaining <= 0);
-  return { text: opr ? 'Întrebările lunii s-au terminat: până pe ' + reset + ' doar răspunsuri pe loc, fără niciun cost în plus.' : 'Întrebări · ' + q.remaining + ' din ' + nrI(q.questions), detaliu: inPlus, avert: opr };
+  return null;
 }
 export function stareDinQuota(q: any, fondator: boolean) {
   const bun = !!(q && !q.error);

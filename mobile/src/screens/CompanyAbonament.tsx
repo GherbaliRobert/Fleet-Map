@@ -14,8 +14,8 @@ import './companii.css';
 
 // Fișa firmei → „Abonament & plăți" (fondatori), ca pe web (_raxCodAbonament / _raxAboHtml):
 //   • starea accesului + suspendarea manuală (motiv obligatoriu) / reactivarea;
-//   • oferta firmei: preț / vehicul fără CAN și cu CAN, bifele „cu CAN" pe vehicul, add-on AI, notă;
-//   • modulele AI la plată; RA Insight pe cont (întrebări / cont + preț / cont);
+//   • oferta firmei: preț / vehicul fără CAN și cu CAN, bifele „cu CAN" pe vehicul, add-on-ul agenților AI, notă;
+//   • modulele AI la plată; RA Insight: drumul spre fila „Acces" (pachetul firmei);
 //   • prețul lunar — SOCOTIT DE SERVER (overview.price, după oferta salvată). Web-ul are aici o
 //     previzualizare socotită în pagină (_raxClientPrice); pe telefon NU se copiază regula prețului:
 //     după „Salvează oferta" se recitește fișa, iar prețul arătat e cel al serverului.
@@ -51,7 +51,7 @@ function formaPastrarii(ov: any) {
 }
 function formaOfertei(ov: any) {
   const o = (ov && ov.offer) || {};
-  return { name: o.name || '', priceNoneRON: s(o.priceNoneRON), priceCanRON: s(o.priceCanRON), aiAssistantRON: s(o.aiAssistantRON), aiAgentsRON: s(o.aiAgentsRON), note: o.note || '' };
+  return { name: o.name || '', priceNoneRON: s(o.priceNoneRON), priceCanRON: s(o.priceCanRON), aiAgentsRON: s(o.aiAgentsRON), note: o.note || '' };
 }
 function bifeCan(ov: any): Record<string, boolean> {
   const m: Record<string, boolean> = {};
@@ -69,9 +69,6 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
   const [can, setCan] = useState<Record<string, boolean>>(() => bifeCan(ov));
   const [modificat, setModificat] = useState(false);
   const [feats, setFeats] = useState<Record<string, boolean>>(() => Object.assign({ ai_assistant: false, agents: false }, ov.features || {}));
-  const q0 = ov.ai_quota || {};
-  const [aiqN, setAiqN] = useState(s(q0.questionsPerSeat || q0.questions || ''));
-  const [aiqS, setAiqS] = useState(s(q0.seatPriceRON || ''));
   const [susp, setSusp] = useState<{ cere: boolean; motiv: string }>({ cere: false, motiv: '' });
   const [reactivez, setReactivez] = useState(false);
   const [busy, setBusy] = useState('');
@@ -81,12 +78,10 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
 
   // Fișa s-a recitit → formularul pornește din ce a scris serverul. DAR nu peste ce scrii acum: o fișă
   // recitită după un comutator de modul nu are voie să-ți șteargă prețurile tastate și încă nesalvate.
-  const ofAtins = useRef(false), aiqAtins = useRef(false), pastAtins = useRef(false);
+  const ofAtins = useRef(false), pastAtins = useRef(false);
   useEffect(() => {
     if (!ofAtins.current) { setOf(formaOfertei(ov)); setCan(bifeCan(ov)); setModificat(false); }
     setFeats(Object.assign({ ai_assistant: false, agents: false }, ov.features || {}));
-    const q = ov.ai_quota || {};
-    if (!aiqAtins.current) { setAiqN(s(q.questionsPerSeat || q.questions || '')); setAiqS(s(q.seatPriceRON || '')); }
     if (!pastAtins.current) setPast(formaPastrarii(ov));
   }, [ov]);
 
@@ -146,7 +141,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
       name: of.name, priceNoneRON: of.priceNoneRON, priceCanRON: of.priceCanRON,
       priceFmsRON: vechi.priceFmsRON != null ? vechi.priceFmsRON : null,
       canImeis,
-      aiAssistantRON: of.aiAssistantRON, aiAgentsRON: of.aiAgentsRON,
+      aiAgentsRON: of.aiAgentsRON,
       vehicleLimit: vechi.vehicleLimit != null ? vechi.vehicleLimit : null,
       note: of.note,
       flatPriceRON: null, pricePerVehicleRON: null, basePerVehicleRON: null, canAddonRON: null, fmsAddonRON: null,
@@ -167,25 +162,6 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
     } catch (e: any) { setFeats(prev); showToast(e?.message || 'Eroare', true); }
   }
 
-  // ── RA Insight pe cont (raxSaveAiQuota) ──
-  async function salveazaAiq() {
-    const n = aiqN.trim() !== '' ? Number(aiqN) : 0;
-    if (!isFinite(n) || n < 0 || n > 100000) { showToast('Număr de întrebări invalid.', true); return; }
-    const sp = aiqS.trim() !== '' ? Number(aiqS) : 0;
-    if (!isFinite(sp) || sp < 0 || sp > 100000) { showToast('Preț pe cont invalid.', true); return; }
-    setBusy('aiq');
-    try {
-      const r: any = await Api.saveCompanySettingsOf(id, { ai_quota: { questionsPerSeat: Math.round(n), seatPriceRON: sp } });
-      // Ce a rămas scris pe server, nu ce am presupus: la o firmă pe fondul fix vechi, 0 pe cont NU șterge fondul fix.
-      const q = (r && r.ai_quota) || {};
-      if (Number(q.questionsPerSeat) > 0) showToast('Salvat: ' + q.questionsPerSeat + ' întrebări/cont, ' + (Number(q.seatPriceRON) || 0) + ' lei/cont ✓');
-      else if (Number(q.questions) > 0) showToast('Salvat — firma rămâne pe fondul fix vechi: ' + q.questions + ' întrebări/lună.');
-      else showToast('Fond eliminat (nelimitat) ✓');
-      aiqAtins.current = false; // câmpurile se reumplu cu ce a rămas scris pe server
-      onReload();
-    } catch (e: any) { showToast(e?.message || 'Eroare', true); }
-    finally { setBusy(''); }
-  }
   // ── Păstrarea istoricului (raxSavePastrare) ──
   // Regula (câte luni sunt incluse, cel mult câte) și ce scrie acum pe firmă vin de la server. Aici doar se
   // alege; serverul curăță cererea, o refuză dacă nu e un număr de luni valid și scrie în audit de la cât la cât.
@@ -224,11 +200,6 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
     } catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { setBusy(''); }
   }
-
-  const q = ov.ai_quota || {};
-  const aiqAcum = Number(q.questionsPerSeat) > 0
-    ? q.questionsPerSeat + de(q.questionsPerSeat) + 'întrebări/cont' + (Number(q.seatPriceRON) > 0 ? ' · ' + lei2(q.seatPriceRON) + '/cont' : '')
-    : (Number(q.questions) > 0 ? q.questions + de(q.questions) + 'întrebări/lună, fond fix vechi pe firmă' : 'nelimitat');
 
   const pr = ov.price || null;
   const bc = ov.billCounts || {};
@@ -310,7 +281,6 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         <h3 style="margin-top:0">Add-on AI (RON / lună)</h3>
         <div class="frm">
           <div class="frm-row">
-            {camp('Asistent AI', 'aiAssistantRON', 'ex. 150', 'taxat dacă modulul e activ')}
             {camp('Agenți AI', 'aiAgentsRON', 'ex. 300', 'taxat dacă modulul e activ')}
           </div>
           {camp('Notă (intern)', 'note', 'detalii ofertă / contract', undefined, false)}
@@ -319,7 +289,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         </div>
       </div>
 
-      {/* Modulele AI la plată + RA Insight pe cont */}
+      {/* Modulele AI la plată + drumul spre pachetul RA Insight */}
       <div class="fm-card pad">
         <h3 style="margin-top:0">Module AI (la plată)</h3>
         <button class="fm-tgl" onClick={() => modul('ai_assistant')} role="switch" aria-checked={!!feats.ai_assistant}>
@@ -330,28 +300,10 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         </button>
         <div class="co-note">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții se pornesc și se opresc din fila „Acces”.</div>
 
-        {/* Cota pe cont = regula VECHE: doar pe firmele scrise deja așa (`ai_regula_veche`). Pe un pachet (și Start e un pachet),
-            salvarea ar muta firma pe regula veche și i-ar schimba factura — serverul o și refuză. */}
-        {!ov.ai_regula_veche && <>
-          <div class="fm-sec" style="margin-top:16px">RA Insight</div>
-          <div class="co-note">Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.</div>
-          <button class="fm-btn" onClick={() => loc.route(rutaFisa(id, 'acces'), true)}><Icon name="layers" size={15} /> Deschide „Acces”</button>
-        </>}
-        {!!ov.ai_regula_veche && <>
-        <div class="fm-sec" style="margin-top:16px">RA Insight — conturi și fond de întrebări</div>
-        <div class="co-note" style="margin:0 0 8px">Acum, pe server: <b>{aiqAcum}</b></div>
-        <div class="frm">
-          <div class="frm-row">
-            <div class="fld"><label>Întrebări / cont / lună</label>
-              <input type="number" inputMode="numeric" min="0" max="100000" step="10" value={aiqN} placeholder="gol = nelimitat" onInput={(e: any) => { aiqAtins.current = true; setAiqN(e.target.value); }} /></div>
-            <div class="fld"><label>Preț / cont (lei/lună)</label>
-              <input type="number" inputMode="decimal" min="0" max="100000" step="1" value={aiqS} placeholder="ex. 17" onInput={(e: any) => { aiqAtins.current = true; setAiqS(e.target.value); }} /></div>
-          </div>
-          <div class="co-note" style="margin:0">Când fondul lunii se termină, RA Insight se oprește până pe 1. Nu există cost suplimentar și nici prețuri pe întrebare — cine vrea mai mult, mai adaugă un cont.</div>
-          <button class="fm-btn acc" disabled={busy === 'aiq'} onClick={salveazaAiq}><Icon name="check" size={15} /> Salvează</button>
-          <div class="co-note" style="margin:0">Fondul lunii = <b>conturile aprinse × întrebări pe cont</b>. Conturile se dau din <b>Utilizatori</b>, cu butonul ✨ de lângă fiecare om — tot de acolo se retrag. Clientul vede o bară cu cât a rămas și cât a folosit el.</div>
-        </div>
-        </>}
+        {/* RA Insight se vinde pe pachete (regula veche, „pe cont", a ieșit pe 11.11): pachetul se alege din fila „Acces". */}
+        <div class="fm-sec" style="margin-top:16px">RA Insight</div>
+        <div class="co-note">Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.</div>
+        <button class="fm-btn" onClick={() => loc.route(rutaFisa(id, 'acces'), true)}><Icon name="layers" size={15} /> Deschide „Acces”</button>
       </div>
 
       {/* Păstrarea istoricului (24.09) — ca pe web (_raxPastrareHtml). Fără regulă sau fără păstrare de la server
@@ -423,7 +375,6 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
               </>
             )}
             {(pr.model === 'pe-vehicul' || pr.model === 'fara-oferta') && <div class="co-ln"><span>Preț pe vehicul · {(Number(bc.none) || 0) + (Number(bc.can) || 0)} vehicule</span><span>{lei2(bd.base)}</span></div>}
-            {Number(bd.aiAssistant) ? <div class="co-ln"><span>+ Asistent AI</span><span>{lei2(bd.aiAssistant)}</span></div> : null}
             {Number(bd.aiAgents) ? <div class="co-ln"><span>+ Agenți AI</span><span>{lei2(bd.aiAgents)}</span></div> : null}
           </>
         )}

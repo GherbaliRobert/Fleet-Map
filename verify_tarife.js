@@ -35,7 +35,7 @@ function decupez(nume) {
   return html.slice(a, b);
 }
 const M = new Function('document', '_ofN', '_ofPropune', '_ofAtinse', 'raxOfRecalc', '_lei2eur',
-  decupez('Tarife după mărimea flotei') + '\n; return { _aiqFond, _modVeh, MOD_TARIF, _ofHintModul };')(
+  decupez('Tarife după mărimea flotei') + '\n; return { _modVeh, MOD_TARIF, _ofHintModul };')(
   { getElementById: () => null }, (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; },
   () => {}, {}, () => {}, (v) => v / 5);
 
@@ -46,7 +46,7 @@ const _rDe = new Function(html.slice(html.indexOf('function _rDe(n)'), html.inde
 // `_fxDate` / `_fxSursa` stau, ca `_fxRate`, în afara blocului decupat: oferta îngheață nu doar
 // CIFRA cursului, ci și ziua și sursa lui (22.09). Fără ele aici, decupajul cade cu
 // „_fxDate is not defined" — semn că blocul a început să citească o variabilă nouă din pagină.
-const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe', '_aiqFond',
+const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe',
   decupez('Calculatorul de ofertă') + '\n; return { _ofCalc: _ofCalc, _ofReadCfg: _ofReadCfg, _raxOf: _raxOf, _OF_PRETURI_DEF: _OF_PRETURI_DEF };');
 function calculator(campuri) {
   const val = Object.assign({}, campuri);
@@ -57,7 +57,7 @@ function calculator(campuri) {
       return (typeof v === 'boolean') ? { type: 'checkbox', checked: v, value: '' } : { value: String(v) };
     }
   };
-  return CALC(doc, {}, () => {}, 5.0, '21.09.2026', 'BNR', _rDe, M._aiqFond);
+  return CALC(doc, {}, () => {}, 5.0, '21.09.2026', 'BNR', _rDe);
 }
 // O flotă obișnuită, pe care se sprijină probele de mai jos.
 function flota(peste) {
@@ -190,8 +190,8 @@ PLATITE.forEach((p) => {
 });
 T('grila pe cont a plecat din pagină și de pe server (nu mai propune nimic pe tăcute)',
   !/AIQ_PRET_LOC|_aiqAplicaLista|_aiqPretLoc|_aiqCost|_ofHintAiq|raxOfAiqPreset/.test(html) && !/_aiqAplicaLista/.test(server));
-// `pAiA` rămâne DOAR pentru ofertele vechi (pe cont), redeschise: se socotesc cum s-au vândut.
-T('pAiA rămâne doar ca prețul ofertelor VECHI, pe cont', /^\s*pAiA: 14,\s+\/\/ DOAR pentru ofertele VECHI/m.test(html));
+// `pAiA` (prețul unui cont) a ieșit și din pornirea paginii pe 11.11: regula veche, „pe cont", nu mai e nicăieri.
+T('pAiA a ieșit și din pornirea paginii', !/^\s*pAiA:/m.test(html) && !/'pAiA'/.test(html));
 
 // Serverul NU rescrie toată lista la fiecare salvare: sunt două căi (tabloul și butonul din cărți), care trimit chei diferite.
 const curat = new Function('TARIF_CHEI', server.slice(server.indexOf('function _tarifeCurate('),
@@ -261,13 +261,11 @@ const lStart = linie(cuStart, 'RA Insight');
 T('Start apare pe ofertă cu 0 lei — clientul află că îl are, inclus',
   !!lStart && lStart.label === 'RA Insight Start — inclus' && lStart.total === 0 && lStart.inclus === true, JSON.stringify(lStart));
 T('și nu schimbă totalul (20 × 45 = 900)', cuStart.monthly === 900, cuStart.monthly);
-// O ofertă VECHE (pe cont), redeschisă din listă: se socotește cum s-a vândut, din ce s-a salvat (`_ofCalc(cfg, p)`).
+// O ofertă fără pachet scris (de dinainte de 14.10, pe cont): regula veche a ieșit pe 11.11 — nu mai primește un rând „pe cont".
 const _cv = calculator(flota());
 const cfgVechi = Object.assign(_cv._ofReadCfg(), { aiA: true, aiqSeats: 3, aiqN: 50 }); delete cfgVechi.aiPachet; delete cfgVechi.aiPachetPret;
 const vechi = _cv._ofCalc(cfgVechi, Object.assign({}, _cv._OF_PRETURI_DEF, { pAiA: 15 }));
-T('oferta veche pe cont: „RA Insight — 3 conturi", 3 × 15 = 45 lei, fondul de 150 de întrebări',
-  linie(vechi, 'RA Insight') && /RA Insight — 3 conturi/.test(linie(vechi, 'RA Insight').label) && linie(vechi, 'RA Insight').total === 45
-  && /150 de întrebări/.test(linie(vechi, 'RA Insight').extra || ''), JSON.stringify(linie(vechi, 'RA Insight')));
+T('o ofertă fără pachet scris nu mai primește un rând „RA Insight — N conturi"', !linie(vechi, 'RA Insight') && vechi.monthly === fara.monthly, JSON.stringify(vechi.lines.map((l) => l.label)));
 T('agenții apar cu 0 lei', linie(cuAi, 'Agenți') && linie(cuAi, 'Agenți').total === 0);
 
 sect('3b. Pe ce vehicule se socotește fiecare modul');
@@ -276,8 +274,8 @@ T('tahograful se socotește pe camioanele cu tahograf, dacă sunt trecute',
 T('dacă nu sunt trecute camioane cu FMS, se socotește pe toată flota',
   M._modVeh({ nVeh: 30, nFms: 0 }).tahograf === 30);
 T('nu poate ieși mai mult decât are flota', M._modVeh({ nVeh: 10, nFms: 99 }).tahograf === 10);
-T('e-Transport și RA Insight merg pe toată flota',
-  M._modVeh({ nVeh: 30, nFms: 12 }).etransport === 30 && M._modVeh({ nVeh: 30, nFms: 12 }).aiA === 30);
+T('e-Transport merge pe toată flota (RA Insight nu mai e pe vehicul: e un pachet pe firmă)',
+  M._modVeh({ nVeh: 30, nFms: 12 }).etransport === 30 && !('aiA' in M._modVeh({ nVeh: 30, nFms: 12 })));
 
 sect('3c. Cum se plătește — scris ca într-o ofertă, nu ca o listă de sume');
 const PL = html.slice(html.indexOf('function _ofBlocPlata'), html.indexOf('window.raxOfRecalc = function'));
@@ -387,17 +385,16 @@ T('zero nu devine „0 de vehicule"', DE(0) === '');
 
 sect('3c-bis. RA Insight pe hârtia clientului — pachetul, prețurile și clauza de trecere');
 // Din 14.10 (pasul 5): ce primește pachetul, din pachete.js; condiția cu prețul pachetului ales, ale celorlalte și clauza
-// trecerii din aplicație (aceeași frază ca în contract, CLAUZA_TRECERE). Ofertele VECHI, pe cont, își păstrează textul lor.
+// trecerii din aplicație (aceeași frază ca în contract, CLAUZA_TRECERE). Textul ofertelor vechi, pe cont, a ieșit pe 11.11.
 T('„ce include" scrie pachetul cu descrierea lui din pachete.js',
   /L\.push\('RA Insight ' \+ pkO\.nume \+ ': ' \+ require\('\.\/pachete'\)\.descriere\(pkO\)/.test(PD));
 T('condiția: pachetul ales, toate prețurile pachetelor și clauza de trecere din pachete.js',
   /'RA Insight: pachetul ' \+ pkC\.nume \+ '\. Pachetele: ' \+ toate\.join\(' · '\)/.test(PD) && /PKc\.CLAUZA_TRECERE/.test(PD));
-T('ofertele vechi (pe cont) își păstrează textul: prețul unui cont, fondul comun',
-  /\} else if \(o\.aiA && Number\(o\.pretCont\) > 0\) \{/.test(PD) && /Prețul unui cont de RA Insight este /.test(PD)
-  && /'RA Insight, pe ' \+ n \+ ' ' \+ \(n === 1 \? 'cont' : 'conturi'\)/.test(PD));
+T('textul ofertelor vechi (pe cont) a ieșit de pe hârtie: nici prețul unui cont, nici „RA Insight, pe N conturi"',
+  !/o\.aiA && Number\(o\.pretCont\)|Prețul unui cont de RA Insight|'RA Insight, pe ' \+ n/.test(PD));
 T('pagina trimite pachetul spre hârtie (cod, prețul de pe rând, lista casei), din rândul ofertei',
   /aiPachet: lpk \? \{ cod: lpk\.pachet, pretRON: lpk\.total, lista: \{ basic: Number\(r\.p\.pkBasic\)/.test(html)
-  && /aiA: !lpk && !!r\.cfg\.aiA/.test(html));
+  && !/aiA: !lpk && !!r\.cfg\.aiA|aiqConturi|aiqFond|pretCont:/.test(html));
 
 sect('3d. Hârtia se ține pe o pagină');
 T('răspunsul (cele două cifre) vine ÎNAINTEA tabelelor',
@@ -496,11 +493,11 @@ T('alegerea altui pachet lasă propunerea să scrie iar prețul',
   /window\.raxOfPachet = function \(\) \{\s*_ofAtinse\['of-pPachet'\] = false;\s*_ofPropunePachet\(\);/.test(html));
 T('o ofertă redeschisă își păstrează prețul negociat al pachetului',
   /if \(cfg\.aiPachetPret > 0\) \{ set\('of-pPachet', cfg\.aiPachetPret\); _ofAtinse\['of-pPachet'\] = true; \}/.test(html));
-T('iar una VECHE (pe cont) se redeschide ca Basic — cel mai apropiat pachet', /set\('of-aiPachet', cfg\.aiPachet \|\| \(cfg\.aiA \? 'basic' : 'start'\)\)/.test(html));
+T('iar una fără pachet scris se redeschide pe Start (regula veche, „pe cont", a ieșit pe 11.11)', /set\('of-aiPachet', cfg\.aiPachet \|\| 'start'\)/.test(html) && !/cfg\.aiA \? 'basic'/.test(html));
 
 sect('6b. Ce s-a vândut se și activează pe firmă');
 // Gaura: un client deschis DIN OFERTĂ primea contractul cu prețul corect, dar în fișa firmei nu se
-// scria nimic — fără cotă înseamnă NELIMITAT. Vindeai 50 de întrebări/lună și livrai nelimitat.
+// scria nimic. Acum oferta scrie pe firmă pachetul RA Insight vândut și prețul de facturare.
 T('există o singură funcție care duce oferta pe firmă', /async function _aplicaOfertaPeFirma\(companyId, oferta, dinOferta\)/.test(server));
 T('contractul făcut din ofertă o cheamă', /_aplicaOfertaPeFirma\(id, oferta, dinOferta\)/.test(server));
 // Și e SINGURUL loc care o cheamă (de pe 22.09). Butonul ✨ din lista de oferte era al doilea: o
@@ -510,32 +507,27 @@ T('și e singurul loc care o cheamă — nu mai există un al doilea buton',
   (server.match(/_aplicaOfertaPeFirma\(/g) || []).length === 2
   && !/apply-to-company/.test(server.replace(/^\s*\/\/.*$/gm, '')),
   String((server.match(/_aplicaOfertaPeFirma\(/g) || []).length) + ' apeluri');
-T('nu mai există o a doua listă paralelă de setări',
-  (server.match(/questionsPerSeat: n, seatPriceRON: seatPrice/g) || []).length === 1,
-  String((server.match(/questionsPerSeat: n, seatPriceRON: seatPrice/g) || []).length));
-T('cota vândută ajunge pe firmă, ca întrebări PE CONT', /patch\.ai_quota = n > 0/.test(server) && /questionsPerSeat: n/.test(server));
-T('și prețul unui cont merge cu ea', /seatPriceRON: seatPrice/.test(server));
-T('„nelimitat" în ofertă (0) rămâne fără plafon', /patch\.ai_quota = n > 0[\s\S]{0,160}: null;/.test(server));
-T('prețul unui cont negociat în ofertă merge și el', /seatPriceRON: seatPrice/.test(server));
-T('RA Insight se aprinde odată cu cota', /patch\.features = \{ ai_assistant: true \}/.test(server));
+// Regula veche, „pe cont" (cota și prețul unui cont, scrise pe firmă din ofertă), a ieșit pe 11.11.
+T('oferta nu mai scrie pe firmă întrebări sau preț „pe cont"', !/questionsPerSeat|seatPriceRON|patch\.ai_quota/.test(server));
+T('RA Insight se aprinde odată cu pachetul vândut', /patch\.features = \{ ai_assistant: true \};\s*patch\.ai_pachet = /.test(server));
 // Pachetul (14.10): oferta nouă scrie PACHETUL pe firmă (cu prețul negociat), dar DOAR dacă firma n-are deja un pachet cu AI
-// — unul negociat separat nu se calcă. Ofertele vechi (pe cont) — ca înainte, ramura de mai sus.
+// — unul negociat separat nu se calcă.
 T('oferta nouă scrie pachetul pe firmă, cu prețul negociat', /patch\.ai_pachet = \{ cod: _pkOf\.cod, pretRON: /.test(server));
 T('dar nu calcă un pachet cu AI pe care firma îl are deja', /const areDeja = _pachetCo\(coPk\);\s*if \(!\(areDeja && areDeja\.ai\)\) \{/.test(server));
-T('și ramura veche (pe cont) rămâne doar pentru ofertele vechi', /if \(!_pkOf && cfg\.aiA\) \{/.test(server));
+T('ramura veche (pe cont) a ieșit', !/if \(!_pkOf && cfg\.aiA\)/.test(server));
 // Dar modulele demonstrative NU se aprind singure — decizie veche, rămâne.
 T('Tahograful și e-Transportul NU se aprind singure',
   !/features\.tahograf = true/.test(server) && !/features\.etransport = true/.test(server));
 T('dar nu se trec sub tăcere: rămân pe o listă de pornit manual', /deAprinsManual\.push\('tahograf'\)/.test(server));
 T('și primim o notificare cu firma și modulul', /type: 'module_de_pornit'/.test(server));
 
-sect('6c. Pe server: fondul lunii vine din LOCURI');
-T('fondul = locuri × întrebări pe loc',
-  /const fond = q\.questionsPerSeat > 0 \? seats \* q\.questionsPerSeat : q\.questions;/.test(server));
-T('locurile se numără din conturile aprinse', /await db\.getAiSeats\(companyId\)/.test(server));
-T('doar conturile ACTIVE țin loc (unul dezactivat nu se facturează)',
+sect('6c. Pe server: întrebările lunii vin din PACHETUL firmei (regula veche, „pe cont", a ieșit pe 11.11)');
+T('contorul (aiQuotaState) citește pachetul firmei, prin _starePachet',
+  /const sp = await _starePachet\(companyId, userId, \{ strict: strict \}\);\s*return sp \? _cotaDinPachet\(sp\.st, periodEnd\) : base;/.test(server));
+T('conturile se numără din oamenii cu RA Insight', /await db\.getAiSeatHolders\(companyId\)/.test(server));
+T('doar conturile ACTIVE țin loc în pachet',
   /ai_seat = true AND active IS NOT false/.test(fs.readFileSync('./db.js', 'utf8')));
-T('RA Insight se deschide doar cui are loc', /function requireAiSeat\(req, res, next\)/.test(server));
+T('RA Insight se deschide doar cui are cont', /function requireAiSeat\(req, res, next\)/.test(server));
 // Din 02.10 RA Insight e UN SINGUR asistent (_raInsight), cu trei uși: secțiunea, Rapoarte și „Asistent AI" de pe
 // telefonul vechi. Regula de azi: poarta contului stă pe FIECARE ușă și pe conversațiile omului (nu mai sunt „două căi").
 const usiAi = server.split('\n').filter((l) => /_raInsight\(req, res, \{/.test(l));
@@ -545,7 +537,8 @@ T('și pe „Rezumă raportul" (se numără din întrebările firmei; până pe 
   /app\.post\('\/api\/ai\/report-summary', requireAuth, requirePerm\('viewReports'\), withScope, requireFeature\('ai_assistant'\), requireAiSeat,/.test(server));
 T('și pe conversațiile omului (listă, citire, redenumire, ștergere, 👍/👎)',
   (server.match(/app\.\w+\('\/api\/insight\/(conversatii|mesaje)[^']*', requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat/g) || []).length === 5);
-T('mesajul spune cine poate porni contul', /Administratorul firmei îl poate porni din Utilizatori/.test(server));
+T('omul fără cont află drumul: „Pachet și conturi" (Utilizatori nu mai dă conturi)',
+  /const MESAJ_FARA_LOC_PACHET = '[^']*RA Insight → „Pachet și conturi”/.test(server) && !/MESAJ_FARA_LOC_AI|îl poate porni din Utilizatori/.test(server));
 T('super-adminul nu e îngrădit', /if \(req\.isSuper \|\| req\.companyId == null\) return next\(\);[\s\S]{0,120}getUserById/.test(server));
 T('bara omului primește și consumul LUI', /aiQuotaState\(a\.companyId, a\.userId\)/.test(server));
 T('consumul se scrie pe om la toate felurile de întrebări (RA Insight, oricare ușă, și rezumatul de raport)',
@@ -553,110 +546,66 @@ T('consumul se scrie pe om la toate felurile de întrebări (RA Insight, oricare
   /db\.recordAiUsage\(req\.companyId, 'insight', _agg, userId, model\)/.test(server) &&
   /recordAiUsage\(req\.companyId, 'report', [^)]*req\.auth && req\.auth\.userId, m\)/.test(server));
 T('„Asistent AI" nu mai scrie un fel separat de consum — e tot RA Insight', !/recordAiUsage\(req\.companyId, 'chat'/.test(server));
-// Factura
-T('factura are rândul de conturi', /RA Insight — conturi \(/.test(server));
-T('forma veche („Asistent AI", sumă fixă) rămâne pentru clienții vechi',
-  /add\('Asistent AI', 1, bd\.aiAssistant\);   \/\/ forma veche/.test(server));
+// Factura: UN rând, al pachetului — nici conturi, nici suma fixă „Asistent AI".
+T('factura are rândul pachetului, fix pe firmă', /if \(bd\.aiPachet > 0\) add\(bd\.aiPachetEticheta \|\| 'RA Insight', 1, bd\.aiPachet\);/.test(server));
+T('și nu mai are rândul de conturi, nici suma fixă „Asistent AI"', !/RA Insight — conturi \(|add\('Asistent AI'|bd\.aiAssistant\b/.test(server));
 
-sect('6d. NU există cost suplimentar — la epuizare se oprește');
-// Hotărât cu Alin (14.09). Motivul, scris ca să nu se răzgândească nimeni din greșeală: cu cost
-// suplimentar aveam de socotit pe fiecare firmă câte întrebări au trecut peste fond, la ce preț,
-// cine a acceptat și în ce lună. Patru lucruri de calculat, patru de explicat, patru de greșit.
-// Singurul loc unde mai apar numele vechi e linia care le ȘTERGE din baza de date.
-const _fara = server.replace(/\['overage', 'overagePriceEur', 'extraAcceptedMonth'\][^\n]*\n/, '');
-T('nu mai există preț pe întrebare nicăieri pe server',
-  !/overagePriceEur|AI_OVERAGE_PRICE_EUR/.test(_fara));
-T('nici mecanismul de acord', !/_cereAcordCostExtra|_acceptaCostExtra|extraAcceptedMonth/.test(_fara));
+sect('6d. NU există cost suplimentar — la capătul întrebărilor, răspunsurile pe loc');
+// Hotărât cu Alin (14.09), rămâne pe pachete: nimic de plătit peste pachet, nicio întrebare vândută în plus.
+T('nu există preț pe întrebare nicăieri pe server', !/overage|AI_OVERAGE_PRICE_EUR/.test(server));
+T('nici mecanismul de acord', !/_cereAcordCostExtra|_acceptaCostExtra|extraAcceptedMonth/.test(server));
 T('nici pe ecran', !/overage|needsExtraConsent|acceptExtra/.test(html));
-T('câmpurile vechi se aruncă din baza de date la prima salvare',
-  /\['overage', 'overagePriceEur', 'extraAcceptedMonth'\]\.forEach\(function \(k\) \{ delete q\[k\]; \}\);/.test(server));
-T('fondul epuizat = blocat', /blocked: used >= fond,/.test(server));
-T('și se explică, nu se dă doar o eroare', /async function _fondEpuizat\(req\)/.test(server));
-T('spune câte întrebări erau incluse', /Firma a folosit toate cele/.test(server));
-T('spune când se reînnoiesc', /Se reînnoiesc pe/.test(server));
-// Fără „gratuit" și fără „fond" în ce vede clientul (Alin, 11.11): spune ce merge mai departe, nu ce „nu costă".
-T('spune ce merge mai departe: răspunsurile pe loc', /Până atunci răspund pe loc: unde e o mașină/.test(server) && !/Întrebările rapide rămân gratuite|Fondul de întrebări al lunii/.test(server));
-T('propune un CONT în plus', /Un cont în plus aduce încă/.test(server));
+T('ce rămăsese scris al regulii vechi pe o firmă (`ai_quota`) se aruncă la prima salvare', /delete next\.ai_quota;/.test(server));
+T('întrebările terminate = blocat, din pachet', /blocked: st\.blocat, motiv: st\.motiv/.test(server));
+T('și se explică, nu se dă doar o eroare', /async function _fondEpuizat\(req\)/.test(server) && /reply: pachete\.textBlocat\(sp\.st, Date\.now\(\)\)/.test(server));
+const PKJ = fs.readFileSync('./pachete.js', 'utf8');
+T('textul spune câte întrebări au fost, când se reîncarcă și că nu costă nimic în plus',
+  /'Ați folosit cele ' \+ cant\(st\.intrebari, 'întrebare', 'întrebări'\)/.test(PKJ) && /'Se reîncarcă pe 1 ' \+ r\.urmatoarea \+ ', fără niciun cost în plus\.'/.test(PKJ));
 T('și NU pomenește niciun preț',
   !/lei/.test((server.match(/async function _fondEpuizat[\s\S]*?\n\}/) || [''])[0]));
 // Poarta e una singură și e folosită de toate căile de AI (scrisă la paritatea telefonului).
 const corpInsight = (server.match(/async function _raInsight\([\s\S]*?\n\}\n/) || [''])[0];
 // Din 08.10 singura ocolire e proba modelelor (`o.proba`): costul ei e al NOSTRU, nu al firmei, și o pornește doar
 // super-adminul (ruta /api/admin/insight/proba-modele, requireSuperadmin) — păzit și în verify_proba_modele.js.
-T('poarta fondului e chemată din toate căile de AI (RA Insight, cu toate ușile lui, și rezumatul de raport)',
+T('poarta întrebărilor e chemată din toate căile de AI (RA Insight, cu toate ușile lui, și rezumatul de raport)',
   /async function _regulileFonduluiAi\(req, res\)/.test(server) &&
   /if \(!o\.proba && await _regulileFonduluiAi\(req, res\)\) return;/.test(corpInsight) && usiAi.length === 3 &&
   (server.match(/if \((!o\.proba && )?await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length === 2 &&
   (server.match(/proba: \{ model: m \}/g) || []).length === 1,
   String((server.match(/if \((!o\.proba && )?await _regulileFonduluiAi\(req, res\)\) return;/g) || []).length));
-T('dacă fondul nu se poate citi, întrebarea NU pleacă', /Nu am putut verifica câte întrebări mai are firma/.test(server));
-// Pe ecran, caseta nu spune „la epuizare se oprește" sec, ci ce poate face omul. Din 15.10 o scrie caseta din stânga a secțiunii
-// RA Insight (bula din colț nu mai are bara ei: duce în secțiune), deci se caută în blocul secțiunii.
+T('dacă întrebările nu se pot citi, întrebarea NU pleacă', /Nu am putut verifica câte întrebări mai are firma/.test(server));
+// „Un cont în plus aduce încă N" era al regulii pe cont: pe un pachet, prețul e fix pe firmă, oricâte conturi.
 const sectIns = (html.split('// ── începe „secțiunea RA Insight" ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
-T('caseta propune contul în plus', /'Un cont în plus aduce încă ' \+ window\._raxNrI\(peCont\)/.test(sectIns));
-// ⚠ Dar DOAR pe regula pe cont. Pe cota fixă veche, un cont în plus nu aduce nimic — iar „|| 50"-ul
-// de rezervă promitea tocmai asta, și pe web, și pe server, și pe telefon (găsit 23.09).
-T('și numai unde e adevărat (regula pe cont), fără „50" pus de rezervă',
-  /var inPlus = peCont > 0 \?/.test(sectIns) && !/questionsPerSeat \|\| 50/.test(html)
-  && !/questionsPerSeat \|\| 50/.test(server)
-  && !/(perSeat|peCont|questionsPerSeat\)?) \|\| 50/.test(fs.readFileSync('./mobile/src/lib/insight.ts', 'utf8')));
-// „extra" era eticheta de pe vremea când, peste fond, clientul PLĂTEA în plus. Acum nu mai plătește
-// nimic — RA Insight se oprește. Citit de un client, „extra" suna a factură în plus.
-T('la întrebări terminate, clientul vede „până pe … doar răspunsuri pe loc", nu „extra" (și nici „fondul", Alin 11.11)',
-  !/fa-circle-exclamation"><\/i> extra</.test(html) && /Întrebările lunii s-au terminat: până pe ' \+ reset \+ ' doar răspunsuri pe loc/.test(sectIns) && !/Fondul lunii s-a terminat/.test(sectIns));
-T('și i se spune că NU plătește nimic în plus', /fără niciun cost în plus/.test(sectIns));
-T('oferta acceptată nu mai scrie niciun preț pe întrebare',
-  /patch\.ai_quota = n > 0 \? \{ questionsPerSeat: n, seatPriceRON: seatPrice \} : null;/.test(server));
-T('factura are UN singur rând de RA Insight', /RA Insight — conturi \(/.test(server) &&
+T('„un cont în plus" și contorul vechi au ieșit: de pe web, de pe server și de pe telefon',
+  !/Un cont în plus aduce încă/.test(html + server + fs.readFileSync('./mobile/src/lib/insight.ts', 'utf8'))
+  && !/questionsPerSeat/.test(html + server + fs.readFileSync('./mobile/src/lib/insight.ts', 'utf8')));
+// „extra" era eticheta de pe vremea când, peste fond, clientul PLĂTEA în plus. Acum nu mai plătește nimic.
+T('la întrebări terminate nu apare „extra"; contorul e al pachetului (textele serverului)',
+  !/fa-circle-exclamation"><\/i> extra</.test(html) && /if \(S\.pachet\) return String\(S\.pachet\.scurt \|\| ''\);/.test(sectIns) && !/Fondul lunii s-a terminat/.test(sectIns));
+T('oferta acceptată nu mai scrie nimic „pe cont" pe firmă (`ai_quota`)', !/patch\.ai_quota/.test(server));
+T('factura are UN singur rând de RA Insight', /add\(bd\.aiPachetEticheta \|\| 'RA Insight', 1, bd\.aiPachet\)/.test(server) &&
   !/RA Insight — întrebări peste cota lunii/.test(server));
 
-sect('6d-bis. Factura ia CÂTE CONTURI a avut cel mult luna asta');
-T('vârful lunii se ține minte', /async function _urcaSeatsPeak\(companyId, seats\)/.test(server));
-T('urcă la ORICE schimbare de conturi, nu doar la aprindere',
-  /await _urcaSeatsPeak\(tinta\.company_id, Math\.max\(seatsInainte, seats\)\)/.test(server));
-T('la stingere se plătește numărul de DINAINTE (altfel ultimele zile ar fi gratis)',
-  /const seatsInainte = await db\.getAiSeats\(tinta\.company_id\);/.test(server));
-T('se resetează la lună nouă', /p2\.luna === _lunaAcum\(\)/.test(server));
-T('factura ia maximul dintre vârf și câte sunt acum',
-  /seats: Math\.max\(st\.seats \|\| 0, _seatsPeakLuna\(company\)\)/.test(server));
-T('și spune pe factură când numărul e mai mare decât cel de azi',
-  /cel mult active în luna aceasta/.test(server));
-T('vârful se scrie doar de aplicație, cu formatul verificat',
-  /q\.seatsPeak = \{ luna: String\(vf\.luna\), n: Math\.max\(0, Math\.round\(Number\(vf\.n\)\)\) \};/.test(server));
+sect('6d-bis. Vârful lunii și anunțul „a activat încă un cont" au ieșit (pe un pachet prețul e fix pe firmă)');
+T('vârful lunii nu se mai ține', !/_urcaSeatsPeak|_seatsPeakLuna|seatsPeak/.test(server));
+T('anunțul „a activat încă un cont" nu se mai face, iar pagina nu-l mai deschide',
+  !/type: 'ai_seat_on'|a activat încă un cont/.test(server) && !/d\.type === 'ai_seat_on'/.test(html));
+T('contul dat sau luat rămâne în jurnal (cine, cui, pachetul)', /auditReq\(req, on \? 'ai_seat_on' : 'ai_seat_off', 'user', id,/.test(server));
 
-sect('6d-ter. Aflăm și noi când un client mai aprinde un cont');
-T('se creează o notificare la aprindere', /type: 'ai_seat_on', severity: 'info'/.test(server));
-T('ajunge DOAR la noi (fără companie)', /type: 'ai_seat_on'[\s\S]{0,80}companyId: null/.test(server));
-T('spune firma, omul și câte conturi are acum',
-  /a activat încă un cont/.test(server) && /Firma are acum ' \+ seats/.test(server));
-T('spune și cât face pe factură', /factura lunii: ' \+ \(seats \* pret\)/.test(server));
-T('spune că accesul e deja activ și cum se retrage', /Accesul e deja activ/.test(server));
-T('doar la APRINDERE, nu și la stingere — și doar pe regula pe cont (pe un pachet prețul e fix pe firmă, 14.10)', /if \(on && !pT\) \{[\s\S]{0,900}ai_seat_on/.test(server));
-T('din notificare se ajunge în fișa firmei',
-  /d\.type === 'ai_seat_on'[\s\S]{0,300}raxOpenCompanyDetail/.test(html));
-T('pe fila de abonament', /raxOpenCompanyDetail\(' \+ Number\(d\.data\.company_id\) \+ ', \\'abonament\\'\)/.test(html));
-
-sect('6d-quater. Regula, scrisă în contract și în ofertă');
+sect('6d-quater. Pachetul, scris în contract și în ofertă; clauza veche „pe cont" a ieșit');
 const cpdf = fs.readFileSync('./contract_pdf.js', 'utf8');
-T('contractul spune prețul unui cont', /Prețul unui cont de RA Insight este de/.test(cpdf));
-T('și că numărul se schimbă din aplicație', /Numărul de conturi se modifică oricând de către Beneficiar/.test(cpdf));
-T('și că factura urmează conturile active', /factura urmează numărul de conturi active în luna respectivă/.test(cpdf));
-T('și că la epuizare se oprește, fără costuri suplimentare', /fără costuri suplimentare/.test(cpdf));
-T('clauza apare doar dacă s-a vândut RA Insight', /if \(Number\(anexa\.aiSeatPriceRON\) > 0\)/.test(cpdf));
 const ctr = fs.readFileSync('./contracts.js', 'utf8');
-T('prețul contului se îngheață în anexă', /out\.aiSeatPriceRON = Math\.round/.test(ctr));
-T('împreună cu câte întrebări aduce', /out\.aiQuestionsPerSeat = /.test(ctr));
-T('și vine din ofertă — doar la ofertele vechi, pe cont', /aiSeatPriceRON: !_cfgOf\.aiPachet && _cfgOf\.aiA \?/.test(server));
+T('contractul nu mai scrie prețul unui cont', !/Prețul unui cont de RA Insight|aiSeatPriceRON|aiQuestionsPerSeat|factura urmează numărul de conturi/.test(cpdf));
+T('anexa nu mai îngheață prețul unui cont', !/aiSeatPriceRON|aiQuestionsPerSeat/.test(ctr));
+T('și contractul din ofertă nu-l mai trimite', !/aiSeatPriceRON|aiQuestionsPerSeat/.test(server));
 // Pachetul (14.10): în anexă intră pachetul ales, cu prețul negociat, și prețurile celorlalte la data ofertei — se semnează.
 T('pachetul intră în anexă, cu prețurile celorlalte de la data ofertei',
   /aiPachet: _cfgOf\.aiPachet \? \{ cod: _cfgOf\.aiPachet, pretRON: _cfgOf\.aiPachetPret,\s*lista: \{ basic: _prOf\.pkBasic, pro: _prOf\.pkPro, business: _prOf\.pkBusiness \} \} : null/.test(server));
 T('anexa îl îngheață (contracts.js) și „Salvează anexa" nu-l pierde',
-  /out\.aiPachet = \{ cod: pk\.cod, nume: pk\.nume, pretRON: /.test(ctr) && /'aiQuestionsPerSeat', 'aiPachet', 'pastrareLuni'/.test(ctr));
+  /out\.aiPachet = \{ cod: pk\.cod, nume: pk\.nume, pretRON: /.test(ctr) && /\['servicii', 'vehiculeOferta', 'aiPachet', 'pastrareLuni', 'chirie', 'currency'\]/.test(ctr));
 T('contractul scrie pachetul, prețurile celorlalte și clauza de trecere (aceeași frază ca oferta)',
   /'RA Insight: pachetul ' \+ pk\.nume \+ ' \(' \+ PK\.descriere\(pk\) \+ '\)'/.test(cpdf) && /PK\.CLAUZA_TRECERE/.test(cpdf));
-// Regula stă pe hârtia clientului, care din 21.09 se face pe server.
-T('aceeași regulă e scrisă și pe ofertă', /Prețul unui cont de RA Insight este /.test(PD) &&
-  /nu există costuri suplimentare/.test(PD));
+T('oferta nu mai scrie prețul unui cont', !/Prețul unui cont de RA Insight este /.test(PD));
 
 sect('6e. Ofertare Live — câmpuri, bife și butoane');
 const css2 = fs.readFileSync('./public/css/app.css', 'utf8');

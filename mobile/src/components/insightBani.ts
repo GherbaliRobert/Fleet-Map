@@ -2,7 +2,7 @@
 //
 // Regula: telefonul NU socotește bani. Tot ce vine gata de la server (/api/admin/ai-usage) se ia de acolo: venitul, costul, plasa,
 // ce ne rămâne pe o firmă (`ramanLei`), soldul Anthropic (`pachete.sold`, din _soldAnthropic). Puținul pe care îl socotește pagina web
-// din două cifre ale serverului (ce ne rămâne din total, costul unei firme pe regula veche, totalurile istoricului) stă AICI, copiat
+// din două cifre ale serverului (ce ne rămâne din total, totalurile istoricului) stă AICI, copiat
 // întocmai din ea (_aiuPachete, _aiuTabel, _aiuAvertismente, _aiuIstoric, _aiuStatistici), în aceeași ordine, ca la o graniță de
 // rotunjire să iasă aceeași cifră. Când serverul trimite câmpul gata (`costLei`, `baniLei`…), câștigă serverul.
 //
@@ -63,24 +63,24 @@ export function tilePachete(p: any, fx: number): Tila[] {
 }
 
 // ── Ce cere atenție (web: _aiuAvertismente, _aiuAtentie). Fiecare rând, cu firma lui dacă are una de deschis. ──
-// Pe web prețul pe cont se pune din „Conturi & Abonamente", ecran pe care telefonul nu-l are: aici, fișa firmei.
-export const UNDE_PRET = 'Companii → firma → Abonament & plăți';
-const cuPretFirma = (x: any) => (x.pachet ? x.venitLei > 0 || !x.pachet.ai : x.pretCont > 0);
+// O firmă plătește prețul pachetului (Start e inclus, fără AI — nu e o gaură); un pachet cu AI la 0 lei întreabă pe banii noștri.
+// Prețul se pune din fila „Acces" a firmei (`spreAcces`: firmele de deschis). Regula veche, „pe cont", a ieșit pe 11.11.
+const cuPretFirma = (x: any) => !x.pachet || !x.pachet.ai || x.venitLei > 0;
 export function costLunaLei(s: any, fx: number): number { return n(s.totalCostEur) * fx; }
-export type Atentie = { ton: 'bad' | 'warn' | 'info' | 'ok'; t: string; firma?: any; spreAbonament?: any[] };
+export type Atentie = { ton: 'bad' | 'warn' | 'info' | 'ok'; t: string; firma?: any; spreAcces?: any[] };
 export function avertismente(s: any, rows: any[], fx: number): Atentie[] {
   const r = Array.isArray(rows) ? rows : [], out: Atentie[] = [];
   const cuPret = r.filter(cuPretFirma).length;
   const cuModul = r.filter((x) => x.enabled).length;
   const fara = r.filter((x) => x.enabled && !cuPretFirma(x));
   if (cuModul > 0 && cuPret === 0) {
-    out.push({ ton: 'bad', spreAbonament: fara, t: '**Nicio firmă nu plătește RA Insight.** ' + intrebari(s.totalCalls || 0)
-      + ' luna asta ne costă ' + lei(costLunaLei(s, fx), fx) + ', fără niciun venit. Prețul pe cont se pune pe fiecare firmă, din **' + UNDE_PRET + '**.' });
+    out.push({ ton: 'bad', spreAcces: fara, t: '**Nicio firmă nu plătește RA Insight.** ' + intrebari(s.totalCalls || 0)
+      + ' luna asta ne costă ' + lei(costLunaLei(s, fx), fx) + ', fără niciun venit. Prețul pachetului se pune pe fiecare firmă, din fila **„Acces”**.' });
   } else if (cuModul > cuPret) {
-    out.push({ ton: 'warn', spreAbonament: fara, t: (cuModul - cuPret) + (cuModul - cuPret === 1 ? ' firmă are RA Insight fără preț pe cont' : ' firme au RA Insight fără preț pe cont')
-      + ' — întreabă pe gratis. Se pune din **' + UNDE_PRET + '**.' });
+    out.push({ ton: 'warn', spreAcces: fara, t: (cuModul - cuPret) + (cuModul - cuPret === 1 ? ' firmă are un pachet RA Insight cu AI la 0 lei' : ' firme au un pachet RA Insight cu AI la 0 lei')
+      + ' — întreabă pe banii noștri. Prețul se pune din fila **„Acces”** a firmei.' });
   }
-  if (s.epuizate) out.push({ ton: 'bad', t: s.epuizate + (s.epuizate === 1 ? ' firmă și-a terminat' : ' firme și-au terminat') + ' fondul lunii — răspund doar pe butoane până pe 1.' });
+  if (s.epuizate) out.push({ ton: 'bad', t: s.epuizate + (s.epuizate === 1 ? ' firmă și-a terminat' : ' firme și-au terminat') + ' întrebările lunii — până pe 1 răspund doar pe loc.' });
   return out;
 }
 export const NIMIC_ATENTIE = 'Nimic de rezolvat acum.';
@@ -109,13 +109,12 @@ export function atentie(p0: any, s: any, rows: any[], fx: number): Atentie[] {
 }
 
 // ── Firmă cu firmă: un rând pe firmă, amănuntul la o apăsare (web: _aiuTabel, _aiuPachetRand, _aiuSemnale, _aiuSocoteala, _aiuOameni) ──
-// Ce ne costă și ce ne rămâne: pe un pachet, de la server (plasa, `ramanLei`); pe regula veche, ca pagina, din două cifre ale lui.
-export function costFirmaLei(x: any, fx: number): number { return x.pachet ? (x.plasa ? n(x.plasa.costLei) : 0) : n(x.costEur) * fx; }
+// Ce ne costă și ce ne rămâne: de la server (plasa, `ramanLei`); pe Start (fără AI) nu ne costă nimic.
+export function costFirmaLei(x: any, fx: number): number { return x.plasa ? n(x.plasa.costLei) : 0; }
 export function ramanFirmaLei(x: any, fx: number): number { return x.ramanLei != null ? n(x.ramanLei) : n(x.venitLei) - costFirmaLei(x, fx); }
 export function undeConturi(x: any): string {
   if (x.pachet && !x.pachet.ai) return 'pe Start întreabă doar administratorul firmei';
-  if (x.pachet) return 'conturile le dă administratorul firmei, din RA Insight → „Pachet și conturi”';
-  return 'conturile le dă administratorul firmei, din Utilizatori (regula veche, pe cont)';
+  return 'conturile le dă administratorul firmei, din RA Insight → „Pachet și conturi”';
 }
 export function socoteala(r: any, fx: number): string[] {
   const l: string[] = [];
@@ -124,31 +123,18 @@ export function socoteala(r: any, fx: number): string[] {
   } else if (r.pachet) {
     l.push('Pachet **' + r.pachet.nume + '**: **' + intrebari(r.fond) + '** pe lună, pentru toată firma (' + r.conturi + ' ' + (r.conturi === 1 ? 'cont dat' : 'conturi date') + ').');
     l.push('Prețul pachetului: ' + lei(r.venitLei, fx) + ' pe lună, fix pe firmă. Plasa: RA Insight trece pe butoane când costul real ajunge la 80% din preț.');
-  } else if (r.peCont > 0 && r.conturi === 0 && r.deFacturat === 0) {
-    l.push('Firma are RA Insight în ofertă, dar **nu a dat niciun cont** — deocamdată nu poate întreba nimeni și nu se facturează nimic.');
-    l.push('Un cont ar aduce ' + intrebari(r.peCont) + ' pe lună' + (r.pretCont > 0 ? ', la ' + lei(r.pretCont, fx) : '') + '. Se aprinde din **Utilizatori**, de administratorul firmei.');
-  } else if (r.peCont > 0) {
-    l.push('**' + r.conturi + '** ' + (r.conturi === 1 ? 'cont' : 'conturi') + ' × **' + intrebari(r.peCont) + '** = **' + intrebari(r.fond) + '** pe lună');
-    if (r.deFacturat > r.conturi) l.push('Se facturează **' + r.deFacturat + '** conturi — atâtea a avut **cel mult** luna asta (unul a fost stins pe parcurs, dar l-a folosit)');
-    if (r.pretCont > 0) l.push('**' + r.deFacturat + '** × ' + lei(r.pretCont, fx) + ' = ' + lei(r.venitLei, fx) + ' pe lună');
-    else l.push('Fără preț pe cont în contract — nu se facturează nimic. Se pune din ' + UNDE_PRET + '.');
-  } else if (r.vechi) {
-    l.push('Contract vechi, cu **cotă fixă pe firmă**: ' + intrebari(r.fond) + ' pe lună, indiferent de câte conturi are.');
-    l.push('La reînnoire se trece pe conturi.');
-  } else if (r.enabled) {
-    l.push('Fără fond stabilit — întreabă **nelimitat**, pe banii noștri. Se pune din ' + UNDE_PRET + '.');
   } else {
-    l.push('Firma nu are RA Insight în ofertă.');
+    l.push('Firma nu are RA Insight.');
   }
   return l;
 }
 export function semnale(r: any): { ton: 'bad' | 'warn' | 'mut'; t: string }[] {
   const s: { ton: 'bad' | 'warn' | 'mut'; t: string }[] = [];
   if (r.folosFaraCont) s.push({ ton: 'bad', t: r.folosFaraCont + (r.folosFaraCont === 1 ? ' om a întrebat fără să aibă cont' : ' oameni au întrebat fără să aibă cont') + ' — ar trebui să fie imposibil, verifică.' });
-  if (r.epuizat) s.push({ ton: 'bad', t: r.pachet ? 'Întrebările lunii s-au terminat: până pe 1, doar răspunsuri pe butoane.' : 'Fondul lunii s-a terminat. Clientul primește doar întrebările gratuite până pe 1.' });
+  if (r.epuizat) s.push({ ton: 'bad', t: 'Întrebările lunii s-au terminat: până pe 1, doar răspunsuri pe butoane.' });
   else if (r.pct != null && r.pct >= 80) s.push({ ton: 'warn', t: 'A consumat ' + r.pct + '% din fond — mai are ' + intrebari(r.ramase) + '.' });
-  if (r.contFaraFolos) s.push({ ton: 'warn', t: r.contFaraFolos + (r.pachet ? (r.contFaraFolos === 1 ? ' cont dat, nefolosit' : ' conturi date, nefolosite') : (r.contFaraFolos === 1 ? ' cont plătit, nefolosit' : ' conturi plătite, nefolosite')) + ' luna asta — merită un telefon.' });
-  if (r.contPeInactiv) s.push({ ton: 'mut', t: r.contPeInactiv + (r.contPeInactiv === 1 ? ' cont e pe un om dezactivat' : ' conturi sunt pe oameni dezactivați') + ' — nu se facturează.' });
+  if (r.contFaraFolos) s.push({ ton: 'warn', t: r.contFaraFolos + (r.contFaraFolos === 1 ? ' cont dat, nefolosit' : ' conturi date, nefolosite') + ' luna asta — merită un telefon.' });
+  if (r.contPeInactiv) s.push({ ton: 'mut', t: r.contPeInactiv + (r.contPeInactiv === 1 ? ' cont e pe un om dezactivat' : ' conturi sunt pe oameni dezactivați') + ' — nu ocupă loc în pachet.' });
   return s;
 }
 export function randFirma(x: any, fx: number) {
@@ -157,7 +143,7 @@ export function randFirma(x: any, fx: number) {
   const p = x.plasa;
   return {
     id: x.id, nume: String(x.name || ''),
-    pachet: x.pachet ? String(x.pachet.nume) : 'pe cont (regula veche)', vechi: !x.pachet,
+    pachet: String((x.pachet && x.pachet.nume) || 'Start'),
     bara: x.fond ? (pct || 0) : null, baraTon: x.epuizat ? 'bad' : ((pct || 0) >= 80 ? 'warn' : 'ok'),
     folosite: x.fond ? x.used + ' din ' + x.fond : x.used + ' · fără limită',
     instant: String(x.instant || 0),

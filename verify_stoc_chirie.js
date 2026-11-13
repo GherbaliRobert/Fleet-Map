@@ -60,7 +60,7 @@ function decupez(nume) {
   return (a < 0 || b < 0) ? '' : html.slice(a, b);
 }
 const _rDe = new Function(html.slice(html.indexOf('function _rDe(n)'), html.indexOf('// Aceleași sume, dar pentru celule de tabel:')) + '\n; return _rDe;')();
-const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe', '_aiqFond', '_ofMeta',
+const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe', '_ofMeta',
   decupez('Calculatorul de ofertă') + '\n; return { _ofCalc: _ofCalc };');
 function calcul(campuri) {
   const val = Object.assign({
@@ -68,7 +68,7 @@ function calcul(campuri) {
     'of-ret': '12', 'of-contract': 12, 'of-qGps': 10, 'of-dq130': 10, 'of-dFmc130': 55, 'of-mGps': 100, 'of-pPlain': 29
   }, campuri);
   const doc = { getElementById: (id) => (id in val) ? ((typeof val[id] === 'boolean') ? { type: 'checkbox', checked: val[id], value: '' } : { value: String(val[id]) }) : null };
-  return CALC(doc, {}, () => {}, 5.0, '25.09.2026', 'BNR', _rDe, () => 0, { chirie: { luniMin: 24, marja: 0.5, zileRetur: 15 } })._ofCalc();
+  return CALC(doc, {}, () => {}, 5.0, '25.09.2026', 'BNR', _rDe, { chirie: { luniMin: 24, marja: 0.5, zileRetur: 15 } })._ofCalc();
 }
 const cump = calcul({});
 T('CUMPĂRĂ: aparatele sunt cost unic (10 × 55 €)', cump.hwTotal === 550 && cump.deviceLines.length === 1 && !cump.lines.some((l) => l.fel === 'chirie'));

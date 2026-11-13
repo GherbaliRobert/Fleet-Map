@@ -2168,9 +2168,6 @@ async function getAiCallsForCompany(companyId, days) {
   );
   return Number(r.rows[0] && r.rows[0].n) || 0;
 }
-async function setCompanyAiLimit(id, limit) {
-  await pool.query('UPDATE companies SET ai_monthly_limit = $2 WHERE id = $1', [id, (limit == null || limit === '' || isNaN(limit)) ? null : parseInt(limit)]);
-}
 async function getCompanyById(id) {
   const r = await pool.query('SELECT * FROM companies WHERE id = $1', [id]);
   return r.rows[0] || null;
@@ -7361,7 +7358,7 @@ module.exports = {
   adaugaActiuneInsight, actiuneInsight, actiuniInsight, treceActiuneInsight, legaActiuneInsight, stergeActiuniInsightMaiVechiDe, soferiPentruPotrivire, soferAlFirmei, masinaPentruSofer, masiniSofer,
   adaugaCerereEchipa, cerereEchipa, cerereDeschisa, cereriDeschisePeMasini, cereriEchipaFirma, cereriEchipaToate, cereriEchipaNumar, cereriEchipaOra,
   treceCerereEchipa, interventiiCalendar,
-  getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany, setCompanyAiLimit,
+  getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS, AI_KINDS_COST_FIRMA, sursaExternaLuna, sursaExternaLunaToate,
   setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata, costAiDeLa, costAiPeZile, aiLunaPeFel,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,

@@ -43,13 +43,12 @@ function _setari(settings) {
   if (typeof settings === 'string') { try { return JSON.parse(settings) || {}; } catch (e) { return {}; } }
   return settings;
 }
-// Pachetul firmei, din setările ei. Fără pachet scris → Start (Alin, 14.10: „orice firmă începe cu Start").
-// Firma rămasă pe regula VECHE, pe cont (`ai_quota` cu întrebări pe cont sau cotă fixă, ori limita cea mai veche,
-// `companies.ai_monthly_limit` = `limitaVeche`) → null: o citește regula veche până o mutăm noi pe un pachet, din fișa
-// firmei. Prețul semnat (`pretRON`) bate prețul de pornire.
+// Pachetul firmei, din setările ei. Fără pachet scris → Start (Alin, 14.10: „orice firmă începe cu Start"). Regula veche, „pe
+// cont" (`ai_quota`, limita lunară veche), a fost scoasă pe 11.11 (Alin: „nu avem nicio firmă pe ea… Scoate"): nu mai contează.
+// Prețul semnat (`pretRON`) bate prețul de pornire.
 // `acum` (ms): o trecere la un pachet mai mic, programată de la 1 a lunii următoare (`ai_pachet_urmator`, pasul 6), devine
 // pachetul firmei din clipa aceea; până atunci stă în `urmator` (ecranele scriu „Basic din 1 noiembrie").
-function pachetFirma(settings, limitaVeche, acum) {
+function pachetFirma(settings, acum) {
   const s = _setari(settings);
   const um = s.ai_pachet_urmator && typeof s.ai_pachet_urmator === 'object' && dupaCod(s.ai_pachet_urmator.cod) ? s.ai_pachet_urmator : null;
   const aplicat = um && Number.isFinite(Number(acum)) && Number(acum) >= Number(um.de_la);
@@ -65,8 +64,6 @@ function pachetFirma(settings, limitaVeche, acum) {
     }
     return p;
   }
-  const q = s.ai_quota || {};
-  if (Number(q.questionsPerSeat) > 0 || Number(q.questions) > 0 || Number(limitaVeche) > 0) return null;   // regula veche
   const p = dupaCod('start');
   p.pretRON = 0; p.deLa = null;
   return p;
@@ -399,7 +396,7 @@ function liniiFactura(o) {
 // Întoarce { refuz } sau { sens: 'sus' | 'jos' | 'anulare', deLa, text } — textul e exact cel pe care îl confirmă omul.
 function trecere(o) {
   const a = o.actual, n = dupaCod(o.la), acum = Number(o.acum) || Date.now(), F = String(o.firma || 'Firma').trim();
-  if (!a) return { refuz: 'Firma e pe regula veche, pe cont. Pentru pachete, scrie-ne și o trecem noi.' };
+  if (!a) return { refuz: 'Nu am putut citi pachetul firmei. Scrie-ne și facem trecerea noi.' };
   if (!n) return { refuz: 'Pachetul ales nu există. Pachetele: Start, Basic, Pro, Business.' };
   const pV = r2(a.pretRON), pN = n.ai ? r2(o.pretNou) : 0;
   if (n.ai && !(pN > 0)) return { refuz: 'Pachetul ' + n.nume + ' n-are încă preț. Scrie-ne și îl punem noi.' };

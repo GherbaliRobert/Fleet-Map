@@ -393,20 +393,6 @@ function scrieContract(doc, date) {
   _p(doc, 'Prețul serviciilor este de ' + _bani(anexa.monthlyTotal, anexa.currency) + ' pe lună, fără TVA, conform Anexei nr. 1' +
     (areServicii ? ', și cuprinde abonamentul vehiculelor și serviciile lunare enumerate acolo. ' : '. ') +
     (em.vat_payer === false ? 'Prestatorul nu este plătitor de TVA.' : 'La preț se adaugă TVA în cota legală de ' + cotaTva + '%.'));
-  // RA Insight se vinde pe CONT, iar numărul de conturi îl schimbă clientul singur, din aplicație.
-  // Fără clauza asta, factura din noiembrie ar putea fi alta decât cea din octombrie fără ca omul să
-  // fi semnat nimic — și ar avea dreptate să întrebe de ce.
-  if (Number(anexa.aiSeatPriceRON) > 0) {
-    const nIntrebari = Math.max(0, Math.round(Number(anexa.aiQuestionsPerSeat) || 0));
-    _p(doc, 'Prețul unui cont de RA Insight este de ' + _bani(anexa.aiSeatPriceRON, anexa.currency) + ' pe lună, fără TVA. ' +
-      'Numărul de conturi se modifică oricând de către Beneficiar, din aplicație, iar factura urmează numărul de conturi active în luna respectivă' +
-      (areServicii ? ' (numărul din Anexa nr. 1 e cel de la semnare). ' : '. ') +
-      // 0 = NELIMITAT, exact ca pe firmă. Înainte un 0 se scria „50 de întrebări".
-      (nIntrebari > 0
-        ? 'Fiecare cont aduce ' + C.numar(nIntrebari, 'întrebare', 'întrebări') + ' pe lună, la comun pentru toți utilizatorii Beneficiarului; ' +
-          'după ce se termină, până la reînnoirea lunară RA Insight răspunde doar pe loc, fără costuri suplimentare.'
-        : 'Numărul de întrebări nu este limitat.'));
-  }
   // Pachetul RA Insight (14.10, pasul 5): pachetul ales, prețurile celorlalte și clauza de trecere din aplicație.
   if (anexa.aiPachet && anexa.aiPachet.cod) {
     const PK = require('./pachete');

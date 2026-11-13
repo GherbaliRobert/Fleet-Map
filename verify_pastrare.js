@@ -62,12 +62,12 @@ function decupez(nume) {
 }
 const _rDe = new Function(html.slice(html.indexOf('function _rDe(n)'), html.indexOf('// Aceleași sume, dar pentru celule de tabel:')) + '\n; return _rDe;')();
 const _raxDe = (n) => ' ' + _rDe(n);
-const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe', '_aiqFond', '_raxDe',
+const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe', '_raxDe',
   decupez('Calculatorul de ofertă') + '\n; return { _ofCalc: _ofCalc, _ofRetLuni: _ofRetLuni, _ofRetLabel: _ofRetLabel };');
 function oferta(ret, lunialt) {
   const val = { 'of-nveh': 10, 'of-ncan': 0, 'of-nfms': 0, 'of-agenti': true, 'of-ret': ret, 'of-retcustom-m': lunialt || 0, 'of-contract': 12 };
   const doc = { getElementById: (id) => (id in val) ? (typeof val[id] === 'boolean' ? { checked: val[id], value: '' } : { value: String(val[id]) }) : null };
-  return CALC(doc, {}, () => {}, 5.0, null, null, _rDe, () => 0, _raxDe)._ofCalc();
+  return CALC(doc, {}, () => {}, 5.0, null, null, _rDe, _raxDe)._ofCalc();
 }
 const retDin = (r) => r.lines.filter((l) => l.fel === 'ret')[0];
 const o12 = oferta('12'), o6 = oferta('6'), o24 = oferta('24'), o36 = oferta('36'), oAlt = oferta('custom', 18), oMic = oferta('custom', 8), oMare = oferta('custom', 999);
@@ -76,9 +76,9 @@ T('o ofertă veche pe 6 luni se socotește pe cele 12 incluse, fără bani', !re
 T('24 de luni: rândul de plată, cu prețul de listă (50)', !!retDin(o24) && retDin(o24).total === 50 && retDin(o24).label === 'Păstrare date 24 de luni', JSON.stringify(retDin(o24)));
 T('...și cu LUNILE pe rând (merg la contract și pe firmă)', !!retDin(o24) && retDin(o24).luni === 24);
 T('36 de luni: 100 de lei', !!retDin(o36) && retDin(o36).total === 100 && retDin(o36).luni === 36);
-T('alt număr (18): rândul lui, „18 luni"', CALC({ getElementById: () => null }, {}, () => {}, 5, null, null, _rDe, () => 0, _raxDe)._ofRetLabel({ retTier: 'custom', retCustomMonths: 18 }) === '18 luni');
+T('alt număr (18): rândul lui, „18 luni"', CALC({ getElementById: () => null }, {}, () => {}, 5, null, null, _rDe, _raxDe)._ofRetLabel({ retTier: 'custom', retCustomMonths: 18 }) === '18 luni');
 T('alt număr sub 12 → cele 12 incluse, fără bani', !retDin(oMic));
-T('alt număr uriaș → plafonul', CALC({ getElementById: () => null }, {}, () => {}, 5, null, null, _rDe, () => 0, _raxDe)._ofRetLuni({ retTier: 'custom', retCustomMonths: 999 }) === 60);
+T('alt număr uriaș → plafonul', CALC({ getElementById: () => null }, {}, () => {}, 5, null, null, _rDe, _raxDe)._ofRetLuni({ retTier: 'custom', retCustomMonths: 999 }) === 60);
 T('prețul lunar crește exact cu prețul păstrării', Math.abs((o24.monthly - o12.monthly) - 50) < 0.001 && !retDin(oAlt) === (Number(oAlt.p.retCustom) > 0 ? false : true));
 T('„Client nou din ofertă" duce lunile mai departe', /inclus: !!l\.inclus, luni: l\.luni \|\| null/.test(html));
 

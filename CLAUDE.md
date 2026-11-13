@@ -38,6 +38,13 @@ Alin (25.09): *„astea notează-le și să mi le reamintești."* Lista stă în
 - Ce găsești nou de felul ăsta (un lucru pe care doar ei îl pot face: un cont, o cheie, o hârtie, o
   decizie) intră în aceeași listă, cu data, și îi spui în răspuns că l-ai adăugat.
 
+## Aplicația NU e lansată (Alin, 11.11: „Nu am dat drumul încă. Memorează asta odată.")
+- **Nicio firmă reală, niciun contract semnat, nicio factură trimisă unui client** — pe ratrack.ro sunt doar firmele și conturile noastre de probă.
+- Deci: **NU păstra reguli vechi „pentru firmele scrise așa" / „pentru clienții existenți"** și NU întreba dacă mai e cineva pe o regulă
+  veche — nu e nimeni. O regulă schimbată se schimbă de tot: codul, ecranele, telefonul, hârtiile și probele, pe regula nouă.
+- Excepția: telefoanele NOASTRE pot rula un APK vechi — ce e păstrat „pentru telefonul vechi" rămâne până la APK-ul următor (Robert).
+- Prima aplicare: regula veche a lui RA Insight, „pe cont", a fost scoasă de tot pe 11.11 (Alin: „Scoate").
+
 ## Font / Tipografie (OBLIGATORIU)
 
 **Fontul standard, peste tot, este `Nunito`** — în aplicație ȘI pe paginile publice. Orice modificare de UI se face sub acest font; nu introduce alt font pentru text.

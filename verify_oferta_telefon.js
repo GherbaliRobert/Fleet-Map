@@ -119,13 +119,9 @@ function bucata(a, b) {
   if (i < 0 || j < 0) { console.log('✗ nu găsesc în index.html: ' + a); process.exit(1); }
   return HTML.slice(i, j);
 }
-const M = new Function('document', '_ofN', '_ofPropune', '_ofAtinse', 'raxOfRecalc', '_lei2eur',
-  decupez('Tarife după mărimea flotei') + '\n; return { _aiqFond };')(
-  { getElementById: () => null }, (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; },
-  () => {}, {}, () => {}, (v) => v / 5);
 const _rDe = new Function(bucata('function _rDe(n)', '// Aceleași sume, dar pentru celule de tabel:') + '\n; return _rDe;')();
 const _raxDe = new Function('_rDe', bucata('function _raxDe(n) {', '\n') + '\n; return _raxDe;')(_rDe);
-const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe', '_raxDe', '_aiqFond',
+const CALC = new Function('document', 'window', 'raxOfRecalc', '_fxRate', '_fxDate', '_fxSursa', '_rDe', '_raxDe',
   decupez('Calculatorul de ofertă') + '\n;' + decupez('Oferta pe hârtie') + '\n;'
   + bucata('function _coSocotealaOfertei(o)', '// Durata în lista de alegere:')
   + '\n; return { _ofCalc: _ofCalc, _ofPayload: _ofPayload, _coSocotealaOfertei: _coSocotealaOfertei };');
@@ -139,7 +135,7 @@ function calculator(campuri) {
       return (typeof v === 'boolean') ? { type: 'checkbox', checked: v, value: '' } : { value: String(v) };
     },
   };
-  return CALC(doc, {}, () => {}, FX.eur, FX.date, FX.sursa, _rDe, _raxDe, M._aiqFond);
+  return CALC(doc, {}, () => {}, FX.eur, FX.date, FX.sursa, _rDe, _raxDe);
 }
 // Aceeași flotă ca în verify_tarife.js; telefonul trimite aceleași câmpuri, fără prefixul „of-".
 function flota(peste) {

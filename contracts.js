@@ -411,15 +411,6 @@ function facAnexa(vehicule, pret) {
   };
   if (servicii.length) out.servicii = servicii;
   if (vehOferta.length) out.vehiculeOferta = vehOferta;
-  // RA Insight se vinde pe CONT, iar clientul își schimbă singur numărul de conturi. Prețul unui
-  // cont și câte întrebări aduce se ÎNGHEAȚĂ aici, ca să ajungă negru pe alb în contract — altfel
-  // factura s-ar putea schimba de la o lună la alta fără nimic semnat în spate.
-  if (pret && Number(pret.aiSeatPriceRON) > 0) {
-    out.aiSeatPriceRON = Math.round(Number(pret.aiSeatPriceRON) * 100) / 100;
-    // 0 = NELIMITAT, exact ca pe firmă. Până pe 23.09 un 0 devenea „50 de întrebări pe cont" (o
-    // rezervă din vremea pachetului de 50): hârtia promitea 50, iar firma primea nelimitat.
-    out.aiQuestionsPerSeat = Math.max(0, Math.round(Number(pret.aiQuestionsPerSeat) || 0));
-  }
   // Pachetul RA Insight (14.10, pasul 5): pachetul ales, cu prețul negociat, și prețurile celorlalte la data ofertei — ca hârtia
   // să le spună (clauza de trecere din aplicație se sprijină pe ele). Pachet necunoscut → nimic.
   const ap = pret && pret.aiPachet;
@@ -563,12 +554,12 @@ function drumulClientului(d) {
 }
 
 // Ce trebuie păstrat dintr-o anexă când se re-salvează DOAR lista de aparate: serviciile lunare,
-// compoziția din ofertă și regula RA Insight. Ecranul trimite doar aparatele — fără asta, fiecare
+// compoziția din ofertă și pachetul RA Insight. Ecranul trimite doar aparatele — fără asta, fiecare
 // „Salvează anexa" ștergea restul.
 function dinAnexaDePastrat(anexa) {
   const a = anexa || {};
   const out = {};
-  ['servicii', 'vehiculeOferta', 'aiSeatPriceRON', 'aiQuestionsPerSeat', 'aiPachet', 'pastrareLuni', 'chirie', 'currency'].forEach(function (k) {
+  ['servicii', 'vehiculeOferta', 'aiPachet', 'pastrareLuni', 'chirie', 'currency'].forEach(function (k) {
     if (a[k] != null) out[k] = a[k];
   });
   return out;

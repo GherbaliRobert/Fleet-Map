@@ -84,8 +84,6 @@ export function CompanySheet() {
   const co = (o && o.company) || {};
   const counts = (o && o.counts) || {};
   const dos = o ? dosarPastila(o.dosar) : null;
-  const q = (o && o.ai_quota) || {};
-  const areFond = Number(q.questionsPerSeat) > 0 || Number(q.questions) > 0;
 
   async function sterge(val?: string) {
     const nume = String(co.name || '');
@@ -136,7 +134,7 @@ export function CompanySheet() {
             {fila === 'facturi' && <Facturi o={o} onReload={incarca} />}
             {fila === 'abonament' && <CompanyAbonament ov={o} onReload={incarca} onFacturi={deschideFacturi} />}
             {fila === 'contract' && <Contract o={o} onDosar={() => loc.route(rutaDosar(id))} onReload={incarca} />}
-            {fila === 'acces' && <CompanyAcces companyId={id} areFond={areFond} onChanged={incarca} onOferta={() => alegeFila('abonament')} />}
+            {fila === 'acces' && <CompanyAcces companyId={id} onChanged={incarca} onOferta={() => alegeFila('abonament')} />}
           </>
         )}
       </div>

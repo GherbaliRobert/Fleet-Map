@@ -190,7 +190,6 @@ export function PaginaPachetConturi({ laPachete, onSchimbat }: { laPachete: () =
   if (err) return <div class="sdp"><div class="insp-card">{err}</div></div>;
   if (!j) return <div class="sdp"><div class="insp-gol">Se încarcă…</div></div>;
   const p = planConturi(j);
-  if (p.vechi) return <div class="sdp"><div class="insp-card">{p.mesaj}</div></div>;
   const sr = p.sursa;
   return (
     <div class="sdp pkc">

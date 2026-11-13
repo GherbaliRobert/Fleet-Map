@@ -4,7 +4,7 @@ import { showToast } from '../app/store';
 import { Icon } from './Icon';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { contacte, type Contact, MODULE_FIRMA, MOD_ALES, MOD_INAPOI, modulAutoText } from '../lib/companii';
-import { NOTA_PACHET_FIRMA, acumPachetFirma, butonPachetFirma, confirmarePachetFirma, peRegulaVeche } from '../lib/insightPachet';
+import { NOTA_PACHET_FIRMA, acumPachetFirma, butonPachetFirma, confirmarePachetFirma } from '../lib/insightPachet';
 import { Confirma } from './FlotaUi';
 import { Gros } from './InsightText';
 import '../screens/admin.css';
@@ -109,7 +109,7 @@ export function CompanyEditSheet({ company, onClose, onSaved }: { company: any; 
 }
 
 // ─── Module & limite ─────────────────────────────────────────────────────────────────────────
-// Oferta firmei (trimite la „Abonament & plăți"), cele 4 module, cei 6 agenți AI și limita AI veche.
+// Oferta firmei (trimite la „Abonament & plăți"), pachetul RA Insight, cele 4 module și cei 6 agenți AI.
 // Numele agenților NU se scriu pe telefon: vin de la server (/api/agents). ⚠ Ruta aia arată agenții
 // FIRMEI CONTULUI care întreabă, nu catalogul platformei: un super-admin rămas legat de o firmă (conturi
 // promovate înainte de 13.09) primește doar agenții aprinși acolo. Ca un agent stins la noi să nu dispară
@@ -132,12 +132,12 @@ function agentiDeAratat(catalog: AgentRand[] | null, cfg: any): AgentRand[] {
   impliciti.concat(scrisi).forEach((k: any) => pune(k));
   return out;
 }
-// ─── Fila „Acces" a fișei firmei (12.10): modulele, agenții AI și limita AI ───────────────────────────────────────
+// ─── Fila „Acces" a fișei firmei (12.10): pachetul RA Insight, modulele și agenții AI ───────────────────────────────────────
 // Până pe 12.10 era foaia „Module & limite"; acum e o filă a fișei, ca pe web (fila „Acces", _raxRenderCfg). Modulele
 // vin din lib/companii (MODULE_FIRMA, legate de web prin verify_firma_stare.js), iar „automat / ales de noi" din ce
 // spune serverul (features_setate, dupa_flota, flota_grea) — telefonul nu socotește flota a doua oară.
-export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
-  companyId: number; areFond: boolean; onChanged: () => void; onOferta: () => void;
+export function CompanyAcces({ companyId, onChanged, onOferta }: {
+  companyId: number; onChanged: () => void; onOferta: () => void;
 }) {
   const [cfg, setCfg] = useState<any | null>(null);
   const [err, setErr] = useState('');
@@ -146,8 +146,6 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
   const [setate, setSetate] = useState<Record<string, boolean>>({});
   const [flotaGrea, setFlotaGrea] = useState(false);
   const [ags, setAgs] = useState<string[]>([]);
-  const [lim, setLim] = useState('');
-  const [busy, setBusy] = useState(false);
   const [pkAles, setPkAles] = useState<any | null>(null);   // pachetul de confirmat
   useInapoiInchide(!!pkAles, () => { setPkAles(null); return true; });
 
@@ -163,7 +161,6 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
       dupaRaspuns(s);
       // Starea de pornire = lista scrisă pe firmă; fără ea, implicitul ofertei (agenti_implicit).
       setAgs(Array.isArray(s && s.enabled_agents) ? s.enabled_agents.slice() : ((s && s.agenti_implicit) || []).slice());
-      setLim(s && s.ai_monthly_limit != null ? String(s.ai_monthly_limit) : '');
     });
   }
   useEffect(() => {
@@ -201,7 +198,7 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
     try { await Api.saveCompanySettingsOf(companyId, { enabled_agents: arr }); showToast('Agent ' + (on ? 'activat' : 'dezactivat')); }
     catch (e: any) { setAgs(prev); showToast(e?.message || 'Eroare', true); }
   }
-  // Pachetul RA Insight al firmei (web: raxCfgPachet). Serverul îl scrie și scoate regula veche, pe cont.
+  // Pachetul RA Insight al firmei (web: raxCfgPachet). Serverul îl scrie.
   async function punePachet(p: any) {
     setPkAles(null);
     try {
@@ -211,14 +208,6 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
       showToast('Pachet RA Insight ' + p.nume);
       onChanged();
     } catch (e: any) { showToast(e?.message || 'Eroare', true); }
-  }
-  async function salveazaLimita() {
-    const v = lim.trim();
-    const l = v === '' ? null : Math.max(0, parseInt(v) || 0);
-    setBusy(true);
-    try { await Api.setCompanyAiLimit(companyId, l); showToast(l == null ? 'Limită AI: nelimitat' : 'Limită AI salvată'); onChanged(); }
-    catch (e: any) { showToast(e?.message || 'Eroare', true); }
-    finally { setBusy(false); }
   }
 
   const agOff = !feats.agents;
@@ -279,18 +268,6 @@ export function CompanyAcces({ companyId, areFond, onChanged, onOferta }: {
             );
           })}
 
-          {/* Limita AI lunară e a regulii VECHI: pe o firmă cu pachet (și Start e un pachet) ar muta-o pe regula veche și i-ar schimba factura. */}
-          {peRegulaVeche(cfg) && <>
-          <div class="fm-sec">Limită AI lunară (regula veche, pe cont)</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input class="fm-in" style="flex:1" type="number" inputMode="numeric" min="0" step="10" value={lim}
-              placeholder="ex: 500 — gol = nelimitat" onInput={(e: any) => setLim(e.target.value)} />
-            <button class="fm-btn acc" disabled={busy} onClick={salveazaLimita}><Icon name="check" size={15} /> Salvează</button>
-          </div>
-          <div class="co-note">{areFond
-            ? 'Firma are fond RA Insight — limita asta nu se mai aplică.'
-            : 'Număr maxim de cereri AI (prompturi) la 30 de zile. Întrebările rapide predefinite NU consumă din limită. Gol = nelimitat.'}</div>
-          </>}
         </div>
       )}
       {pkAles && (() => { const c = confirmarePachetFirma(pkAles); return (

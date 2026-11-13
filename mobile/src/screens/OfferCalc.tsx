@@ -227,8 +227,8 @@ export function OfferCalc() {
     murdarRef.current = true;
     proaspat();
   }
-  // Linkurile și butoanele din textul paginii: „Prețurile noastre", „pune prețul propus" (cu sau fără „scris de
-  // mână"), comutatorul CAN și „Aplică recomandarea". Semnele (`data-act`) le pune serverul (`_ofCurat`).
+  // Linkurile și butoanele din textul paginii: „Prețurile noastre", comutatorul CAN și „Aplică recomandarea".
+  // Semnele (`data-act`) le pune serverul (`_ofCurat`).
   function laClic(e: any) {
     const t: any = e.target;
     const a = t && t.closest ? t.closest('[data-act]') : null;

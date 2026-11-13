@@ -218,8 +218,6 @@ export const Api = {
   montajLucrari: () => api<{ stari: Record<string, string>; lucrari: any[] }>('/api/montaj/lucrari'),
   // `null` pe o cheie = „înapoi la automat" (simulatorul de încărcare merge atunci după flotă).
   setCompanyFeatures: (id: number, features: Record<string, boolean | null>) => api<any>(`/api/companies/${id}/features`, { method: 'PUT', body: { features } }),
-  // Limita VECHE de întrebări AI pe lună (null = nelimitat). Contează doar la firmele fără fond RA Insight pe cont.
-  setCompanyAiLimit: (id: number, limit: number | null) => api<any>(`/api/companies/${id}/ai-limit`, { method: 'PUT', body: { limit } }),
   // Venitul lunar pe firmă + total, socotit pe server cu motorul facturii (același ca registrul de clienți).
   companiesMrr: () => api<{ firme: Record<string, number>; totalLei: number }>('/api/companies/mrr'),
   companyPayments: (id: number) => api<any[]>(`/api/companies/${id}/payments`),
@@ -527,7 +525,7 @@ export const Api = {
   // ATENȚIE: /access = vehicule; termenul unui cont demo e pe /access-until (altă rută, doar super-admin).
   userAccess: (id: number) => api<{ devices: string[]; groups: number[] }>(`/api/users/${id}/access`),
   setUserAccess: (id: number, devices: string[], groups: number[]) => api(`/api/users/${id}/access`, { method: 'PUT', body: { devices, groups } }),
-  // RA Insight pe cont (se facturează per cont aprins).
+  // Contul RA Insight al omului („Pachet și conturi"; prețul pachetului e fix pe firmă, oricâte conturi).
   setUserAiSeat: (id: number, on: boolean) => api<{ ok: boolean; ai_seat: boolean; seats: number }>(`/api/users/${id}/ai-seat`, { method: 'PUT', body: { on } }),
   // „Fără limită" (null) / „Cel mult … pe lună": limita unui om, pe Pro și Business. Serverul spune dacă trece de întrebările pachetului.
   setUserAiLimita: (id: number, limita: number | null) => api<any>(`/api/users/${id}/ai-limita`, { method: 'PUT', body: { limita } }),
@@ -603,8 +601,8 @@ export const Api = {
   rezumatRaport: (report: { columns: any[]; rows: any[][] }) => api<any>('/api/ai/report-summary', { method: 'POST', body: { type: 'tabel', report }, timeoutMs: 180000 }),
   // Cartonașul „RA Insight face, cu Da-ul tău": aplica (cu `la` sau `campuri`), refuza, anuleaza, dovezi (pragul și mașina din „Schimbă").
   insightActiune: (id: any, fel: 'aplica' | 'refuza' | 'anuleaza' | 'dovezi', corp?: Record<string, any>) => api<any>('/api/insight/actiuni/' + encodeURIComponent(String(id)) + '/' + fel, { method: 'POST', body: corp || {} }),
-  // Contorul RA Insight (aceeași sursă ca bara de pe web): fondul firmei, cât a pus omul, reînnoirea, locul pe cont.
-  aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; questionsPerSeat?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; blocked?: boolean; periodEnd?: string; pachet?: any; sursa?: any }>('/api/ai/quota', { timeoutMs: 20000 }),
+  // Contorul RA Insight (aceeași sursă ca pe web): pachetul firmei, cât a folosit omul, reîncărcarea, contul omului.
+  aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; blocked?: boolean; periodEnd?: string; pachet?: any; sursa?: any }>('/api/ai/quota', { timeoutMs: 20000 }),
   fx: () => api<{ eur: number; date?: string | null; source?: string }>('/api/fx', { timeoutMs: 20000 }), // curs BNR EUR→RON
   // Agenți AI operaționali (RA Watch/Care/Optimize/Compliance/Client): listă + rulare + constatări.
   aiAgents: () => api<{ agents: { key: string; name: string; desc: string }[]; enabledKeys?: string[] }>('/api/agents'),

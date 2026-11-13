@@ -1399,7 +1399,7 @@ const PAGINI_PUBLICE = [
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-11', amprenta: '478fea3b4ad1', prio: '0.8', freq: 'monthly' },
   { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-11', amprenta: '8979f8d99268', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
-  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-11', amprenta: '54e864c5aa31', prio: '0.3', freq: 'yearly' },
+  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-11', amprenta: '5a9739f0d3cc', prio: '0.3', freq: 'yearly' },
   { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-11', amprenta: 'ff491637243d', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
@@ -3267,8 +3267,8 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
   }
 });
 
-// Pornește/oprește RA Insight pentru un cont. Locurile aprinse = ce se facturează, deci e o decizie
-// cu bani în spate: o ia adminul firmei, deliberat, și rămâne în jurnalul de audit.
+// Pornește/oprește RA Insight pentru un cont, în limita pachetului firmei. O ia adminul firmei, deliberat, și rămâne în jurnalul
+// de audit. Prețul pachetului e fix pe firmă: un cont în plus nu schimbă factura.
 app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -3277,13 +3277,10 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
     const on = !!(req.body && req.body.on);
     const tinta = await db.getUserById(id);
     if (!tinta) return res.status(404).json({ error: 'Utilizator inexistent' });
-    // Un cont de platformă nu stă în fondul niciunei firme; până acum doar interfața ascundea butonul.
-    if (on && isSuper(tinta.role)) return res.status(400).json({ error: 'Contul de platformă are deja RA Insight și nu ocupă un loc în fondul unei firme.' });
-    // Câte conturi erau ÎNAINTE. La STINGERE, ăsta e numărul care trebuie plătit pe luna în curs:
-    // fără el, un cont aprins în octombrie și stins pe 3 noiembrie ar fi mers trei zile pe gratis.
+    // Un cont de platformă nu ocupă un cont din pachetul niciunei firme; până acum doar interfața ascundea butonul.
+    if (on && isSuper(tinta.role)) return res.status(400).json({ error: 'Contul de platformă are deja RA Insight și nu ocupă un cont din pachetul unei firme.' });
     const seatsInainte = await db.getAiSeats(tinta.company_id);
-    // Pachetele (14.10): câte conturi are pachetul și cine poate primi unul (pe Start doar administratorul). Prețul e fix pe
-    // firmă, deci un cont în plus nu schimbă factura: fără vârful lunii și fără anunțul nostru de venit nou.
+    // Pachetele (14.10): câte conturi are pachetul și cine poate primi unul (pe Start doar administratorul).
     const coT = await db.getCompanyById(tinta.company_id).catch(function () { return null; });
     const pT = _pachetCo(coT);
     if (pT && on && !tinta.ai_seat) {
@@ -3295,27 +3292,7 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
     if (!on) await db.setUserAiLimita(id, null).catch(function () {});   // fără cont, nicio întrebare rezervată
     // Locurile se numără în firma OMULUI: la super-admin req.companyId e gol și ieșea numărul pe toată platforma.
     const seats = await db.getAiSeats(tinta.company_id);
-    // Vârful lunii urcă la ORICE schimbare, cu cel mai mare dintre „înainte" și „după" (doar pe regula veche, pe cont).
-    if (!pT) await _urcaSeatsPeak(tinta.company_id, Math.max(seatsInainte, seats)).catch(function () {});
     auditReq(req, on ? 'ai_seat_on' : 'ai_seat_off', 'user', id, { username: u.username, seats: seats, pachet: pT ? pT.cod : undefined });
-    if (on && !pT) {
-      // ȘI AFLĂM ȘI NOI. Un cont în plus e venit nou; până acum nu-l vedea nimeni până la factură.
-      // Notificarea are compania NULL → ajunge doar la super-admini, nu în clopoțelul clientului.
-      try {
-        const co = await db.getCompanyById(tinta.company_id);
-        const q = _aiQuotaFromSettings(co && co.settings);
-        const pret = q.seatPriceRON || 0;
-        await db.createNotification({
-          type: 'ai_seat_on', severity: 'info', companyId: null, userId: null,
-          title: 'RA Insight: ' + ((co && co.name) || 'o firmă') + ' a activat încă un cont',
-          body: (u.username || 'Un utilizator') + ' a primit RA Insight. Firma are acum ' + seats + ' ' +
-            (seats === 1 ? 'cont' : 'conturi') +
-            (pret > 0 ? ' — factura lunii: ' + (seats * pret).toFixed(2) + ' lei.' : '.') +
-            ' Accesul e deja activ; dacă e o greșeală, îl poți retrage din fișa firmei.',
-          data: { company_id: tinta.company_id, company: (co && co.name) || null, seats: seats, user: u.username }
-        });
-      } catch (e) { /* notificarea nu trebuie să oprească activarea */ }
-    }
     res.json({ ok: true, id: id, ai_seat: !!u.ai_seat, seats: seats });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -3330,7 +3307,7 @@ app.put('/api/users/:id/ai-limita', requireAuth, requireAdmin, withCompany, asyn
     if (!tinta.ai_seat) return res.status(400).json({ error: 'Omul nu are RA Insight. Dă-i întâi contul, apoi întrebările.' });
     const co = await db.getCompanyById(tinta.company_id).catch(function () { return null; });
     const p = _pachetCo(co);
-    if (!p) return res.status(400).json({ error: 'Firma e încă pe regula veche, pe cont: întrebările sunt la comun.' });
+    if (!p) return res.status(400).json({ error: 'Contul nu e într-o firmă.' });
     const b = req.body || {};
     const limita = (b.limita == null || b.limita === '') ? null : Number(b.limita);
     const oameni = await db.getAiSeatHolders(tinta.company_id);
@@ -3885,175 +3862,46 @@ app.post('/api/ai/config', requireAuth, requireSuperadmin, async (req, res) => {
     res.json({ ok: true, enabled: ai.aiEnabled() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Super-admin: limită lunară de tokeni AI per companie (0/gol = nelimitat)
-app.put('/api/companies/:id/ai-limit', requireAuth, requireSuperadmin, async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (!(await db.getCompanyById(id))) return res.status(404).json({ error: 'Companie inexistentă' });
-    const _lim = req.body.limit;
-    if (_lim != null && _lim !== '' && Number(_lim) > 100000) return res.status(400).json({ error: 'Limita e în întrebări pe lună, nu în tokeni.' });
-    if (_lim != null && _lim !== '' && req.body.regula_veche !== true) {
-      const _pk = _pachetCo(await db.getCompanyById(id));
-      if (_pk) return res.status(400).json({ error: _mesajRegulaVeche(_pk), pachet: _pk.cod });
-    }
-    await db.setCompanyAiLimit(id, req.body.limit);
-    auditReq(req, 'set_ai_limit', 'company', id, { limit: req.body.limit });
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// Limită AI lunară per companie = număr de PROMPTURI (apeluri AI) / 30 zile, gestionată de super-admin.
-// 0/null = nelimitat; super-admin/platformă fără limită. Întrebările rapide (locale) NU consumă din limită.
-// UN SINGUR contor: cota pe lună calendaristică. Limita veche `ai_monthly_limit` nu mai blochează
-// separat — e preluată ca valoare de cotă în aiQuotaState (vezi acolo), ca să nu mai existe două
-// robinete cu reguli diferite care se contrazic în fața clientului.
+// RA Insight s-a oprit pe luna asta pentru firmă (pachetul: cota, limita, plasa)? Folosit de rezumatul agenților.
 async function aiLimitReached(companyId) {
   if (companyId == null) return false;
   try { return !!(await aiQuotaState(companyId)).blocked; } catch (e) { return false; }
 }
-// ─── Cum se socotește cota, din 14.09 ────────────────────────────────────────────────────────────
-// RA Insight se vinde pe CONT (loc). Fiecare loc aduce un număr de întrebări pe lună, iar
-// întrebările se pun TOATE ÎNTR-UN FOND COMUN al firmei: 3 conturi × 50 = 150 pe lună.
-//
-// NU EXISTĂ COST SUPLIMENTAR. Când fondul se termină, se oprește până pe 1 — iar cine vrea mai mult
-// mai adaugă un cont, pe loc, din aplicație. Decizia lui Alin (14.09) și e cea bună: altfel aveam de
-// socotit pe fiecare firmă câte întrebări au trecut peste fond, la ce preț, cine a acceptat și în ce
-// lună — patru lucruri de calculat, patru de explicat clientului, patru de greșit. Așa produsul se
-// spune în șase propoziții, iar factura are UN rând: N conturi × preț.
-//
-// Riscul nostru e plafonat prin construcție: un cont = maximum N întrebări, care ne costă 1,7–4,5 lei
-// (măsurat), iar contul se vinde cu 12–35 lei după mărimea flotei.
-//   questionsPerSeat = câte întrebări aduce un loc
-//   seatPriceRON     = cât costă un loc pe lună (merge pe factură)
-//   questions        = forma VECHE, cotă fixă pe firmă. Se respectă în continuare, ca ofertele deja
-//                      semnate să nu-și schimbe înțelesul peste noapte.
-const AI_INTREBARI_PE_LOC = 50;
-function _aiQuotaFromSettings(settings) {
-  const s = (settings && (typeof settings === 'string' ? (function () { try { return JSON.parse(settings); } catch (e) { return {}; } })() : settings)) || {};
-  const q = s.ai_quota || {};
-  const n = Number(q.questions);
-  const pe = Number(q.questionsPerSeat);
-  const pret = Number(q.seatPriceRON);
-  return {
-    questions: Number.isFinite(n) && n > 0 ? Math.round(n) : 0,   // forma veche; 0 = fără cotă fixă
-    questionsPerSeat: Number.isFinite(pe) && pe > 0 ? Math.round(pe) : 0,
-    seatPriceRON: Number.isFinite(pret) && pret >= 0 ? Math.round(pret * 100) / 100 : 0,
-    // IMPLICIT: la epuizare SE OPREȘTE. Hotărât cu Alin (11.09): clientul nu trebuie să vadă
-    // prețuri pe întrebare — ar părea că plătește la bucată și i-ar arăta socoteala noastră. Când
-    // fondul se termină, i se propune un CONT în plus, în limbajul restului produsului.
-    // Depășirea contra cost rămâne posibilă, dar se aprinde deliberat, per companie.
-  };
-}
-// ─── Câte conturi a avut firma CEL MULT luna asta ────────────────────────────────────────────────
-// Factura se face într-o singură zi din lună. Dacă ne-am uita doar atunci, un cont aprins pe 3 și
-// stins pe 25 n-ar fi plătit niciodată, deși omul l-a folosit 22 de zile. Așa că ținem minte vârful:
-// se urcă la fiecare aprindere și se resetează la lună nouă.
-function _lunaAcum() { return new Date().toISOString().slice(0, 7); }
-function _seatsPeakLuna(company) {
-  const s2 = (company && (typeof company.settings === 'string' ? (function () { try { return JSON.parse(company.settings); } catch (e) { return {}; } })() : company.settings)) || {};
-  const p2 = (s2.ai_quota || {}).seatsPeak;
-  return (p2 && p2.luna === _lunaAcum() && Number.isFinite(Number(p2.n))) ? Math.max(0, Math.round(Number(p2.n))) : 0;
-}
-async function _urcaSeatsPeak(companyId, seats) {
-  let co = null; try { co = await db.getCompanyById(companyId); } catch (e) { return; }
-  if (_seatsPeakLuna(co) >= seats) return;   // vârful lunii e deja mai mare
-  await _applyCompanySettingsPatch(companyId, { ai_quota: { seatsPeak: { luna: _lunaAcum(), n: seats } } }, { allowFeatures: true })
-    .catch(function () { /* dacă nu se poate scrie, factura ia numărul de acum — nu blocăm nimic */ });
-}
-// ─── Fondul s-a terminat: se oprește, dar SE EXPLICĂ ─────────────────────────────────────────────
-// Ce vede clientul: că fondul lunii s-a epuizat, când se reînnoiește, ce rămâne gratuit și cum
-// poate primi mai mult — un CONT în plus. NICIUN preț pe întrebare: nu vindem la bucată și nu-i
-// arătăm clientului socoteala noastră de tokeni.
+// ─── S-au terminat întrebările: se oprește, dar SE EXPLICĂ ───────────────────────────────────────
+// Pachetele (14.10): pe Start nu se pune nicio întrebare liberă (fără AI); la celelalte, cota, limita omului și plasa. Textele
+// stau în pachete.js. Regula veche, „pe cont", a fost scoasă de tot pe 11.11 (Alin: „nu avem nicio firmă pe ea… Scoate").
 async function _fondEpuizat(req) {
   if (req.companyId == null) return null;
-  // Pachetele (14.10): pe Start nu se pune nicio întrebare liberă (fără AI); la celelalte, cota, limita omului și plasa.
   const sp = await _starePachet(req.companyId, req.auth && req.auth.userId, { strict: true });
-  if (sp) {
-    if (!sp.pachet.ai) return { limited: true, doarButoane: true, pachet: sp.st.cod, reply: pachete.textDoarButoane() };
-    if (sp.st.blocat) return { limited: true, pachet: sp.st.cod, motiv: sp.st.motiv, fondEpuizat: { fond: sp.st.intrebari, motiv: sp.st.motiv }, reply: pachete.textBlocat(sp.st, Date.now()) };
-    return null;
-  }
-  const st = await aiQuotaState(req.companyId, req.auth && req.auth.userId, { strict: true });
-  if (st.unlimited || !st.questions) return null;
-  if (st.used < st.questions) return null;
-  const reinnoire = st.periodEnd ? new Date(st.periodEnd).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) : '1 ale lunii';
-  return {
-    limited: true,
-    fondEpuizat: {
-      fond: st.questions, conturi: st.seats, peCont: st.questionsPerSeat, reinnoire: st.periodEnd
-    },
-    reply: '**Întrebările lunii s-au terminat.**\n\n' +
-      '• Firma a folosit toate cele **' + st.questions + '**' + _deNr(st.questions) + 'întrebări incluse' +
-      (st.seats ? ' (' + st.seats + ' ' + (st.seats === 1 ? 'cont' : 'conturi') + ' × ' + st.questionsPerSeat + ')' : '') + '.\n' +
-      '• Se reînnoiesc pe **' + reinnoire + '**.\n' +
-      '• Până atunci răspund pe loc: unde e o mașină, care sunt oprite, care merg acum, câți km azi, starea flotei.' +
-      // „Un cont în plus aduce încă N" e adevărat DOAR pe regula pe cont. La o firmă pe forma VECHE
-      // (cotă fixă, `questions`), un cont în plus NU aduce nicio întrebare — iar fraza, cu „50" pus
-      // de rezervă, îi promitea exact asta (găsit 23.09). Acum se spune doar unde e adevărat.
-      (st.questionsPerSeat > 0
-        ? '\n\nAi nevoie de mai multe? **Un cont în plus aduce încă ' + st.questionsPerSeat + _deNr(st.questionsPerSeat) + 'întrebări pe lună** — se adaugă din **Utilizatori**, sau cere-i administratorului firmei.'
-        : '\n\nAi nevoie de mai multe? Cere-i administratorului firmei să ne scrie.')
-  };
+  if (!sp) return null;
+  if (!sp.pachet.ai) return { limited: true, doarButoane: true, pachet: sp.st.cod, reply: pachete.textDoarButoane() };
+  if (sp.st.blocat) return { limited: true, pachet: sp.st.cod, motiv: sp.st.motiv, fondEpuizat: { fond: sp.st.intrebari, motiv: sp.st.motiv }, reply: pachete.textBlocat(sp.st, Date.now()) };
+  return null;
 }
 // „10 întrebări", dar „50 de întrebări": de la 20 în sus româna cere „de" (la fel ca nDe() din aplicația de telefon).
 function _deNr(n) { const r = Math.abs(Number(n) || 0) % 100; return (r === 0 && Number(n)) || r >= 20 ? ' de ' : ' '; }
-// Starea contorului: fondul firmei (locuri × întrebări pe loc), cât s-a consumat din el, și — dacă
-// se cere pentru un anume om — cât a pus el însuși. Bara din aplicație arată amândouă.
-// `strict` e pentru POARTA întrebărilor (_fondEpuizat): o citire eșuată merge mai
-// departe ca eroare, iar întrebarea nu pleacă. Fără el, după o sughițare a bazei fondul părea gol
-// („nelimitat") și o întrebare peste fond ajungea la model și pe factură fără acord. Bara din aplicație
-// rămâne îngăduitoare: acolo o cifră lipsă nu costă nimic.
+// Starea contorului = starea pachetului firmei (pachete.js), FĂRĂ bani. `strict` e pentru POARTA întrebărilor (_fondEpuizat): o
+// citire eșuată merge mai departe ca eroare, iar întrebarea nu pleacă. Bara din aplicație rămâne îngăduitoare.
 async function aiQuotaState(companyId, userId, opts) {
   const strict = !!(opts && opts.strict);
   const now = new Date();
   const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  const base = { questions: 0, seats: 0, questionsPerSeat: 0, used: 0, usedByMe: 0, remaining: null, unlimited: true, blocked: false, periodEnd: periodEnd.toISOString() };
+  const base = { questions: 0, seats: 0, used: 0, usedByMe: 0, remaining: null, unlimited: true, blocked: false, periodEnd: periodEnd.toISOString() };
   if (companyId == null) return base; // super-admin: fără cotă
-  // Pachetele RA Insight (14.10): firma pe un pachet (orice firmă fără regula veche e pe Start) are starea ei.
   const sp = await _starePachet(companyId, userId, { strict: strict });
-  if (sp) return _cotaDinPachet(sp.st, periodEnd);
-  let co = null; try { co = await db.getCompanyById(companyId); } catch (e) { if (strict) throw e; }
-  const q = _aiQuotaFromSettings(co && co.settings);
-  // Compatibilitate: dacă un client are doar limita VECHE (`ai_monthly_limit`), o folosim ca număr de
-  // apeluri incluse, fără drept de depășire (vechea limită bloca dur). Așa rămâne un singur contor,
-  // iar clientul vede în sfârșit în interfață de ce s-a oprit.
-  const legacy = Number(co && co.ai_monthly_limit) || 0;
-  if (!q.questions && !q.questionsPerSeat && legacy > 0) q.questions = Math.round(legacy);
-  let seats = 0;
-  try { seats = await db.getAiSeats(companyId); } catch (e) { if (strict) throw e; }
-  // Fondul lunii: locuri × întrebări pe loc. Forma veche (cotă fixă pe firmă) rămâne valabilă.
-  const fond = q.questionsPerSeat > 0 ? seats * q.questionsPerSeat : q.questions;
-  let used = 0, usedByMe = 0;
-  try { used = (await db.getAiMonthUsage(companyId)).questions; } catch (e) { if (strict) throw e; }
-  // Cât a pus omul însuși: doar pentru bară, nu hotărăște nimic — rămâne îngăduitor și în modul strict.
-  if (userId != null) { try { usedByMe = await db.getAiMonthUsageForUser(userId); } catch (e) {} }
-  if (!fond) return Object.assign(base, { seats: seats, questionsPerSeat: q.questionsPerSeat, used: used, usedByMe: usedByMe });
-  return {
-    questions: fond, seats: seats, questionsPerSeat: q.questionsPerSeat, seatPriceRON: q.seatPriceRON,
-    used: used, usedByMe: usedByMe,
-    remaining: Math.max(0, fond - used),
-    unlimited: false,
-    blocked: used >= fond,        // fondul s-a terminat → se oprește până pe 1
-    periodEnd: periodEnd.toISOString()
-  };
+  return sp ? _cotaDinPachet(sp.st, periodEnd) : base;
 }
 // ─── Pachetele RA Insight (14.10) — starea pe server ──────────────────────────────────────────────────────────────────
 // Regulile stau în pachete.js; aici se adună cifrele: câte întrebări a pus firma și omul, limitele, costul REAL al lunii
-// (pe modelul fiecărui răspuns, `db.costAiLunaFirma`). null = firma e pe regula
-// veche, pe cont (o citește aiQuotaState mai jos). `strict` = pentru poarta întrebărilor: o citire eșuată nu lasă să treacă.
-function _pachetCo(co) { return co && plans ? plans.pachetAi(co) : null; }   // regula stă în plans.js (pachetAi + aiVechi)
-// Regula VECHE, pe cont (întrebări pe cont, limita AI lunară), se ține DOAR pentru firmele scrise deja așa (Alin, 20.10:
-// „rezolvăm acum"). Pusă pe o firmă cu pachet — și Start e un pachet —, firma ar trece fără voie pe regula veche și i s-ar
-// schimba factura. Pachetul se alege din fila „Acces" a firmei. O mutare DELIBERATĂ pe regula veche se cere pe față, cu
-// `regula_veche: true` (ca `confirmaStergere` la păstrarea istoricului): nicio pagină și niciun telefon nu o trimit.
-function _mesajRegulaVeche(p) {
-  return 'RA Insight se vinde pe pachete: firma are pachetul ' + p.nume + '. Întrebările și conturile vin din pachet; ' +
-    'pachetul îl schimbi din fila „Acces” a firmei.';
-}
-// Are firma RA Insight cu AI (Basic în sus, sau regula veche cu modulul)? Start e fără AI.
-function _firmaAreAi(co) { if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false; const p = _pachetCo(co); return !p || p.ai; }
-// Are firma ramurile (Safe Drive, Combustibil, Ore de condus, Mentenanță & acte)? De la Basic în sus.
-function _firmaAreRamuri(co) { if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false; const p = _pachetCo(co); return !p || p.ramuri; }
+// (pe modelul fiecărui răspuns, `db.costAiLunaFirma`). Orice firmă are un pachet (fără nimic scris = Start); null = fără firmă.
+// `strict` = pentru poarta întrebărilor: o citire eșuată nu lasă să treacă.
+function _pachetCo(co) { return co && plans ? plans.pachetAi(co) : null; }   // regula stă în plans.js (pachetAi)
+// Luna de acum, „AAAA-LL" (UTC, ca rândurile din ai_usage și din ai_corecturi): „RA Insight · control" (corecturile, estimarea lunii).
+function _lunaAcum() { return new Date().toISOString().slice(0, 7); }
+// Are firma RA Insight cu AI (Basic în sus)? Start e fără AI.
+function _firmaAreAi(co) { if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false; const p = _pachetCo(co); return !!(p && p.ai); }
+// Are firma ramurile (RA Drive, Combustibil, Ore de condus, Mentenanță & acte)? De la Basic în sus.
+function _firmaAreRamuri(co) { if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false; const p = _pachetCo(co); return !!(p && p.ramuri); }
 async function _eurRonAcum() {
   try { const st = await getSystemSettings(); if (st.curs_eur > 1 && st.curs_eur < 100) return st.curs_eur; } catch (e) {}
   try { return (await fxEurRon()).eur || EUR_RON_FALLBACK; } catch (e) { return EUR_RON_FALLBACK; }
@@ -4094,7 +3942,7 @@ async function _starePachet(companyId, userId, opts) {
 // Ce vede omul (bara, caseta pachetului): FĂRĂ bani — costul și plasa sunt doar pentru noi.
 function _cotaDinPachet(st, periodEnd) {
   return {
-    questions: st.intrebari, seats: st.conturiDate || 0, questionsPerSeat: 0, used: st.folosite, usedByMe: st.folositeOm,
+    questions: st.intrebari, seats: st.conturiDate || 0, used: st.folosite, usedByMe: st.folositeOm,
     remaining: pachete.ramaseAfisate(st), unlimited: false, blocked: st.blocat, motiv: st.motiv, periodEnd: periodEnd.toISOString(),
     pachet: { cod: st.cod, nume: st.nume, ai: st.ai, ramuri: st.ramuri, imparte: st.imparte, conturi: st.conturi, intrebari: st.intrebari,
       limitaOm: st.limitaOm, ramaseOm: st.ramaseOm, comun: st.comun, ramaseComun: st.ramaseComun, sumaLimite: st.sumaLimite,
@@ -4341,40 +4189,30 @@ app.get('/api/fx', requireAuth, async (req, res) => {
   } catch (e) { res.json(FX_REZERVA()); }
 });
 // ── începe „Socoteala RA Insight pe o firmă" ─────────────────────────────────────────────────────
-// Din 11.09 RA Insight se vinde pe CONT, nu pe firmă: fondul lunii = conturi aprinse × întrebări pe
-// cont, iar factura ia câte conturi a avut firma CEL MULT în luna aia. Panoul fondatorului trebuie
-// să arate exact socoteala după care se face factura — altfel ne uităm la un ecran care spune altceva
-// decât hârtia trimisă clientului.
+// Rândul unei firme în „RA Insight · control": pachetul (Start în lipsă), întrebările lunii, plasa, cine are cont. Regula veche,
+// „pe cont", a fost scoasă pe 11.11 (Alin: „Scoate").
 //
 // Funcția e CURATĂ (fără bază de date, fără await): primește firma, consumul ei, oamenii ei și cine
 // cât a întrebat, și întoarce rândul gata socotit. Așa poate fi probată cu cifre inventate.
-//   c            = firma (name, settings, ai_monthly_limit)
+//   c            = firma (name, settings)
 //   uz           = consumul lunii pe firmă { questions, last_used }
 //   oameni       = conturile firmei (ai_seat, active, full_name/username)
 //   pePersoana   = { userId: { questions, last_used } }
-//   opt          = { areModul, costEur }  — modulul și costul nostru se află în afară
+//   opt          = { areModul, costEur, costPlasaLei, reguli }  — modulul și costul nostru se află în afară
 function _insightFirma(c, uz, oameni, pePersoana, opt) {
   const o = opt || {}, u = uz || {}, lista = Array.isArray(oameni) ? oameni : [], pe = pePersoana || {};
-  const q = _aiQuotaFromSettings(c && c.settings);
-  // Forma VECHE (cotă fixă pe firmă) rămâne valabilă pentru contractele deja semnate.
-  const vechi = Number(c && c.ai_monthly_limit) || 0;
-  if (!q.questions && !q.questionsPerSeat && vechi > 0) q.questions = Math.round(vechi);
   const activi = lista.filter(function (x) { return x.active !== false; });
   const conturi = activi.filter(function (x) { return !!x.ai_seat; }).length;
-  // Vârful lunii: dacă cineva a stins un cont după ce l-a ținut aprins, factura tot pe el îl ia.
-  // Pachetele RA Insight (14.10): fondul = întrebările pachetului (pe Start, răspunsurile pe butoane — `o.reguli`), venitul =
-  // prețul pachetului, fix pe firmă. Firma rămasă pe regula veche, pe cont, se socotește ca până acum.
-  const pk = plans.pachetAi(c);
-  const deFacturat = pk ? conturi : Math.max(conturi, _seatsPeakLuna(c));
-  const peCont = pk ? 0 : q.questionsPerSeat;
-  const fond = pk ? pk.intrebari : (peCont > 0 ? conturi * peCont : q.questions);
-  const used = pk && !pk.ai ? (Number(o.reguli) || 0) : (Number(u.questions) || 0);
+  // Fondul = întrebările pachetului (pe Start, răspunsurile pe butoane — `o.reguli`); venitul = prețul pachetului, fix pe firmă.
+  const pk = plans.pachetAi(c) || pachete.dupaCod('start');
+  const fond = pk.intrebari;
+  const used = !pk.ai ? (Number(o.reguli) || 0) : (Number(u.questions) || 0);
   const costEur = Math.round((Number(o.costEur) || 0) * 100) / 100;
-  const venitLei = pk ? Math.round((Number(pk.pretRON) || 0) * 100) / 100 : (q.seatPriceRON > 0 ? Math.round(deFacturat * q.seatPriceRON * 100) / 100 : 0);
+  const venitLei = Math.round((Number(pk.pretRON != null ? pk.pretRON : pk.pret) || 0) * 100) / 100;
   // Tabloul nostru (pasul 4): cât din plasă a folosit firma (costul real, cu scrisoarea de luni). Doar pentru noi — clientul nu
   // vede niciodată costurile.
   const r2 = function (x) { return Math.round((Number(x) || 0) * 100) / 100; };
-  const plasa = pk && pk.ai ? { plafonLei: pachete.plafonLei(pk), costLei: r2(o.costPlasaLei), procent: pachete.plafonLei(pk) > 0 ? Math.round(Math.min(9.99, (Number(o.costPlasaLei) || 0) / pachete.plafonLei(pk)) * 100) : 0 } : null;
+  const plasa = pk.ai ? { plafonLei: pachete.plafonLei(pk), costLei: r2(o.costPlasaLei), procent: pachete.plafonLei(pk) > 0 ? Math.round(Math.min(9.99, (Number(o.costPlasaLei) || 0) / pachete.plafonLei(pk)) * 100) : 0 } : null;
   // Cine are cont, plus oricine a întrebat luna asta (dacă apare aici cineva FĂRĂ cont, e o gaură
   // pe care vrem s-o vedem, nu s-o ascundem).
   const oameniRow = lista
@@ -4395,14 +4233,10 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
     id: c && c.id, name: (c && c.name) || '',
     enabled: !!o.areModul,
     conturi: conturi,
-    deFacturat: deFacturat,
-    peCont: peCont,
-    pretCont: pk ? 0 : q.seatPriceRON,
-    fond: fond,                                   // 0 = fără fond (nelimitat, doar pe regula veche)
-    vechi: !pk && !peCont && !!q.questions,       // cotă fixă, din contractele vechi
-    pachet: pk ? { cod: pk.cod, nume: pk.nume, pretRON: pk.pretRON, ai: pk.ai } : null,
+    fond: fond,
+    pachet: { cod: pk.cod, nume: pk.nume, pretRON: pk.pretRON != null ? pk.pretRON : pk.pret, ai: pk.ai },
     plasa: plasa,
-    ramanLei: pk ? r2((Number(pk.pretRON) || 0) - (Number(o.costPlasaLei) || 0)) : null,
+    ramanLei: r2((Number(pk.pretRON != null ? pk.pretRON : pk.pret) || 0) - (Number(o.costPlasaLei) || 0)),
     used: used,
     ramase: fond ? Math.max(0, fond - used) : null,
     pct: fond ? Math.round((used / fond) * 100) : null,
@@ -4425,7 +4259,7 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
 // facturile anulate nu intră (nu sunt venit); storno-urile scad.
 //   „facturat" = suma NETĂ (fără TVA) a rândurilor RA Insight — aia e partea noastră.
 //   „încasat"  = aceleași rânduri, dar numai de pe facturile marcate PLĂTITE.
-const RA_RAND_FACTURA = /^\s*(RA Insight|Asistent AI)/i;   // forma nouă (pe conturi) și cea veche
+const RA_RAND_FACTURA = /^\s*RA Insight/i;   // rândul pachetului („RA Insight Pro", „RA Insight — trecerea la pachetul …")
 function _lunaDin(ms) { const d = new Date(Number(ms) || 0); return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 7) : null; }
 function _insightIstoric(uzPeLuna, facturi, opt) {
   const o = opt || {}, luni = Math.max(1, Math.min(Number(o.luni) || 12, 36));
@@ -4440,9 +4274,9 @@ function _insightIstoric(uzPeLuna, facturi, opt) {
   }
   const gol = function (luna) {
     // `estimatLei` = ce ar ieși pe factură dacă am emite-o acum. Se completează doar pentru luna
-    // curentă, din conturile aprinse — ca panoul să spună ceva încă din prima lună, înainte să
+    // curentă, din pachetele firmelor — ca panoul să spună ceva încă din prima lună, înainte să
     // existe vreo factură. E marcat ca estimare peste tot: nu se amestecă niciodată cu banii reali.
-    return { luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, conturi: 0, firmeFacturate: 0, estimatLei: 0 };
+    return { luna: luna, intrebari: 0, firme: 0, costEur: 0, facturatLei: 0, incasatLei: 0, firmeFacturate: 0, estimatLei: 0 };
   };
   const map = {}; chei.forEach(function (k) { map[k] = gol(k); });
   (uzPeLuna || []).forEach(function (u) {
@@ -4466,7 +4300,6 @@ function _insightIstoric(uzPeLuna, facturi, opt) {
       if (!RA_RAND_FACTURA.test(String(l.desc || ''))) return;
       const net = (Number(l.net) || 0) * semn;
       m.facturatLei += net;
-      m.conturi += (Number(l.qty) || 0) * semn;
       if (f.status === 'paid') m.incasatLei += net;
       const cheie = luna + '|' + f.company_id;
       if (!firmePeLuna[cheie]) { firmePeLuna[cheie] = 1; m.firmeFacturate += 1; }
@@ -4476,7 +4309,6 @@ function _insightIstoric(uzPeLuna, facturi, opt) {
     const m = map[k];
     m.facturatLei = Math.round(m.facturatLei * 100) / 100;
     m.incasatLei = Math.round(m.incasatLei * 100) / 100;
-    m.conturi = Math.round(m.conturi);
     return m;
   });
 }
@@ -4592,14 +4424,14 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     istoric.forEach(function (m) { if (m.luna === lunaAsta) m.estimatLei = venitLei; });
     res.json({
       bani: bani,
-      rows: rows.sort(function (a, b) { return (b.used - a.used) || (b.deFacturat - a.deFacturat); }),
+      rows: rows.sort(function (a, b) { return (b.used - a.used) || String(a.name).localeCompare(String(b.name), 'ro'); }),
       summary: {
         companies: rows.length,
         withFeature: cuModul.length,
         active: folosesc.length,
         // procentul cerut: dintre cei care AU modulul, câți chiar îl folosesc
         adoptionPct: cuModul.length ? Math.round((folosesc.length / cuModul.length) * 100) : 0,
-        conturi: rows.reduce(function (s, r) { return s + r.deFacturat; }, 0),
+        conturi: rows.reduce(function (s, r) { return s + (r.conturi || 0); }, 0),   // conturile RA Insight date, pe toată platforma
         fond: rows.reduce(function (s, r) { return s + (r.fond || 0); }, 0),
         totalCalls: rows.reduce(function (s, r) { return s + r.used; }, 0),
         epuizate: rows.filter(function (r) { return r.epuizat; }).length,
@@ -4653,18 +4485,11 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
 });
 
 // ─── Locul de RA Insight ─────────────────────────────────────────────────────────────────────────
-// Până acum, orice om cu „vede rapoartele" putea pune întrebări — adică toată firma, la prețul unui
-// singur cont. Din 11.09, RA Insight se vinde pe CONT: adminul firmei alege cine îl primește, iar
-// factura urmează numărul de locuri aprinse. Super-adminul (fără companie) rămâne neîngrădit.
-// Mesajul spune ADEVĂRUL: firma are modulul, contul omului nu are acces. Înainte, telefonul arăta
-// „Modulul AI nu e activ pe planul companiei" și omul pleca să caute un abonament care exista deja.
-const MESAJ_FARA_LOC_AI = 'Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei îl poate porni din Utilizatori, așa că cere-i acces.';
-// Pe un pachet RA Insight (15.10, Alin: „3. da, 5. da") conturile se dau doar din „Pachet și conturi": mesajul spune drumul acela.
-// Regula veche (pe cont) le dă tot din Utilizatori.
+// Adminul firmei alege cine primește RA Insight, în limita pachetului; super-adminul (fără companie) rămâne neîngrădit.
+// Mesajul spune ADEVĂRUL: firma are modulul, contul omului nu are acces — și drumul: conturile se dau doar din „Pachet și conturi"
+// (15.10, Alin: „3. da, 5. da").
 const MESAJ_FARA_LOC_PACHET = 'Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”, așa că cere-i acces.';
-async function _mesajFaraLoc(companyId) {
-  try { return _pachetCo(await db.getCompanyById(companyId)) ? MESAJ_FARA_LOC_PACHET : MESAJ_FARA_LOC_AI; } catch (e) { return MESAJ_FARA_LOC_AI; }
-}
+async function _mesajFaraLoc() { return MESAJ_FARA_LOC_PACHET; }
 function requireAiSeat(req, res, next) {
   if (req.isSuper || req.companyId == null) return next();
   db.getUserById(req.auth && req.auth.userId).then(async function (u) {
@@ -4718,7 +4543,6 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
       }
     }
     if (!ai.aiEnabled()) return res.json({ summary: 'Asistentul AI nu este configurat (ANTHROPIC_API_KEY lipsă).', disabled: true });
-    if (await aiLimitReached(req.companyId)) return res.json({ summary: 'Compania ta a atins limita lunară de AI. Contactează administratorul platformei.', limited: true });
     // Rezumatul se numără în fondul firmei ('report'), deci trece prin aceleași reguli ca RA Insight: la epuizare se
     // oprește, iar pe costul suplimentar se cere întâi acordul. Înainte, la o firmă cu voie să depășească fondul,
     // rezumatele intrau pe factură fără nicio casetă.
@@ -5895,7 +5719,8 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
   try {
     if (req.companyId == null) return res.status(400).json({ error: 'Pagina e a unei firme: alege întâi firma.' });
     const sp = await _starePachet(req.companyId, null);
-    if (!sp) return res.json({ vechi: true, mesaj: 'Firma e pe regula veche, cu întrebări pe cont (scrise în contract). Conturile le dai din Utilizatori; pentru un pachet, scrie-ne.' });
+    // Orice firmă are un pachet (Start, dacă nu i-am pus altul); regula veche, „pe cont", a fost scoasă pe 11.11.
+    if (!sp) return res.status(404).json({ error: 'Nu am găsit firma.' });
     const p = sp.pachet, st = sp.st, acum = Date.now();
     const users = (await db.getUsers(req.companyId)).filter(function (u) { return u.active !== false && u.role !== 'superadmin' && !(u.access_until && Number(u.access_until) < acum); });
     const aj = await roluriCompaniei(req.companyId);
@@ -8472,16 +8297,6 @@ function _venitLunar(c, nrCan, conturi) {
   const feats = plans ? plans.featuresFor(c) : {};
   const p = plans ? plans.computeCompanyPrice(c, nrCan, { features: feats }) : { monthlyTotal: 0 };
   let lei = Number(p.monthlyTotal) || 0;
-  // RA Insight se facturează pe cont, separat de abonamentul de vehicule. Se ia câte conturi a avut
-  // CEL MULT luna asta — aceeași regulă ca pe factură.
-  const q = _aiQuotaFromSettings(c && c.settings);
-  const nConturi = Math.max(Number(conturi) || 0, _seatsPeakLuna(c));
-  if (q.seatPriceRON > 0 && nConturi > 0) {
-    lei += nConturi * q.seatPriceRON;
-    // Pe factură, suma fixă veche „Asistent AI" NU mai apare când RA Insight se facturează pe cont
-    // (vezi buildInvoiceLines). Fără scăderea asta, registrul ar fi numărat-o de două ori.
-    lei -= Number(p.breakdown && p.breakdown.aiAssistant) || 0;
-  }
   // Păstrarea istoricului peste cele 12 luni incluse — același rând ca pe factură (`buildInvoiceLines`).
   const past = contracte.pastrareFirma(c && c.settings);
   if (past && past.platita) lei += past.pretRON;
@@ -8722,8 +8537,6 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
         // …socotit pe modelul fiecărui răspuns (db.js, `cost_usd`), nu pe un singur preț.
         ai_cost_usd: ai ? Math.round((Number(u.cost_usd) || 0) * 10000) / 10000 : 0,
         ai_cost_eur: ai ? Math.round((Number(u.cost_usd) || 0) * ai.USD_EUR * 10000) / 10000 : 0,
-        ai_quota: _aiQuotaFromSettings(c.settings).questions || 0,
-        ai_limit: Number(c.ai_monthly_limit) || 0,
         mrr: plans ? Math.round(_companyMrr(c).mrr) : 0,
         health: _healthSummary(hbc[c.id])
       };
@@ -8872,7 +8685,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         // Aparatele care PLĂTESC: cele pornite (au transmis pe firmă), clasificate ca pe factură (`_aparateAbonament`).
         // Până pe 01.10 se numărau și cele nemontate, deci „factura" de aici arăta altă sumă decât factura (pct. 10).
         const pornite = await _aparateAbonament(company);
-        const bc = { none: 0, can: 0, fms: 0, raInsight: (await _companyBillCounts(company)).raInsight };
+        const bc = { none: 0, can: 0, fms: 0 };
         pornite.forEach(function (a) { bc[a.tip] = (bc[a.tip] || 0) + 1; });
         const f = buildInvoiceLines(company, bc, features, 0);
         // Fără nicio mașină pornită nu se facturează nimic — nici ce ține de firmă (abonament.js).
@@ -8886,8 +8699,8 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         const liniiPastrare = f.lines.filter(function (l) { return /^Păstrarea istoricului/.test(l.desc); });
         const retContract = servicii.filter(function (x) { return x.fel === 'ret'; });
         const pastrareFirma = contracte.pastrareFirma(company.settings);
-        // Pe bucăți, nu pe total: RA Insight se facturează după conturile FOLOSITE în lună (clientul le
-        // aprinde și le stinge singur), deci totalul ar da mereu „nu se potrivește" din motive normale.
+        // Pe bucăți, nu pe total: o trecere la alt pachet RA Insight în cursul lunii se facturează pe zile, deci
+        // totalul ar putea spune „nu se potrivește" din motive normale.
         comparatie = {
           masini: {
             contract: { lei: r2((Number(anexa.monthlyTotal) || 0) - suma(servicii, 'total')),
@@ -8899,12 +8712,6 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
           raInsight: anexa.aiPachet ? {
             pachet: true, contractNume: anexa.aiPachet.nume || null, contractLei: r2(anexa.aiPachet.pretRON),
             facturaNume: liniiAi.length ? liniiAi[0].desc.replace(/ — .*$/, '') : null, facturaLei: r2(suma(liniiAi, 'net'))
-          } : (Number(anexa.aiSeatPriceRON) > 0 || liniiAi.length) ? {
-            contractPretCont: Number(anexa.aiSeatPriceRON) || null,
-            contractConturi: suma(servicii.filter(function (x) { return x.fel === 'ai'; }), 'cant'),
-            facturaConturi: bc.raInsight ? bc.raInsight.seats : 0,
-            facturaPretCont: bc.raInsight ? bc.raInsight.seatPriceRON : 0,
-            facturaLei: r2(suma(liniiAi, 'net'))
           } : null,
           // Păstrarea istoricului: câte luni scrie în contract, câte ține aplicația pentru firmă (după
           // asta șterge) și ce ajunge pe factură. Trei cifre care trebuie să spună același lucru.
@@ -8939,9 +8746,6 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     res.json({ company, access: await _accessStatusCached(id), counts, billCounts, users, vehicles, payments, facturi, offer, price, features,
       ..._accesModule(company), insight,
       neplata: npFirma.faza === 'ok' ? null : npFirma,
-      ai_quota: _aiQuotaFromSettings(company.settings),
-      // Casetele vechi („întrebări pe cont") se arată DOAR pe regula veche; altfel firma are un pachet (fila „Acces").
-      ai_regula_veche: !_pachetCo(company),
       // Păstrarea istoricului firmei + cifrele regulii, ca ecranul să nu le scrie a doua oară.
       pastrare: contracte.pastrareFirma(company.settings),
       pastrare_regula: { incluse: contracte.LUNI_ISTORIC_INCLUSE, max: contracte.LUNI_ISTORIC_MAX },
@@ -10220,8 +10024,8 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
   if (cfg.tahograf) deAprinsManual.push('tahograf');
   if (cfg.etransport) deAprinsManual.push('etransport');
   const patch = {};
-  // Pachetul RA Insight (14.10, pasul 5): oferta nouă vinde un pachet (`cfg.aiPachet`, prețul negociat `aiPachetPret`). Se scrie
-  // pe firmă DOAR dacă firma n-are deja un pachet cu AI — unul negociat separat nu se calcă. Ofertele vechi (pe cont) — ca înainte.
+  // Pachetul RA Insight (14.10, pasul 5): oferta vinde un pachet (`cfg.aiPachet`, prețul negociat `aiPachetPret`). Se scrie
+  // pe firmă DOAR dacă firma n-are deja un pachet cu AI — unul negociat separat nu se calcă.
   const _pkOf = cfg.aiPachet ? pachete.dupaCod(cfg.aiPachet) : null;
   if (_pkOf) {
     const coPk = await db.getCompanyById(companyId).catch(function () { return null; });
@@ -10230,14 +10034,6 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
       patch.features = { ai_assistant: true };
       patch.ai_pachet = { cod: _pkOf.cod, pretRON: cfg.aiPachetPret != null && cfg.aiPachetPret !== '' ? Number(cfg.aiPachetPret) : undefined };
     }
-  } else if (cfg.aiA) patch.features = { ai_assistant: true };
-  if (!_pkOf && cfg.aiA) {
-    // aiqN = câte întrebări aduce UN CONT pe lună; 0 = nelimitat (fără plafon).
-    // Fondul lunii se face din locurile aprinse × aiqN — deci aici se scrie regula, nu suma.
-    const n = Math.max(0, Math.round(Number(cfg.aiqN) || 0));
-    const seatPrice = Math.max(0, Math.round((Number(cfg.aiqSeat) || 0) * 100) / 100);
-    // La epuizare se oprește și se propune un cont în plus. Nu există cost suplimentar.
-    patch.ai_quota = n > 0 ? { questionsPerSeat: n, seatPriceRON: seatPrice } : null;
   }
   // Prețul de facturare. Până pe 23.09 nu se scria: firma deschisă din ofertă avea 0 lei în
   // „Abonament & plăți", iar prețul se tasta a doua oară, de mână (exact ce promitea că nu mai faci).
@@ -10251,7 +10047,7 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
       pretScris = {
         name: String(oferta.name || 'Ofertă').slice(0, 60),
         priceNoneRON: lei(u.plain), priceCanRON: lei(u.can), priceFmsRON: lei(u.fms), canImeis: null,
-        basePerVehicleRON: null, canAddonRON: null, fmsAddonRON: null, aiAssistantRON: null, aiAgentsRON: null,
+        basePerVehicleRON: null, canAddonRON: null, fmsAddonRON: null, aiAgentsRON: null,
         pricePerVehicleRON: null, flatPriceRON: null, vehicleLimit: null,
         note: ('Din oferta #' + oferta.id + (oferta.name ? ' — ' + oferta.name : '')).slice(0, 300)
       };
@@ -10347,9 +10143,6 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
           // Din ce se face suma lunară, rând cu rând — ca hârtia s-o poată spune și ca bifarea
           // aparatelor să nu mai taie RA Insight și păstrarea datelor din preț.
           vehiculeOferta: rl ? rl.vehiculeOferta : null, servicii: rl ? rl.servicii : null,
-          // Prețul unui cont de RA Insight ajunge în contract, ca regula să fie semnată, nu presupusă.
-          aiSeatPriceRON: !_cfgOf.aiPachet && _cfgOf.aiA ? (Number(_cfgOf.aiqSeat) || Number(_prOf.pAiA) || 0) : 0,
-          aiQuestionsPerSeat: !_cfgOf.aiPachet ? (Number(_cfgOf.aiqN) || 0) : 0,
           // Pachetul RA Insight (14.10): cel ales, cu prețul negociat, și prețurile celorlalte de la data ofertei — se semnează.
           aiPachet: _cfgOf.aiPachet ? { cod: _cfgOf.aiPachet, pretRON: _cfgOf.aiPachetPret,
             lista: { basic: _prOf.pkBasic, pro: _prOf.pkPro, business: _prOf.pkBusiness } } : null,
@@ -18601,36 +18394,11 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     });
     next.features = f;
   }
-  // Cota AI (comercial: se negociază în ofertă) → STRICT super-admin, ca și `features`.
-  if (body.ai_quota && typeof body.ai_quota === 'object' && opts && opts.allowFeatures) {
-    const q = Object.assign({}, cur.ai_quota || {});
-    const n = Number(body.ai_quota.questions);
-    if (Number.isFinite(n) && n >= 0 && n <= 100000) q.questions = Math.round(n);
-    // Forma nouă: întrebări pe CONT + prețul unui cont. Fondul lunii = locuri aprinse × întrebări/cont.
-    const ps = Number(body.ai_quota.questionsPerSeat);
-    if (Number.isFinite(ps) && ps >= 0 && ps <= 100000) {
-      q.questionsPerSeat = Math.round(ps);
-      // Cele două forme se bat cap în cap: dacă firma trece pe conturi, cota fixă veche trebuie să
-      // dispară, altfel ar rămâne două fonduri și n-ai ști după care se merge.
-      if (q.questionsPerSeat > 0) delete q.questions;
-    }
-    const sp = Number(body.ai_quota.seatPriceRON);
-    if (Number.isFinite(sp) && sp >= 0 && sp <= 100000) q.seatPriceRON = Math.round(sp * 100) / 100;
-    // Nu mai există cost suplimentar: câmpurile vechi se aruncă la prima salvare, ca să nu rămână
-    // prin baza de date valori care nu mai înseamnă nimic.
-    ['overage', 'overagePriceEur', 'extraAcceptedMonth'].forEach(function (k) { delete q[k]; });
-    // Vârful de conturi al lunii (scris de aplicație, nu de om) — { luna: 'AAAA-LL', n: 3 }.
-    const vf = body.ai_quota.seatsPeak;
-    if (vf && typeof vf === 'object' && /^\d{4}-\d{2}$/.test(String(vf.luna || '')) && Number.isFinite(Number(vf.n))) {
-      q.seatsPeak = { luna: String(vf.luna), n: Math.max(0, Math.round(Number(vf.n))) };
-    }
-    next.ai_quota = q;
-  } else if (body.ai_quota === null && opts && opts.allowFeatures) {
-    delete next.ai_quota; // fără cotă = nelimitat
-  }
+  // Regula veche a lui RA Insight, „pe cont" (`ai_quota`), a fost scoasă pe 11.11 (Alin: „Scoate"): ce rămăsese scris pe o firmă
+  // de probă pleacă la prima salvare a setărilor; nimic nu-l mai citește.
+  delete next.ai_quota;
   // Pachetul RA Insight (14.10) → STRICT super-admin (oferta, fișa firmei, trecerea din aplicație o scrie prin rutele ei).
-  // `null` = înapoi la Start (orice firmă fără pachet e pe Start). Un pachet pus scoate regula veche pe cont, ca firma să nu
-  // fie socotită de două ori. Datele greșite nu ajung aici: ruta le refuză (400).
+  // `null` = înapoi la Start (orice firmă fără pachet e pe Start). Datele greșite nu ajung aici: ruta le refuză (400).
   // Fiecare schimbare intră și în istoric (`ai_pachet_istoric`): factura socotește pe zile din el (pachete.liniiFactura), iar o
   // trecere programată rămasă (`ai_pachet_urmator`) se anulează — ce pune super-adminul bate ce era programat.
   if (body.ai_pachet !== undefined && opts && opts.allowFeatures) {
@@ -18642,7 +18410,7 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
       // `hotarat_la` (02.11): factura de pe 1 ia pachetul hotărât înainte de începutul lunii (pachete.pretAvans).
       next.ai_pachet_istoric = pachete.adaugaIstoric(next, ap ? { de_la: ap.de_la, cod: ap.cod, pretRON: ap.pretRON, hotarat_la: acum } : { de_la: acum, cod: 'start', pretRON: 0, hotarat_la: acum });
       delete next.ai_pachet_urmator;
-      if (ap) { next.ai_pachet = ap; delete next.ai_quota; } else delete next.ai_pachet;
+      if (ap) next.ai_pachet = ap; else delete next.ai_pachet;
     }
   }
   // Trecerea din aplicație (pasul 6): administratorul firmei, după confirmare — DOAR prin ruta ei (`opts.trecere`), cu ce a
@@ -18655,11 +18423,11 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     if (t.sens === 'sus') {
       next.ai_pachet_istoric = pachete.adaugaIstoric(next, { de_la: t.deLa, cod: t.la, pretRON: t.pretNou, hotarat_la: Date.now() });
       next.ai_pachet = { cod: t.la, pretRON: t.pretNou, de_la: t.deLa };
-      delete next.ai_pachet_urmator; delete next.ai_quota;
+      delete next.ai_pachet_urmator;
     } else if (t.sens === 'jos') next.ai_pachet_urmator = { cod: t.la, pretRON: t.pretNou, de_la: t.deLa, hotarat_la: Date.now() };
     else if (t.sens === 'anulare') delete next.ai_pachet_urmator;
   }
-  // Păstrarea istoricului (se vinde în ofertă și se facturează) → STRICT super-admin, ca `ai_quota`.
+  // Păstrarea istoricului (se vinde în ofertă și se facturează) → STRICT super-admin.
   // `null` sau 12 luni și mai puțin = înapoi la cele 12 incluse. Un număr stricat nu ajunge aici: ruta
   // îl refuză înainte (400) — nu se ghicește o regulă după care se șterg date.
   if (body.pastrare !== undefined && opts && opts.allowFeatures) {
@@ -18696,8 +18464,8 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const s = await db.getCompanySettings(id);
     const agentiImplicit = plans && plans.enabledAgentsFor(co);
-    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, agenti_implicit: agentiImplicit, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, ai_monthly_limit: (co.ai_monthly_limit != null ? Number(co.ai_monthly_limit) : null), ai_quota: _aiQuotaFromSettings(co.settings),
-      // Pachetul RA Insight (14.10): cel ales (null = regula veche, pe cont) și lista, cu prețurile de listă — fila „Acces".
+    res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, agenti_implicit: agentiImplicit, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, 
+      // Pachetul RA Insight (14.10): al firmei (Start, dacă nu i-am pus altul) și lista, cu prețurile de listă — fila „Acces".
       ai_pachet: (function () { const p = _pachetCo(co); return p ? { cod: p.cod, nume: p.nume, pretRON: p.pretRON, deLa: p.deLa,
         // Trecerea programată de administratorul firmei (pasul 6): o vedem și noi, cu ziua ei.
         urmator: p.urmator ? 'Programat de administratorul firmei: pachetul ' + p.urmator.nume + ' din ' + pachete.dataLunga(p.urmator.deLa) + '.' : null } : null; })(),
@@ -18731,10 +18499,6 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     if (b.ai_pachet !== undefined && b.ai_pachet !== null && !pachete.curataPachet(b.ai_pachet)) {
       return res.status(400).json({ error: 'Pachet RA Insight necunoscut. Alege: ' + pachete.PACHETE.map(function (x) { return x.nume; }).join(', ') + '.' });
     }
-    if (b.ai_quota && typeof b.ai_quota === 'object' && b.ai_pachet === undefined && b.regula_veche !== true) {
-      const _pk = _pachetCo(await db.getCompanyById(id).catch(function () { return null; }));
-      if (_pk) return res.status(400).json({ error: _mesajRegulaVeche(_pk), pachet: _pk.cod });
-    }
     const pachetInainte = b.ai_pachet !== undefined ? _pachetCo(await db.getCompanyById(id).catch(function () { return null; })) : null;
     const next = await _applyCompanySettingsPatch(id, b, { allowFeatures: true, allowAgents: true }); // super-admin poate seta features (plan/billing) + agenți (funcție cu plată)
     const det = { keys: Object.keys(b) };
@@ -18743,7 +18507,7 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     // se poată spune oricând cine a hotărât și când.
     if (b.pastrare !== undefined) det.pastrare = { de: pastrareInainte && pastrareInainte.luni, la: contracte.pastrareFirma(next).luni, confirmat: b.confirmaStergere === true };
     auditReq(req, 'update', 'company_settings', id, det);
-    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {}, ai_quota: next.ai_quota || null,
+    res.json({ ok: true, ui_defaults: next.ui_defaults, enabled_agents: next.enabled_agents, alert_thresholds: next.alert_thresholds || {},
       ai_pachet: next.ai_pachet || null, pastrare: contracte.pastrareFirma(next) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -18923,7 +18687,6 @@ app.put('/api/companies/:id/oferta', requireAuth, requireSuperadmin, async (req,
       basePerVehicleRON: base,
       canAddonRON: numOrNull(c.canAddonRON),
       fmsAddonRON: numOrNull(c.fmsAddonRON),
-      aiAssistantRON: numOrNull(c.aiAssistantRON),
       aiAgentsRON: numOrNull(c.aiAgentsRON),
       pricePerVehicleRON: perVeh,
       flatPriceRON: flat,
@@ -18990,23 +18753,7 @@ async function _companyBillCounts(company) {
     else if (canSet ? canSet.has(d.imei) : (ct !== 'none')) can++;
     else none++;
   });
-  // RA Insight: câte conturi are aprinse firma și câte întrebări a pus peste fondul lunii. Cifrele
-  // astea intră DIRECT pe factură, deci se citesc o dată, aici, nu se recalculează în trei locuri.
-  let raInsight = null;
-  try {
-    const st = await aiQuotaState(company.id);
-    const q = _aiQuotaFromSettings(company.settings);
-    raInsight = {
-      // Se facturează câte conturi a avut CEL MULT active în luna asta, nu câte are chiar acum.
-      // Altfel un cont aprins pe 3 și stins pe 25 ar rămâne neplătit, deși omul l-a folosit 22 de zile.
-      seats: Math.max(st.seats || 0, _seatsPeakLuna(company)),
-      seatsAcum: st.seats || 0,
-      questionsPerSeat: st.questionsPerSeat || 0,
-      seatPriceRON: q.seatPriceRON || 0,
-      used: st.used || 0
-    };
-  } catch (e) { /* fără RA Insight pe factură, restul abonamentului se emite oricum */ }
-  return { none, can, fms, raInsight };
+  return { none, can, fms };
 }
 // Construiește liniile de factură din motorul de preț (plans.computeCompanyPrice → breakdown) + TVA per linie.
 //
@@ -19040,18 +18787,9 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
   } else {
     add('Abonament monitorizare GPS', cnt.total, bd.base);
   }
-  // RA Insight se facturează pe CONT (loc), nu pe firmă. Un singur rând, previzibil: câte conturi a
-  // avut firma luna asta × prețul unui cont. Fără cost suplimentar, fără socoteli pe întrebări.
-  const ra = (billCounts && billCounts.raInsight) || null;
-  // Pachetul RA Insight (pasul 5): un rând fix, „RA Insight Pro", din motorul de preț (plans.js) — ca registrul.
-  if (bd.aiPachet > 0) {
-    add(bd.aiPachetEticheta || 'RA Insight', 1, bd.aiPachet);
-  } else if (ra && ra.seats > 0 && ra.seatPriceRON > 0) {
-    add('RA Insight — conturi (' + ra.seats + ' × ' + ra.seatPriceRON.toFixed(2) + ' lei)' +
-      (ra.seats > ra.seatsAcum ? ' — cel mult active în luna aceasta' : ''), ra.seats, ra.seats * ra.seatPriceRON);
-  } else {
-    add('Asistent AI', 1, bd.aiAssistant);   // forma veche: sumă fixă pe firmă
-  }
+  // Pachetul RA Insight (pasul 5): un rând fix, „RA Insight Pro", din motorul de preț (plans.js) — ca registrul. Regula veche,
+  // „pe cont", și suma fixă „Asistent AI" au ieșit pe 11.11 (Alin: „Scoate").
+  if (bd.aiPachet > 0) add(bd.aiPachetEticheta || 'RA Insight', 1, bd.aiPachet);
   add('Agenți AI (monitorizare inteligentă)', 1, bd.aiAgents);
   if (!lines.length && (p.monthlyTotal > 0)) add('Abonament monitorizare GPS', 1, p.monthlyTotal);
   // Păstrarea istoricului peste cele 12 luni incluse (24/36 de luni, vândute în ofertă). Până pe 24.09
@@ -19082,7 +18820,7 @@ async function _aparateAbonament(company) {
     return { imei: d.imei, tip: tip, de_la: Number(d.abonament_de_la) };
   });
 }
-function _liniiAbonament(company, aparate, an, luna, features, vatRatePct, raInsight) {
+function _liniiAbonament(company, aparate, an, luna, features, vatRatePct) {
   const imp = abonament.imparte(aparate, an, luna);
   const vr = Number(vatRatePct) || 0;
   const model = plans ? plans.computeCompanyPrice(company, {}, { features: features }).model : 'fara-oferta';
@@ -19091,17 +18829,17 @@ function _liniiAbonament(company, aparate, an, luna, features, vatRatePct, raIns
   const faraFirma = Object.assign({}, company, { settings: {} });
   const liniiMasini = function (nr) {
     if (model === 'fix') return [];
-    return buildInvoiceLines(faraFirma, Object.assign({ none: 0, can: 0, fms: 0 }, nr, { raInsight: null }), { ai_assistant: false, agents: false }, vr).lines;
+    return buildInvoiceLines(faraFirma, Object.assign({ none: 0, can: 0, fms: 0 }, nr), { ai_assistant: false, agents: false }, vr).lines;
   };
   // Pachetul RA Insight (pasul 6) NU intră aici cu prețul de azi: se socotește pe zile, din istoricul firmei (mai jos,
-  // pachete.liniiFactura) — o trecere la un pachet mai mare din luna trecută își adaugă diferența. Regula veche, pe cont, rămâne.
+  // pachete.liniiFactura) — o trecere la un pachet mai mare din luna trecută își adaugă diferența.
   const pkAzi = plans ? plans.pachetAi(company) : null;
   const cuPachet = !!(pkAzi && features && features.ai_assistant);
   const setariCo = (typeof company.settings === 'string' ? (function () { try { return JSON.parse(company.settings); } catch (e) { return {}; } })() : company.settings) || {};
   const coFaraPachet = cuPachet ? Object.assign({}, company, { settings: Object.assign({}, setariCo, { ai_pachet: null, ai_pachet_urmator: null, ai_pachet_istoric: null }) }) : company;
   // Ce nu ține de o mașină: RA Insight, păstrarea istoricului, chiria, tariful fix — cu zero mașini.
   const liniiFirma = function () {
-    return buildInvoiceLines(coFaraPachet, { none: 0, can: 0, fms: 0, raInsight: raInsight || null }, features, vr).lines;
+    return buildInvoiceLines(coFaraPachet, { none: 0, can: 0, fms: 0 }, features, vr).lines;
   };
   const M = imp.luna, P = imp.lunaAnterioara;
   const peLuna = ' — ' + abonament.numeLuna(M.an, M.luna);
@@ -19143,9 +18881,7 @@ function _liniiAbonament(company, aparate, an, luna, features, vatRatePct, raIns
 async function facturaAbonamentLuna(company, an, luna, vatRatePct) {
   const features = plans ? plans.featuresFor(company) : {};
   const aparate = await _aparateAbonament(company);
-  let raInsight = null;
-  try { raInsight = (await _companyBillCounts(company)).raInsight; } catch (e) { raInsight = null; }
-  const f = _liniiAbonament(company, aparate, an, luna, features, vatRatePct, raInsight);
+  const f = _liniiAbonament(company, aparate, an, luna, features, vatRatePct);
   // Câte aparate sunt pe firmă, dar nu transmit încă (nemontate) — ecranul le arată, ca să nu mire lipsa lor.
   let nepornite = 0;
   try { nepornite = ((await db.getDevices(company.id)) || []).filter(function (d) { return d.status !== 'archived' && d.abonament_de_la == null; }).length; } catch (e) {}
@@ -21124,9 +20860,8 @@ function _ofHandler(ctx, cod) {
   return fn;
 }
 // HTML-ul paginii, fără ce nu merge pe telefon: iconițele Font Awesome (goale acolo) și `onclick`-urile.
-// Linkurile care fac ceva pe web devin semne pe care telefonul le înțelege: „Prețurile noastre",
-// „pune prețul propus" (cu valoarea lui și cu dacă se socotește scris de mână) și „Poate e: …" (modelul
-// propus pentru o mașină din „Mașinile clientului"). La fel butoanele sfaturilor (29.09): comutatorul CAN
+// Linkurile care fac ceva pe web devin semne pe care telefonul le înțelege: „Prețurile noastre" și
+// „Poate e: …" (modelul propus pentru o mașină din „Mașinile clientului"). La fel butoanele sfaturilor (29.09): comutatorul CAN
 // și „Aplică recomandarea" / „Trece în ofertă" — telefonul le trimite înapoi, serverul le apasă în pagină.
 function _ofAtrScris(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function _ofCurat(h) {
@@ -21138,9 +20873,7 @@ function _ofCurat(h) {
       if (/raxOfPreturi\(/.test(la)) act = ' data-act="preturi"';
       else {
         const md = la.match(/raxOfMsModelAles\(\s*\d+\s*,\s*'([\s\S]*)'\s*\)\s*;?\s*$/);
-        const v = la.match(/getElementById\('of-pAiA'\)[\s\S]*?\.value=\s*([\d.]+)/);
         if (md) act = ' data-act="model" data-val="' + _ofAtrScris(md[1]) + '"';
-        else if (v) act = ' data-act="pret" data-val="' + v[1] + '"' + (/raxOfAtins/.test(la) ? ' data-atins="1"' : '');
       }
       return '<a' + act + (stil ? ' style="' + stil.replace(/"/g, '&quot;') + '"' : '') + '>';
     })

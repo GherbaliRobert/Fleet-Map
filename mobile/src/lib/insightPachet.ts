@@ -76,11 +76,9 @@ export function coloaneConturi(j: any): string[] {
   return ['Om', 'Rol', 'RA Insight'].concat(imp ? ['Întrebări pe lună'] : []).concat(['Folosite în ' + ((j && j.luna) || 'luna asta')]);
 }
 export function planConturi(j: any) {
-  if (j && j.vechi) return { vechi: true as const, mesaj: String(j.mesaj || '') };
   const p = (j && j.pachet) || null;
   const imp = !!(p && p.imparte);
   return {
-    vechi: false as const,
     pilula: p && p.nume ? String(p.nume) : '',
     urmator: j && j.urmator ? String(j.urmator) : '',
     rezumat: ((j && j.rezumat) || []).map(String),
@@ -120,14 +118,12 @@ export function randConturi(toti: any[], pk: any): null | { n: number; cat: stri
   if (!n && !pk) return null;
   return {
     n, cat: n === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight',
-    rest: pk
-      ? '— pachetul ' + pk.nume + (pk.conturi == null ? ', conturi nelimitate' : ', ' + (pk.conturi === 1 ? 'un cont' : pk.conturi + ' conturi')) + '.'
-      : '— la factură intră vârful lunii: cel mai mare număr de conturi aprinse deodată.',
+    rest: pk ? '— pachetul ' + pk.nume + (pk.conturi == null ? ', conturi nelimitate' : ', ' + (pk.conturi === 1 ? 'un cont' : pk.conturi + ' conturi')) + '.' : '',
     link: !!pk,
   };
 }
-// Bagheta de pe rândul omului: doar pe regula veche și la fondator (web: `u.role === 'superadmin' || _usrPachet ? '' : …`).
-export function arataBagheta(u: any, pk: any): boolean { return !(String(u && u.role) === 'superadmin' || pk); }
+// Eticheta „RA Insight" de pe rândul omului (web: `_usrPachet && u.ai_seat`). Bagheta regulii vechi, „pe cont", a ieșit pe 11.11:
+// conturile se dau doar din „Pachet și conturi".
 export function arataEticheta(u: any, pk: any): boolean { return !!(pk && u && u.ai_seat); }
 
 // ── Fila „Acces" a firmei, la noi (web: _raxRenderCfg, raxCfgPachet) ──
@@ -135,10 +131,10 @@ export const NOTA_PACHET_FIRMA = 'Start = doar administratorul, pe butoane (făr
 export function butonPachetFirma(p: any): string {
   return p.nume + ' · ' + (p.pret ? p.pret + (p.pret % 100 >= 20 || p.pret % 100 === 0 ? ' de lei' : ' lei') : 'inclus');
 }
-// „Acum: …" (cu **îngroșat**); fără pachet, firma e pe regula veche.
+// „Acum: …" (cu **îngroșat**); fără pachet scris, firma e pe Start (web: _raxRenderCfg).
 export function acumPachetFirma(s: any): string {
   const a = s && s.ai_pachet;
-  return (a ? 'Acum: **' + a.nume + '**' + (a.deLa ? ', din ' + new Date(a.deLa).toLocaleDateString('ro-RO') : '') + '.' : 'Acum: **regula veche, pe cont** (întrebările pe cont, din „Abonament & plăți").')
+  return (a ? 'Acum: **' + a.nume + '**' + (a.deLa ? ', din ' + new Date(a.deLa).toLocaleDateString('ro-RO') : '') + '.' : 'Acum: **Start**.')
     + (a && a.urmator ? ' **' + a.urmator + '**' : '');
 }
 export function confirmarePachetFirma(p: any): { titlu: string; text: string; ok: string } {
@@ -150,5 +146,3 @@ export function confirmarePachetFirma(p: any): { titlu: string; text: string; ok
     ok: 'Trece pe ' + p.nume,
   };
 }
-// Limita AI lunară și „întrebări pe cont" sunt ale regulii VECHI: pe o firmă cu pachet (și Start e un pachet), serverul le refuză.
-export function peRegulaVeche(s: any): boolean { return !(s && s.ai_pachet); }

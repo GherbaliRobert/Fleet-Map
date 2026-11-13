@@ -185,6 +185,9 @@ const fNr = /export function nrMasini\(n: any\): string \{([\s\S]*?)\n\}/.exec(l
 const fLuni = /export function luniText\(n: any\): string \{ ([^\n]*) \}/.exec(lib);
 T('găsesc verdictul pe web (_raxCtrComparatie) și pe telefon (verdictComparatie)', !!fWeb && !!fTel && !!fNr && !!fDe && !!fLuni);
 T('fișa de pe telefon folosește verdictul comun', /verdictComparatie\(cmp\)/.test(anexaTsx) && !/Math\.abs\(/.test(anexaTsx));
+T('rândul RA Insight: pachetul din contract lângă factură, ca pe web; rândul vechi „pe cont" a ieșit de pe amândouă',
+  /RA Insight: contractul — pachetul <b>\{ai\.contractNume \|\| ''\}<\/b>/.test(anexaTsx) && html.indexOf("'<div>RA Insight: contractul — pachetul <b>'") >= 0 &&
+  !/contractPretCont|facturaConturi|pe cont în contract/.test(anexaTsx + lib) && !/contractPretCont|facturaConturi|pe cont în contract/.test(html));
 ['Contractul și factura spun același lucru', 'Contractul și factura nu spun același lucru', 'Anexa nr. 1 e goală', 'Factura pornește după montaj']
   .forEach((t) => T('titlul „' + t + '" e scris la fel', anexaTsx.indexOf(t) >= 0 && html.indexOf(t) >= 0));
 // Păstrarea istoricului (24.09): rândul ei apare și în cutia „după montaj", și în cea obișnuită; cutia de dinainte
@@ -226,11 +229,14 @@ if (fWeb && fTel && fNr && fDe && fLuni) {
       return { fel, probleme, pastrare };
     };
     const cazuri = [null, {}, { masini: null }];
+    // Pachetul RA Insight (regula veche, „pe cont", a ieșit pe 11.11): la fel; altul pe factură; nimic pe factură; Start (inclus);
+    // o diferență sub un ban.
     const aiuri = [null,
-      { contractPretCont: 19, facturaPretCont: 19, facturaConturi: 2 },
-      { contractPretCont: 19, facturaPretCont: 29, facturaConturi: 1 },
-      { contractPretCont: 19, facturaPretCont: 19.004, facturaConturi: 0 },
-      { contractPretCont: null, facturaPretCont: 29, facturaConturi: 3 }];
+      { pachet: true, contractNume: 'Pro', contractLei: 20, facturaNume: 'RA Insight Pro', facturaLei: 20 },
+      { pachet: true, contractNume: 'Pro', contractLei: 20, facturaNume: 'RA Insight Basic', facturaLei: 10 },
+      { pachet: true, contractNume: 'Basic', contractLei: 10, facturaNume: null, facturaLei: 0 },
+      { pachet: true, contractNume: 'Start', contractLei: 0, facturaNume: null, facturaLei: 0 },
+      { pachet: true, contractNume: 'Pro', contractLei: 20, facturaNume: 'RA Insight Pro', facturaLei: 20.004 }];
     const nefuri = [[], [{ nume: 'Serviciu lunar', lei: 50 }], [{ nume: 'A', lei: 1 }, { nume: 'B „x"', lei: 2.5 }]];
     // Păstrarea istoricului (comparatie.pastrare): lipsă; firma ține MAI PUȚIN decât contractul (s-ar șterge mai
     // devreme — cazul din audit); totul la fel; firma ține mai mult și factura pune în plus; setări stricate pe firmă

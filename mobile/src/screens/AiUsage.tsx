@@ -135,8 +135,8 @@ export function AiUsage() {
   const luni = luniCuViata(istoric);
   const st = statIstoric(luni, fx, d && d.istoricStat);
   const neincasatTot = st.neincasatLei;
-  // O firmă fără preț pe cont: banda duce în fișa ei, la „Abonament & plăți"; mai multe: lista de firme.
-  const spreFirme = (l: any[]) => loc.route(l.length === 1 ? adresaFirmei(l[0].id, 'abonament') : '/admin/companies');
+  // O firmă cu un pachet cu AI la 0 lei: banda duce în fișa ei, la fila „Acces" (pachetul și prețul lui); mai multe: lista de firme.
+  const spreFirme = (l: any[]) => loc.route(l.length === 1 ? adresaFirmei(l[0].id, 'acces') : '/admin/companies');
 
   return (
     <div class="screen">
@@ -164,7 +164,7 @@ export function AiUsage() {
                 <Icon name={a.ton === 'bad' ? 'alert' : 'alertO'} size={15} />
                 <span><Gros text={a.t} /></span>
                 {a.firma != null ? <button type="button" class="fd-btn" onClick={() => loc.route(adresaFirmei(a.firma))}>Deschide firma</button> : null}
-                {a.spreAbonament && a.spreAbonament.length ? <button type="button" class="fd-btn" onClick={() => spreFirme(a.spreAbonament as any[])}>Deschide</button> : null}
+                {a.spreAcces && a.spreAcces.length ? <button type="button" class="fd-btn" onClick={() => spreFirme(a.spreAcces as any[])}>Deschide</button> : null}
               </div>
             ))}
 
@@ -178,7 +178,7 @@ export function AiUsage() {
                   <button type="button" class="aiu-firma-cap" aria-expanded={e ? 'true' : 'false'} onClick={() => setDeschis((m) => ({ ...m, [String(r.id)]: !e }))}>
                     <Icon name={e ? 'arrowDown' : 'chevronR'} size={15} />
                     <b>{r.nume}</b>
-                    <span class={'fd-pill' + (r.vechi ? ' aiu-nota' : ' on')}>{r.pachet}</span>
+                    <span class="fd-pill on">{r.pachet}</span>
                   </button>
                   <div class="aiu-firma-fol">
                     {r.bara != null ? <div class="fd-fond"><div class={'aiu-b ' + r.baraTon} style={'width:' + r.bara + '%'} /></div> : null}
@@ -246,7 +246,7 @@ export function AiUsage() {
               luni.length === 0 ? (
                 <>
                   <div class="fd-sec">Istoric</div>
-                  <div class="fd-note aiu-nota">Încă nu e nimic de arătat aici. Se umple singur: <b>luna curentă</b> apare imediat ce prima firmă are un cont de RA Insight cu preț în contract, iar <b>lunile trecute</b>, pe măsură ce ies facturile.</div>
+                  <div class="fd-note aiu-nota">Încă nu e nimic de arătat aici. Se umple singur: <b>luna curentă</b> apare imediat ce prima firmă are un pachet RA Insight plătit, iar <b>lunile trecute</b>, pe măsură ce ies facturile.</div>
                 </>
               ) : (
                 <>
@@ -273,7 +273,7 @@ export function AiUsage() {
                           <div class="r2">
                             <span>{n(m.intrebari) ? intrebari(m.intrebari) : '— întrebări'}</span>
                             <span>a costat {cost ? <Lei v={cost} fx={fx} /> : '—'}</span>
-                            <span>facturat {bani ? <b style="color:var(--text-primary)"><Lei v={bani} fx={fx} /></b> : '—'}{n(m.conturi) ? ' · ' + m.conturi + (m.conturi === 1 ? ' cont' : ' conturi') : ''}</span>
+                            <span>facturat {bani ? <b style="color:var(--text-primary)"><Lei v={bani} fx={fx} /></b> : '—'}</span>
                             <span>intrat în cont {n(m.incasatLei) ? <Lei v={m.incasatLei} fx={fx} /> : '—'}</span>
                             {est ? <span style="color:var(--fd-warn)">estimat — încă nefacturat</span> : null}
                             {neinc > 0.01 ? <span style="color:var(--fd-warn)">{nr(neinc)} lei neîncasați</span> : null}
@@ -291,7 +291,7 @@ export function AiUsage() {
                       </div>
                     </div>
                   </div>
-                  <div class="fd-note aiu-nota">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele, proformele și facturile anulate nu intră, storno-urile scad. Luna curentă, până se emite factura, e <b>estimată</b> din conturile aprinse (scrie pe ea) și NU intră în total. „Ne-a costat" e plata către model, convertită în lei la cursul de azi.</div>
+                  <div class="fd-note aiu-nota">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele, proformele și facturile anulate nu intră, storno-urile scad. Luna curentă, până se emite factura, e <b>estimată</b> din pachetele firmelor (scrie pe ea) și NU intră în total. „Ne-a costat" e plata către model, convertită în lei la cursul de azi.</div>
                 </>
               )
             )}

@@ -120,8 +120,9 @@ export function verdictComparatie(cmp: any): { fel: string; probleme: string[]; 
       (difNr > 0 ? ' Firma are ' + nrMasini(difNr) + ' în plus față de contract — fă un act adițional.'
         : difNr < 0 ? ' Firma are cu ' + nrMasini(-difNr) + ' mai puțin decât în contract.' : ''));
   }
-  if (ai && ai.contractPretCont && ai.facturaPretCont && Math.abs(ai.contractPretCont - ai.facturaPretCont) >= 0.01) {
-    probleme.push('RA Insight: în contract un cont costă ' + lei(ai.contractPretCont) + ', pe firmă e trecut ' + lei(ai.facturaPretCont) + '.');
+  // Pachetul RA Insight (14.10): în contract un pachet cu prețul lui, pe factură un rând fix — se compară direct.
+  if (ai && ai.pachet && ai.contractLei > 0 && Math.abs((Number(ai.facturaLei) || 0) - ai.contractLei) >= 0.01) {
+    probleme.push('RA Insight: contractul spune pachetul ' + (ai.contractNume || '') + ', ' + lei(ai.contractLei) + ' pe lună; pe factură ar fi ' + (ai.facturaNume ? '„' + ai.facturaNume + '", ' : '') + lei(ai.facturaLei || 0) + '. Pachetul firmei se pune din fila „Acces".');
   }
   for (let i = 0; i < nef.length; i++) {
     probleme.push('„' + nef[i].nume + '" (' + lei(nef[i].lei) + ' pe lună) e în contract, dar nu ajunge pe factură.');

@@ -252,6 +252,8 @@ const LEGATE = [
   ['/', '<span class="dot"></span> La fiecare oră</span>', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră', 'primaPagina'],
   ['/intrebari-frecvente', 'Istoricul pozițiilor se păstrează <b>12 luni</b>', C.LUNI_ISTORIC_INCLUSE === 12, 'LUNI_ISTORIC_INCLUSE din contracts.js e ' + C.LUNI_ISTORIC_INCLUSE, 'faqPastrare'],
   ['/intrebari-frecvente', 'aveți <b>30 de zile</b> să ne cereți datele', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE, 'faqPastrare'],
+  // Termeni (11.11, Alin: „2. Da"): aceeași cifră ca în contract și în Confidențialitate, nu „un termen rezonabil".
+  ['/termeni', 'Clientul are <b>30 de zile</b> să ceară datele înapoi', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE],
   ['/alerte-itp-rca-rovinieta', 'implicit cu <b>30 de zile</b> înainte de expirare', num(PREAVIZ, /const ACTE_ZILE = (\d+);/) === 30, 'ACTE_ZILE din preaviz.js'],
   ['/alerte-itp-rca-rovinieta', 'implicit e de 30 de zile', num(PREAVIZ, /const ACTE_ZILE = (\d+);/) === 30, 'ACTE_ZILE din preaviz.js'],
   ['/alerte-itp-rca-rovinieta', 'între 1 și 365 de zile', /\{ k: 'docDaysLead', min: 1, max: 365,/.test(SRV), 'limitele docDaysLead din ALERT_THRESHOLD_SPECS (server.js)'],

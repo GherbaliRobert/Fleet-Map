@@ -7,11 +7,12 @@
 //   1. intrările: rândul din „⋯", rândul pachetului din sertar, „Vezi pachetele" din cartonașul încuiat și din caseta limitei,
 //      cartonașul „nu e pornit" la administrator; doar administratorul firmei, ca pe web;
 //   2. „Vezi pachetele" (insightPachete) și confirmarea (arataConfirmarea, cu tot cu 409), RULATE pe un DOM de carton lângă lib/insightPachet;
-//   3. „Pachet și conturi" (deseneazaPachetConturi): vechi, Basic, Pro, urmator, nuPoate, limita, Sursa, treceri;
-//   4. Utilizatori (_usrSeatsHtml, bagheta) și fila „Acces" (_raxRenderCfg, raxCfgPachet), rulate; „Abonament & plăți" pe regula veche;
+//   3. „Pachet și conturi" (deseneazaPachetConturi): Basic, Pro, Start, urmator, nuPoate, limita, Sursa, treceri;
+//   4. Utilizatori (_usrSeatsHtml, eticheta) și fila „Acces" (_raxRenderCfg, raxCfgPachet), rulate; „Abonament & plăți" (doar drumul spre „Acces");
+//      regula veche, „pe cont" (bagheta, limita AI, întrebările pe cont), a ieșit pe 11.11 — de pe web, de pe telefon și de pe server;
 //   5. oferta: pachetul și prețul, fără câmpurile vechi;
 //   6. „RA Insight · control": fără cartonașele vechi (cifrele le ține verify_insight_bani.js), fără „Proba modelelor";
-//   7. pe server pornit, prin clientul HTTP adevărat al telefonului: Start / Basic / Pro, regula veche, administrator cu și fără cont,
+//   7. pe server pornit, prin clientul HTTP adevărat al telefonului: Start / Basic / Pro, `ai_quota` aruncat, administrator cu și fără cont,
 //      manager, fondator; confirmarea cu 409; nimeni de la o firmă nu vede costuri;
 //   8. ecranele desenate în HTML (cu preact; în CI se sare).
 //
@@ -243,7 +244,7 @@ function parteaPachetelor() {
     await comparaPachete('administrator pe Basic', baza());
     await comparaPachete('programat Basic din 1 decembrie, pe Pro', Object.assign(baza(), { actual: 'pro', urmator: { cod: 'basic', nume: 'Basic', deLa: 1, text: 'Din 1 decembrie: pachetul Basic.', scurt: 'Programat din 1 decembrie' } }));
     await comparaPachete('fără drept de schimbat', Object.assign(baza(), { poateSchimba: false, schimbText: 'Pentru alt pachet, scrie-ne.' }));
-    await comparaPachete('regula veche (niciun pachet actual)', Object.assign(baza(), { actual: null }));
+    await comparaPachete('fără pachet actual (fondatorul n-are firmă)', Object.assign(baza(), { actual: null }));
     await comparaPachete('fără comparație și fără „în toate"', Object.assign(baza(), { comparatie: [], inToate: [] }));
     const p = L.planPachete(baza());
     T('„Alege": pe toate, afară de al tău', J(p.carduri.map((c) => c.alege)) === J(['Alege Start', '', 'Alege Pro', 'Alege Business']), J(p.carduri.map((c) => c.alege)));
@@ -287,9 +288,8 @@ function parteaPachetelor() {
       'fără pachet în răspuns': { pachet: null, rezumat: [], oameni: [], nota: '' },
     };
     for (const k of Object.keys(CAZURI)) await comparaConturi(k, CAZURI[k]);
-    await comparaConturi('regula veche', { vechi: true, mesaj: 'Firma e pe regula veche.' });
     await comparaConturi('refuzul serverului', { error: 'Doar administratorul.' }, 403);
-    T('… pe telefon, regula: `vechi` arată `mesaj`', L.planConturi({ vechi: true, mesaj: 'M' }).mesaj === 'M');
+    T('ramura „regula veche" (`vechi`) a ieșit de pe web, de pe telefon și de pe server', !/j\.vechi/.test(INSP) && L.planConturi({ vechi: true, mesaj: 'M' }).vechi === undefined && !/p\.vechi/.test(S.comp) && !/vechi: true, mesaj:/.test(server));
     // Cuvintele de după apăsări: rulate pe web, pe aceleași cazuri.
     const toast = {};
     const faceLoc = functie(INSP, 'window.insightLoc = async function (id, on, nume)');
@@ -318,15 +318,15 @@ function parteaUtilizatorilor() {
       for (const lista of [[], [om(true)], [om(true), om(true)], [om(false)]]) {
         const w = f(pk)(lista), r = L.randConturi(lista, pk);
         const tw = faraEtichete(w).replace(/\s+/g, ' ').trim();
-        const tl = r ? (r.n + ' ' + r.cat + ' ' + r.rest + (r.link ? ' ' + L.LINK_CONTURI : '')) : '';
+        const tl = r ? (r.n + ' ' + r.cat + (r.rest ? ' ' + r.rest : '') + (r.link ? ' ' + L.LINK_CONTURI : '')) : '';
         T('rândul de sus (' + J(pk && pk.nume) + ', ' + lista.length + '): la fel ca _usrSeatsHtml', tw === tl, tw + ' / ' + tl);
       }
     }
     const randUser = taie(html, "(_usrPachet && u.ai_seat ? '<span class=\"rau-ra\"", 'semne +');
     T('eticheta: aceeași regulă și același text ca pe web', /\(_usrPachet && u\.ai_seat \?/.test(randUser) && randUser.indexOf(L.TITLU_RA) >= 0 && L.arataEticheta({ ai_seat: true }, { nume: 'B' }) && !L.arataEticheta({ ai_seat: false }, { nume: 'B' }) && !L.arataEticheta({ ai_seat: true }, null));
-    T('bagheta: pe web `u.role === \'superadmin\' || _usrPachet` o scoate', /\(u\.role === 'superadmin' \|\| _usrPachet \? '' :/.test(html));
-    for (const [u, pk, v] of [[{ role: 'viewer' }, null, true], [{ role: 'viewer' }, { nume: 'B' }, false], [{ role: 'superadmin' }, null, false], [{ role: 'company_admin' }, { nume: 'B' }, false]]) T('bagheta (' + J([u.role, !!pk]) + ')', L.arataBagheta(u, pk) === v);
-    T('…pe ecran: bagheta după `arataBagheta`, eticheta după `arataEticheta`, linkul duce la „Pachet și conturi"', /\{arataBagheta\(u, pachetRa\) && \(/.test(S.users) && /arataEticheta\(u, pachetRa\) &&/.test(S.users) && /loc\.route\(rutaRamura\('pachet'\)\)/.test(S.users) && !/u\.role !== 'superadmin' && \(\s*<button/.test(S.users));
+    // Bagheta regulii vechi (un cont dat din Utilizatori) a ieșit pe 11.11: conturile se dau doar din „Pachet și conturi".
+    T('bagheta a ieșit: nici pe web (`raxAiSeat`), nici pe telefon (`arataBagheta`, `toggleSeat`)', !/raxAiSeat/.test(html) && !/arataBagheta|toggleSeat/.test(S.users + S.lib) && typeof L.arataBagheta === 'undefined');
+    T('…pe ecran: eticheta după `arataEticheta`, linkul duce la „Pachet și conturi"', /arataEticheta\(u, pachetRa\) &&/.test(S.users) && /loc\.route\(rutaRamura\('pachet'\)\)/.test(S.users) && !/u\.role !== 'superadmin' && \(\s*<button/.test(S.users));
     T('pachetul: din /api/ai/quota, doar la omul unei firme (ca loadUsers)', /currentUser\.role !== 'superadmin'\) \{ try \{ var qp = await fetch\('\/api\/ai\/quota'\)/.test(html) && /me\.value\?\.role !== 'superadmin'\) \{ try \{ setPachetRa\(cuPachetFirmei\(me\.value\?\.role, await Api\.aiQuota\(\)\)\)/.test(S.users) && L.cuPachetFirmei('superadmin', { pachet: { nume: 'B' } }) === null && L.cuPachetFirmei('viewer', { pachet: { nume: 'B' } }).nume === 'B' && L.cuPachetFirmei('viewer', {}) === null);
 
     // Fila „Acces": funcția paginii, rulată.
@@ -338,7 +338,7 @@ function parteaUtilizatorilor() {
     };
     const PK = [{ cod: 'start', nume: 'Start', pret: 0, conturi: 1, intrebari: 50 }, { cod: 'basic', nume: 'Basic', pret: 10, conturi: 2, intrebari: 200 }, { cod: 'pro', nume: 'Pro', pret: 20, conturi: 5, intrebari: 600 }, { cod: 'business', nume: 'Business', pret: 30, conturi: null, intrebari: 1000 }, { cod: 'x', nume: 'X', pret: 119, conturi: 1, intrebari: 119 }, { cod: 'y', nume: 'Y', pret: 12.5, conturi: 1, intrebari: 20 }];
     for (const ales of [{ cod: 'basic', nume: 'Basic', deLa: Date.UTC(2026, 9, 1) }, { cod: 'pro', nume: 'Pro', urmator: 'Programat de administratorul firmei: pachetul Basic din 1 decembrie.' }, null]) {
-      const w = scoala({ pachet: ales, pachete: PK, feats: {}, agents: [], setate: {}, aiLimit: '' });
+      const w = scoala({ pachet: ales, pachete: PK, feats: {}, agents: [], setate: {} });
       const cfg = { ai_pachet: ales, pachete: PK };
       const bl = taie(w, 'Pachet RA Insight</div>', '>Module (acces funcții)');
       const butoane = (bl.match(/<button[^>]*>[^<]*<\/button>/g) || []).map(faraEtichete);
@@ -347,7 +347,7 @@ function parteaUtilizatorilor() {
       const tw = nota.slice(0, nota.indexOf(L.NOTA_PACHET_FIRMA) + L.NOTA_PACHET_FIRMA.length);
       const tl = (L.acumPachetFirma(cfg) + ' ' + L.NOTA_PACHET_FIRMA).replace(/\*\*/g, '');
       T('…aceeași notă', tw.replace(/\s+/g, ' ') === tl.replace(/\s+/g, ' '), tw + ' // ' + tl);
-      T('…limita AI doar pe regula veche', /regula veche, pe cont\)<\/div>[\s\S]*rax-cfg-ailimit/.test(w) === L.peRegulaVeche(cfg), String(L.peRegulaVeche(cfg)));
+      T('…fără limita AI a regulii vechi (a ieșit pe 11.11)', !/rax-cfg-ailimit|regula veche|Limită AI lunară/.test(w), w.slice(0, 160));
     }
     let cerut = null;
     const pune = new Function('_raxCfg', 'raConfirm', 'fetch', 'window', 'document', '_raxRenderCfg', 'var w = {}; ' + functie(html, 'window.raxCfgPachet = async function (cod)').replace('window.raxCfgPachet =', 'w.f =') + '; return w.f;')(
@@ -357,9 +357,10 @@ function parteaUtilizatorilor() {
       const c = L.confirmarePachetFirma(p);
       T('confirmarea pachetului ' + p.nume + ': aceleași cuvinte ca raxCfgPachet', cerut.m === c.text && cerut.o.title === c.titlu && cerut.o.okLabel === c.ok, cerut.m + ' / ' + c.text);
     }
-    T('fila „Acces": butoanele pachetului, nota și confirmarea; limita doar pe regula veche', /butonPachetFirma\(p\)/.test(S.acces) && /peRegulaVeche\(cfg\) && <>/.test(S.acces) && /saveCompanySettingsOf\(companyId, \{ ai_pachet: \{ cod: p\.cod \} \}\)/.test(S.acces));
-    T('…numele rândului ca pe web', /Limită AI lunară \(regula veche, pe cont\)/.test(S.acces));
-    T('„Abonament & plăți": întrebările pe cont doar pe `ai_regula_veche`, altfel drumul spre „Acces"', /\{!!ov\.ai_regula_veche && <>/.test(S.abon) && /\{!ov\.ai_regula_veche && <>/.test(S.abon) && /Se vinde pe pachete; pachetul firmei se alege din fila „Acces”\./.test(S.abon) && html.indexOf('Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.') >= 0 && /rutaFisa\(id, 'acces'\), true/.test(S.abon) && /ai_regula_veche: !_pachetCo\(company\)/.test(server));
+    T('fila „Acces": butoanele pachetului, nota și confirmarea; fără limita AI veche', /butonPachetFirma\(p\)/.test(S.acces) && /saveCompanySettingsOf\(companyId, \{ ai_pachet: \{ cod: p\.cod \} \}\)/.test(S.acces)
+      && !/peRegulaVeche|setCompanyAiLimit|Limită AI lunară|ai_monthly_limit/.test(S.acces + S.lib + S.endpoints) && html.indexOf('Limită AI lunară') < 0 && !/raxCfgSaveAiLimit/.test(html));
+    T('„Abonament & plăți": doar drumul spre „Acces", ca pe web; întrebările pe cont și „Asistent AI" au ieșit', /Se vinde pe pachete; pachetul firmei se alege din fila „Acces”\./.test(S.abon) && html.indexOf('Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.') >= 0 && /rutaFisa\(id, 'acces'\), true/.test(S.abon)
+      && !/ai_regula_veche|ai_quota|aiAssistantRON|questionsPerSeat/.test(S.abon) && !/ai_regula_veche/.test(server) && !/raxSaveAiQuota|rax-aiq-n|aiAssistantRON/.test(html));
     T('…și telefonul nu mai pomenește „Module & limite"', !/Module &amp; limite/.test(S.abon) && html.indexOf('Agenții se pornesc și se opresc din fila „Acces”.') >= 0 && S.abon.indexOf('Agenții se pornesc și se opresc din fila „Acces”.') >= 0);
   })();
 }
@@ -439,7 +440,7 @@ async function parteaServerului() {
   const coP = await firma('Firma Pro SRL', { ai_pachet: { cod: 'pro' } });
   const coV = await firma('Firma Veche SRL');
   const pusV = await R('PUT', '/api/companies/' + coV.id + '/settings', { ai_quota: { questionsPerSeat: 50, seatPriceRON: 17 }, regula_veche: true });
-  T('(pregătire) firma pe regula veche', pusV.s === 200, J(pusV));
+  T('(pregătire) `ai_quota` trimis se primește (200) și se aruncă', pusV.s === 200 && !(pusV.j && 'ai_quota' in pusV.j), J(pusV));
   const admS = await om(coS, 'sef@start.ro', 'company_admin');
   const omS = await om(coS, 'om@start.ro', 'manager');
   const admB = await om(coB, 'sef@basic.ro', 'company_admin');
@@ -554,7 +555,7 @@ async function parteaServerului() {
   const uP = await Api.users();
   const rP = L.randConturi(uP, L.cuPachetFirmei('company_admin', await Api.aiQuota()));
   T('Utilizatori, pe Pro: rândul cu pachetul și linkul', rP && rP.n === 1 && rP.link && /pachetul Pro, 5 conturi/.test(rP.rest), J(rP));
-  T('…bagheta nu apare, eticheta da', uP.filter((u) => u.role !== 'superadmin').every((u) => !L.arataBagheta(u, { nume: 'Pro' })) && uP.some((u) => L.arataEticheta(u, { nume: 'Pro' })));
+  T('…eticheta apare la cine are cont', uP.some((u) => L.arataEticheta(u, { nume: 'Pro' })));
 
   // ── Pe Start ──
   await tel('sef@start.ro');
@@ -569,21 +570,19 @@ async function parteaServerului() {
   T('…fără costuri', !cheiCost(qS).concat(cheiCost(cs), cheiCost(ps)).length);
   void admS;
 
-  // ── Regula veche ──
+  // ── Firma cu `ai_quota` trimis (regula veche, „pe cont", a ieșit pe 11.11): serverul îl aruncă, firma e pe Start ──
   await tel('sef@veche.ro');
   const cv = await Api.insightPachetConturi();
-  T('regula veche: `vechi`, cu `mesaj`', cv.vechi === true && !!cv.mesaj, J(cv));
-  await comparaConturi('„Pachet și conturi", regula veche', cv);
+  T('regula veche a ieșit: „Pachet și conturi" arată pachetul Start, fără `vechi`', !cv.vechi && cv.pachet && cv.pachet.cod === 'start', J(cv).slice(0, 200));
+  await comparaConturi('„Pachet și conturi", firma cu `ai_quota` aruncat', cv);
   const qV = await Api.aiQuota();
-  T('…nu are pachet', !qV.pachet && !cheiCost(qV).length, J(qV).slice(0, 200));
+  T('…are pachetul Start, fără costuri', !!qV.pachet && qV.pachet.cod === 'start' && !cheiCost(qV).length, J(qV).slice(0, 200));
   const pv = await Api.insightPachete();
-  T('…„Vezi pachetele": fără pachet actual și fără „Alege"', !pv.actual && pv.poateSchimba === false && L.planPachete(pv).carduri.every((c) => !c.alege), J(pv.poateSchimba));
-  await comparaPachete('„Vezi pachetele", regula veche', pv);
-  const uV = await Api.users();
-  T('Utilizatori: bagheta rămâne, fără etichetă și fără link', uV.filter((u) => u.role !== 'superadmin').every((u) => L.arataBagheta(u, null) && !L.arataEticheta(u, null)));
+  T('…„Vezi pachetele": Start e al ei, poate alege altul', pv.actual === 'start' && pv.poateSchimba === true && L.planPachete(pv).carduri.find((c) => c.cod === 'basic').alege === 'Alege Basic', J([pv.actual, pv.poateSchimba]));
+  await comparaPachete('„Vezi pachetele", firma cu `ai_quota` aruncat', pv);
   await Api.setUserAiSeat(admV.id, true);
   const rV = L.randConturi(await Api.users(), L.cuPachetFirmei('company_admin', await Api.aiQuota()));
-  T('…rândul de sus spune regula veche', rV && !rV.link && /vârful lunii/.test(rV.rest), J(rV));
+  T('Utilizatori: rândul de sus spune pachetul, cu linkul', rV && rV.link && /pachetul Start/.test(rV.rest) && !/vârful lunii/.test(rV.rest), J(rV));
 
   // Omul firmei, fără drept: nu ajunge la paginile administratorului și nu vede costuri.
   await tel('om@basic.ro');
@@ -593,7 +592,7 @@ async function parteaServerului() {
   const pOm = await Api.insightPachete();
   T('…„Vezi pachetele" fără „Alege" (`poateSchimba` de la server)', pOm.poateSchimba === false && L.planPachete(pOm).carduri.every((c) => !c.alege));
   // Niciun om de la o firmă nu ajunge la tabloul nostru, cu cheia telefonului.
-  for (const [cine, cum] of [['managerul', 'om@basic.ro'], ['administratorul', 'sef@basic.ro'], ['administratorul de pe Start', 'sef@start.ro'], ['cel de pe regula veche', 'sef@veche.ro']]) {
+  for (const [cine, cum] of [['managerul', 'om@basic.ro'], ['administratorul', 'sef@basic.ro'], ['administratorul de pe Start', 'sef@start.ro'], ['cel cu `ai_quota` aruncat', 'sef@veche.ro']]) {
     await tel(cum);
     const e = await eroare(() => Api.aiUsage());
     T(cine + ': tabloul costurilor îi e închis', !!e && (e.status === 403 || e.status === 401), e && e.status);
@@ -608,19 +607,18 @@ async function parteaServerului() {
   // ── Fondatorul ──
   await tel('admin', 'test1234');
   const ovP = await Api.companyOverview(coP.id), ovV = await Api.companyOverview(coV.id);
-  T('fișa firmei: `ai_regula_veche` deosebește cele două', ovP.ai_regula_veche === false && ovV.ai_regula_veche === true, J([ovP.ai_regula_veche, ovV.ai_regula_veche]));
+  T('fișa firmei: fără `ai_regula_veche` și fără `ai_quota`', !('ai_regula_veche' in ovP) && !('ai_regula_veche' in ovV) && !('ai_quota' in ovV), J([ovP.ai_regula_veche, ovV.ai_regula_veche, ovV.ai_quota]));
   const sB = await Api.companySettingsOf(coS.id);
-  T('fila „Acces": lista pachetelor și pachetul firmei', Array.isArray(sB.pachete) && sB.pachete.length === 4 && sB.ai_pachet.cod === 'start' && !L.peRegulaVeche(sB), J(sB.ai_pachet));
-  T('…pe regula veche, limita AI se arată', L.peRegulaVeche(await Api.companySettingsOf(coV.id)) === true);
-  const refCot = await eroare(() => Api.saveCompanySettingsOf(coS.id, { ai_quota: { questionsPerSeat: 10, seatPriceRON: 5 } }));
-  T('pe o firmă cu pachet, „întrebări pe cont" e refuzat de server (deci nu se arată)', !!refCot && refCot.status === 400, refCot && (refCot.status + ' ' + refCot.message));
-  const refLim = await eroare(() => Api.setCompanyAiLimit(coS.id, 10));
-  T('…și limita AI', !!refLim && refLim.status === 400, refLim && refLim.status);
+  T('fila „Acces": lista pachetelor și pachetul firmei', Array.isArray(sB.pachete) && sB.pachete.length === 4 && sB.ai_pachet.cod === 'start', J(sB.ai_pachet));
+  const sV = await Api.companySettingsOf(coV.id);
+  T('…firma cu `ai_quota` trimis e tot pe Start (pachetul vine mereu de la server)', sV.ai_pachet && sV.ai_pachet.cod === 'start' && !('ai_quota' in sV) && !('ai_monthly_limit' in sV), J([sV.ai_pachet, sV.ai_quota, sV.ai_monthly_limit]));
+  const pusCot = await Api.saveCompanySettingsOf(coS.id, { ai_quota: { questionsPerSeat: 10, seatPriceRON: 5 } });
+  T('`ai_quota` trimis de un telefon vechi nu se scrie: firma rămâne pe pachetul ei', !!pusCot && !('ai_quota' in pusCot) && (await Api.companySettingsOf(coS.id)).ai_pachet.cod === 'start', J(pusCot));
+  const refLim = await R('PUT', '/api/companies/' + coS.id + '/ai-limit', { limit: 10 });
+  T('…iar ruta limitei AI vechi nu mai există', refLim.s === 404, refLim.s);
   const pusPk = await Api.saveCompanySettingsOf(coS.id, { ai_pachet: { cod: 'pro' } });
   T('fondatorul pune pachetul din „Acces"', pusPk.ai_pachet && pusPk.ai_pachet.cod === 'pro', J(pusPk.ai_pachet));
   await Api.saveCompanySettingsOf(coS.id, { ai_pachet: { cod: 'start' } });
-  const uF = await Api.users();
-  T('Utilizatori, la fondator: bagheta pe oamenii firmelor, nu pe colegi', uF.filter((u) => u.role === 'superadmin').every((u) => !L.arataBagheta(u, null)) && uF.filter((u) => u.role !== 'superadmin').every((u) => L.arataBagheta(u, null)));
   const rPkF = await eroare(() => Api.insightPachetTrecere('pro'));
   T('fondatorul nu schimbă pachetul prin trecere (n-are firmă)', !!rPkF, rPkF && rPkF.status);
 
@@ -633,10 +631,10 @@ async function parteaServerului() {
   const o2 = await Api.offerCalc({ campuri: Object.assign({}, o1.campuri, { pPachet: '17', 'cl-name': 'Client de probă' }), atinse: (o1.atinse || []).concat(['pPachet']), schimbate: ['pPachet'] });
   T('prețul negociat: rămâne și ajunge în corpul salvării', o2.campuri.pPachet === '17' && o2.salvare && o2.salvare.corp.config.cfg.aiPachet === 'pro' && Number(o2.salvare.corp.config.cfg.aiPachetPret) === 17, J([o2.salvareEroare, o2.campuri.pPachet, o2.salvare && o2.salvare.corp.config.cfg]));
   T('…fără vechiul `aiA` trimis de telefon', !('aiA' in o2.campuri));
-  // O ofertă veche, pe cont, se redeschide pe Basic, ca pe web.
+  // O ofertă fără pachet scris (de dinainte de 14.10, pe cont) se redeschide pe Start, ca pe web: regula veche a ieșit pe 11.11.
   const veche = await Api.createOffer({ name: 'Oferta veche', client_name: 'Client vechi', config: { cfg: { nVeh: 5, aiA: true, aiqN: 100, aiqSeats: 3, aiqSeat: 14, contractMonths: 24 }, prices: { pAiA: 14 } }, monthly_total: 100 });
   const dV = await Api.offerCalc({ offer_id: veche.id, incarca: true });
-  T('o ofertă veche (pe cont) se redeschide pe Basic', dV.campuri.aiPachet === 'basic', J(dV.campuri.aiPachet));
+  T('o ofertă fără pachet scris se redeschide pe Start', dV.campuri.aiPachet === 'start', J(dV.campuri.aiPachet));
   // Telefonul vechi: bifa `aiA`, citită de server ca Basic.
   const tv = await Api.offerCalc({ campuri: Object.assign({}, o0.campuri, { aiA: true }), atinse: [], schimbate: ['aiA'] });
   T('telefonul de dinainte (bifa `aiA`) merge mai departe, pe Basic', tv.campuri.aiPachet === 'basic', J(tv.campuri.aiPachet));
