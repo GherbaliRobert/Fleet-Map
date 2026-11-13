@@ -4046,13 +4046,47 @@ async function _superadmini() { try { return (await db.getAllActiveUsers()).filt
 async function _verificaCheiaAnthropic() { if (!ai || !ai.aiEnabled()) return { ok: null }; return ai.verificaCheia(); }
 // Întrebările lunii pe firmele cu pachet cu AI — O socoteală pentru anunțul de la 80% / 100%, banda de pe „Acasă" și „Ce cere
 // atenție": aceleași cifre ca bara din „RA Insight · control" (întrebările pachetului; rândurile lunii din ai_usage, felurile numărate).
-async function _intrebariFirmeAi() {
-  const r = await Promise.all([db.getCompanies(), db.getAiMonthUsageByCompany()]);
+async function _intrebariFirmeAi() { return (await _folositeFirme()).filter(function (f) { return f.ai; }); }
+// Cât a folosit luna asta fiecare firmă cu RA Insight pornit (fără demo): de la Basic, întrebările (rândurile lunii din ai_usage, ca
+// bara din control și `_starePachet`); pe Start, răspunsurile pe butoane (ai_reguli, ca „Pachet și conturi"). O socoteală: pentru
+// noi (`_intrebariFirmeAi`, doar cele cu AI) și pentru anunțul administratorului firmei (`anuntAdminiAproapeTick`, toate).
+async function _folositeFirme() {
+  const r = await Promise.all([db.getCompanies(), db.getAiMonthUsageByCompany(), db.raspunsuriReguliLunaToate()]);
   const pe = {}; (r[1] || []).forEach(function (u) { if (u.company_id != null) pe[u.company_id] = Number(u.questions) || 0; });
-  return (r[0] || []).filter(function (c) { return !c.is_demo && c.id !== demoCompanyId; }).map(function (c) {
-    const p = _pachetCo(c); if (!p || !p.ai || !_firmaAreAi(c)) return null;
-    return { id: c.id, name: c.name, nume: p.nume, cod: p.cod, folosite: pe[c.id] || 0, intrebari: p.intrebari };
+  const reg = r[2] || {};
+  return (r[0] || []).filter(function (c) { return !c.is_demo && c.id !== demoCompanyId && plans && plans.featuresFor(c).ai_assistant; }).map(function (c) {
+    const p = _pachetCo(c); if (!p) return null;
+    return { id: c.id, name: c.name, nume: p.nume, cod: p.cod, ai: !!p.ai, folosite: p.ai ? (pe[c.id] || 0) : (Number(reg[c.id]) || 0), intrebari: p.intrebari };
   }).filter(Boolean);
+}
+// Anunțul pentru administratorii FIRMEI la 80% din întrebările lunii (13.11, Alin: „1. DA"): până acum clientul afla abia la capăt,
+// de la cel care întreba. O dată pe firmă și pe lună (cheile în setarea `ai_anunturi_admini`, ca o repornire să nu-l repete); dacă
+// firma sare peste 80% direct la capăt, anunțul spune că s-au terminat. Doar administratorii activi ai firmei (company_admin; „admin" =
+// numele vechi); clic → „Pachet și conturi" (`data.pachet`). Textele: pachete.anuntAproape. Chemat la 15 minute, din soldAnuntTick.
+async function anuntAdminiAproapeTick(acum) {
+  acum = Number(acum) || Date.now();
+  const out = [];
+  // Primele ore din 1 ale lunii (ora României), cât baza numără încă luna trecută (luna rândurilor e pe UTC): anunțul ar scrie
+  // luna nouă cu cifrele celei vechi. Se trimite după ce se potrivesc.
+  if (pachete.ziuaRo(acum).luna !== new Date(acum).getUTCMonth() + 1) return out;
+  const luna = new Date(acum).toISOString().slice(0, 7);
+  let st = {}; try { st = JSON.parse((await db.getSetting('ai_anunturi_admini')) || '{}') || {}; } catch (e) { st = {}; }
+  const facute = (Array.isArray(st.firme) ? st.firme : []).filter(function (k) { return String(k).slice(-8) === '|' + luna; });
+  let firme = []; try { firme = await _folositeFirme(); } catch (e) { return out; }
+  for (const f of firme) {
+    const cheie = f.id + '|' + luna, pct = pachete.procentFolosit(f.folosite, f.intrebari);
+    if (facute.indexOf(cheie) >= 0 || pct < pachete.PROCENT_ANUNT_FIRMA) continue;
+    let admini = []; try { admini = (await db.getActiveUsersForCompany(f.id)).filter(function (u) { return pachete.esteAdmin(u.role); }); } catch (e) { admini = []; }
+    if (!admini.length) continue;   // firma fără administrator activ: se reîncearcă la trecerea următoare
+    const a = pachete.anuntAproape(f, acum);
+    let trimise = 0;
+    for (const u of admini) {
+      try { await _incAnunta(u.id, f.id, 'ai_intrebari_firma', a.nivel, a.titlu, a.text, { pachet: true, procent: pct }); trimise++; } catch (e) {}
+    }
+    if (trimise) { facute.push(cheie); out.push({ id: f.id, procent: pct, admini: trimise }); }
+  }
+  if (out.length) { try { await db.setSetting('ai_anunturi_admini', JSON.stringify({ firme: facute })); } catch (e) {} }
+  return out;
 }
 // Anunțurile dinainte (la 15 minute, cu plasa): soldul la 14 / 7 / 3 zile și terminat (o dată pe prag și pe soldul scris), firmele la
 // 80% și la 100% din întrebări (o dată pe firmă, pe lună și pe prag). Cheile stau în setarea `ai_anunturi`, ca o repornire să nu le repete.
@@ -4079,6 +4113,8 @@ async function soldAnuntTick() {
     if (p === 100) { const k80 = f.id + '|' + luna + '|' + soldAi.PROCENT_INTREBARI; if (facuteF.indexOf(k80) < 0) facuteF.push(k80); }
   }
   try { await db.setSetting('ai_anunturi', JSON.stringify({ sold: facuteS, firme: facuteF, ultim: st.ultim || null })); } catch (e) {}
+  // …și, la aceeași trecere, administratorii firmelor la 80% (13.11).
+  try { out.admini = await anuntAdminiAproapeTick(); } catch (e) { out.admini = []; }
   return out;
 }
 // O dată (04.11): soldul scris până acum în „Control costuri" (credite + ziua, de pe 16.10) trece în locul unic, dacă e mai nou decât
@@ -10046,7 +10082,7 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
       pretScris = {
         name: String(oferta.name || 'Ofertă').slice(0, 60),
         priceNoneRON: lei(u.plain), priceCanRON: lei(u.can), priceFmsRON: lei(u.fms), canImeis: null,
-        basePerVehicleRON: null, canAddonRON: null, fmsAddonRON: null, aiAgentsRON: null,
+        basePerVehicleRON: null, canAddonRON: null, fmsAddonRON: null,
         pricePerVehicleRON: null, flatPriceRON: null, vehicleLimit: null,
         note: ('Din oferta #' + oferta.id + (oferta.name ? ' — ' + oferta.name : '')).slice(0, 300)
       };
@@ -18686,7 +18722,7 @@ app.put('/api/companies/:id/oferta', requireAuth, requireSuperadmin, async (req,
       basePerVehicleRON: base,
       canAddonRON: numOrNull(c.canAddonRON),
       fmsAddonRON: numOrNull(c.fmsAddonRON),
-      aiAgentsRON: numOrNull(c.aiAgentsRON),
+      // (Suma fixă pe lună pentru agenții AI a ieșit pe 13.11: agenții sunt incluși, fără cost. Ce trimite un telefon vechi se aruncă.)
       pricePerVehicleRON: perVeh,
       flatPriceRON: flat,
       vehicleLimit: (c.vehicleLimit != null && c.vehicleLimit !== '') ? parseInt(c.vehicleLimit) : null,
@@ -18787,9 +18823,9 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
     add('Abonament monitorizare GPS', cnt.total, bd.base);
   }
   // Pachetul RA Insight (pasul 5): un rând fix, „RA Insight Pro", din motorul de preț (plans.js) — ca registrul. Regula veche,
-  // „pe cont", și suma fixă „Asistent AI" au ieșit pe 11.11 (Alin: „Scoate").
+  // „pe cont", și suma fixă „Asistent AI" au ieșit pe 11.11 (Alin: „Scoate"); rândul „Agenți AI (monitorizare inteligentă)" pe
+  // 13.11 (Alin: „2. DA") — agenții sunt incluși, fără cost.
   if (bd.aiPachet > 0) add(bd.aiPachetEticheta || 'RA Insight', 1, bd.aiPachet);
-  add('Agenți AI (monitorizare inteligentă)', 1, bd.aiAgents);
   if (!lines.length && (p.monthlyTotal > 0)) add('Abonament monitorizare GPS', 1, p.monthlyTotal);
   // Păstrarea istoricului peste cele 12 luni incluse (24/36 de luni, vândute în ofertă). Până pe 24.09
   // se vindea și se semna, dar nu ajungea pe nicio factură — și nici nu se livra. Registrul de venituri

@@ -361,7 +361,37 @@ function parteaUtilizatorilor() {
       && !/peRegulaVeche|setCompanyAiLimit|Limită AI lunară|ai_monthly_limit/.test(S.acces + S.lib + S.endpoints) && html.indexOf('Limită AI lunară') < 0 && !/raxCfgSaveAiLimit/.test(html));
     T('„Abonament & plăți": doar drumul spre „Acces", ca pe web; întrebările pe cont și „Asistent AI" au ieșit', /Se vinde pe pachete; pachetul firmei se alege din fila „Acces”\./.test(S.abon) && html.indexOf('Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.') >= 0 && /rutaFisa\(id, 'acces'\), true/.test(S.abon)
       && !/ai_regula_veche|ai_quota|aiAssistantRON|questionsPerSeat/.test(S.abon) && !/ai_regula_veche/.test(server) && !/raxSaveAiQuota|rax-aiq-n|aiAssistantRON/.test(html));
-    T('…și telefonul nu mai pomenește „Module & limite"', !/Module &amp; limite/.test(S.abon) && html.indexOf('Agenții se pornesc și se opresc din fila „Acces”.') >= 0 && S.abon.indexOf('Agenții se pornesc și se opresc din fila „Acces”.') >= 0);
+    T('…și telefonul nu mai pomenește „Module & limite"', !/Module &amp; limite/.test(S.abon) && html.indexOf('Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”.') >= 0 && S.abon.indexOf('Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”.') >= 0);
+    // Suma fixă pentru agenții AI („Add-on AI", 13.11, Alin: „2. DA"): nici caseta, nici în preț, nici pe factură — agenții sunt incluși.
+    const cod = (x) => faraComentarii(x);
+    T('„Agenți AI (lei pe lună)" a ieșit: caseta (web + telefon), prețul, rândul de factură, oferta salvată', !/aiAgentsRON|Add-on AI|Module AI \(la plată\)/.test(cod(S.abon)) &&
+      !/aiAgentsRON|Add-on AI|Module AI \(la plată\)|pr\.aiAg\b/.test(cod(html.slice(html.indexOf('function _raxClientPrice'), html.indexOf('window.raxAboSaveOffer')))) &&
+      !/Agenți AI \(monitorizare inteligentă\)|aiAgentsRON:|\.aiAgentsRON/.test(cod(server)) && !/\.aiAgentsRON|aiAgentsRON:|aiAgents:/.test(cod(citeste('plans.js'))));
+    {
+      const PL = require('./plans');
+      const firma = { id: 9, custom_plan: { priceNoneRON: 20, priceCanRON: 30, aiAgentsRON: 300 }, settings: { ai_pachet: { cod: 'pro', pretRON: 20 } } };
+      const pr = PL.computeCompanyPrice(firma, { none: 2, can: 1, fms: 0 }, { features: { agents: true, ai_assistant: true } });
+      T('…o ofertă veche cu 300 de lei pentru agenți: prețul = mașinile + pachetul (70 + 20), fără agenți', pr.monthlyTotal === 90 && pr.perVehicleTotal === 70 && pr.breakdown.aiPachet === 20 && !('aiAgents' in pr.breakdown), J(pr));
+    }
+    // „+ RA Insight Pro" și pe telefon (13.11, Alin: „4. DA"): rândul pachetului în „Preț lunar", ca pe web (raxAboRecalc) și pe factură.
+    {
+      const fL = functie(S.abon, 'function lunar(ov: any) {'), fN = functie(S.abon, 'function notaRanduri(b: { pachet: number; past: number; chirie: number }) {');
+      const X = {};
+      let merge = !!(fL && fN);
+      try { vm.runInNewContext(tsJs(fL + '\n' + fN + '\nOUT.lunar = lunar; OUT.notaRanduri = notaRanduri;', 'abon-bani.ts'), { OUT: X, Number, String, Math }); } catch (e) { merge = false; console.log('    (' + e.message + ')'); }
+      T('telefonul: `lunar` și `notaRanduri` din „Abonament & plăți" se traduc și rulează', merge && typeof X.lunar === 'function');
+      if (merge) {
+        const ov1 = { offer: { priceNoneRON: 20 }, price: { perVehicleTotal: 70, monthlyTotal: 90, breakdown: { aiPachet: 20, aiPachetEticheta: 'RA Insight Pro' } }, pastrare: { platita: true, pretRON: 50 }, chirie: { totalRON: 30 } };
+        const b1 = X.lunar(ov1);
+        T('…cu ofertă: mașinile 70 + „RA Insight Pro" 20 + păstrarea 50 + chiria 30 = 170 (= totalul serverului + păstrarea + chiria, ca pe web)', b1.baza === 70 && b1.pachet === 20 && b1.eticheta === 'RA Insight Pro' && b1.total === 170 && b1.total === ov1.price.monthlyTotal + 50 + 30, J(b1));
+        const b2 = X.lunar({ offer: null, price: { perVehicleTotal: 0, monthlyTotal: 20, breakdown: { aiPachet: 20, aiPachetEticheta: 'RA Insight Pro' } } });
+        T('…fără ofertă: mașinile 0, pachetul tot 20 (ca factura)', b2.baza === 0 && b2.pachet === 20 && b2.total === 20, J(b2));
+        T('…nota de sub total spune doar ce e chiar pe factură, cu acordul cerut', X.notaRanduri(b1) === '; pachetul RA Insight, păstrarea istoricului și chiria aparatelor sunt pe rânduri separate pe factură' &&
+          X.notaRanduri(b2) === '; pachetul RA Insight e pe un rând separat pe factură' && X.notaRanduri({ pachet: 0, past: 0, chirie: 0 }) === '', J([X.notaRanduri(b1), X.notaRanduri(b2)]));
+      }
+      T('…rândul „+ {pachet}" stă în „Preț lunar" pe telefon, iar pe web în raxAboRecalc (numele, de la server)', /\{bani\.pachet \? <div class="co-ln"><span>\+ \{bani\.eticheta\}<\/span><span>\{lei2\(bani\.pachet\)\}<\/span><\/div> : null\}/.test(S.abon) &&
+        /if \(pr\.pachet\) rows \+= ln\('\+ ' \+ esc\(_raxAbo\.pachetEt \|\| 'RA Insight'\), pr\.pachet\);/.test(html));
+    }
   })();
 }
 

@@ -14,8 +14,9 @@ import './companii.css';
 
 // Fișa firmei → „Abonament & plăți" (fondatori), ca pe web (_raxCodAbonament / _raxAboHtml):
 //   • starea accesului + suspendarea manuală (motiv obligatoriu) / reactivarea;
-//   • oferta firmei: preț / vehicul fără CAN și cu CAN, bifele „cu CAN" pe vehicul, add-on-ul agenților AI, notă;
-//   • modulele AI la plată; RA Insight: drumul spre fila „Acces" (pachetul firmei);
+//   • oferta firmei: preț / vehicul fără CAN și cu CAN, bifele „cu CAN" pe vehicul, notă (suma fixă pentru agenții AI a ieșit pe
+//     13.11 — agenții sunt incluși, fără cost);
+//   • modulele AI; RA Insight: drumul spre fila „Acces" (pachetul firmei);
 //   • prețul lunar — SOCOTIT DE SERVER (overview.price, după oferta salvată). Web-ul are aici o
 //     previzualizare socotită în pagină (_raxClientPrice); pe telefon NU se copiază regula prețului:
 //     după „Salvează oferta" se recitește fișa, iar prețul arătat e cel al serverului.
@@ -30,16 +31,25 @@ import './companii.css';
 
 const s = (v: any) => (v != null ? String(v) : '');
 function lei2(v: any) { return (Number(v) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' lei'; }
-// Ce se plătește lunar, din cifrele trimise de server, adunate EXACT ca pe web (raxAboRecalc): abonamentul
-// (overview.price, după oferta salvată) + păstrarea istoricului, când e plătită + chiria aparatelor închiriate.
-// Ultimele două sunt rânduri separate pe factură (buildInvoiceLines); fără ele totalul ieșea mai mic decât factura.
-// Telefonul nu socotește niciun preț: doar adună trei sume pe care i le-a dat serverul.
+// Ce se plătește lunar, din cifrele trimise de server, adunate EXACT ca pe web (raxAboRecalc): mașinile (overview.price, după
+// oferta salvată) + pachetul RA Insight („+ RA Insight Pro", 13.11 — pe orice ofertă, și fără ofertă) + păstrarea istoricului,
+// când e plătită + chiria aparatelor închiriate. Fiecare e rând separat pe factură (buildInvoiceLines).
+// Telefonul nu socotește niciun preț: doar adună patru sume pe care i le-a dat serverul.
 function lunar(ov: any) {
-  const baza = ov && ov.offer && ov.price ? Number(ov.price.monthlyTotal) || 0 : 0;
+  const pr = ov && ov.price, bd = (pr && pr.breakdown) || {};
+  const baza = ov && ov.offer && pr ? Number(pr.perVehicleTotal) || 0 : 0;
+  const pachet = Number(bd.aiPachet) || 0;
   const p = ov && ov.pastrare;
   const past = p && p.platita ? Number(p.pretRON) || 0 : 0;
   const chirie = ov && ov.chirie ? Number(ov.chirie.totalRON) || 0 : 0;
-  return { baza, past, chirie, total: Math.round((baza + past + chirie) * 100) / 100 };
+  return { baza, pachet, eticheta: String(bd.aiPachetEticheta || 'RA Insight'), past, chirie, total: Math.round((baza + pachet + past + chirie) * 100) / 100 };
+}
+// „; pachetul RA Insight și chiria aparatelor sunt pe rânduri separate pe factură" / „; pachetul RA Insight e pe un rând separat
+// pe factură" — doar ce e chiar pe factură, cu acordul cerut.
+function notaRanduri(b: { pachet: number; past: number; chirie: number }) {
+  const l = [b.pachet ? 'pachetul RA Insight' : '', b.past ? 'păstrarea istoricului' : '', b.chirie ? 'chiria aparatelor' : ''].filter(Boolean);
+  if (!l.length) return '';
+  return '; ' + (l.length > 1 ? l.slice(0, -1).join(', ') + ' și ' + l[l.length - 1] + ' sunt pe rânduri separate' : l[0] + ' e pe un rând separat') + ' pe factură';
 }
 // Selecția „Cât se păstrează", pornită din ce scrie pe firmă (ca _raxPastrareHtml): plătită → lunile ei
 // (24 / 36, altfel „alt"); neplătită → cele incluse. Fără regulă sau fără păstrare → secțiunea nu apare.
@@ -51,7 +61,7 @@ function formaPastrarii(ov: any) {
 }
 function formaOfertei(ov: any) {
   const o = (ov && ov.offer) || {};
-  return { name: o.name || '', priceNoneRON: s(o.priceNoneRON), priceCanRON: s(o.priceCanRON), aiAgentsRON: s(o.aiAgentsRON), note: o.note || '' };
+  return { name: o.name || '', priceNoneRON: s(o.priceNoneRON), priceCanRON: s(o.priceCanRON), note: o.note || '' };
 }
 function bifeCan(ov: any): Record<string, boolean> {
   const m: Record<string, boolean> = {};
@@ -141,7 +151,6 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
       name: of.name, priceNoneRON: of.priceNoneRON, priceCanRON: of.priceCanRON,
       priceFmsRON: vechi.priceFmsRON != null ? vechi.priceFmsRON : null,
       canImeis,
-      aiAgentsRON: of.aiAgentsRON,
       vehicleLimit: vechi.vehicleLimit != null ? vechi.vehicleLimit : null,
       note: of.note,
       flatPriceRON: null, pricePerVehicleRON: null, basePerVehicleRON: null, canAddonRON: null, fmsAddonRON: null,
@@ -158,7 +167,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
       const r: any = await Api.setCompanyFeatures(id, { [key]: on });
       if (r && r.features) setFeats((f) => Object.assign({}, f, r.features));
       showToast('Modul ' + (on ? 'activat' : 'dezactivat'));
-      onReload(); // prețul lunar se schimbă cu modulele (add-on-urile AI se taxează doar cu modulul activ)
+      onReload(); // prețul lunar se schimbă cu modulele (pachetul RA Insight intră în preț doar cu modulul pornit)
     } catch (e: any) { setFeats(prev); showToast(e?.message || 'Eroare', true); }
   }
 
@@ -277,28 +286,25 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         })}
       </div>
 
+      {/* (Aici stătea „Add-on AI" — o sumă fixă pe lună pentru agenții AI. A ieșit pe 13.11, Alin: „2. DA": agenții sunt incluși.) */}
       <div class="fm-card pad">
-        <h3 style="margin-top:0">Add-on AI (RON / lună)</h3>
         <div class="frm">
-          <div class="frm-row">
-            {camp('Agenți AI', 'aiAgentsRON', 'ex. 300', 'taxat dacă modulul e activ')}
-          </div>
           {camp('Notă (intern)', 'note', 'detalii ofertă / contract', undefined, false)}
           <button class="btn btn-primary" disabled={busy === 'oferta'} onClick={salveazaOferta}>
             <Icon name="check" size={16} color="#06210F" /> {busy === 'oferta' ? 'Se salvează…' : 'Salvează oferta'}</button>
         </div>
       </div>
 
-      {/* Modulele AI la plată + drumul spre pachetul RA Insight */}
+      {/* Modulele AI + drumul spre pachetul RA Insight */}
       <div class="fm-card pad">
-        <h3 style="margin-top:0">Module AI (la plată)</h3>
+        <h3 style="margin-top:0">Module AI</h3>
         <button class="fm-tgl" onClick={() => modul('ai_assistant')} role="switch" aria-checked={!!feats.ai_assistant}>
           <span class="lbl">Asistent AI<small>chat + RA Insight</small></span><span class={'sw' + (feats.ai_assistant ? ' on' : '')} />
         </button>
         <button class="fm-tgl" onClick={() => modul('agents')} role="switch" aria-checked={!!feats.agents}>
           <span class="lbl">Agenți AI<small>cei 6 agenți (Watch / Dispatch / …)</small></span><span class={'sw' + (feats.agents ? ' on' : '')} />
         </button>
-        <div class="co-note">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții se pornesc și se opresc din fila „Acces”.</div>
+        <div class="co-note">Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”.</div>
 
         {/* RA Insight se vinde pe pachete (regula veche, „pe cont", a ieșit pe 11.11): pachetul se alege din fila „Acces". */}
         <div class="fm-sec" style="margin-top:16px">RA Insight</div>
@@ -356,7 +362,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
       {/* Prețul lunar, de la server */}
       <div class="fm-card pad">
         <h3 style="margin-top:0">Preț lunar</h3>
-        {!arePret && <div class="co-note" style="margin:0">{bani.past || bani.chirie ? 'Fără ofertă — vehiculele nu se taxează (0 lei).' : 'Fără ofertă — 0 lei.'} Pune prețul mai sus și apasă „Salvează oferta".</div>}
+        {!arePret && <div class="co-note" style="margin:0">{bani.pachet || bani.past || bani.chirie ? 'Fără ofertă — vehiculele nu se taxează (0 lei).' : 'Fără ofertă — 0 lei.'} Pune prețul mai sus și apasă „Salvează oferta".</div>}
         {arePret && (
           <>
             {pr.model === 'fix' && <div class="co-ln"><span>Tarif fix lunar</span><span>{lei2(bd.base)}</span></div>}
@@ -375,16 +381,17 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
               </>
             )}
             {(pr.model === 'pe-vehicul' || pr.model === 'fara-oferta') && <div class="co-ln"><span>Preț pe vehicul · {(Number(bc.none) || 0) + (Number(bc.can) || 0)} vehicule</span><span>{lei2(bd.base)}</span></div>}
-            {Number(bd.aiAgents) ? <div class="co-ln"><span>+ Agenți AI</span><span>{lei2(bd.aiAgents)}</span></div> : null}
           </>
         )}
-        {/* Aceleași două rânduri ca pe web și ca pe factură: păstrarea plătită și chiria aparatelor. */}
+        {/* Aceleași rânduri ca pe web și ca pe factură: pachetul RA Insight (13.11; numele, ca „RA Insight Pro", vine de la server),
+            păstrarea plătită și chiria aparatelor. */}
+        {bani.pachet ? <div class="co-ln"><span>+ {bani.eticheta}</span><span>{lei2(bani.pachet)}</span></div> : null}
         {bani.past ? <div class="co-ln"><span>+ Păstrarea istoricului · {PA.luni}{de(PA.luni)}luni</span><span>{lei2(bani.past)}</span></div> : null}
         {bani.chirie ? <div class="co-ln"><span>+ Chiria aparatelor</span><span>{lei2(bani.chirie)}</span></div> : null}
-        {(arePret || bani.past || bani.chirie) ? (
+        {(arePret || bani.pachet || bani.past || bani.chirie) ? (
           <>
             <div class="co-ln tot"><span>Total / lună</span><span>{lei2(bani.total)}</span></div>
-            <div class="co-note">fără TVA · abonamentul e socotit de server, după oferta salvată și bifele de mai sus{bani.past || bani.chirie ? '; păstrarea istoricului și chiria sunt cele scrise pe firmă, pe rânduri separate pe factură' : ''}{Number(q.seatPriceRON) > 0 ? ' · conturile RA Insight se facturează separat' : ''}</div>
+            <div class="co-note">fără TVA · abonamentul e socotit de server, după oferta salvată și bifele de mai sus{notaRanduri(bani)}</div>
           </>
         ) : null}
         {notaFms && (

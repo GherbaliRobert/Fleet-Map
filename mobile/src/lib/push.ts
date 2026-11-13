@@ -23,7 +23,8 @@ let registered = false;
 //     anunț (`contractId`), unde se programează restul. Pe web încă deschide modalul gol — trecut la Alin (01.10).
 //   • cererile (23.10): `cerere_echipa` → „Cereri de la clienți", la noi; `cerere_preluata|programata|rezolvata` → „Cererile tale",
 //     la client (web: notifCerere). Adresele sunt scrise aici ca text; proba le leagă de lib/cereriEchipa.ts.
-export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema', 'mail_nou', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata'];
+//   • „Au mai rămas … întrebări" (13.11): administratorul firmei, la 80% din pachet → RA Insight, „Pachet și conturi".
+export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema', 'mail_nou', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata', 'ai_intrebari_firma'];
 // `data` vine ca obiect (JSONB) sau, pe unele baze, ca text JSON — ca pe web (loadNotifications).
 export function dateAnunt(d: any): any {
   if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { d = null; } }
@@ -53,6 +54,8 @@ export function adresaAnunt(tip: any, date: any): string | null {
     return firma != null ? rutaFactura(firma, 'unica', { lucrari: Array.isArray(d.lucrari) ? d.lucrari : [] }) : '/billing';
   }
   if (tip === 'demo_request') return '/admin/demo-requests';
+  // „Au mai rămas … întrebări" (administratorul firmei, la 80% din pachet — 13.11) → RA Insight, „Pachet și conturi" (web: insightPachetConturi).
+  if (tip === 'ai_intrebari_firma') return '/insight/pachet';
   // Planurile de încărcare (12.10): șoferul — planul primit; dispecerul („Am încărcat" / „Am o problemă") — planul, în simulator.
   if (tip === 'plan_incarcare' || tip === 'plan_incarcat' || tip === 'plan_problema') {
     const id = idFirma(d.planId);

@@ -15218,6 +15218,8 @@ const pozitii = await r.json();</code></pre>
       // „Email nou" (panoul Mail, etapa 2) n-are hartă: duce în Mail → Primite.
       if (_notifDate[id] && _notifDate[id].mail) { closeNotifications(); if (window.raxMailFila) window.raxMailFila('primite', true); goSistem('mail'); return; }
       if (_notifDate[id] && _notifDate[id].cerere) { notifCerere(id); return; }
+      // „Au mai rămas … întrebări" (administratorul firmei, la 80% din pachet — 13.11) n-are hartă: duce în RA Insight → „Pachet și conturi".
+      if (_notifDate[id] && _notifDate[id].pachet) { closeNotifications(); if (window.insightPachetConturi) window.insightPachetConturi(); return; }
       var myReq = ++_notifDetailSeq; // captează deschiderea curentă — răspunsurile OSM întârziate de la o deschidere anterioară se ignoră
       var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
       var ov = document.getElementById('notif-detail-modal'), body = document.getElementById('notif-detail-body');
@@ -25273,17 +25275,17 @@ const pozitii = await r.json();</code></pre>
     function _raxN(v) { v = parseFloat(v); return (isFinite(v) && v >= 0) ? v : 0; }
     // Oglindă client-side a plans.computeCompanyPrice (model DIRECT) — preview live, fără apel server.
     // `pachetLei` = prețul pachetului RA Insight (14.10), fix pe firmă, pe orice model — îl dă serverul (price.breakdown.aiPachet).
-    // Suma fixă „Asistent AI" (regula veche) a ieșit pe 11.11 (Alin: „Scoate"): RA Insight se plătește doar prin pachet.
+    // Suma fixă „Asistent AI" (regula veche) a ieșit pe 11.11 (Alin: „Scoate"): RA Insight se plătește doar prin pachet. Suma fixă
+    // pentru agenții AI, pe 13.11 (Alin: „2. DA"): agenții sunt incluși, fără cost.
     function _raxClientPrice(counts, o, feats, pachetLei) {
       var none = +counts.none || 0, can = +counts.can || 0, total = none + can, pk = Number(pachetLei) || 0;
-      var aiAg = (feats.agents ? _raxN(o.aiAgentsRON) : 0), ai = aiAg + pk;
       if (o.priceNoneRON !== '' && o.priceNoneRON != null) {
         var pn = _raxN(o.priceNoneRON), pc = (o.priceCanRON !== '' && o.priceCanRON != null) ? _raxN(o.priceCanRON) : pn;
         var noneT = pn * none, canT = pc * can;
-        return { model: 'direct', total: noneT + canT + ai, none: noneT, can: canT, aiAg: aiAg, ai: ai, pachet: pk, n: { none: none, can: can, total: total } };
+        return { model: 'direct', total: noneT + canT + pk, none: noneT, can: canT, ai: pk, pachet: pk, n: { none: none, can: can, total: total } };
       }
-      if (o.flatPriceRON !== '' && o.flatPriceRON != null) { var f = _raxN(o.flatPriceRON); return { model: 'flat', total: f + pk, none: f, can: 0, aiAg: 0, ai: pk, pachet: pk, n: { none: none, can: can, total: total } }; }
-      var ppv = _raxN(o.pricePerVehicleRON) * total; return { model: 'preset', total: ppv + pk, none: ppv, can: 0, aiAg: 0, ai: pk, pachet: pk, n: { none: none, can: can, total: total } };
+      if (o.flatPriceRON !== '' && o.flatPriceRON != null) { var f = _raxN(o.flatPriceRON); return { model: 'flat', total: f + pk, none: f, can: 0, ai: pk, pachet: pk, n: { none: none, can: can, total: total } }; }
+      var ppv = _raxN(o.pricePerVehicleRON) * total; return { model: 'preset', total: ppv + pk, none: ppv, can: 0, ai: pk, pachet: pk, n: { none: none, can: can, total: total } };
     }
     function _raxCodAbonament(d) {
       var c = d.company, o = d.offer || {}, vehicles = (d.vehicles || []);
@@ -25303,7 +25305,6 @@ const pozitii = await r.json();</code></pre>
           // Prețul FMS n-are casetă aici, dar TREBUIE trimis înapoi: serverul înlocuiește toată oferta, iar fără
           // el camioanele FMS se facturau la prețul CAN după prima salvare (găsit 24.09; telefonul îl păstra).
           priceFmsRON: pick(o.priceFmsRON),
-          aiAgentsRON: pick(o.aiAgentsRON),
           pricePerVehicleRON: pick(o.pricePerVehicleRON), flatPriceRON: pick(o.flatPriceRON), vehicleLimit: pick(o.vehicleLimit), note: o.note || ''
         }
       };
@@ -25405,17 +25406,15 @@ const pozitii = await r.json();</code></pre>
         html += '<div class="rax-abo-sect"><h4>Vehicule „cu CAN" (bifează)</h4>' +
           '<div class="hint" style="margin-bottom:8px;">Bifat = preț „cu CAN"; nebifat = „fără CAN". Bifa pornește din detecția automată (badge), dar o poți schimba per vehicul.</div>' +
           _raxAboVehList() + '</div>';
-        html += '<div class="rax-abo-sect"><h4>Add-on AI (RON / lună)</h4>' +
-          '<div class="rax-abo-grid">' +
-            fld('Agenți AI', 'aiAgentsRON', 'ex. 300', 'taxat dacă modulul e activ') +
-          '</div>' +
-          '<div class="rax-abo-f" style="margin-top:10px;"><label>Notă (intern)</label><input type="text" id="rax-abo-note" value="' + esc(o.note || '') + '" placeholder="detalii ofertă / contract"></div>' +
+        // (Aici stătea „Add-on AI" — o sumă fixă pe lună pentru agenții AI. A ieșit pe 13.11, Alin: „2. DA": agenții sunt incluși.)
+        html += '<div class="rax-abo-sect">' +
+          '<div class="rax-abo-f"><label>Notă (intern)</label><input type="text" id="rax-abo-note" value="' + esc(o.note || '') + '" placeholder="detalii ofertă / contract"></div>' +
           '<button class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxAboSaveOffer(this)"><i class="fas fa-check"></i> Salvează oferta</button></div>';
       }
-      html += '<div class="rax-abo-sect"><h4>Module AI (la plată)</h4>' +
+      html += '<div class="rax-abo-sect"><h4>Module AI</h4>' +
         '<label class="rax-abo-tog"><input type="checkbox" ' + (s.feats.ai_assistant ? 'checked' : '') + ' onchange="raxAboToggleFeat(\'ai_assistant\',this.checked)"> Asistent AI <span class="hint">chat + RA Insight</span></label>' +
         '<label class="rax-abo-tog"><input type="checkbox" ' + (s.feats.agents ? 'checked' : '') + ' onchange="raxAboToggleFeat(\'agents\',this.checked)"> Agenți AI <span class="hint">cei 6 agenți (Watch / Dispatch / …)</span></label>' +
-        '<div class="hint">Add-on-urile AI se facturează doar dacă modulul e activ. Agenții se pornesc și se opresc din fila „Acces”.</div>' +
+        '<div class="hint">Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”.</div>' +
         // RA Insight se vinde pe pachete (regula veche, „pe cont", a ieșit pe 11.11): pachetul se alege din fila „Acces".
         '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"><div style="font-size:12px;font-weight:700;margin-bottom:4px;">RA Insight</div>' +
           '<div class="hint">Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.</div>' +
@@ -25503,7 +25502,7 @@ const pozitii = await r.json();</code></pre>
     };
     function _raxAboReadFields() {
       if (!_raxAbo) return;
-      ['priceNoneRON', 'priceCanRON', 'aiAgentsRON', 'pricePerVehicleRON', 'flatPriceRON', 'vehicleLimit'].forEach(function (k) {
+      ['priceNoneRON', 'priceCanRON', 'pricePerVehicleRON', 'flatPriceRON', 'vehicleLimit'].forEach(function (k) {
         var el = document.getElementById('rax-abo-' + k); if (el) _raxAbo.offer[k] = el.value;
       });
       var nm = document.getElementById('rax-abo-name'); if (nm) _raxAbo.offer.name = nm.value;
@@ -25526,7 +25525,6 @@ const pozitii = await r.json();</code></pre>
         else if (pr.model === 'direct') {
           rows += ln('Fără CAN · ' + pr.n.none + ' veh.', pr.none);
           if (pr.can) rows += ln('Cu CAN · ' + pr.n.can + ' veh.', pr.can);
-          if (pr.aiAg) rows += ln('+ Agenți AI', pr.aiAg);
         } else { rows += ln('Preset · ' + pr.n.total + ' vehicule', pr.none); }
         // Pachetul RA Insight (14.10): rândul lui, ca pe factură (numele vine de la server).
         if (pr.pachet) rows += ln('+ ' + esc(_raxAbo.pachetEt || 'RA Insight'), pr.pachet);

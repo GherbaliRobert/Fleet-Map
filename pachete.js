@@ -208,6 +208,42 @@ function textOm(st) {
 }
 function textReincarcare(acum) { return 'Se reîncarcă pe 1 ' + reincarcare(acum).urmatoarea + '.'; }
 
+// ─── Anunțul pentru administratorul firmei, la 80% (Alin, 13.11: „1. DA") ──────────────────────────────────────────────
+// Până acum clientul nu afla dinainte că i se termină întrebările lunii: cine întreba primea mesajul abia la capăt. La 80% din
+// întrebările pachetului (pe Start, din răspunsurile pe butoane), administratorii firmei primesc UN anunț pe lună, în aplicație și
+// pe telefon. Procentul, rotunjit ca bara din „RA Insight · control" (159 din 200 = 80%). Cine primește și când — serverul.
+const PROCENT_ANUNT_FIRMA = 80;
+function procentFolosit(folosite, intrebari) {
+  const t = Number(intrebari) || 0;
+  return t > 0 ? Math.round(Math.max(0, Number(folosite) || 0) / t * 100) : 0;
+}
+// o = { cod, nume, intrebari, folosite }. Întoarce { nivel, titlu, text } — gata scris; ecranele doar îl arată.
+// Ce se întâmplă la capăt: pe Basic / Pro / Business RA Insight trece pe butoane până pe 1 (PE_BUTOANE); pe Start se oprește
+// până pe 1. Un pachet mai mare există → drumul spre el; pe Business, nu.
+function anuntAproape(o, acum) {
+  const r = reincarcare(acum), p = dupaCod(o && o.cod);
+  if (!p) return null;
+  const start = p.cod === 'start';
+  const tot = Number(o.intrebari) || p.intrebari;
+  const fol = Math.min(tot, Math.max(0, Math.round(Number(o.folosite) || 0)));
+  const ram = Math.max(0, tot - fol);
+  const nr = function (n, unu, multe) { return n === 1 ? '1 ' + unu : _nrRo(n) + deNr(n) + multe; };   // „1.000 de întrebări"
+  const unu = start ? 'răspuns' : 'întrebare', multe = start ? 'răspunsuri' : 'întrebări';
+  const cePachet = nr(tot, start ? 'răspuns pe butoane' : unu, start ? 'răspunsuri pe butoane' : multe) + ' ale pachetului ' + p.nume;
+  const pe1 = 'Se reîncarcă pe 1 ' + r.urmatoarea + ', fără niciun cost în plus.';
+  // Ce face RA Insight la capăt: pe Start se oprește până pe 1; de la Basic răspunde pe butoane (ca textBlocat, la persoana a treia).
+  // („Azi la tine" merge mai departe pe orice pachet — nu se numără —, deci pe Start nu „se oprește" RA Insight: nu mai răspunde la întrebări.)
+  const capat = start ? 'RA Insight nu mai răspunde la întrebări până atunci.' : 'RA Insight răspunde până atunci la întrebările de pe butoane: unde e o mașină, km, staționări, rapoarte.';
+  const drum = start ? ' Cu Basic, întrebările de pe butoane n-au limită și puteți întreba orice despre flotă (pachetele sunt în „Vezi pachetele”).'
+    : (ORDINE[p.cod] < ORDINE.business ? ' Pentru mai multe întrebări pe lună, puteți trece la un pachet mai mare, din „Vezi pachetele”.' : '');
+  if (ram === 0) {
+    return { nivel: 'warning', titlu: 'RA Insight: s-au terminat ' + multe + 'le din ' + r.luna,
+      text: 'Ați folosit cele ' + cePachet + '. ' + pe1 + ' ' + (start ? 'Până atunci, RA Insight nu mai răspunde la întrebări.' : 'Până atunci, ' + capat.replace(' până atunci', '')) + drum };
+  }
+  return { nivel: 'info', titlu: 'RA Insight: ' + (ram === 1 ? 'a mai rămas ' : 'au mai rămas ') + nr(ram, unu, multe) + ' în ' + r.luna,
+    text: 'Ați folosit ' + _nrRo(fol) + ' din cele ' + cePachet + '. ' + pe1 + ' Dacă se termină înainte, ' + capat + drum };
+}
+
 // ─── „Pachet și conturi" (pasul 3): cartonașele de sus, cât a folosit fiecare om, nota de jos ───────────────────────────
 function _lei(x) { const n = Number(x) || 0; return Number.isInteger(n) ? n + deNr(n) + 'lei' : n.toLocaleString('ro-RO') + ' lei'; }
 function cartonaseConturi(st, conturiDate, acum) {
@@ -593,6 +629,7 @@ module.exports = {
   PACHETE, CODURI, PLASA, ROLURI_ADMIN, DESCRIERE, IN_TOATE, cifre, comparatie,
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,
+  PROCENT_ANUNT_FIRMA, procentFolosit, anuntAproape,
   cartonaseConturi, rezumatConturi, textFolositeOm, notaConturi,
   COST_INTREBARE_LEI, CLAUZA_TRECERE, CHEI_PRET, eticheta, descriere, marja, preturiLista,
   ORDINE, FINAL_CONFIRMARE, ziuaRo, ziRo, zileLuna, inceputZi, inceputLunaUrm, dataScurta, dataLunga,

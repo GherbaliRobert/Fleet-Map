@@ -210,6 +210,10 @@ Unit → `npm test` → Securitate (13 suite). Deci **o greșeală în primul pa
 - **O iconiță nouă în `mobile/src/components/Icon.tsx` = `node tools/gen-can-icons.js`** (`can_icons.js` e copia ei pentru
   web, generată). Pe 21.10 iconița „share” („Distribuie locația”) a intrat fără regenerare: `npm test` trecea, dar pasul Unit
   de pe GitHub (`gen-can-icons.js --check`) a picat după unire. Înainte de livrare rulează și pasul Unit din `ci.yml`, nu doar `npm test`.
+- **Telefonul se verifică întreg ca la APK: `tsc --noEmit` pe `mobile/`** (13.11). Pe 11.11 un nume rămas după o scoatere (`q.seatPriceRON` în
+  „Abonament & plăți") a trecut de `npm test` și de poartă — probele traduc fișierele fără să le verifice —, iar ecranul ar fi crăpat și APK-ul
+  nu s-ar fi făcut. Poarta de pe GitHub NU are pasul ăsta (nehotărât, 13.11). Când schimbi ceva pe telefon: modulele lui într-o copie
+  (`npm ci --ignore-scripts` în scratchpad, cu `package.json` + `package-lock.json` + `tsconfig.json`), `src/` copiat, `npx tsc --noEmit`.
 - **O probă care „crapă" poate raporta că a trecut.** `verify_notif_idor.js` scria „4/5 trecute" și
   părea aproape bună — de fapt murea ÎNAINTE de verificarea care conta. Numărul de verificări
   trecute nu spune nimic dacă suita n-a ajuns la capăt: **citește și codul de ieșire**. La `npm test`, cifra din rândul
@@ -1454,9 +1458,10 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
   `window.raFx()` → `{ eur, date, sursa }`.
 - **RA Insight se vinde în PACHETE pe firmă** (din 14.10, pasul 5) — vezi „Pachetele RA Insight" mai jos. Grila pe cont după
   mărimea flotei a ieșit din ofertă; o ofertă fără pachet scris se redeschide pe Start (regula veche a ieșit de tot pe 11.11).
-- **Cei 6 agenți NU se facturează** (reguli fixe, zero tokeni). Scoși din calculator; `pAiAg` = 0.
-  ⚠️ Au rămas în panoul de abonament per companie (`custom_plan.aiAgentsRON`) — decizie separată,
-  ar schimba facturarea unor clienți existenți.
+- **Cei 6 agenți NU se facturează** (reguli fixe, zero tokeni). Scoși din calculator; `pAiAg` = 0. Din 13.11 (Alin: „2. DA") și din
+  „Abonament & plăți": caseta „Agenți AI (lei pe lună)" (web + telefon), suma din preț (`plans.computeCompanyPrice` nu mai are `aiAgents`),
+  rândul de factură „Agenți AI (monitorizare inteligentă)" și salvarea în ofertă (`custom_plan.aiAgentsRON`) au ieșit; o ofertă veche cu
+  `aiAgentsRON` nu se mai citește. Secțiunea se cheamă „Module AI" (fără „la plată"). NU o pune la loc.
 
 ### Pachetele RA Insight (Alin, 14.10, capitolul 1) — pașii 1–7 GATA (regula, chatul, conturile, tabloul, oferta, trecerea, site-ul)
 RA Insight se vinde în **pachete fixe pe FIRMĂ** — **Start** 0 lei (inclus: DOAR administratorul, 50 de răspunsuri pe butoane,
@@ -1511,6 +1516,12 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   15.10) + `cartonase` (doar pentru telefonul de azi), oamenii (rolul cu `_incRolEt`, `folositeText`, `nuPoate` = `refuzLoc`), nota
   (`notaConturi`). Conturile și limitele pleacă pe rutele lor (`ai-seat`, `ai-limita`) — NU face a doua cale. Vezi și „Pachetul în
   ofertă și conturile la client", mai jos.
+- **Anunțul pentru administratorul FIRMEI la 80%** (13.11, Alin: „1. DA"): `pachete.anuntAproape` (textele, ce face RA Insight la capăt, drumul
+  spre „Vezi pachetele" doar dacă există un pachet mai mare) + `anuntAdminiAproapeTick` (server; chemat din `soldAnuntTick`, la 15 minute): o dată pe
+  firmă și pe lună (setarea `ai_anunturi_admini`), doar administratorii activi (`pachete.esteAdmin`), tipul `ai_intrebari_firma`, `data.pachet` →
+  web `openNotifDetail` → `insightPachetConturi`, telefon `adresaAnunt` → `/insight/pachet`. Start inclus (răspunsurile pe butoane). Socoteala
+  e UNA cu anunțul nostru: `_folositeFirme` (din ea `_intrebariFirmeAi`). În primele ore din 1 ale lunii (ora României ≠ luna UTC a rândurilor)
+  așteaptă. Păzit de `verify_sold_ai.js`, `verify_telefon_lot5.js`.
 - **Pasul 4, tabloul nostru** (`/api/admin/ai-usage` → `pachete` + `plasa` / `ramanLei` pe rând; în pagină
   `_aiuPachete` + `_aiuPachetRand`): costul plasei = `getAiMonthUsageByCompany(db.AI_KINDS_COST_FIRMA)` (cu scrisoarea de luni și
   căutările „Sursei externe"), pe model, la `ai.USD_EUR` × cursul — aceeași socoteală ca `_starePachet`. Anunțul

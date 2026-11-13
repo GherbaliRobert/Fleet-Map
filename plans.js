@@ -18,7 +18,9 @@ const pachete = require('./pachete');   // pachetele RA Insight (14.10): prețul
 
 // Oferta scrisă pe firmă (`companies.custom_plan`, JSONB). Formele acceptate:
 //   direct:  { priceNoneRON, priceCanRON, priceFmsRON, canImeis }   — preț întreg pe fiecare fel de vehicul
-//   tiered:  { basePerVehicleRON, canAddonRON, fmsAddonRON, aiAgentsRON }
+//   tiered:  { basePerVehicleRON, canAddonRON, fmsAddonRON }
+// Suma fixă pe lună pentru agenții AI (`aiAgentsRON`) a ieșit pe 13.11 (Alin: „2. DA"): agenții sunt incluși, fără cost, ca
+// suma fixă „Asistent AI" scoasă pe 11.11. Ce a rămas scris pe o ofertă veche nu mai citește nimeni.
 //   vechi:   { pricePerVehicleRON } sau { flatPriceRON }
 // FĂRĂ ofertă → `null`: firma nu are preț, deci nu aduce venit. NU inventează un preț implicit —
 // altfel o firmă nouă ar apărea în registrul de clienți cu bani care nu există.
@@ -36,7 +38,6 @@ function ofertaFirmei(company) {
     basePerVehicleRON: c.basePerVehicleRON != null ? c.basePerVehicleRON : null,
     canAddonRON: c.canAddonRON != null ? c.canAddonRON : null,
     fmsAddonRON: c.fmsAddonRON != null ? c.fmsAddonRON : null,
-    aiAgentsRON: c.aiAgentsRON != null ? c.aiAgentsRON : null,
     pricePerVehicleRON: c.pricePerVehicleRON != null ? c.pricePerVehicleRON : null,
     flatPriceRON: c.flatPriceRON != null ? c.flatPriceRON : null,
     vehicleLimit: c.vehicleLimit != null ? c.vehicleLimit : null,
@@ -61,15 +62,15 @@ function computeCompanyPrice(company, canCounts, opts) {
   const eff = ofertaFirmei(company) || {};
   const num = function (v) { return (v != null && isFinite(v)) ? Number(v) : 0; };
   const feats = opts.features || null;
-  const aiAgentsOn = feats ? !!feats.agents : true;
   // Pachetul RA Insight (pasul 5): un preț fix pe FIRMĂ, pe orice fel de ofertă (și fără ofertă) — „RA Insight Pro" pe factură
   // și în registru, din același loc. Start = 0. Cu modulul oprit de noi, nimic.
   const pk = (feats ? !!feats.ai_assistant : true) ? pachetAi(company) : null;
   const pachetLei = pk && pk.ai ? num(pk.pretRON) : 0;
-  const mk = function (model, perVehicleTotal, aiTotal, bd) {
+  // Pe lângă mașini, pe lună: doar pachetul RA Insight (agenții sunt incluși, fără cost — 13.11).
+  const mk = function (model, perVehicleTotal, bd) {
     return {
-      model: model, perVehicleTotal: perVehicleTotal, aiTotal: aiTotal + pachetLei, monthlyTotal: perVehicleTotal + aiTotal + pachetLei,
-      breakdown: Object.assign({ base: 0, canAddon: 0, fmsAddon: 0, aiAgents: 0, aiPachet: pachetLei,
+      model: model, perVehicleTotal: perVehicleTotal, aiTotal: pachetLei, monthlyTotal: perVehicleTotal + pachetLei,
+      breakdown: Object.assign({ base: 0, canAddon: 0, fmsAddon: 0, aiPachet: pachetLei,
         aiPachetEticheta: pachetLei > 0 ? pachete.eticheta(pk) : null, counts: { none: none, can: can, fms: fms, total: total } }, bd)
     };
   };
@@ -81,23 +82,20 @@ function computeCompanyPrice(company, canCounts, opts) {
     const pc = eff.priceCanRON != null ? num(eff.priceCanRON) : pn;
     const pf = eff.priceFmsRON != null ? num(eff.priceFmsRON) : pc;
     const noneTotal = pn * none, canTotal = pc * can, fmsTotal = pf * fms;
-    const aiAgents = aiAgentsOn ? num(eff.aiAgentsRON) : 0;
-    return mk('oferta', noneTotal + canTotal + fmsTotal, aiAgents, { base: noneTotal, canAddon: canTotal, fmsAddon: fmsTotal, aiAgents: aiAgents });
+    return mk('oferta', noneTotal + canTotal + fmsTotal, { base: noneTotal, canAddon: canTotal, fmsAddon: fmsTotal });
   }
   // FLAT (legacy): preț fix lunar (fără AI separat) — doar dacă NU e ofertă direct.
-  if (eff.flatPriceRON != null) { const flat = num(eff.flatPriceRON); return mk('fix', flat, 0, { base: flat }); }
-  // TIERED custom: bază/vehicul (toate) + spor CAN (vehiculele cu CAN) + spor FMS + add-on-uri AI lunare
+  if (eff.flatPriceRON != null) { const flat = num(eff.flatPriceRON); return mk('fix', flat, { base: flat }); }
+  // TIERED custom: bază/vehicul (toate) + spor CAN (vehiculele cu CAN) + spor FMS
   if (eff.basePerVehicleRON != null) {
     const baseTotal = num(eff.basePerVehicleRON) * total;
     const canTotal = num(eff.canAddonRON) * can;
     const fmsTotal = num(eff.fmsAddonRON) * fms;
-    const aiAgents = aiAgentsOn ? num(eff.aiAgentsRON) : 0;
-    return mk('trepte', baseTotal + canTotal + fmsTotal, aiAgents,
-      { base: baseTotal, canAddon: canTotal, fmsAddon: fmsTotal, aiAgents: aiAgents });
+    return mk('trepte', baseTotal + canTotal + fmsTotal, { base: baseTotal, canAddon: canTotal, fmsAddon: fmsTotal });
   }
   // Forma veche: un singur preț pe vehicul. Fără nimic scris → zero.
   const perVehicleTotal = num(eff.pricePerVehicleRON) * total;
-  return mk(eff.pricePerVehicleRON != null ? 'pe-vehicul' : 'fara-oferta', perVehicleTotal, 0, { base: perVehicleTotal });
+  return mk(eff.pricePerVehicleRON != null ? 'pe-vehicul' : 'fara-oferta', perVehicleTotal, { base: perVehicleTotal });
 }
 
 // Modulele unei firme. Implicit FIX, nu dintr-un tabel de planuri:

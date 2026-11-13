@@ -593,6 +593,43 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-13
 
+### CLIENT · RA Insight: administratorul firmei e anunțat la 80% din întrebările lunii
+*Alin, 13.11: „1. DA" (la „Clientul nu e avertizat înainte să i se termine întrebările").*
+
+**Ce am schimbat:**
+- Când firma a folosit **80%** din întrebările pachetului (pe Start, din cele 50 de răspunsuri pe butoane), **administratorii firmei** primesc
+  **un anunț pe lună**, în aplicație și pe telefon: „RA Insight: au mai rămas 120 de întrebări în noiembrie" — cât au folosit din cât, când se
+  reîncarcă, ce face RA Insight la capăt (răspunde pe butoane; pe Start nu mai răspunde) și, dacă există un pachet mai mare, drumul spre
+  „Vezi pachetele". Dacă firma sare direct la capăt, anunțul spune că s-au terminat. Un clic duce în RA Insight → „Pachet și conturi".
+- Doar administratorii (nu managerii, nu dispecerii, nu noi). Aceeași socoteală ca anunțul nostru de la 80% (textele în `pachete.js` →
+  `anuntAproape`; serverul: `anuntAdminiAproapeTick`, la 15 minute, cu cheile în setarea `ai_anunturi_admini`).
+- În primele ore din 1 ale lunii (cât baza mai numără luna trecută), anunțul așteaptă, ca să nu scrie luna nouă cu cifrele celei vechi.
+- Probe: `verify_sold_ai.js` (textele; pe server pornit: administratorul îl primește o dată, managerul și noi nu; Start la 39 / 40 din 50),
+  `verify_telefon_lot5.js` (clicul pe telefon și pe web).
+
+**Ce vede fondatorul:** nimic nou (anunțurile noastre de la 80% / 100% rămân cum erau).
+
+**Ce vede clientul:** administratorul firmei primește anunțul de la 80%; restul oamenilor, nimic nou.
+
+### FONDATOR · „Abonament & plăți": fără caseta „Agenți AI"; pe telefon, rândul pachetului RA Insight
+*Alin, 13.11: „2. DA", „4. DA".*
+
+**Ce am schimbat:**
+- **Caseta „Agenți AI (lei pe lună)" a ieșit** (web și telefon), odată cu efectul ei: nu mai intră în prețul lunar, nu mai apare pe factură
+  („Agenți AI (monitorizare inteligentă)") și nu se mai salvează în ofertă. Agenții sunt incluși, fără cost. Secțiunea se cheamă acum „Module AI"
+  (fără „la plată"), cu nota „Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”."
+- **Pe telefon, „Preț lunar" arată rândul „+ RA Insight Pro"** (numele și suma, de la server), ca pe web și ca pe factură — și când firma n-are
+  încă ofertă.
+- **Găsită pe drum și reparată (greșeala mea, din 11.11):** pe telefon, în „Abonament & plăți", rămăsese un nume scos odată cu regula veche;
+  ecranul ar fi crăpat la deschidere, iar APK-ul nu s-ar fi putut face. Probele nu-l prindeau; verificarea pe care o face APK-ul (`tsc`) da.
+  Telefonul trece acum verificarea întreagă, fără nicio eroare.
+- Probe: `verify_telefon_pachete.js` (caseta scoasă peste tot; o ofertă veche cu 300 de lei pentru agenți nu mai adaugă nimic; rândul
+  pachetului pe telefon, rulat).
+
+**Ce vede fondatorul:** în fișa firmei → „Abonament & plăți": fără caseta agenților; pe telefon, rândul pachetului în prețul lunar.
+
+**Ce vede clientul:** nimic.
+
 ### AMÂNDOI · RA Insight: regula veche, „pe cont", scoasă de tot — doar pachete, peste tot
 *Alin, 11.11: „Nu avem nicio firmă pe regula veche. Nu am dat drumul încă. Memorează asta odată. Scoate." Memorat în CLAUDE.md:
 aplicația nu e lansată, deci nu păstrăm reguli vechi „pentru firmele scrise așa".*

@@ -84,6 +84,25 @@ T('anunțul firmei: 80% → „info"; 100% → „warning", „până pe 1 doar 
   S0.anuntIntrebari(fa[1]).text === '159 din 200 de întrebări (pachet Basic). La 100%, RA Insight trece pe butoane până pe 1.' && S0.anuntIntrebari(fa[0]).nivel === 'warning' && /doar pe butoane/.test(S0.anuntIntrebari(fa[0]).text), J(S0.anuntIntrebari(fa[1])));
 const at = S0.atentieIntrebari(fa.concat([]));
 T('„Ce cere atenție": doar cele între 80% și 99% (cele de la 100% au deja rândul lor)', at.length === 1 && at[0].id === 1 && /^\*\*Agro Nord\*\* a folosit 80% din întrebările lunii \(159 din 200 de întrebări, pachet Basic\)/.test(at[0].t), J(at));
+
+// Anunțul pentru administratorul FIRMEI la 80% (13.11, Alin: „1. DA"): textele stau în pachete.js (clientul le citește).
+const PK = require('./pachete');
+const N13 = Date.UTC(2026, 10, 13, 10);
+const aP = PK.anuntAproape({ cod: 'pro', nume: 'Pro', intrebari: 600, folosite: 480 }, N13);
+T('administratorul firmei, la 80%: procentul ca bara (159 din 200 = 80%), pragul 80', PK.procentFolosit(159, 200) === 80 && PK.procentFolosit(0, 0) === 0 && PK.PROCENT_ANUNT_FIRMA === 80);
+T('…Pro, 480 din 600: „au mai rămas 120 de întrebări în noiembrie", „info", când se reîncarcă, ce face la capăt, drumul spre un pachet mai mare',
+  aP.nivel === 'info' && aP.titlu === 'RA Insight: au mai rămas 120 de întrebări în noiembrie' &&
+  aP.text === 'Ați folosit 480 din cele 600 de întrebări ale pachetului Pro. Se reîncarcă pe 1 decembrie, fără niciun cost în plus. Dacă se termină înainte, RA Insight răspunde până atunci la întrebările de pe butoane: unde e o mașină, km, staționări, rapoarte. Pentru mai multe întrebări pe lună, puteți trece la un pachet mai mare, din „Vezi pachetele”.', J(aP));
+const aB = PK.anuntAproape({ cod: 'business', intrebari: 1000, folosite: 812 }, N13);
+T('…Business: „1.000", fără drum spre alt pachet (e cel mai mare)', /cele 1\.000 de întrebări ale pachetului Business\./.test(aB.text) && !/Vezi pachetele/.test(aB.text), J(aB));
+T('…o singură rămasă: „a mai rămas 1 întrebare"', PK.anuntAproape({ cod: 'pro', intrebari: 600, folosite: 599 }, N13).titlu === 'RA Insight: a mai rămas 1 întrebare în noiembrie');
+const aT = PK.anuntAproape({ cod: 'basic', intrebari: 200, folosite: 200 }, N13);
+T('…sărit direct la capăt: „s-au terminat întrebările din noiembrie", „warning", până pe 1 pe butoane', aT.nivel === 'warning' && aT.titlu === 'RA Insight: s-au terminat întrebările din noiembrie' &&
+  /^Ați folosit cele 200 de întrebări ale pachetului Basic\. Se reîncarcă pe 1 decembrie, fără niciun cost în plus\. Până atunci, RA Insight răspunde la întrebările de pe butoane/.test(aT.text), J(aT));
+const aS = PK.anuntAproape({ cod: 'start', intrebari: 50, folosite: 40 }, N13);
+T('…Start, 40 din 50: răspunsurile pe butoane, RA Insight nu mai răspunde la întrebări la capăt, drumul spre Basic', aS.titlu === 'RA Insight: au mai rămas 10 răspunsuri în noiembrie' &&
+  /^Ați folosit 40 din cele 50 de răspunsuri pe butoane ale pachetului Start\./.test(aS.text) && /RA Insight nu mai răspunde la întrebări până atunci\./.test(aS.text) && /Cu Basic/.test(aS.text), J(aS));
+T('…fără cuvintele noastre (gratuit, tokeni, fond, „nu se numără", „fără AI", adminul)', [aP, aB, aT, aS].every((a) => !/gratuit|token|\bfond|nu se num|nu se scade|fără AI|adminul/i.test(a.titlu + ' ' + a.text)));
 const B0 = (o) => S0.banda(Object.assign({ cheie: true, leiPeDolar: 4.6, acum: ACUM }, o));
 let b = B0({ sold: Object.assign({}, so, { zile: 30 }) });
 T('banda: soldul la zi, cu lei, zilele și ritmul; spre „RA Insight · control"', b.nivel === 'ok' && b.randuri.length === 1 && b.randuri[0].text === '**Sold Anthropic, la zi: ~16,00 $** (≈ 74 lei) · ajunge ~30 de zile, la ~2,00 $ pe zi.' && b.tinta.tab === 'agents', J(b));
@@ -169,6 +188,10 @@ T('o socoteală a firmelor la 80%: _intrebariFirmeAi, în anunț, pe „Acasă" 
 T('RA Insight: refuzul → reguli (fără să se numere), cu textul pentru client', /if \(e && e\.refuzAnthropic && !o\.proba\) \{[\s\S]{0,900}faraModel: soldAi\.TEXT_CLIENT/.test(SRV) && /if \(sp && !x\.faraModel\) pachetInfo = await _numaraRaspunsReguli/.test(SRV));
 T('„Rezumă", citirea pozei, asistentul nostru: textul lor la refuz', /e\.refuzAnthropic\) \{ const rep = [\s\S]{0,120}soldAi\.TEXT_REZUMAT/.test(SRV) && /err\.refuzAnthropic \? soldAi\.TEXT_POZA/.test(SRV) && /asistentF\.eroareModel\(refuz \? soldAi\.textRefuz\(refuz\)/.test(SRV));
 T('ceasurile: anunțurile la 15 minute; cheia la pornire și din oră în oră, în probe doar cu AI_VERIFICARE_LA_MS', /setInterval\(\(\) => soldAnuntTick\(\)\.catch\(\(\) => \{\}\), 15 \* 60 \* 1000\)/.test(SRV) && /process\.env\.AI_VERIFICARE_LA_MS\) \{\s*setTimeout\(\(\) => _verificaCheiaAnthropic\(\)/.test(SRV));
+T('administratorul firmei la 80%: chemat din aceeași trecere de 15 minute, o socoteală cu a noastră, doar administratorii, o dată pe lună',
+  /try \{ out\.admini = await anuntAdminiAproapeTick\(\); \}/.test(SRV) && /async function _intrebariFirmeAi\(\) \{ return \(await _folositeFirme\(\)\)\.filter/.test(SRV) &&
+  /_incAnunta\(u\.id, f\.id, 'ai_intrebari_firma', a\.nivel, a\.titlu, a\.text, \{ pachet: true, procent: pct \}\)/.test(SRV) &&
+  /filter\(function \(u\) \{ return pachete\.esteAdmin\(u\.role\); \}\)/.test(SRV) && /'ai_anunturi_admini'/.test(SRV));
 T('„Stare producție": rândul cheii spune refuzul și soldul (textele benzii)', /add\('ai', 'Cheie AI \(Anthropic\)', 'crit', soldAi\.randSold\(/.test(SRV));
 
 if (process.argv.indexOf('--fara-server') >= 0) { gata(); return; }
@@ -279,6 +302,10 @@ async function peServer() {
     const C = await login('sef@agro.ro', PAROLA);
     await cere('PUT', '/api/users/' + uC.id + '/ai-seat', S, { on: true });
     T('pregătire: firma pe Basic, administratorul cu cont RA Insight', !!(co.id && C));
+    // Un manager al aceleiași firme: anunțul de 80% e doar al administratorilor (13.11).
+    const uM = (await cere('POST', '/api/users', S, { username: 'disp@agro.ro', full_name: 'Dan Agro', role: 'manager', company_id: co.id })).j;
+    await puneParola(uM, PAROLA, B);
+    const M = await login('disp@agro.ro', PAROLA);
     const folosite = async () => ((await cere('GET', '/api/ai/quota', C)).j || {}).used;
     const f0 = await folosite();
 
@@ -353,6 +380,18 @@ async function peServer() {
     t1 = (await cere('POST', '/api/test/ceasuri', S, { sold: true })).j;
     an = await anunturi(S, 'ai_intrebari');
     T('Agro Nord la 81% (161 din 200: 160 de probă + întrebarea bună de mai sus; cele refuzate nu se numără): anunțul de 80%, „info"', (t1.sold || {}).firme && t1.sold.firme.length === 1 && an.length === 1 && an[0].title === 'RA Insight: Agro Nord SRL a folosit 81% din întrebările lunii' && an[0].severity === 'info', J([t1.sold, an]));
+    // Administratorul firmei (13.11): UN anunț, în contul lui; nici la noi, nici la manager. În primele ore din 1 ale lunii (ora
+    // României), cât baza numără încă luna trecută (UTC), anunțul așteaptă — proba merge pe ceasul adevărat.
+    const golLuna = PK.ziuaRo(Date.now()).luna !== new Date().getUTCMonth() + 1;
+    const luna = PK.reincarcare(Date.now()).luna;
+    let anC = await anunturi(C, 'ai_intrebari_firma');
+    if (golLuna) T('(primele ore din 1 ale lunii: anunțul administratorului așteaptă)', !((t1.sold || {}).admini || []).length && !anC.length, J(anC));
+    else {
+      T('administratorul firmei: anunțul lui, la 81% — „au mai rămas 39 de întrebări", „info", clic → „Pachet și conturi"', ((t1.sold || {}).admini || []).length === 1 && t1.sold.admini[0].id === co.id && t1.sold.admini[0].admini === 1 &&
+        anC.length === 1 && anC[0].title === 'RA Insight: au mai rămas 39 de întrebări în ' + luna && anC[0].severity === 'info' && /^Ați folosit 161 din cele 200 de întrebări ale pachetului Basic\./.test(anC[0].body) &&
+        ((typeof anC[0].data === 'string' ? JSON.parse(anC[0].data) : anC[0].data) || {}).pachet === true, J([t1.sold && t1.sold.admini, anC]));
+    }
+    T('…nu ajunge la noi și nici la managerul firmei', !(await anunturi(S, 'ai_intrebari_firma')).length && !!M && !(await anunturi(M, 'ai_intrebari_firma')).length);
     a = await cere('GET', '/api/admin/azi-la-noi?proaspat=1', S);
     T('…pe „Acasă", al doilea rând al benzii', a.j.ai.randuri[1] && /^\*\*Întrebările clienților:\*\* Agro Nord SRL a folosit 81% din întrebările lunii \(161 din 200 de întrebări, pachet Basic\)\.$/.test(a.j.ai.randuri[1].text), J(a.j.ai));
     u = await cere('GET', '/api/admin/ai-usage', S);
@@ -363,6 +402,19 @@ async function peServer() {
     T('la 100%: al doilea anunț, „warning"; a treia trecere nu mai anunță', an.length === 2 && an.some((x) => /și-a terminat întrebările lunii/.test(x.title) && x.severity === 'warning') &&
       !(((await cere('POST', '/api/test/ceasuri', S, { sold: true })).j.sold || {}).firme || []).length, J(an));
     T('…și iese din „Ce cere atenție" la 80–99% (are rândul lui de 100%)', !((await cere('GET', '/api/admin/ai-usage', S)).j.pachete.aproape || []).length);
+    T('administratorul firmei: tot un singur anunț în lună (nu și la 100%)', (await anunturi(C, 'ai_intrebari_firma')).length === (golLuna ? 0 : 1));
+    // Pe Start: răspunsurile pe butoane (50). 39 = 78% → nimic; 40 = 80% → anunțul, cu drumul spre Basic.
+    const coS = (await cere('POST', '/api/companies', S, { name: 'Start Mic SRL' })).j;
+    const uS = (await cere('POST', '/api/users', S, { username: 'sef@startmic.ro', full_name: 'Ana Start', role: 'company_admin', company_id: coS.id })).j;
+    await puneParola(uS, PAROLA, B);
+    const CS = await login('sef@startmic.ro', PAROLA);
+    await cere('POST', '/api/test/ai-reguli', S, { companyId: coS.id, userId: uS.id, n: 39 });
+    t1 = (await cere('POST', '/api/test/ceasuri', S, { sold: true })).j;
+    T('Start, 39 din 50 (78%): niciun anunț', !!CS && !((t1.sold || {}).admini || []).length && !(await anunturi(CS, 'ai_intrebari_firma')).length, J(t1.sold && t1.sold.admini));
+    await cere('POST', '/api/test/ai-reguli', S, { companyId: coS.id, userId: uS.id, n: 1 });
+    t1 = (await cere('POST', '/api/test/ceasuri', S, { sold: true })).j;
+    const anS = await anunturi(CS, 'ai_intrebari_firma');
+    T('Start, 40 din 50 (80%): „au mai rămas 10 răspunsuri", cu drumul spre Basic', golLuna ? !anS.length : (anS.length === 1 && anS[0].title === 'RA Insight: au mai rămas 10 răspunsuri în ' + luna && /Cu Basic/.test(anS[0].body)), J(anS));
 
     // ── Drepturile ──
     T('clientul nu scrie soldul și nu vede banii (403)', (await cere('PUT', '/api/admin/insight/sold', C, { usd: 1 })).s === 403 && (await cere('GET', '/api/admin/ai-usage', C)).s === 403);

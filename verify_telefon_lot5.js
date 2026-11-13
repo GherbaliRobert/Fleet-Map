@@ -829,7 +829,9 @@ async function parteaAnunturi() {
     [P.adresaAnunt('plan_incarcare', { planId: 35 }), P.adresaAnunt('plan_incarcat', { planId: 35 }), P.adresaAnunt('plan_incarcare', {})].join(' | '));
   T('push.ts își ia adresele planurilor din lib/incarcare.ts (nu le scrie a doua oară)',
     /import \{ rutaPlanSofer, rutaPlanSimulator, RUTA_PLANURI \} from '\.\/incarcare';/.test(S.push) && !/'\/incarcare\/plan\//.test(S.push) && !/'\/incarcare\?plan=/.test(S.push));
-  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['aparate_noi', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema']) &&
+  T('„Au mai rămas … întrebări" (administratorul firmei, la 80% — 13.11) → RA Insight, „Pachet și conturi" (web: insightPachetConturi)',
+    P.adresaAnunt('ai_intrebari_firma', { pachet: true, procent: 81 }) === '/insight/pachet' && /_notifDate\[id\]\.pachet\) \{ closeNotifications\(\); if \(window\.insightPachetConturi\) window\.insightPachetConturi\(\); return; \}/.test(html));
+  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['ai_intrebari_firma', 'aparate_noi', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema']) &&
     P.TIPURI_CU_LOC.every((t) => P.adresaAnunt(t, { company_id: 3 }) !== null));
   {
     const u = P.adresaAnunt('aparate_noi', { imeis: [A1, A2, 'TEST111'], company_id: 42 });
