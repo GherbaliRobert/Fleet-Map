@@ -175,8 +175,10 @@ T('pachetul pus fără preț ia prețul de listă de azi; unul negociat rămâne
   && pachete.curataPachet({ cod: 'pro' }).pretRON === 20);
 // Patru locuri (pasul 6): pagina pachetelor, prețurile pe firmă (`_preturiPachetFirma`, pentru trecere), fila „Acces”, pachetul
 // pus de noi fără preț — toate prin aceeași funcție.
-T('serverul citește lista prin `_preturiPachete` în toate cele patru locuri (pagina pachetelor, prețurile firmei, fila „Acces”, pachetul pus de noi)',
-  (server.match(/await _preturiPachete\(\)/g) || []).length === 4 && /async function _preturiPachetFirma\(co\) \{\s*const out = Object\.assign\(\{\}, await _preturiPachete\(\)\);/.test(server),
+// 13.11: al cincilea loc e fereastra din „Acces” (_schimbarePachetNoi): textul ei pune prețul pe care îl va scrie salvarea.
+T('serverul citește lista prin `_preturiPachete` în toate cele cinci locuri (pagina pachetelor, prețurile firmei, fila „Acces”, pachetul pus de noi, fereastra din „Acces”)',
+  (server.match(/await _preturiPachete\(\)/g) || []).length === 5 && /async function _preturiPachetFirma\(co\) \{\s*const out = Object\.assign\(\{\}, await _preturiPachete\(\)\);/.test(server) &&
+  /async function _schimbarePachetNoi\(co, cod, acum\) \{[\s\S]{0,400}pachete\.curataPachet\(\{ cod: cod \}, await _preturiPachete\(\)\)/.test(server),
   String((server.match(/await _preturiPachete\(\)/g) || []).length));
 const _tarifChei = (server.match(/const TARIF_CHEI = \[([\s\S]*?)\];/) || ['', ''])[1];
 T('serverul ține minte prețurile pachetelor', ['pkBasic', 'pkPro', 'pkBusiness'].every((k) => _tarifChei.indexOf("'" + k + "'") >= 0), _tarifChei);

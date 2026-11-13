@@ -86,8 +86,10 @@ sect('2. Factura lunii, pe server (bucata adevărată din server.js, cu plans.js
 {
   const bucataF = taie(server, 'function buildInvoiceLines(', '\nfunction _clientSnapshot');
   const bucataL = taie(server, 'function _liniiAbonament(', '\nasync function facturaAbonamentLuna');
-  // Pachetul RA Insight (14.10) se socotește în factura lunii din istoricul firmei (pachete.liniiFactura) — se dă și el.
-  const f = new Function('plans', 'contracte', 'abonament', 'pachete', bucataF.split('\n// ─── Factura de ABONAMENT')[0] + '\n' + bucataL + '\nreturn { buildInvoiceLines, _liniiAbonament };')(plans, contracte, A, require('./pachete'));
+  // Pachetul RA Insight (14.10) se socotește în factura lunii din istoricul firmei (pachete.liniiFactura) — se dă și el. Din 13.11 trece
+  // prin `_liniiPachetDinImp` (aceeași funcție o folosește și fereastra din „Acces"), deci se decupează și ea, din server.js.
+  const bucataP = taie(server, 'function _liniiPachetDinImp(', '\n// Fereastra din fila „Acces"');
+  const f = new Function('plans', 'contracte', 'abonament', 'pachete', bucataF.split('\n// ─── Factura de ABONAMENT')[0] + '\n' + bucataP + '\n' + bucataL + '\nreturn { buildInvoiceLines, _liniiAbonament };')(plans, contracte, A, require('./pachete'));
   const firma = { id: 1, name: 'Transport SRL', custom_plan: { priceNoneRON: 29, priceCanRON: 45, priceFmsRON: 65 }, settings: {} };
   const feat = plans.featuresFor(firma);
   // Regim: 2 fără CAN + 3 cu CAN, toate pornite demult → EXACT factura dintotdeauna.
