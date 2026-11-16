@@ -251,6 +251,9 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const ckSef = await login('sef@insight.ro', PAROLA), ckColeg = await login('coleg@insight.ro', PAROLA), ckAlt = await login('sef@alta-insight.ro', PAROLA);
   const telSef = await loginTelefon('sef@insight.ro', PAROLA);
   T('pregătire: șeful, un coleg (amândoi cu RA Insight) și șeful altei firme intră', !!(sef.id && coleg.id && ckSef && ckColeg && ckAlt && telSef));
+  // 16.11 (Alin: „nu există fără limită"): un coleg are întrebări libere doar câte îi dă administratorul.
+  const limColeg = await json('PUT', '/api/users/' + coleg.id + '/ai-limita', ckSef, { limita: 100 });
+  T('pregătire: administratorul îi dă colegului 100 de întrebări pe lună', limColeg.status === 200, limColeg.text.slice(0, 120));
   // Mașinile le înregistrăm NOI (super-admin) și le dăm pe firmă; șoferii și grupele sunt ale firmei.
   // Importul citește coloanele pe românește (ca fișierul CSV): „nume", „nr_inmatriculare".
   await json('POST', '/api/devices/import', S, { rows: DEV.slice(0, 3).map((d) => ({ imei: d.imei, nume: d.name, nr_inmatriculare: d.plate })) });
