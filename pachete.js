@@ -113,6 +113,8 @@ function refuzLimita(p, limita, sumaAltor) {
   if (!Number.isInteger(n) || n < 0) return 'Limita e un număr întreg de întrebări (0 sau mai mult).';
   if (n + (Number(sumaAltor) || 0) > p.intrebari) {
     const libere = Math.max(0, p.intrebari - (Number(sumaAltor) || 0));
+    // Nimic dat încă altora: fără „le-ați dat deja 0 de întrebări" (16.11, caseta care rămâne sub listă).
+    if (!(Number(sumaAltor) > 0)) return 'Pachetul ' + p.nume + ' are ' + cant(p.intrebari, 'întrebare', 'întrebări') + ' pe lună. Mai puteți da cel mult ' + libere + '.';
     return 'Pachetul ' + p.nume + ' are ' + cant(p.intrebari, 'întrebare', 'întrebări') + ' pe lună, iar colegilor le-ați dat deja ' +
       cant(Number(sumaAltor) || 0, 'întrebare', 'întrebări') + '. Mai puteți da cel mult ' + libere + '.';
   }

@@ -59,6 +59,7 @@ console.log('   împărțirea întrebărilor');
 T('Basic: 150 pentru el lângă 50 pentru dispecer — da; 160 lângă 50 — nu, cu „cel mult 150"', P.refuzLimita(p('basic'), 150, 50) === null && P.refuzLimita(p('basic'), 100, 100) === null && /Pachetul Basic are 200 de întrebări pe lună.*Mai puteți da cel mult 150\./.test(P.refuzLimita(p('basic'), 160, 50) || ''), P.refuzLimita(p('basic'), 160, 50));
 T('Start: limita pe om e de la Basic (pe Start RA Insight îl are doar administratorul)', /doar administratorul\. Limita pe om e de la Basic în sus/.test(P.refuzLimita(p('start'), 10, 0) || ''), P.refuzLimita(p('start'), 10, 0));
 T('Pro: 100 lângă 300 date altora — da; 400 lângă 300 — nu, cu „cel mult 300"', P.refuzLimita(p('pro'), 100, 300) === null && /Mai puteți da cel mult 300\./.test(P.refuzLimita(p('pro'), 400, 300) || ''), P.refuzLimita(p('pro'), 400, 300));
+T('nimic dat încă altora: „Pachetul Basic are 200 de întrebări pe lună. Mai puteți da cel mult 200." (fără „0 de întrebări")', P.refuzLimita(p('basic'), 300, 0) === 'Pachetul Basic are 200 de întrebări pe lună. Mai puteți da cel mult 200.', P.refuzLimita(p('basic'), 300, 0));
 T('Pro: limita e un întreg ≥ 0; gol = fără cifră', !!P.refuzLimita(p('pro'), 2.5, 0) && !!P.refuzLimita(p('pro'), -1, 0) && P.refuzLimita(p('pro'), null, 0) === null && P.refuzLimita(p('pro'), 0, 0) === null);
 
 console.log('   starea');
