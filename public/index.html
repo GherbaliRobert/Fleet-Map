@@ -25163,7 +25163,7 @@ const pozitii = await r.json();</code></pre>
       if (!ri || !ri.enabled) out.push({ k: 'RA Insight', v: 'Oprit', d: 'Nu e în oferta firmei.', ton: 'mut', fila: '' });
       else out.push({ k: 'RA Insight', fila: '', ton: ri.epuizat ? 'warn' : '',
         v: ri.conturi + (ri.conturi === 1 ? ' cont' : de(ri.conturi) + 'conturi'),
-        d: ri.fond ? ri.used + ' din ' + ri.fond + de(ri.fond) + 'întrebări luna asta' + (ri.epuizat ? ' — fondul s-a terminat' : '')
+        d: ri.fond ? Number(ri.used || 0).toLocaleString('ro-RO') + ' din ' + Number(ri.fond).toLocaleString('ro-RO') + de(ri.fond) + 'întrebări luna asta' + (ri.epuizat ? ' — fondul s-a terminat' : '')
           : ri.used + de(ri.used) + 'întrebări luna asta · fără plafon' });
       // 6. Modulele (din aceeași listă ca fila „Acces")
       var f = d.features || {};
@@ -30535,7 +30535,7 @@ const pozitii = await r.json();</code></pre>
         var cost = x.plasa ? x.plasa.costLei : 0;   // pe Start (fără AI) nu ne costă nimic
         var raman = x.ramanLei != null ? x.ramanLei : (x.venitLei - cost);
         var pct = x.pct == null ? null : Math.min(100, x.pct);
-        var bara = x.fond ? '<span class="aiu-bar"><i style="width:' + (pct || 0) + '%;background:' + (x.epuizat ? 'var(--red)' : (pct >= 80 ? 'var(--orange)' : 'var(--accent)')) + ';"></i></span>' + x.used + ' din ' + x.fond : (x.used + ' · fără limită');
+        var bara = x.fond ? '<span class="aiu-bar"><i style="width:' + (pct || 0) + '%;background:' + (x.epuizat ? 'var(--red)' : (pct >= 80 ? 'var(--orange)' : 'var(--accent)')) + ';"></i></span>' + Number(x.used || 0).toLocaleString('ro-RO') + ' din ' + Number(x.fond).toLocaleString('ro-RO') : (Number(x.used || 0).toLocaleString('ro-RO') + ' · fără limită');
         var pk = esc((x.pachet && x.pachet.nume) || 'Start');
         return '<tr class="aiu-tr" onclick="raxAiRand(' + x.id + ')"><td><i class="fas fa-chevron-right aiu-ch" id="aiu-ch-' + x.id + '"></i><b>' + esc(x.name) + '</b></td>'
           + '<td>' + pk + '</td><td class="n">' + bara + '</td><td class="n">' + (x.instant || 0) + '</td>'

@@ -604,6 +604,19 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-16
 
+### AMÂNDOI · Cifrele de peste o mie se scriu cu punct: „992 din 1.000"
+*Alin, 16.11: „Fac „992 din 1.000”, cu punct… — DA. O FACEM ACUM."*
+
+**Ce am schimbat:** pe Business, contorul lui RA Insight scria „992 din 1000" (jos în stânga, lângă casetă, în „Pachet și conturi",
+mesajele de la capăt și refuzul cifrei care nu încape), iar peste tot în rest „1.000". Acum toate textele pachetului scriu cifrele
+românește, cu punctul miilor (`pachete.js`: `cant`, contorul, rândul omului, rezumatul, cartonașele, refuzul). La noi la fel: fila
+„Stare" a firmei („142 din 1.000 de întrebări luna asta") și coloana „Folosite" din „RA Insight · control" — pe web și pe telefon.
+Probă: `verify_pachete.js` (nicăieri „1000").
+
+**Ce vede fondatorul:** „1.000" în fila „Stare" a firmei și în „RA Insight · control".
+
+**Ce vede clientul:** pe Business, „992 din 1.000".
+
 ### CLIENT · RA Insight: întrebările le împarte administratorul; „Fără limită" nu mai există; „Treci la Pro"
 *Alin, 16.11: „1.DA 2.DA 3.DA (e treaba lor cum vor să și împartă și dacă vor să își împartă întrebările) 4.DA" — după „Fără limită?
 nu există… îi derutăm" și „propun ca de fiecare dată când își schimbă planul, el trebuie să distribuie din nou întrebările".*

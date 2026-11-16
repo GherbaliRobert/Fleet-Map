@@ -266,7 +266,7 @@ export function cartonaseStare(o: any, acum: number, dep: StareDep): Cartonas[] 
   if (!ri || !ri.enabled) out.push({ k: 'RA Insight', v: 'Oprit', d: 'Nu e în oferta firmei.', ton: 'mut', fila: '' });
   else out.push({ k: 'RA Insight', fila: '', ton: ri.epuizat ? 'warn' : '',
     v: ri.conturi + (ri.conturi === 1 ? ' cont' : deN(ri.conturi) + 'conturi'),
-    d: ri.fond ? ri.used + ' din ' + ri.fond + deN(ri.fond) + 'întrebări luna asta' + (ri.epuizat ? ' — fondul s-a terminat' : '')
+    d: ri.fond ? Number(ri.used || 0).toLocaleString('ro-RO') + ' din ' + Number(ri.fond).toLocaleString('ro-RO') + deN(ri.fond) + 'întrebări luna asta' + (ri.epuizat ? ' — fondul s-a terminat' : '')
       : ri.used + deN(ri.used) + 'întrebări luna asta · fără plafon' });
   // 6. Modulele (aceeași listă ca fila „Acces")
   const f = (o && o.features) || {};

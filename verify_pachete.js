@@ -59,6 +59,12 @@ console.log('   împărțirea întrebărilor');
 T('Basic: 150 pentru el lângă 50 pentru dispecer — da; 160 lângă 50 — nu, cu „cel mult 150"', P.refuzLimita(p('basic'), 150, 50) === null && P.refuzLimita(p('basic'), 100, 100) === null && /Pachetul Basic are 200 de întrebări pe lună.*Mai puteți da cel mult 150\./.test(P.refuzLimita(p('basic'), 160, 50) || ''), P.refuzLimita(p('basic'), 160, 50));
 T('Start: limita pe om e de la Basic (pe Start RA Insight îl are doar administratorul)', /doar administratorul\. Limita pe om e de la Basic în sus/.test(P.refuzLimita(p('start'), 10, 0) || ''), P.refuzLimita(p('start'), 10, 0));
 T('Pro: 100 lângă 300 date altora — da; 400 lângă 300 — nu, cu „cel mult 300"', P.refuzLimita(p('pro'), 100, 300) === null && /Mai puteți da cel mult 300\./.test(P.refuzLimita(p('pro'), 400, 300) || ''), P.refuzLimita(p('pro'), 400, 300));
+// 16.11 (Alin: „992 din 1.000”): cifrele de peste o mie se scriu cu punctul miilor, peste tot în textele pachetului.
+T('Business: „992 din 1.000", „Întrebări rămase: 992 din 1.000", „Mai puteți da cel mult 1.000", „1.200 din 1.000" — nicăieri „1000"',
+  P.textScurt(st('business', { folositeFirma: 8 })) === '992 din 1.000' && /^992 din 1\.000 rămase în /.test(P.textRamase(st('business', { folositeFirma: 8 }), Date.now()))
+  && /Întrebări rămase: 992 din 1\.000 /.test(P.rezumatConturi(st('business', { folositeFirma: 8 }), 3, Date.now())[0]) && /cel mult 1\.000\.$/.test(P.refuzLimita(p('business'), 5000, 0))
+  && P.textFolositeOm(1000, 1200) === '1.200 din 1.000' && !/\b1000\b/.test(JSON.stringify([P.rezumatConturi(st('business', {}), 3, Date.now()), P.cartonaseConturi(st('business', {}), 3, Date.now()), P.notaConturi(P.dupaCod('business'))])),
+  P.textScurt(st('business', { folositeFirma: 8 })));
 T('nimic dat încă altora: „Pachetul Basic are 200 de întrebări pe lună. Mai puteți da cel mult 200." (fără „0 de întrebări")', P.refuzLimita(p('basic'), 300, 0) === 'Pachetul Basic are 200 de întrebări pe lună. Mai puteți da cel mult 200.', P.refuzLimita(p('basic'), 300, 0));
 T('Pro: limita e un întreg ≥ 0; gol = fără cifră', !!P.refuzLimita(p('pro'), 2.5, 0) && !!P.refuzLimita(p('pro'), -1, 0) && P.refuzLimita(p('pro'), null, 0) === null && P.refuzLimita(p('pro'), 0, 0) === null);
 

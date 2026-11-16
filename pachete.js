@@ -32,7 +32,8 @@ const LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iul
 
 // „10 întrebări", dar „50 de întrebări": de la 20 în sus româna cere „de" (ultimele două cifre între 1 și 19 = fără „de").
 function deNr(n) { const r = Math.abs(Math.round(Number(n) || 0)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
-function cant(n, unu, multe) { return Math.round(n) === 1 ? '1 ' + unu : Math.round(n) + deNr(n) + multe; }
+// Cifrele se scriu românește, cu punctul miilor (16.11, Alin: „992 din 1.000”, nu „992 din 1000”).
+function cant(n, unu, multe) { return Math.round(n) === 1 ? '1 ' + unu : _nrRo(Math.round(n)) + deNr(n) + multe; }
 function r2(x) { return Math.round((Number(x) || 0) * 100) / 100; }
 
 function dupaCod(cod) {
@@ -114,9 +115,9 @@ function refuzLimita(p, limita, sumaAltor) {
   if (n + (Number(sumaAltor) || 0) > p.intrebari) {
     const libere = Math.max(0, p.intrebari - (Number(sumaAltor) || 0));
     // Nimic dat încă altora: fără „le-ați dat deja 0 de întrebări" (16.11, caseta care rămâne sub listă).
-    if (!(Number(sumaAltor) > 0)) return 'Pachetul ' + p.nume + ' are ' + cant(p.intrebari, 'întrebare', 'întrebări') + ' pe lună. Mai puteți da cel mult ' + libere + '.';
+    if (!(Number(sumaAltor) > 0)) return 'Pachetul ' + p.nume + ' are ' + cant(p.intrebari, 'întrebare', 'întrebări') + ' pe lună. Mai puteți da cel mult ' + _nrRo(libere) + '.';
     return 'Pachetul ' + p.nume + ' are ' + cant(p.intrebari, 'întrebare', 'întrebări') + ' pe lună, iar colegilor le-ați dat deja ' +
-      cant(Number(sumaAltor) || 0, 'întrebare', 'întrebări') + '. Mai puteți da cel mult ' + libere + '.';
+      cant(Number(sumaAltor) || 0, 'întrebare', 'întrebări') + '. Mai puteți da cel mult ' + _nrRo(libere) + '.';
   }
   return null;
 }
@@ -201,28 +202,28 @@ function ramaseAfisate(st) { return st.motiv === 'plasa' ? 0 : st.ramase; }
 // Rândul scurt de pe ecran: „412 din 600 rămase în octombrie" / „34 din 50 de răspunsuri pe butoane rămase".
 function textRamase(st, acum) {
   const r = reincarcare(acum);
-  if (st.cod === 'start') return st.ramase + ' din ' + st.intrebari + deNr(st.intrebari) + 'răspunsuri pe butoane rămase în ' + r.luna;
-  return ramaseAfisate(st) + ' din ' + st.intrebari + ' rămase în ' + r.luna;
+  if (st.cod === 'start') return _nrRo(st.ramase) + ' din ' + _nrRo(st.intrebari) + deNr(st.intrebari) + 'răspunsuri pe butoane rămase în ' + r.luna;
+  return _nrRo(ramaseAfisate(st)) + ' din ' + _nrRo(st.intrebari) + ' rămase în ' + r.luna;
 }
 
 // Contorul de lângă caseta de scris: „34 din 50" / „îți rămân 38" (omul cu cifră; administratorul, din rest) / „0 din 200" /
 // „fără întrebări libere" (colegul fără cifră).
 function textScurt(st) {
-  if (st.imparte && st.limitaOm != null) return 'îți rămân ' + (st.motiv === 'plasa' ? 0 : st.ramaseOm);
+  if (st.imparte && st.limitaOm != null) return 'îți rămân ' + _nrRo(st.motiv === 'plasa' ? 0 : st.ramaseOm);
   if (st.motiv === 'faraNumar') return 'fără întrebări libere';
   if (st.motiv === 'comun') return 'îți rămân 0';
-  if (st.imparte && st.adminOm && st.sumaLimite > 0) return 'îți rămân ' + (st.motiv === 'plasa' ? 0 : Math.min(st.ramaseComun, st.ramase));
-  return ramaseAfisate(st) + ' din ' + st.intrebari;
+  if (st.imparte && st.adminOm && st.sumaLimite > 0) return 'îți rămân ' + _nrRo(st.motiv === 'plasa' ? 0 : Math.min(st.ramaseComun, st.ramase));
+  return _nrRo(ramaseAfisate(st)) + ' din ' + _nrRo(st.intrebari);
 }
 // Al doilea rând din caseta pachetului: „Tu: 38 din 100 (date de administrator)" / restul administratorului / colegul fără cifră.
 function textOm(st) {
   if (st.motiv === 'faraNumar') return 'Tu: nu ai întrebări libere date de administrator';
   if (st.motiv === 'comun') return 'Tu: s-au terminat întrebările rămase nedate';
   if (st.imparte && st.limitaOm == null && st.adminOm && st.sumaLimite > 0) {
-    return 'Tu: ' + (st.motiv === 'plasa' ? 0 : Math.min(st.ramaseComun, st.ramase)) + ' din restul de ' + st.comun + ' (nedate colegilor)';
+    return 'Tu: ' + _nrRo(st.motiv === 'plasa' ? 0 : Math.min(st.ramaseComun, st.ramase)) + ' din restul de ' + _nrRo(st.comun) + ' (nedate colegilor)';
   }
   if (!(st.imparte && st.limitaOm != null)) return null;
-  return 'Tu: ' + (st.motiv === 'plasa' ? 0 : st.ramaseOm) + ' din ' + st.limitaOm + ' (date de administrator)';
+  return 'Tu: ' + _nrRo(st.motiv === 'plasa' ? 0 : st.ramaseOm) + ' din ' + _nrRo(st.limitaOm) + ' (date de administrator)';
 }
 function textReincarcare(acum) { return 'Se reîncarcă pe 1 ' + reincarcare(acum).urmatoarea + '.'; }
 
@@ -268,13 +269,13 @@ function cartonaseConturi(st, conturiDate, acum) {
   const r = reincarcare(acum), date = Number(conturiDate) || 0;
   const out = [
     { k: 'pachet', titlu: 'Pachetul', val: st.nume, sub: st.pretRON > 0 ? _lei(st.pretRON) + ' pe lună' : 'inclus în contract' },
-    { k: 'intrebari', titlu: st.cod === 'start' ? 'Răspunsuri pe butoane rămase' : 'Întrebări rămase', val: String(ramaseAfisate(st)),
-      sub: 'din ' + st.intrebari + ' · se reîncarcă pe 1 ' + r.urmatoarea },
+    { k: 'intrebari', titlu: st.cod === 'start' ? 'Răspunsuri pe butoane rămase' : 'Întrebări rămase', val: _nrRo(ramaseAfisate(st)),
+      sub: 'din ' + _nrRo(st.intrebari) + ' · se reîncarcă pe 1 ' + r.urmatoarea },
     { k: 'conturi', titlu: 'Conturi', val: String(date),
       sub: st.conturi == null ? 'conturi nelimitate' : 'din ' + st.conturi + (date < st.conturi ? ' · mai poți da ' + (st.conturi - date === 1 ? 'unul' : (st.conturi - date)) : ' · toate date') }
   ];
-  if (st.imparte) out.push({ k: 'limite', titlu: 'Date pe nume', val: String(st.sumaLimite),
-    sub: st.sumaLimite ? 'la administrator rămân ' + st.comun : 'toate sunt la administrator' });
+  if (st.imparte) out.push({ k: 'limite', titlu: 'Date pe nume', val: _nrRo(st.sumaLimite),
+    sub: st.sumaLimite ? 'la administrator rămân ' + _nrRo(st.comun) : 'toate sunt la administrator' });
   return out;
 }
 // „Pachet și conturi" pe ecranul web (macheta din 15.10, Alin: „3. da, 4. da"): în locul cartonașelor, unul-două rânduri —
@@ -283,18 +284,18 @@ function cartonaseConturi(st, conturiDate, acum) {
 function rezumatConturi(st, conturiDate, acum) {
   const r = reincarcare(acum), date = Number(conturiDate) || 0;
   const conturi = st.conturi == null ? 'Conturi: ' + date + ' (nelimitate)' : 'Conturi: ' + date + ' din ' + st.conturi;
-  const ramase = (st.cod === 'start' ? 'Răspunsuri pe butoane rămase: ' : 'Întrebări rămase: ') + ramaseAfisate(st) + ' din ' + st.intrebari +
+  const ramase = (st.cod === 'start' ? 'Răspunsuri pe butoane rămase: ' : 'Întrebări rămase: ') + _nrRo(ramaseAfisate(st)) + ' din ' + _nrRo(st.intrebari) +
     ' (se reîncarcă pe 1 ' + r.urmatoarea + ')';
   const out = [conturi + ' · ' + ramase];
-  if (st.imparte) out.push(st.sumaLimite ? 'Date pe nume: ' + cant(st.sumaLimite, 'întrebare', 'întrebări') + ' · la administrator rămân ' + st.comun + '.'
+  if (st.imparte) out.push(st.sumaLimite ? 'Date pe nume: ' + cant(st.sumaLimite, 'întrebare', 'întrebări') + ' · la administrator rămân ' + _nrRo(st.comun) + '.'
     : 'Nimic dat pe nume: toate cele ' + _nrRo(st.intrebari) + deNr(st.intrebari) + 'întrebări sunt la administrator.');
   return out;
 }
 // „58 din 200" (omul cu limită) / „64" (fără limită) — câte a folosit în luna asta.
-function textFolositeOm(limita, folosite) { return limita != null ? (Number(folosite) || 0) + ' din ' + limita : String(Number(folosite) || 0); }
+function textFolositeOm(limita, folosite) { return limita != null ? _nrRo(Number(folosite) || 0) + ' din ' + _nrRo(limita) : _nrRo(Number(folosite) || 0); }
 function notaConturi(p) {
   if (p.cod === 'start') return 'Pe Start, RA Insight îl are doar administratorul. De la Basic îl pot avea și colegii.';
-  if (!p.imparte) return 'Pe ' + p.nume + ', toți cei cu RA Insight folosesc aceleași ' + p.intrebari + deNr(p.intrebari) + 'întrebări. Limita pe om e de la Basic.';
+  if (!p.imparte) return 'Pe ' + p.nume + ', toți cei cu RA Insight folosesc aceleași ' + _nrRo(p.intrebari) + deNr(p.intrebari) + 'întrebări. Limita pe om e de la Basic.';
   return 'Un coleg are întrebări libere doar câte îi dai tu, pe lună („' + ETICHETE_CIFRA.cifra + '”); fără cifră, are doar răspunsurile pe loc. ' +
     'Ce nu dai nimănui rămâne la administratori („' + ETICHETE_CIFRA.restul + '”). Cifrele nu pot trece de cele ' + _nrRo(p.intrebari) + deNr(p.intrebari) +
     'întrebări ale pachetului și se șterg la orice schimbare de pachet: atunci le împarți din nou.';

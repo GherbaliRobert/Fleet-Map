@@ -145,7 +145,7 @@ export function randFirma(x: any, fx: number) {
     id: x.id, nume: String(x.name || ''),
     pachet: String((x.pachet && x.pachet.nume) || 'Start'),
     bara: x.fond ? (pct || 0) : null, baraTon: x.epuizat ? 'bad' : ((pct || 0) >= 80 ? 'warn' : 'ok'),
-    folosite: x.fond ? x.used + ' din ' + x.fond : x.used + ' · fără limită',
+    folosite: x.fond ? Number(x.used || 0).toLocaleString('ro-RO') + ' din ' + Number(x.fond).toLocaleString('ro-RO') : Number(x.used || 0).toLocaleString('ro-RO') + ' · fără limită',
     instant: String(x.instant || 0),
     sursa: x.sursa && x.sursa.intrebari ? x.sursa.intrebari + ' · ' + lei(x.sursa.costLei, fx) : '—',
     cost: lei(cost, fx), raman: lei(raman, fx), ramanOk: raman >= 0,
