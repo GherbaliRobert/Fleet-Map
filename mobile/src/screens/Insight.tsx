@@ -265,6 +265,8 @@ export function Insight() {
   function deschidePagina(k: string) { du(rutaRamura(k), !!ramura); }
   // „Vezi pachetele": pe web, o fereastră peste pagina de sub ea; aici o adresă adăugată, deci „Înapoi" duce pe pagina de sub ea.
   function vedePachetele() { du(rutaRamura('pachete')); }
+  // „Treci la Pro" (16.11): „Vezi pachetele", cu confirmarea pachetului ales deschisă peste ele (web: insightTrecere).
+  function treciLa(cod: string) { du(rutaRamura('pachete', cod)); }
   // „Întreabă RA Insight" dintr-o pagină: o discuție nouă, cu începutul întrebării scris (nu pleacă singură).
   function intreabaDespre(inceput: string) {
     setConv(null); setMesaje([]); convCurenta = null; setSursaOn(false);
@@ -458,6 +460,7 @@ export function Insight() {
     propunere,
     editeaza: (t) => { setText(String(t || '')); dinButoane.current = false; setTimeout(() => { if (taRef.current) taRef.current.focus(); }, 30); },
     pachete: admin ? vedePachetele : undefined,
+    treciLa: admin ? treciLa : undefined,
   };
   // Ce pot face paginile: o întrebare nouă, un ecran al aplicației, altă pagină.
   const lPag: LaPagina = {
@@ -548,7 +551,7 @@ export function Insight() {
         {/* „Pachet și conturi" stă ÎNAINTEA cartonașului „nu e pornit": un administrator care le-a dat colegilor toate conturile n-are
             alt drum spre ele (din Utilizatori nu se mai dau). */}
         {ramura === 'pachet' ? <PaginaPachetConturi laPachete={vedePachetele} onSchimbat={dupaPachet} />
-        : ramura === 'pachete' ? <PaginaPachete onSchimbat={dupaPachet} />
+        : ramura === 'pachete' ? <PaginaPachete onSchimbat={dupaPachet} treci={String(((query || {}) as any).id || '')} />
         : faraLoc ? (
           <div class="insp-gol-mij"><div class="insp-card"><h3>RA Insight nu e pornit pe contul tău</h3><div>{faraLoc}</div>
             {admin ? <>

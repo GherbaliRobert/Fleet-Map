@@ -1397,7 +1397,7 @@ const PAGINI_PUBLICE = [
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: 'e61545caec7e', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'db99238df383', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-11', amprenta: '478fea3b4ad1', prio: '0.8', freq: 'monthly' },
-  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-13', amprenta: '375446dc53af', prio: '0.8', freq: 'monthly' },
+  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-16', amprenta: 'f33ff4d30e2a', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-11', amprenta: '5a9739f0d3cc', prio: '0.3', freq: 'yearly' },
   { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-11', amprenta: 'ff491637243d', prio: '0.3', freq: 'yearly' },
@@ -3296,7 +3296,9 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
     res.json({ ok: true, id: id, ai_seat: !!u.ai_seat, seats: seats });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Câte întrebări pe lună are un om (Basic, Pro și Business; Basic din 13.11). null / gol = „Fără limită". Le dă administratorul firmei.
+// Câte întrebări pe lună are un om (Basic, Pro și Business; Basic din 13.11). null / gol = fără cifră: colegul are doar răspunsurile pe
+// loc, administratorul folosește restul (16.11). Le dă administratorul firmei; cifra ține cât ține pachetul (cheia lui). Când nu
+// încape: cât mai încape (`maxim`) și, la administratorul care poate schimba pachetul, pachetul în care ar încăpea („Treci la Pro").
 app.put('/api/users/:id/ai-limita', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -3311,10 +3313,21 @@ app.put('/api/users/:id/ai-limita', requireAuth, requireAdmin, withCompany, asyn
     const b = req.body || {};
     const limita = (b.limita == null || b.limita === '') ? null : Number(b.limita);
     const oameni = await db.getAiSeatHolders(tinta.company_id);
-    const sumaAltor = oameni.reduce(function (a, h) { return a + (h.id !== id && h.ai_limita != null ? Number(h.ai_limita) || 0 : 0); }, 0);
+    const cheie = _cheieCo(co);
+    const sumaAltor = oameni.reduce(function (a, h) { const c = h.id !== id ? _cifraValida(h, cheie) : null; return a + (c || 0); }, 0);
     const refuz = pachete.refuzLimita(p, limita, sumaAltor);
-    if (refuz) return res.status(400).json({ error: refuz });
-    const u = await db.setUserAiLimita(id, limita);
+    if (refuz) {
+      const out = { error: refuz }, n = Number(limita);
+      if (p.imparte && limita != null && Number.isInteger(n) && n >= 0 && n + sumaAltor > p.intrebari) {
+        out.maxim = Math.max(0, p.intrebari - sumaAltor);
+        if (_poateSchimbaPachet(req, co)) {
+          const rec = pachete.recomanda(p, { intrebari: sumaAltor + n });
+          if (rec) out.recomandat = pachete.recomandare(rec, (await _preturiPachetFirma(co))[rec.cod], true);
+        }
+      }
+      return res.status(400).json(out);
+    }
+    const u = await db.setUserAiLimita(id, limita, cheie);
     auditReq(req, 'ai_limita', 'user', id, { username: tinta.username, limita: limita });
     res.json({ ok: true, id: id, ai_limita: u ? u.ai_limita : limita });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -3896,6 +3909,14 @@ async function aiQuotaState(companyId, userId, opts) {
 // (pe modelul fiecărui răspuns, `db.costAiLunaFirma`). Orice firmă are un pachet (fără nimic scris = Start); null = fără firmă.
 // `strict` = pentru poarta întrebărilor: o citire eșuată nu lasă să treacă.
 function _pachetCo(co) { return co && plans ? plans.pachetAi(co) : null; }   // regula stă în plans.js (pachetAi)
+// Cifrele date pe nume țin cât ține pachetul (16.11, Alin: „de fiecare dată când își schimbă planul, trebuie să distribuie din nou
+// întrebările"): fiecare cifră poartă cheia pachetului în care s-a dat (pachete.cheiePachet); alta = cifra nu mai contează.
+function _cheieCo(co, acum) { return pachete.cheiePachet(co && co.settings, acum || Date.now()); }
+function _cifraValida(u, cheie) { return u && u.ai_limita != null && u.ai_limita_pachet === cheie ? Number(u.ai_limita) : null; }
+// Câți colegi au acum o cifră dată pe nume (textele trecerii spun că se șterg).
+async function _cuCifre(co) {
+  try { const cheie = _cheieCo(co); return (await db.getAiSeatHolders(co.id)).filter(function (h) { return _cifraValida(h, cheie) != null; }).length; } catch (e) { return 0; }
+}
 // Luna de acum, „AAAA-LL" (UTC, ca rândurile din ai_usage și din ai_corecturi): „RA Insight · control" (corecturile, estimarea lunii).
 function _lunaAcum() { return new Date().toISOString().slice(0, 7); }
 // Are firma RA Insight cu AI (Basic în sus)? Start e fără AI.
@@ -3913,17 +3934,21 @@ async function _starePachet(companyId, userId, opts) {
   try { co = await db.getCompanyById(companyId); } catch (e) { if (strict) throw e; return null; }
   const p = _pachetCo(co);
   if (!p) return null;
-  let folositeFirma = 0, folositeOm = 0, folositeCuLimita = 0, sumaLimite = 0, limitaOm = null, costLei = 0, conturi = 0;
+  let folositeFirma = 0, folositeOm = 0, folositeCuLimita = 0, sumaLimite = 0, limitaOm = null, costLei = 0, conturi = 0, adminOm = false;
   try {
     const oameni = await db.getAiSeatHolders(companyId);
     conturi = oameni.length;
+    const cheie = _cheieCo(co);
+    const eu = userId != null ? oameni.filter(function (h) { return h.id === userId; })[0] : null;
+    adminOm = !!(eu && pachete.esteAdmin(eu.role));
     if (p.ai) {
       folositeFirma = (await db.getAiMonthUsage(companyId)).questions;
       const peOm = {};
       (await db.getAiMonthUsageByUser(companyId)).forEach(function (r) { peOm[r.user_id] = Number(r.questions) || 0; });
       oameni.forEach(function (h) {
-        if (h.ai_limita != null) { sumaLimite += Number(h.ai_limita) || 0; folositeCuLimita += peOm[h.id] || 0; }
-        if (userId != null && h.id === userId) limitaOm = h.ai_limita;
+        const c = _cifraValida(h, cheie);
+        if (c != null) { sumaLimite += c; folositeCuLimita += peOm[h.id] || 0; }
+        if (userId != null && h.id === userId) limitaOm = c;
       });
       if (userId != null) folositeOm = peOm[userId] || 0;
       const c = await db.costAiLunaFirma(companyId);
@@ -3935,7 +3960,7 @@ async function _starePachet(companyId, userId, opts) {
     }
   } catch (e) { if (strict) throw e; }
   const st = pachete.stare({ pachet: p, peOm: userId != null, folositeFirma: folositeFirma, folositeOm: folositeOm, limitaOm: limitaOm, sumaLimite: sumaLimite,
-    folositeCuLimita: folositeCuLimita, costLei: costLei });
+    folositeCuLimita: folositeCuLimita, costLei: costLei, adminOm: adminOm });
   st.conturiDate = conturi;
   return { co: co, pachet: p, st: st };
 }
@@ -4084,9 +4109,13 @@ async function anuntAdminiAproapeTick(acum) {
     let admini = []; try { admini = (await db.getActiveUsersForCompany(f.id)).filter(function (u) { return pachete.esteAdmin(u.role); }); } catch (e) { admini = []; }
     if (!admini.length) continue;   // firma fără administrator activ: se reîncearcă la trecerea următoare
     const a = pachete.anuntAproape(f, acum);
+    // „Treci la Pro" (16.11, Alin: „4. DA"): pachetul următor cu mai multe întrebări, ca buton lângă anunț (web) — fără preț aici.
+    const rec = pachete.recomanda(pachete.dupaCod(f.cod), { intrebari: (Number(f.intrebari) || 0) + 1 });
+    const date = { pachet: true, procent: pct };
+    if (rec) date.recomandat = { cod: rec.cod, nume: rec.nume, buton: 'Treci la ' + rec.nume };
     let trimise = 0;
     for (const u of admini) {
-      try { await _incAnunta(u.id, f.id, 'ai_intrebari_firma', a.nivel, a.titlu, a.text, { pachet: true, procent: pct }); trimise++; } catch (e) {}
+      try { await _incAnunta(u.id, f.id, 'ai_intrebari_firma', a.nivel, a.titlu, a.text, date); trimise++; } catch (e) {}
     }
     if (trimise) {
       facute.push(cheie);
@@ -4124,7 +4153,51 @@ async function soldAnuntTick() {
   try { await db.setSetting('ai_anunturi', JSON.stringify({ sold: facuteS, firme: facuteF, ultim: st.ultim || null })); } catch (e) {}
   // …și, la aceeași trecere, administratorii firmelor la 80% (13.11).
   try { out.admini = await anuntAdminiAproapeTick(); } catch (e) { out.admini = []; }
+  // …și pachetele care au pornit sau s-au schimbat (16.11).
+  try { out.impartire = await impartireTick(); } catch (e) { out.impartire = []; }
   return out;
+}
+// ─── Pachetul s-a schimbat: cifrele se împart din nou (16.11, Alin: „de fiecare dată când își schimbă planul, el trebuie să
+// distribuie din nou întrebările către userii săi, ca să excludem orice variante") ──────────────────────────────────────────
+// Cifrele vechi nu mai contează din clipa schimbării (citirea le cere cheia pachetului — _cifraValida). Aici, la 15 minute: se și
+// șterg din bază, iar administratorii firmei primesc o dată anunțul „de azi aveți pachetul …" (pachetele cu împărțire, modulul
+// pornit; nu demo). Cheile văzute stau în setarea `ai_impartire_chei`; prima trecere de după publicare doar și le notează.
+async function impartireTick(acum) {
+  acum = Number(acum) || Date.now();
+  const out = [];
+  let chei = null; try { chei = JSON.parse((await db.getSetting('ai_impartire_chei')) || 'null'); } catch (e) { chei = null; }
+  const prima = !chei || typeof chei !== 'object' || Array.isArray(chei);
+  if (prima) chei = {};
+  let firme = []; try { firme = ((await db.getCompanies()) || []).filter(function (c) { return !c.is_demo && c.id !== demoCompanyId; }); } catch (e) { return out; }
+  let schimbat = prima;
+  for (const co of firme) {
+    const k = String(co.id), cheie = _cheieCo(co, acum);
+    if (chei[k] === cheie) continue;
+    chei[k] = cheie; schimbat = true;
+    if (prima) continue;
+    let sterse = 0; try { sterse = await db.stergeCifreVechi(co.id, cheie); } catch (e) {}
+    const p = _pachetCo(co), a = pachete.anuntImpartire(p, acum);
+    let trimise = 0;
+    if (a && plans && plans.featuresFor(co).ai_assistant) {
+      let admini = []; try { admini = (await db.getActiveUsersForCompany(co.id)).filter(function (u) { return pachete.esteAdmin(u.role); }); } catch (e) { admini = []; }
+      for (const u of admini) { try { await _incAnunta(u.id, co.id, 'ai_pachet_nou', a.nivel, a.titlu, a.text, { pachet: true }); trimise++; } catch (e) {} }
+    }
+    out.push({ id: co.id, cheie: cheie, sterse: sterse, admini: trimise });
+  }
+  if (schimbat) { try { await db.setSetting('ai_impartire_chei', JSON.stringify(chei)); } catch (e) {} }
+  return out;
+}
+// O singură dată (16.11): cifrele date până azi primesc cheia pachetului de acum al firmei lor — altfel s-ar fi șters la publicare.
+async function _cheiCifreVechi() {
+  try {
+    const rows = await db.cifreFaraCheie();
+    const cache = {};
+    for (const r of rows) {
+      if (!(r.company_id in cache)) { const co = await db.getCompanyById(r.company_id).catch(function () { return null; }); cache[r.company_id] = co ? _cheieCo(co) : null; }
+      if (cache[r.company_id]) await db.puneCheieCifra(r.id, cache[r.company_id]);
+    }
+    return rows.length;
+  } catch (e) { return 0; }
 }
 // O dată (04.11): soldul scris până acum în „Control costuri" (credite + ziua, de pe 16.10) trece în locul unic, dacă e mai nou decât
 // cel din „RA Insight · control". După asta, „Control costuri" citește tot de aici.
@@ -4781,14 +4854,24 @@ async function _insightPeReguli(req, res, x) {
   let pachetInfo = st ? _pachetPeEcran(st) : undefined;
   // `limita` = tot răspunsul e mesajul pachetului; `pachetMesaj` = mesajul pachetului pus înaintea răspunsului. Ecranul le
   // arată în caseta de avertizare; telefonul vechi citește doar `reply`, în care sunt deja.
+  // „Treci la Pro" (16.11, Alin: „4. DA"): în caseta de la capătul întrebărilor, la administratorul care poate schimba pachetul —
+  // pachetul următor, cu prețul pentru firma lui. Nu la plasă și nu la refuzul lui Anthropic (nu se rezolvă cu alt pachet).
+  let recomandat;
+  try {
+    if (st && st.blocat && ['cota', 'comun', 'limita'].indexOf(st.motiv) >= 0 && !x.faraModel && sp.co && _poateSchimbaPachet(req, sp.co)) {
+      const rec = pachete.recomanda(sp.pachet, { intrebari: st.intrebari + 1 });
+      if (rec) recomandat = pachete.recomandare(rec, (await _preturiPachetFirma(sp.co))[rec.cod], false);
+    }
+  } catch (e) { recomandat = undefined; }
   async function gata(reply, extra, ctxNou) {
     const e = Object.assign({ inteles: [], alege: [], urmari: [], sources: [] }, extra || {});
     const ins = e.limita ? undefined : pachete.insigna('instant', { numarat: start });
+    const rec = (e.limita || e.pachetMesaj) ? recomandat : undefined;
     // `faraModel` (04.11): mesajul e al refuzului lui Anthropic, nu al pachetului — caseta nu arată „Vezi pachetele" (nu e vina clientului).
     const sv = await x.salveaza(reply, { source: 'reguli', sources: e.sources, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: st ? st.cod : undefined,
-      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins, faraModel: x.faraModel ? true : undefined }, ctxNou || x.ctx);
+      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins, faraModel: x.faraModel ? true : undefined, recomandat: rec }, ctxNou || x.ctx);
     return res.json({ reply: reply, sources: e.sources, source: 'reguli', conversatieId: sv.convId, mesajId: sv.mesajId, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: pachetInfo,
-      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins, faraModel: x.faraModel ? true : undefined });
+      limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins, faraModel: x.faraModel ? true : undefined, recomandat: rec });
   }
   if (start && st.blocat) return gata(pachete.textBlocat(st, Date.now()), { limita: true });
   const ctxAr = (x.ctx && x.ctx.ar) || {};
@@ -5773,9 +5856,10 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
     if (p.ai) (await db.getAiMonthUsageByUser(req.companyId)).forEach(function (r) { peOm[r.user_id] = Number(r.questions) || 0; });
     else peOm = await db.raspunsuriReguliPeOm(req.companyId);
     const conturi = users.filter(function (u) { return u.ai_seat; }).length;
+    const cheie = _cheieCo(sp.co, acum);
     const oameni = users.map(function (u) {
-      const lim = p.imparte && u.ai_seat && u.ai_limita != null ? Number(u.ai_limita) : null;
-      return { id: u.id, nume: u.full_name || u.username, rol: _incRolEt(u, aj), loc: !!u.ai_seat, limita: lim,
+      const lim = p.imparte && u.ai_seat ? _cifraValida(u, cheie) : null;
+      return { id: u.id, nume: u.full_name || u.username, rol: _incRolEt(u, aj), admin: pachete.esteAdmin(u.role), loc: !!u.ai_seat, limita: lim,
         folosite: peOm[u.id] || 0, folositeText: u.ai_seat || peOm[u.id] ? pachete.textFolositeOm(lim, peOm[u.id] || 0) : null,
         nuPoate: u.ai_seat ? null : pachete.refuzLoc(p, conturi, u.role) };
     }).sort(function (a, b) { return (b.loc - a.loc) || String(a.nume).localeCompare(String(b.nume), 'ro'); });
@@ -5784,7 +5868,14 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
       return { id: r.id, cand: pachete.dataScurta(r.creat_la), cine: r.user_nume || '', rezumat: pachete.rezumatTrecere(r),
         email: r.email_trimis ? 'trimisă pe email' : 'emailul n-a plecat', pdf: '/api/insight/pachet-trecere/' + r.id + '/pdf' };
     });
+    // Conturile pline (16.11, „Treci la Pro"): pachetul cel mai mic cu încă un cont — doar administratorului care poate schimba pachetul.
+    let recomandatConturi = null;
+    if (p.conturi != null && conturi >= p.conturi && _poateSchimbaPachet(req, sp.co)) {
+      const rec = pachete.recomanda(p, { conturi: conturi + 1 });
+      if (rec) recomandatConturi = pachete.recomandare(rec, (await _preturiPachetFirma(sp.co))[rec.cod], false);
+    }
     res.json({ pachet: { cod: p.cod, nume: p.nume, imparte: p.imparte, conturi: p.conturi, intrebari: p.intrebari, ramase: pachete.ramaseAfisate(st) },
+      etichete: pachete.ETICHETE_CIFRA, recomandatConturi: recomandatConturi,
       urmator: p.urmator ? 'Din ' + pachete.dataLunga(p.urmator.deLa) + ' firma trece pe pachetul ' + p.urmator.nume + ' (ales de administrator). Până atunci rămâne ' + p.nume + '.' : null,
       treceri: treceri,
       // `rezumat` = ecranul web (un rând, macheta din 15.10); `cartonase` rămân pentru telefonul de azi.
@@ -5865,7 +5956,8 @@ async function _trecereFirma(req, cod) {
   if (!_poateSchimbaPachet(req, co)) return { status: 403, error: 'Pachetul îl schimbă administratorul firmei, din contul lui.' };
   const preturi = await _preturiPachetFirma(co);
   const conturi = (await db.getAiSeatHolders(co.id)).length;
-  const t = pachete.trecere({ actual: _pachetCo(co), la: String(cod || ''), pretNou: preturi[String(cod || '')], conturi: conturi, firma: co.name, acum: Date.now() });
+  const t = pachete.trecere({ actual: _pachetCo(co), la: String(cod || ''), pretNou: preturi[String(cod || '')], conturi: conturi, firma: co.name, acum: Date.now(),
+    cuCifre: await _cuCifre(co) });
   if (t.refuz) return { status: 400, error: t.refuz };
   return { co: co, t: t };
 }
@@ -18904,7 +18996,7 @@ async function _schimbarePachetNoi(co, cod, acum) {
   let aparate = []; try { aparate = await _aparateAbonament(co); } catch (e) { aparate = []; }
   const linii = features.ai_assistant ? _liniiPachetDinImp(istoric, abonament.imparte(aparate, urm.an, urm.luna)) : [];
   return pachete.textSchimbareNoi({ actual: plans ? plans.pachetAi(co, acum) : null, la: nou.cod, pretNou: nou.pretRON, firma: co.name, acum: acum,
-    linii: linii, cuMasini: aparate.length > 0, modulOprit: !features.ai_assistant });
+    linii: linii, cuMasini: aparate.length > 0, modulOprit: !features.ai_assistant, cuCifre: await _cuCifre(co) });
 }
 function _liniiAbonament(company, aparate, an, luna, features, vatRatePct) {
   const imp = abonament.imparte(aparate, an, luna);
@@ -21668,6 +21760,7 @@ if (process.env.SEED_TEST === '1') {
       res.json({ aparateNoi: await aparateNoiTick(acum), montajDeFacturat: await montajDeFacturatTick(acum),
         plasa: b.plasa ? await plasaAnuntTick() : undefined,
         sold: b.sold ? await soldAnuntTick() : undefined, cheie: b.cheie ? await _verificaCheiaAnthropic() : undefined,
+        impartire: b.impartire ? await impartireTick(acum) : undefined,
         locatiiSterse: b.locatii ? await db.stergeLocatiiDistribuiteExpirate(acum) : undefined,
         livrare: b.livrare ? await livrareEmailTick(acum) : undefined,
         verificareEmail: b.verificareEmail ? await _verificaEmailServer() : undefined,
@@ -22454,6 +22547,7 @@ async function start() {
   // Banii pentru AI (04.11): soldul pus într-un singur loc (o dată, din „Control costuri"), anunțurile la 14 / 7 / 3 zile și la 80% / 100%
   // din întrebări — la 15 minute; cheia Anthropic verificată la pornire și din oră în oră (în probe doar cu AI_VERIFICARE_LA_MS pus).
   _soldUnLoc().catch(() => {});
+  _cheiCifreVechi().catch(() => {});   // cifrele date înainte de 16.11 rămân, cu cheia pachetului de acum
   setTimeout(() => soldAnuntTick().catch(() => {}), 3 * 60 * 1000);
   setInterval(() => soldAnuntTick().catch(() => {}), 15 * 60 * 1000);
   if (process.env.NODE_ENV !== 'test' || process.env.AI_VERIFICARE_LA_MS) {

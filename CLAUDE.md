@@ -1481,7 +1481,8 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
 - **Regula stă O DATĂ în `pachete.js`** (curat): `PACHETE`, `pachetFirma(settings, acum)` (fără nimic scris = Start; regula veche
   „pe cont" a ieșit pe 11.11 — un `ai_quota` rămas nu contează),
   `refuzLoc` (Start doar administratorul; conturile pline → drumul spre pachetul următor), `refuzLimita`, `stare` (motivele, în
-  ordine: plasa → cota firmei → limita omului → partea la comun; limita și partea la comun doar cu `peOm`), `alegeModel`, textele
+  ordine: plasa → cota firmei → `limita` (cifra omului, folosită) → `faraNumar` (colegul fără cifră) → `comun` (administratorul fără
+  cifră, restul folosit); ultimele trei doar cu `peOm`, `adminOm` = omul e administrator), `alegeModel`, textele
   (`textBlocat`, `textDoarButoane`, `textRamase`, `textScurt`, `textOm`, `ramaseAfisate` — la plasă ecranul arată 0),
   ce primește fiecare pachet — pentru aplicație ȘI site, pe site fără prețuri (refăcut pe 27–28.10): `DESCRIERE` (pe pachet
   `titlu`, `pentru`, `eticheta`, `plus` și `include` = ce primești la Start / ce ADAUGĂ față de pachetul dinainte), `IN_TOATE`
@@ -1516,7 +1517,8 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   României, ca la client); prețul = lista din „Prețurile noastre" (`_preturiPachete`; Alin, 13.11: „cel pe care l-am decis ultima dată").
   Datele de pe ecran (`din …`) cu `timeZone: 'Europe/Bucharest'`. Păzit de `verify_pachete.js`, `verify_telefon_pachete.js`. Limita pe om:
   `PUT /api/users/:id/ai-limita` (administratorul firmei; Basic / Pro / Business — `imparte` din `PACHETE`, Basic din 13.11; suma ≤ întrebările
-  pachetului; stingerea locului o șterge). Pe Start refuzul spune „Limita pe om e de la Basic în sus”.
+  pachetului; stingerea locului o șterge; peste → 400 cu `maxim` și, la cine poate schimba pachetul, `recomandat`). Pe Start refuzul spune
+  „Limita pe om e de la Basic în sus”. Vezi „Întrebările le împarte administratorul", mai jos.
 - `plans.FEATURE_IMPLICIT.ai_assistant = true` (Start inclus la toate firmele); unde l-am oprit noi, rămâne oprit. Suma fixă
   veche „Asistent AI" (`custom_plan.aiAssistantRON`) a ieșit pe 11.11: RA Insight se plătește doar prin pachet.
 - **Pe ecran** (blocul „secțiunea RA Insight"): `incarcaPachet` / `deseneazaPachet` / `actualizeazaCaseta` (doar textele serverului:
@@ -1607,13 +1609,32 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `.rau-ra` „RA Insight" + capul listei cu „Schimbă în Pachet și conturi →"; butonul baghetă al regulii vechi (`raxAiSeat`, pe
   telefon `arataBagheta`) a ieșit pe 11.11. Omul fără cont află drumul: `_mesajFaraLoc()` → `MESAJ_FARA_LOC_PACHET` („…din RA Insight →
   „Pachet și conturi”"); `MESAJ_FARA_LOC_AI` („din Utilizatori") a ieșit și el.
-- **Pe om: „Fără limită" / „Cel mult … pe lună"** (`select.pkc-sel` + caseta cifrei doar la „Cel mult"), NU „la comun". Aceleași
-  cuvinte în textele serverului: `refuzLimita`, `textBlocat` (motivul `comun`), `textOm`, `notaConturi`, cartonașul `limite` („Date cu
-  limită"). Sus, `pachete.rezumatConturi` (unul-două rânduri) + bara, în locul cartonașelor. Din 13.11 Basic împarte și el, deci „la comun"
-  a ieșit și din comparația pachetelor (aplicație + `/pachete-ra-insight`), iar titlul lui Pro nu mai spune „tu împarți întrebările".
-  Cei cu „Fără limită" folosesc ce n-a fost dat nimănui; dacă administratorul a dat tot pe nume, ei au doar răspunsurile pe loc.
+- **Pe om (din 16.11): colegul „Fără întrebări libere" / „Cel mult…", administratorul „Restul" / „Cel mult…"** (`select.pkc-sel` + caseta
+  cifrei doar la „Cel mult"; etichetele = `pachete.ETICHETE_CIFRA`, trimise ca `etichete`, alese după `admin` de pe rând). **„Fără limită" NU
+  mai există** (Alin: „îi derutăm") — NU-l pune la loc. Sus, `pachete.rezumatConturi` + bara („Date pe nume: N · la administrator rămân M.").
+  Din 13.11 Basic împarte și el, deci „la comun" a ieșit și din comparația pachetelor (aplicație + `/pachete-ra-insight`).
 - Ghidul (`ra_insight`) spune drumul nou și nu mai pomenește factura unui cont. Telefonul (Robert, APK-ul următor): eticheta în loc de
-  bagheta din AdminUsers pe firmele cu pachet, „Fără limită / Cel mult" în „Pachet și conturi".
+  bagheta din AdminUsers pe firmele cu pachet, alegerea pe rol și caseta „nu încape" în „Pachet și conturi".
+
+### Întrebările le împarte administratorul; „Treci la Pro" (16.11; Alin: „1.DA 2.DA 3.DA (e treaba lor…) 4.DA")
+- **Un coleg are întrebări libere (AI) DOAR câte îi dă administratorul** (cifra pe lună). Fără cifră → doar răspunsurile pe loc (motivul
+  `faraNumar`, `textBlocat`: „Nu ai întrebări libere pe …: le împarte administratorul firmei…"). Ce nu e dat nimănui = „Restul", folosit de
+  administratorii fără cifră, împreună (motivul `comun`); un administrator își poate pune și el o cifră. Firmă nouă = totul la administrator.
+- **Fiecare cifră e scrisă cu pachetul de atunci:** `users.ai_limita_pachet` = `pachete.cheiePachet(settings, acum)` (`cod@<începutul șirului
+  de același cod din istoric>`). Server: `_cheieCo`, `_cifraValida` (o cifră a altui pachet = fără cifră), `_cuCifre` (câte cifre valide).
+  Orice schimbare de pachet (din „Acces", trecerea clientului, micșorarea programată pe 1) le face nevalide pe loc, fără ceas; `impartireTick`
+  (din `soldAnuntTick`, la 15 minute; în probe `/api/test/ceasuri { impartire }`) le șterge și trimite administratorilor `ai_pachet_nou`
+  (`pachete.anuntImpartire`, `data.pachet` → „Pachet și conturi", web și telefon). Prima rulare doar ține minte cheile (setarea
+  `ai_impartire_chei`); `_cheiCifreVechi()` la pornire dă cifrelor fără cheie pachetul de acum. Fereastra trecerii (`pachete.trecere`,
+  `textSchimbareNoi`, `textDupaTrecere`, cu `cuCifre`) spune dinainte că se șterg. NU le pune singur la loc după o trecere (Alin: „tot
+  administratorul decide").
+- **„Treci la Pro" = `pachete.recomanda(p, { intrebari | conturi })`** (cel mai mic pachet cu AI mai mare care încape) + `recomandare(rec, pret,
+  incapToate)` → `{ cod, nume, buton, text }`; prețul din `_preturiPachetFirma`; DOAR cu `_poateSchimbaPachet(req, co)`. Unde: refuzul cifrei
+  (400 `recomandat`, caseta „nu încape" care RĂMÂNE sub listă — web `S.nuIncape`, telefon `nuIncapeDin` —, cu „Pune N pentru …"), conturile
+  pline (`recomandatConturi`), anunțurile de 80% / 100% (`data.recomandat`; web: butonul de pe rând, `notifTreciLa`; telefonul: un rând = un
+  buton, deci tot „Pachet și conturi"), caseta de la capătul întrebărilor (`recomandat` în răspunsul lui `_insightPeReguli`; web
+  `insightTrecere`, telefon `/insight/pachete?id=<cod>` → `PaginaPachete treci`). Toate deschid confirmarea care există (textul, bifa).
+- Păzit de `verify_pachete.js`, `verify_telefon_pachete.js` (și desenul telefonului, cu modulele lui), `verify_telefon_lot5.js`, `verify_sold_ai.js`.
 - ⚠ **Administratorul fără cont RA Insight al lui intră TOT în „Pachet și conturi"** (`deseneazaMain`: `S.ramura === 'pachet' &&
   esteAdmin()` ÎNAINTEA blocului `S.faraLoc`; în „⋯" `esteAdmin() && (S.pachet || S.faraLoc)`; pe cartonașul „nu e pornit", butonul
   „Deschide Pachet și conturi"). Ruta cere `manageUsers`, nu cont. Prins pe 15.10 din pozele ghidului: un administrator care își

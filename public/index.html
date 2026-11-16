@@ -12264,9 +12264,9 @@ const pozitii = await r.json();</code></pre>
         arataJos();
       }
       // ── „Pachet și conturi" (pasul 3, macheta din 14.10; simplificat după macheta din 15.10, Alin: „3. da, 4. da"): doar
-      // administratorul. SINGURUL loc în care dă RA Insight colegilor și, pe Basic / Pro / Business, câte întrebări are fiecare („Fără limită"
-      // sau „Cel mult … pe lună"). Sus, unul-două rânduri (`rezumat`, de la server) în locul cartonașelor. Cifrele și textele le dă
-      // serverul; conturile și limitele pleacă pe rutele lor.
+      // administratorul. SINGURUL loc în care dă RA Insight colegilor și, pe Basic / Pro / Business, câte întrebări are fiecare („Cel mult …
+      // pe lună"; fără cifră, colegul are doar răspunsurile pe loc, iar administratorul folosește restul — 16.11). Sus, unul-două rânduri
+      // (`rezumat`, de la server) în locul cartonașelor. Cifrele și textele le dă serverul; conturile și cifrele pleacă pe rutele lor.
       async function deseneazaPachetConturi(main) {
         main.innerHTML = '<div class="insp-card"><span class="rax-typing"><i></i><i></i><i></i></span></div>';
         var r = await cere('GET', '/api/insight/pachet-conturi');
@@ -12302,25 +12302,33 @@ const pozitii = await r.json();</code></pre>
           if (!o.loc && o.nuPoate) { ck.disabled = true; lab.title = o.nuPoate; }
           ck.onchange = function () { window.insightLoc(o.id, ck.checked, o.nume); };
           lab.appendChild(ck); lab.appendChild(el('span', 'sl')); tdL.appendChild(lab);
-          if (!o.loc && o.nuPoate) tdL.appendChild(el('div', 'pkc-nu', o.nuPoate));
+          if (!o.loc && o.nuPoate) {
+            tdL.appendChild(el('div', 'pkc-nu', o.nuPoate));
+            // Conturile pline (16.11): același „Treci la Pro" ca la cifra care nu încape, de la server (doar administratorului).
+            var rc = j.recomandatConturi;
+            if (rc && /^[a-z]+$/.test(String(rc.cod || ''))) { var btc = el('button', 'chat-pas insp-pt-ok pkc-treci'); btc.type = 'button'; btc.innerHTML = '<i class="fas fa-arrow-up"></i>'; btc.appendChild(document.createTextNode(rc.buton)); btc.title = rc.text || ''; btc.onclick = function () { window.insightTrecere(rc.cod); }; tdL.appendChild(btc); }
+          }
           row.appendChild(tdL);
           if (imp) {
             var tdM = el('td');
             if (o.loc) {
-              // „Fără limită" / „Cel mult … pe lună" (macheta din 15.10): caseta cifrei apare doar la „Cel mult".
+              // Pe rândul omului (16.11, Alin: „nu există fără limită, îi derutăm"): colegul — „Fără întrebări libere" sau „Cel mult…";
+              // administratorul — „Restul" (ce nu e dat nimănui) sau „Cel mult…". Etichetele vin de la server; caseta cifrei doar la „Cel mult".
+              var et = j.etichete || {};
               var sel = document.createElement('select'); sel.className = 'pkc-sel'; sel.setAttribute('aria-label', 'Întrebări pe lună pentru ' + o.nume);
-              [['fara', 'Fără limită'], ['cel', 'Cel mult…']].forEach(function (x) { var op = document.createElement('option'); op.value = x[0]; op.textContent = x[1]; sel.appendChild(op); });
-              var cuLim = o.limita != null; sel.value = cuLim ? 'cel' : 'fara';
-              var inp = document.createElement('input'); inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.className = 'pkc-lim';
-              inp.value = cuLim ? String(o.limita) : ''; inp.setAttribute('aria-label', 'Cel mult câte întrebări pe lună pentru ' + o.nume);
+              [['fara', o.admin ? (et.restul || 'Restul') : (et.fara || 'Fără întrebări libere')], ['cel', et.cifra || 'Cel mult…']].forEach(function (x) { var op = document.createElement('option'); op.value = x[0]; op.textContent = x[1]; sel.appendChild(op); });
+              var nuInc = S.nuIncape && S.nuIncape.id === o.id ? S.nuIncape : null;
+              var cuLim = o.limita != null; sel.value = cuLim || nuInc ? 'cel' : 'fara';
+              var inp = document.createElement('input'); inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.className = 'pkc-lim' + (nuInc ? ' pkc-lim-nu' : '');
+              inp.value = nuInc ? String(nuInc.valoare) : (cuLim ? String(o.limita) : ''); inp.setAttribute('aria-label', 'Cel mult câte întrebări pe lună pentru ' + o.nume);
               var pe = el('span', 'pkc-pel', 'pe lună');
               var arata = function (v) { inp.style.display = v ? '' : 'none'; pe.style.display = v ? '' : 'none'; };
-              arata(cuLim);
+              arata(cuLim || !!nuInc);
               sel.onchange = function () {
-                if (sel.value === 'fara') { arata(false); if (cuLim) window.insightLimita(o.id, ''); }
+                if (sel.value === 'fara') { arata(false); if (cuLim || nuInc) window.insightLimita(o.id, '', o.nume); }
                 else { arata(true); inp.focus(); }
               };
-              inp.onchange = function () { if (String(inp.value).trim() !== '') window.insightLimita(o.id, inp.value); };
+              inp.onchange = function () { if (String(inp.value).trim() !== '') window.insightLimita(o.id, inp.value, o.nume); };
               tdM.appendChild(sel); tdM.appendChild(inp); tdM.appendChild(pe);
             } else tdM.appendChild(el('span', 'pkc-gol', '—'));
             row.appendChild(tdM);
@@ -12329,6 +12337,20 @@ const pozitii = await r.json();</code></pre>
           tbd.appendChild(row);
         });
         tb.appendChild(tbd); tw.appendChild(tb); w.appendChild(tw);
+        // Cifra care nu încape (16.11, Alin: „asta da"): mesajul rămâne sub tabel până îl închide sau schimbă ceva — nu mai e o bulă de
+        // două secunde. „Treci la Pro" deschide confirmarea care există deja; „Pune 50 pentru Maria" dă cât mai încape. Textele, de la server.
+        if (S.nuIncape) {
+          var ni = S.nuIncape, bx = el('div', 'pkc-ni'), nb = el('div', 'pkc-ni-b');
+          var nx = el('button', 'chat-ib pkc-ni-x'); nx.type = 'button'; nx.title = 'Închide'; nx.setAttribute('aria-label', 'Închide'); nx.innerHTML = '<i class="fas fa-xmark"></i>';
+          nx.onclick = function () { S.nuIncape = null; deseneazaMain(); };
+          bx.appendChild(nx);
+          bx.appendChild(el('div', 'pkc-ni-t', ni.text));
+          if (ni.rec && ni.rec.text) bx.appendChild(el('div', 'pkc-ni-r', ni.rec.text));
+          if (ni.rec && /^[a-z]+$/.test(String(ni.rec.cod || ''))) { var bt2 = el('button', 'chat-pas insp-pt-ok'); bt2.type = 'button'; bt2.innerHTML = '<i class="fas fa-arrow-up"></i>'; bt2.appendChild(document.createTextNode(ni.rec.buton)); bt2.onclick = function () { window.insightTrecere(ni.rec.cod); }; nb.appendChild(bt2); }
+          if (ni.maxim > 0) { var bm = el('button', 'chat-pas'); bm.type = 'button'; bm.textContent = 'Pune ' + ni.maxim + ' pentru ' + ni.nume; bm.onclick = function () { window.insightLimita(ni.id, String(ni.maxim), ni.nume); }; nb.appendChild(bm); }
+          if (nb.childNodes.length) bx.appendChild(nb);
+          w.appendChild(bx);
+        }
         w.appendChild(el('div', 'pkc-nota', j.nota || ''));
         // „Sursă externă" (28.10): pornită sau oprită pentru toată firma (pornită din oficiu de la Basic), câte s-au folosit.
         if (j.sursa) {
@@ -12365,18 +12387,22 @@ const pozitii = await r.json();</code></pre>
       };
       // Contul de RA Insight al unui om, din „Pachet și conturi" (aceeași rută ca în Utilizatori). Pe un pachet, prețul nu se schimbă.
       window.insightLoc = async function (id, on, nume) {
+        S.nuIncape = null;
         if (on && !await raConfirm('„' + nume + '" primește RA Insight. Prețul pachetului rămâne același, oricâte conturi dai.', { title: 'Dai RA Insight?', danger: false, okLabel: 'Dă-i acces', icon: 'fa-wand-magic-sparkles' })) { deseneazaMain(); return; }
         var r = await cere('PUT', '/api/users/' + id + '/ai-seat', { on: !!on });
         if (r.s !== 200) (window.raxToast || alert)(r.j.error || 'Nu s-a putut schimba.', 'error');
         else (window.raxToast || function () {})(on ? 'RA Insight pornit pentru „' + nume + '"' : 'RA Insight oprit pentru „' + nume + '"', 'success');
         incarcaPachet(); deseneazaMain();
       };
-      // Limita pe lună a unui om (Basic / Pro / Business); gol = „Fără limită". Serverul spune dacă trece de întrebările pachetului.
-      window.insightLimita = async function (id, val) {
+      // Cifra pe lună a unui om (Basic / Pro / Business); gol = fără cifră (colegul — doar răspunsurile pe loc; administratorul — restul).
+      // Serverul spune dacă trece de întrebările pachetului: atunci mesajul rămâne sub tabel (S.nuIncape), cu ce a scris omul.
+      window.insightLimita = async function (id, val, nume) {
         var v = String(val == null ? '' : val).trim();
         var r = await cere('PUT', '/api/users/' + id + '/ai-limita', { limita: v === '' ? null : Number(v) });
-        if (r.s !== 200) (window.raxToast || alert)(r.j.error || 'Nu s-a putut salva limita.', 'error');
-        else (window.raxToast || function () {})(v === '' ? 'Fără limită: folosește din întrebările firmei' : 'Limita s-a salvat: cel mult ' + v + ' pe lună', 'success');
+        if (r.s !== 200) {
+          if (r.j && r.j.maxim != null) S.nuIncape = { id: id, nume: String(nume || ''), valoare: v, text: r.j.error || '', maxim: Number(r.j.maxim) || 0, rec: r.j.recomandat || null };
+          else { S.nuIncape = null; (window.raxToast || alert)((r.j && r.j.error) || 'Nu s-a putut salva cifra.', 'error'); }
+        } else { S.nuIncape = null; (window.raxToast || function () {})(v === '' ? 'S-a salvat: fără cifră pe lună' : 'S-a salvat: cel mult ' + v + ' pe lună', 'success'); }
         incarcaPachet(); deseneazaMain();
       };
       // „Pachet și conturi" deschis din alt ecran (Setări → Utilizatori).
@@ -12543,7 +12569,10 @@ const pozitii = await r.json();</code></pre>
           var lc = el('div', 'chat-lim-b');
           var bp = el('button', 'chat-pas'); bp.type = 'button'; bp.innerHTML = '<i class="fas fa-plus"></i>'; bp.appendChild(document.createTextNode('Alege ce vrei să afli')); bp.onclick = function () { window.insightPlus(bp); }; lc.appendChild(bp);
           // La refuzul lui Anthropic (`faraModel`, 04.11) nu e vina clientului: fără „Vezi pachetele".
-          if (esteAdmin() && !x.faraModel) { var bv = el('button', 'chat-pas ins'); bv.type = 'button'; bv.innerHTML = '<i class="fas fa-layer-group"></i>'; bv.appendChild(document.createTextNode('Vezi pachetele')); bv.onclick = function () { window.insightPachete(); }; lc.appendChild(bv); }
+          // „Treci la Pro" (16.11, Alin: „4. DA"): pachetul următor, de la server, deschide confirmarea care există deja.
+          var rcm = x.recomandat && /^[a-z]+$/.test(String(x.recomandat.cod || '')) ? x.recomandat : null;
+          if (esteAdmin() && !x.faraModel && rcm) { var bt = el('button', 'chat-pas ins'); bt.type = 'button'; bt.innerHTML = '<i class="fas fa-arrow-up"></i>'; bt.appendChild(document.createTextNode(rcm.buton || ('Treci la ' + rcm.nume))); bt.onclick = function () { window.insightTrecere(rcm.cod); }; lc.appendChild(bt); }
+          else if (esteAdmin() && !x.faraModel) { var bv = el('button', 'chat-pas ins'); bv.type = 'button'; bv.innerHTML = '<i class="fas fa-layer-group"></i>'; bv.appendChild(document.createTextNode('Vezi pachetele')); bv.onclick = function () { window.insightPachete(); }; lc.appendChild(bv); }
           lim.appendChild(lc); bub.appendChild(lim);
           if (x.pachetMesaj && textAi.indexOf(x.pachetMesaj) === 0) textAi = textAi.slice(x.pachetMesaj.length).replace(/^\s+/, '');
         }
@@ -12640,7 +12669,7 @@ const pozitii = await r.json();</code></pre>
             extra: { sources: j.sources, inteles: j.inteles, alege: j.alege, source: j.source, urmari: j.urmari, verificare: j.verificare,
               propunere: j.propunere, propuneri: j.propuneri, actiuni: j.actiuni, pagina: j.pagina,
               limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
-              verificat: j.verificat, verificatText: j.verificatText, nota: j.nota, insigna: j.insigna, sursa: j.sursa, faraModel: j.faraModel } };
+              verificat: j.verificat, verificatText: j.verificatText, nota: j.nota, insigna: j.insigna, sursa: j.sursa, faraModel: j.faraModel, recomandat: j.recomandat } };
           S.mesaje.push(m);
           if (box) {
             var rand = bulaAi(m), urm = null;
@@ -12849,7 +12878,7 @@ const pozitii = await r.json();</code></pre>
         inchideSertar();
       };
       window.insightCauta = function () { clearTimeout(S.cautaT); S.cautaT = setTimeout(incarcaLista, 250); };
-      window.insightRamura = function (k) { S.ramura = k; deseneazaRamuri(); deseneazaLista(); deseneazaMain(); inchideSertar(); };
+      window.insightRamura = function (k) { S.ramura = k; S.nuIncape = null; deseneazaRamuri(); deseneazaLista(); deseneazaMain(); inchideSertar(); };
       window.insightRedenumeste = async function (id) {
         var c = S.lista.filter(function (x) { return x.id === id; })[0] || {};
         var nume = await raConfirm('Un nume după care o recunoști ușor în listă.', { title: 'Redenumește conversația', danger: false, okLabel: 'Salvează', icon: 'fa-pen', field: { label: 'Numele conversației', value: c.titlu || '' } });
@@ -15075,8 +15104,12 @@ const pozitii = await r.json();</code></pre>
           : isAiNoi
           ? '<i class="fas fa-wand-magic-sparkles" style="color:var(--accent);opacity:.8;"></i>'
           : '<i class="fas fa-map-location-dot" style="color:var(--accent);opacity:.7;"></i>';
+        // „Treci la Pro" (16.11, Alin: „4. DA"): pe anunțurile de 80% / 100% ale administratorului, pachetul următor (de la server).
+        const rec = isPachet && nd && nd.recomandat && /^[a-z]+$/.test(String(nd.recomandat.cod || '')) ? nd.recomandat : null;
         const reportBtn = (n.type === 'report_ready')
           ? `<button class="btn-sm btn-primary" style="padding:3px 8px;white-space:nowrap;" title="Mergi la rapoarte generate" onclick="notifGoReports()"><i class="fas fa-arrow-right"></i> Rapoarte</button>`
+          : rec
+          ? `<button class="btn-sm btn-primary" style="padding:3px 8px;white-space:nowrap;" title="Deschide confirmarea pachetului ${_ne(rec.nume || '')}" onclick="notifTreciLa('${rec.cod}')"><i class="fas fa-arrow-up"></i> ${_ne(rec.buton || ('Treci la ' + (rec.nume || '')))}</button>`
           : '';
         return `
         <div style="display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);${n.acknowledged?'opacity:.5;':''}">
@@ -15107,6 +15140,8 @@ const pozitii = await r.json();</code></pre>
       setTimeout(function () { if (window.raxDevDeschideNeasignate) raxDevDeschideNeasignate({ imeis: d.imeis || [], firma: d.company_id != null ? d.company_id : null }); }, 180);
     }
     function notifAiControl() { closeNotifications(); goSistem('agents'); }
+    // „Treci la Pro" din anunț: RA Insight, apoi fereastra de confirmare care există deja (aceeași ca din „Vezi pachetele").
+    function notifTreciLa(cod) { closeNotifications(); showView('insight'); setTimeout(function () { if (window.insightTrecere) window.insightTrecere(cod); }, 400); }
     function notifCerere(id) {
       const d = _notifDate[id] || {};
       closeNotifications();

@@ -20,6 +20,7 @@ export type Laturi = {
   propunere: (m: any, id: any, nou: any, urmator: any) => void;
   editeaza: (t: string) => void;             // pune întrebarea înapoi în casetă
   pachete?: () => void;                      // „Vezi pachetele": doar administratorul firmei
+  treciLa?: (cod: string) => void;           // „Treci la Pro" (16.11): tot doar administratorul firmei
 };
 
 // Copierea: fără clipboard (unele WebView-uri îl refuză), se încearcă pe calea veche.
@@ -75,13 +76,14 @@ function Inteles({ lista }: { lista: any[] }) {
   );
 }
 // Mesajul pachetului (Start, luna oprită): „Alege ce vrei să afli" = „+"; „Vezi pachetele" doar la administratorul firmei.
-function CasetaLimita({ text, l, faraPachete }: { text: string; l: Laturi; faraPachete?: boolean }) {
+function CasetaLimita({ text, l, faraPachete, rec }: { text: string; l: Laturi; faraPachete?: boolean; rec?: { cod: string; buton: string } | null }) {
   return (
     <div class="chat-lim">
       <Md text={text} />
       <div class="chat-lim-b">
         <ButonProp text="Alege ce vrei să afli" ic="plus" onClick={l.plus} />
-        {l.pachete && !faraPachete ? <ButonProp text="Vezi pachetele" ic="layers" onClick={l.pachete} /> : null}
+        {rec && l.treciLa && !faraPachete ? <ButonProp text={rec.buton} ic="arrowUp" onClick={() => l.treciLa!(rec.cod)} />
+          : l.pachete && !faraPachete ? <ButonProp text="Vezi pachetele" ic="layers" onClick={l.pachete} /> : null}
       </div>
     </div>
   );
@@ -180,7 +182,7 @@ export function BulaAi({ m, l }: { m: any; l: Laturi }) {
       <div class="bub">
         {plan.insigna ? <Insigna ins={plan.insigna} /> : null}
         {plan.inteles.length ? <div class="ins-extra"><Inteles lista={plan.inteles} /></div> : null}
-        {plan.limita != null ? <CasetaLimita text={plan.limita} l={l} faraPachete={plan.faraPachete} /> : null}
+        {plan.limita != null ? <CasetaLimita text={plan.limita} l={l} faraPachete={plan.faraPachete} rec={plan.recomandat} /> : null}
         {plan.carduri.length ? <div class="chat-raps">{plan.carduri.map((rp) => <CartonasRaport rp={rp} l={l} />)}</div> : null}
         {plan.text ? <div class="insp-txt"><Md text={plan.text} /></div> : null}
         {plan.sursa ? <BlocSursa se={plan.sursa} /> : null}

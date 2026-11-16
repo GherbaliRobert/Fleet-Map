@@ -4,7 +4,8 @@ import { showToast } from '../app/store';
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import {
   OK_DAI_LOC, TEXT_BIFA, TEXT_CONFIRM, TEXT_RENUNT, TITLU_COMPARATIE, TITLU_CONFIRMARE, TITLU_CONTURI, TITLU_DAI_LOC, TITLU_IN_TOATE, TITLU_PACHETE,
-  corpLimita, corpTrecere, dupaConfirmare, planConturi, planPachete, textDaiLoc, textLimitaGata, textLocGata, textSursaGata, type CelulaCmp,
+  corpLimita, corpTrecere, dupaConfirmare, nuIncapeDin, planConturi, planPachete, textDaiLoc, textLimitaGata, textLocGata, textPuneMaxim, textSursaGata,
+  type CelulaCmp, type NuIncape,
 } from '../lib/insightPachet';
 import { HartieBtns } from './ContractUi';
 import { Confirma } from './FlotaUi';
@@ -67,13 +68,22 @@ function Celula({ c }: { c: CelulaCmp & { nume: string; ai: boolean; al: boolean
 }
 
 // ── „Vezi pachetele" ──
-export function PaginaPachete({ onSchimbat }: { onSchimbat: () => void }) {
+// `treci` (16.11): „Treci la Pro" din caseta de la capătul întrebărilor — confirmarea se deschide singură, o dată, peste pachete
+// (web: insightTrecere, direct peste pagina de sub ea). Doar administratorul care poate schimba pachetul are butonul „Alege …".
+export function PaginaPachete({ onSchimbat, treci }: { onSchimbat: () => void; treci?: string }) {
   const [j, setJ] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [trecere, setTrecere] = useState<{ cod: string; j: any } | null>(null);
   const [cer, setCer] = useState('');
+  const treciFacut = useRef(false);
   const aduce = () => Api.insightPachete().then((r: any) => { setJ(r); setErr(''); }).catch((e: any) => setErr((e && e.message) || 'Nu am putut încărca pachetele.'));
   useEffect(() => { aduce(); }, []);
+  useEffect(() => {
+    if (!j || treciFacut.current || !treci || !/^[a-z]+$/.test(treci)) return;
+    treciFacut.current = true;
+    const c = planPachete(j).carduri.find((x: any) => x.cod === treci);
+    if (c && c.alege) alege(treci);
+  }, [j]);
   async function alege(cod: string) {
     if (cer) return;
     setCer(cod);
@@ -136,25 +146,25 @@ export function PaginaPachete({ onSchimbat }: { onSchimbat: () => void }) {
   );
 }
 
-// Un om, cu limita lui: „Fără limită" / „Cel mult … pe lună". Caseta cifrei apare doar la „Cel mult".
-function Limita({ o, onSalveaza }: { o: any; onSalveaza: (id: any, val: string) => void }) {
-  const [cel, setCel] = useState(o.cuLimita);
-  const [val, setVal] = useState(o.limita);
-  useEffect(() => { setCel(o.cuLimita); setVal(o.limita); }, [o.cuLimita, o.limita]);
+// Un om, cu cifra lui pe lună (16.11): colegul — „Fără întrebări libere" / „Cel mult…"; administratorul — „Restul" / „Cel mult…"
+// (`o.optiuni`, etichetele de la server). Caseta cifrei apare doar la „Cel mult"; o cifră care nu încape rămâne scrisă, cu chenar roșu.
+function Limita({ o, ni, onSalveaza }: { o: any; ni: NuIncape | null; onSalveaza: (id: any, val: string) => void }) {
+  const [cel, setCel] = useState(o.cuLimita || !!ni);
+  const [val, setVal] = useState(ni ? ni.valoare : o.limita);
+  useEffect(() => { setCel(o.cuLimita || !!ni); setVal(ni ? ni.valoare : o.limita); }, [o.cuLimita, o.limita, ni]);
   const ref = useRef<HTMLInputElement | null>(null);
   return (
     <span class="pkc-lim-w">
       <select class="pkc-sel" aria-label={'Întrebări pe lună pentru ' + o.nume} value={cel ? 'cel' : 'fara'}
         onChange={(e) => {
           const v = (e.target as HTMLSelectElement).value;
-          if (v === 'fara') { setCel(false); if (o.cuLimita) onSalveaza(o.id, ''); }
+          if (v === 'fara') { setCel(false); if (o.cuLimita || ni) onSalveaza(o.id, ''); }
           else { setCel(true); setTimeout(() => { if (ref.current) ref.current.focus(); }, 30); }
         }}>
-        <option value="fara">Fără limită</option>
-        <option value="cel">Cel mult…</option>
+        {(o.optiuni as [string, string][]).map((x) => <option value={x[0]}>{x[1]}</option>)}
       </select>
       {cel ? <>
-        <input ref={ref} class="pkc-lim" type="number" inputMode="numeric" min="0" step="1" value={val} aria-label={'Cel mult câte întrebări pe lună pentru ' + o.nume}
+        <input ref={ref} class={'pkc-lim' + (ni ? ' pkc-lim-nu' : '')} type="number" inputMode="numeric" min="0" step="1" value={val} aria-label={'Cel mult câte întrebări pe lună pentru ' + o.nume}
           onInput={(e) => setVal((e.target as HTMLInputElement).value)}
           onChange={(e) => { const v = (e.target as HTMLInputElement).value; if (String(v).trim() !== '') onSalveaza(o.id, v); }} />
         <span class="pkc-pel">pe lună</span>
@@ -168,19 +178,35 @@ export function PaginaPachetConturi({ laPachete, onSchimbat }: { laPachete: () =
   const [j, setJ] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [daLoc, setDaLoc] = useState<any | null>(null);
+  // Cifra care nu încape (web: S.nuIncape) și confirmarea „Treci la Pro" (aceeași foaie ca în „Vezi pachetele").
+  const [ni, setNi] = useState<NuIncape | null>(null);
+  const [trecere, setTrecere] = useState<{ cod: string; j: any } | null>(null);
+  const [cer, setCer] = useState('');
   useInapoiInchide(!!daLoc, () => { setDaLoc(null); return true; });
   const aduce = () => Api.insightPachetConturi().then((r: any) => { setJ(r); setErr(''); })
     .catch((e: any) => setErr((e && e.data && e.data.error) || 'Pagina e doar a administratorului firmei.'));
   useEffect(() => { aduce(); }, []);
   async function pune(id: any, on: boolean, nume: string) {
+    setNi(null);
     try { await Api.setUserAiSeat(id, on); showToast(textLocGata(on, nume)); }
     catch (e: any) { showToast((e && e.message) || 'Nu s-a putut schimba.', true); }
     onSchimbat(); aduce();
   }
-  async function limita(id: any, val: string) {
-    try { await Api.setUserAiLimita(id, corpLimita(val).limita); showToast(textLimitaGata(val)); }
-    catch (e: any) { showToast((e && e.message) || 'Nu s-a putut salva limita.', true); }
+  async function limita(id: any, val: string, nume: string) {
+    try { await Api.setUserAiLimita(id, corpLimita(val).limita); setNi(null); showToast(textLimitaGata(val)); }
+    catch (e: any) {
+      const x = nuIncapeDin(e && e.data, id, nume, val);
+      setNi(x);
+      if (!x) showToast((e && e.message) || 'Nu s-a putut salva cifra.', true);
+    }
     onSchimbat(); aduce();
+  }
+  async function trece(cod: string) {
+    if (cer) return;
+    setCer(cod);
+    try { const r = await Api.insightPachetTrecere(cod); setTrecere({ cod, j: r }); }
+    catch (e: any) { showToast((e && e.message) || 'Nu se poate schimba pachetul acum.', true); }
+    setCer('');
   }
   async function sursa(on: boolean) {
     try { await Api.insightSursaFirma(on); showToast(textSursaGata(on)); }
@@ -213,13 +239,29 @@ export function PaginaPachetConturi({ laPachete, onSchimbat }: { laPachete: () =
               </button>
             </div>
             {o.nuPoate ? <div class="pkc-nu">{o.nuPoate}</div> : null}
+            {o.nuPoate && p.recomandatConturi ? (
+              <div class="pkc-treci"><ButonProp text={p.recomandatConturi.buton} ic="arrowUp" prim disabled={!!cer} onClick={() => trece(p.recomandatConturi!.cod)} /></div>
+            ) : null}
             {p.imparte ? (
-              <div class="pkc-kv"><span>Întrebări pe lună</span>{o.arataLimita ? <Limita o={o} onSalveaza={limita} /> : <span class="pkc-gol">—</span>}</div>
+              <div class="pkc-kv"><span>Întrebări pe lună</span>{o.arataLimita ? <Limita o={o} ni={ni && ni.id === o.id ? ni : null} onSalveaza={(id, v) => limita(id, v, o.nume)} /> : <span class="pkc-gol">—</span>}</div>
             ) : null}
             <div class="pkc-kv"><span>{p.coloane[p.coloane.length - 1]}</span><b>{o.folosite}</b></div>
           </div>
         ))}
       </div>
+      {ni ? (
+        <div class="pkc-ni">
+          <button type="button" class="chat-ib pkc-ni-x" aria-label="Închide" onClick={() => setNi(null)}><Icon name="x" size={16} /></button>
+          <div class="pkc-ni-t">{ni.text}</div>
+          {ni.rec && ni.rec.text ? <div class="pkc-ni-r">{ni.rec.text}</div> : null}
+          {(ni.rec || ni.maxim > 0) ? (
+            <div class="pkc-ni-b">
+              {ni.rec ? <ButonProp text={ni.rec.buton} ic="arrowUp" prim disabled={!!cer} onClick={() => trece(ni.rec!.cod)} /> : null}
+              {ni.maxim > 0 ? <ButonProp text={textPuneMaxim(ni)} ic="check" onClick={() => limita(ni.id, String(ni.maxim), ni.nume)} /> : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div class="pkc-nota">{p.nota}</div>
       {sr ? (
         <div class="pkc-se">
@@ -249,6 +291,10 @@ export function PaginaPachetConturi({ laPachete, onSchimbat }: { laPachete: () =
       {daLoc ? (
         <Confirma title={TITLU_DAI_LOC} text={textDaiLoc(daLoc.nume)} okLabel={OK_DAI_LOC}
           onCancel={() => setDaLoc(null)} onOk={() => { const o = daLoc; setDaLoc(null); pune(o.id, true, o.nume); }} />
+      ) : null}
+      {trecere ? (
+        <FoaieTrecere cod={trecere.cod} j={trecere.j} onInchide={() => setTrecere(null)}
+          onGata={(m) => { setTrecere(null); setNi(null); showToast(m); aduce(); onSchimbat(); }} />
       ) : null}
     </div>
   );

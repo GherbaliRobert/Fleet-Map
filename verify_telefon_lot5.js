@@ -836,7 +836,10 @@ async function parteaAnunturi() {
     ['ai_sold', 'ai_intrebari', 'ai_plasa', 'ai_refuz', 'ai_refuz_gata'].every((t) => P.adresaAnunt(t, { ai: true, company_id: 3 }) === '/admin/ai-usage')
     && /const isAiNoi = \/\^ai_\(sold\|intrebari\|plasa\|refuz\|refuz_gata\)\$\/\.test\(n\.type\);/.test(html) && /function notifAiControl\(\) \{ closeNotifications\(\); goSistem\('agents'\); \}/.test(html)
     && /isAiNoi\s*\?\s*`onclick="notifAiControl\(\)" title="Deschide RA Insight · control"`/.test(html));
-  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['ai_intrebari', 'ai_intrebari_firma', 'ai_plasa', 'ai_refuz', 'ai_refuz_gata', 'ai_sold', 'aparate_noi', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema']) &&
+  // „De azi aveți pachetul …" (16.11): la orice schimbare de pachet cifrele date pe nume se șterg → „Pachet și conturi", pe ambele părți.
+  T('„De azi aveți pachetul …" (16.11) → RA Insight, „Pachet și conturi", ca anunțul de 80% (web: după `data.pachet`, scris de server)',
+    P.adresaAnunt('ai_pachet_nou', { pachet: true }) === '/insight/pachet' && /_incAnunta\(u\.id, co\.id, 'ai_pachet_nou', a\.nivel, a\.titlu, a\.text, \{ pachet: true \}\)/.test(fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8')));
+  T('TIPURI_CU_LOC = exact felurile care au adresă', J(P.TIPURI_CU_LOC.slice().sort()) === J(['ai_intrebari', 'ai_intrebari_firma', 'ai_pachet_nou', 'ai_plasa', 'ai_refuz', 'ai_refuz_gata', 'ai_sold', 'aparate_noi', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata', 'demo_request', 'mail_nou', 'montaj_de_facturat', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema']) &&
     P.TIPURI_CU_LOC.every((t) => P.adresaAnunt(t, { company_id: 3 }) !== null));
   {
     const u = P.adresaAnunt('aparate_noi', { imeis: [A1, A2, 'TEST111'], company_id: 42 });

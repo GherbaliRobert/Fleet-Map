@@ -154,8 +154,8 @@ T('control: blocul „Anthropic, la zi" (_aiuBani), cu esc pe fiecare text, înt
 T('control: firmele la 80–99% din `p.aproape` (de la server)', /\(Array\.isArray\(p\.aproape\) \? p\.aproape : \[\]\)\.forEach/.test(ctl));
 T('un singur loc pentru sold: „Control costuri" nu mai scrie credite, deschide aceeași fereastră', html.indexOf('anthropic_credit_usd') < 0 && html.indexOf('raxSaveAnthropicCredit') < 0 && /raxAiSold\(raxOpenAnthropicDetail\)/.test(html) &&
   (html.match(/fetch\('\/api\/admin\/insight\/sold'/g) || []).length === 2, (html.match(/fetch\('\/api\/admin\/insight\/sold'/g) || []).length);
-T('caseta din chat: la refuzul lui Anthropic (`faraModel`) fără „Vezi pachetele" — pe web și pe telefon', /if \(esteAdmin\(\) && !x\.faraModel\) \{ var bv = el\('button', 'chat-pas ins'\)/.test(html) && /faraModel: j\.faraModel \} \};\s*S\.mesaje\.push\(m\);/.test(html) &&
-  /faraPachete: !!x\.faraModel/.test(citeste('mobile/src/lib/insight.ts')) && /l\.pachete && !faraPachete \?/.test(citeste('mobile/src/components/InsightBula.tsx')));
+T('caseta din chat: la refuzul lui Anthropic (`faraModel`) fără „Vezi pachetele" și fără „Treci la Pro" (16.11) — pe web și pe telefon', /if \(esteAdmin\(\) && !x\.faraModel && rcm\) \{ var bt = el\('button', 'chat-pas ins'\)/.test(html) && /else if \(esteAdmin\(\) && !x\.faraModel\) \{ var bv = el\('button', 'chat-pas ins'\)/.test(html) && /faraModel: j\.faraModel, recomandat: j\.recomandat \} \};\s*S\.mesaje\.push\(m\);/.test(html) &&
+  /faraPachete: !!x\.faraModel/.test(citeste('mobile/src/lib/insight.ts')) && /const recomandat = !x\.faraModel && x\.recomandat/.test(citeste('mobile/src/lib/insight.ts')) && /l\.pachete && !faraPachete \?/.test(citeste('mobile/src/components/InsightBula.tsx')) && /rec && l\.treciLa && !faraPachete \?/.test(citeste('mobile/src/components/InsightBula.tsx')));
 T('reîncărcarea automată se scrie pe aceeași rută (raxAiReincarcare → /api/admin/insight/sold)', /window\.raxAiReincarcare = async function/.test(html) && /reincarcare: nr\.length === 2/.test(html));
 // Culorile: perechi pe ambele teme, măsurate (≥ 4,5 pe textul mic).
 function rgb(h) { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map((x) => x + x).join(''); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); }
@@ -190,7 +190,7 @@ T('„Rezumă", citirea pozei, asistentul nostru: textul lor la refuz', /e\.refu
 T('ceasurile: anunțurile la 15 minute; cheia la pornire și din oră în oră, în probe doar cu AI_VERIFICARE_LA_MS', /setInterval\(\(\) => soldAnuntTick\(\)\.catch\(\(\) => \{\}\), 15 \* 60 \* 1000\)/.test(SRV) && /process\.env\.AI_VERIFICARE_LA_MS\) \{\s*setTimeout\(\(\) => _verificaCheiaAnthropic\(\)/.test(SRV));
 T('administratorul firmei la 80%: chemat din aceeași trecere de 15 minute, o socoteală cu a noastră, doar administratorii, o dată pe lună',
   /try \{ out\.admini = await anuntAdminiAproapeTick\(\); \}/.test(SRV) && /async function _intrebariFirmeAi\(\) \{ return \(await _folositeFirme\(\)\)\.filter/.test(SRV) &&
-  /_incAnunta\(u\.id, f\.id, 'ai_intrebari_firma', a\.nivel, a\.titlu, a\.text, \{ pachet: true, procent: pct \}\)/.test(SRV) &&
+  /const date = \{ pachet: true, procent: pct \};\s*if \(rec\) date\.recomandat = \{ cod: rec\.cod, nume: rec\.nume, buton: 'Treci la ' \+ rec\.nume \};/.test(SRV) && /_incAnunta\(u\.id, f\.id, 'ai_intrebari_firma', a\.nivel, a\.titlu, a\.text, date\)/.test(SRV) &&
   /filter\(function \(u\) \{ return pachete\.esteAdmin\(u\.role\); \}\)/.test(SRV) && /'ai_anunturi_admini'/.test(SRV));
 T('„Stare producție": rândul cheii spune refuzul și soldul (textele benzii)', /add\('ai', 'Cheie AI \(Anthropic\)', 'crit', soldAi\.randSold\(/.test(SRV));
 
@@ -390,6 +390,9 @@ async function peServer() {
       T('administratorul firmei: anunțul lui, la 81% — „au mai rămas 39 de întrebări", „info", clic → „Pachet și conturi"', ((t1.sold || {}).admini || []).length === 1 && t1.sold.admini[0].id === co.id && t1.sold.admini[0].admini === 1 &&
         anC.length === 1 && anC[0].title === 'RA Insight: au mai rămas 39 de întrebări în ' + luna && anC[0].severity === 'info' && /^Ați folosit 161 din cele 200 de întrebări ale pachetului Basic\./.test(anC[0].body) &&
         ((typeof anC[0].data === 'string' ? JSON.parse(anC[0].data) : anC[0].data) || {}).pachet === true, J([t1.sold && t1.sold.admini, anC]));
+      // „Treci la Pro" (16.11, Alin: „4. DA"): pachetul următor stă în anunț, ca butonul de lângă el (web) să deschidă confirmarea.
+      const dC = (typeof anC[0].data === 'string' ? JSON.parse(anC[0].data) : anC[0].data) || {};
+      T('…anunțul are și pachetul următor: „Treci la Pro"', dC.recomandat && dC.recomandat.cod === 'pro' && dC.recomandat.buton === 'Treci la Pro', J(dC));
     }
     T('…nu ajunge la noi și nici la managerul firmei', !(await anunturi(S, 'ai_intrebari_firma')).length && !!M && !(await anunturi(M, 'ai_intrebari_firma')).length);
     a = await cere('GET', '/api/admin/azi-la-noi?proaspat=1', S);

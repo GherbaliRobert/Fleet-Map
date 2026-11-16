@@ -431,6 +431,9 @@ function formularWeb(cookie, eSuper, proprii) {
   const ion = await om('ion@paritate.ro', 'manager', co.id, ckSef);
   const loc = await json('PUT', '/api/users/' + ion.id + '/ai-seat', ckSef, { on: true });
   T('adminul îi dă RA Insight lui Ion (pachetul Basic: 200 de întrebări pe toată firma)', loc.status === 200 && loc.j.seats === 1, loc.text.slice(0, 80));
+  // 16.11 (Alin: „nu există fără limită"): un coleg are întrebări libere doar câte îi dă administratorul — aici, toate 200.
+  const limIon = await json('PUT', '/api/users/' + ion.id + '/ai-limita', ckSef, { limita: 200 });
+  T('…și îi dă toate cele 200 de întrebări ale lunii (fără cifră ar avea doar răspunsurile pe loc)', limIon.status === 200 && limIon.j.ai_limita === 200, limIon.text.slice(0, 120));
   const ckIon = await login('ion@paritate.ro', PAROLA);
   const telIon = await loginTelefon('ion@paritate.ro', PAROLA);
   const folosite = async () => (await json('GET', '/api/ai/quota', ckIon)).j.used;

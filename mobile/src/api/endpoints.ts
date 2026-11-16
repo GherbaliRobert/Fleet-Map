@@ -529,7 +529,7 @@ export const Api = {
   setUserAccess: (id: number, devices: string[], groups: number[]) => api(`/api/users/${id}/access`, { method: 'PUT', body: { devices, groups } }),
   // Contul RA Insight al omului („Pachet și conturi"; prețul pachetului e fix pe firmă, oricâte conturi).
   setUserAiSeat: (id: number, on: boolean) => api<{ ok: boolean; ai_seat: boolean; seats: number }>(`/api/users/${id}/ai-seat`, { method: 'PUT', body: { on } }),
-  // „Fără limită" (null) / „Cel mult … pe lună": limita unui om, pe Basic, Pro și Business. Serverul spune dacă trece de întrebările pachetului.
+  // Cifra unui om pe lună (null = fără cifră), pe Basic, Pro și Business. La 400 serverul spune `maxim` (cât mai încape) și `recomandat`.
   setUserAiLimita: (id: number, limita: number | null) => api<any>(`/api/users/${id}/ai-limita`, { method: 'PUT', body: { limita } }),
   // Rolurile firmei: cele standard (cu numele date de firmă) + rolurile proprii.
   companyRoles: () => api<any[]>('/api/company-roles'),

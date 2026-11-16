@@ -181,8 +181,9 @@ function textePachetConturiPhone(j) {
   p.coloane.forEach((c) => o.push(c));
   p.oameni.forEach((m) => {
     o.push(m.nume, m.rol);
-    if (m.nuPoate) o.push(m.nuPoate);
-    if (p.imparte) { if (m.arataLimita) o.push('Fără limită', 'Cel mult…', 'pe lună'); else o.push('—'); }
+    if (m.nuPoate) { o.push(m.nuPoate); if (p.recomandatConturi) o.push(p.recomandatConturi.buton); }
+    // 16.11: fără „Fără limită" — colegul „Fără întrebări libere", administratorul „Restul" (etichetele de la server, pe rol).
+    if (p.imparte) { if (m.arataLimita) o.push(m.optiuni[0][1], m.optiuni[1][1], 'pe lună'); else o.push('—'); }
     o.push(m.folosite);
   });
   o.push(p.nota);
@@ -295,12 +296,29 @@ function parteaPachetelor() {
     const faceLoc = functie(INSP, 'window.insightLoc = async function (id, on, nume)');
     T('dă-i cont: aceleași cuvinte ca fereastra paginii', faceLoc.indexOf("'„' + nume + '\" primește RA Insight. Prețul pachetului rămâne același, oricâte conturi dai.'") >= 0 && L.textDaiLoc('X') === '„X" primește RA Insight. Prețul pachetului rămâne același, oricâte conturi dai.' && faceLoc.indexOf("title: '" + L.TITLU_DAI_LOC + "'") >= 0 && faceLoc.indexOf("okLabel: '" + L.OK_DAI_LOC + "'") >= 0);
     T('…și după', faceLoc.indexOf("on ? 'RA Insight pornit pentru „' + nume + '\"' : 'RA Insight oprit pentru „' + nume + '\"'") >= 0 && L.textLocGata(true, 'X') === 'RA Insight pornit pentru „X"' && L.textLocGata(false, 'X') === 'RA Insight oprit pentru „X"');
-    const faceLim = functie(INSP, 'window.insightLimita = async function (id, val)');
-    T('limita: aceleași cuvinte și același corp', faceLim.indexOf("'Fără limită: folosește din întrebările firmei'") >= 0 && faceLim.indexOf("'Limita s-a salvat: cel mult ' + v + ' pe lună'") >= 0 && L.textLimitaGata('') === 'Fără limită: folosește din întrebările firmei' && L.textLimitaGata(' 40 ') === 'Limita s-a salvat: cel mult 40 pe lună' && J(L.corpLimita('')) === '{"limita":null}' && J(L.corpLimita('40')) === '{"limita":40}' && /limita: v === '' \? null : Number\(v\)/.test(faceLim));
+    const faceLim = functie(INSP, 'window.insightLimita = async function (id, val, nume)');
+    T('cifra pe lună: aceleași cuvinte și același corp', faceLim.indexOf("'S-a salvat: fără cifră pe lună'") >= 0 && faceLim.indexOf("'S-a salvat: cel mult ' + v + ' pe lună'") >= 0 && L.textLimitaGata('') === 'S-a salvat: fără cifră pe lună' && L.textLimitaGata(' 40 ') === 'S-a salvat: cel mult 40 pe lună' && J(L.corpLimita('')) === '{"limita":null}' && J(L.corpLimita('40')) === '{"limita":40}' && /limita: v === '' \? null : Number\(v\)/.test(faceLim));
+    // Cifra care nu încape (16.11): mesajul rămâne sub listă, cu ce a scris omul, „Treci la …" și „Pune N pentru …" — ca pe web (S.nuIncape).
+    const ni = L.nuIncapeDin({ error: 'E', maxim: 560, recomandat: { cod: 'business', nume: 'Business', buton: 'Treci la Business', text: 'R' } }, 7, 'Maria', ' 700 ');
+    T('…cifra care nu încape: aceleași câmpuri ca pe web (S.nuIncape), „Pune 560 pentru Maria"',
+      !!ni && ni.id === 7 && ni.nume === 'Maria' && ni.valoare === '700' && ni.text === 'E' && ni.maxim === 560 && ni.rec && ni.rec.cod === 'business' && ni.rec.buton === 'Treci la Business'
+      && L.textPuneMaxim(ni) === 'Pune 560 pentru Maria' && /'Pune ' \+ ni\.maxim \+ ' pentru ' \+ ni\.nume/.test(functie(INSP, 'async function deseneazaPachetConturi(main)'))
+      && /if \(r\.j && r\.j\.maxim != null\) S\.nuIncape = \{ id: id, nume: String\(nume \|\| ''\), valoare: v, text: r\.j\.error \|\| '', maxim: Number\(r\.j\.maxim\) \|\| 0, rec: r\.j\.recomandat \|\| null \}/.test(faceLim)
+      && L.nuIncapeDin({ error: 'Alt motiv' }, 7, 'Maria', '5') === null && L.nuIncapeDin({ maxim: 3, recomandat: { cod: 'X Y' } }, 1, 'A', '9').rec === null, J(ni));
     const faceSe = functie(INSP, 'window.insightSursaFirma = async function (on)');
     T('„Sursă externă" pe firmă: aceleași cuvinte, aceeași rută', faceSe.indexOf("'" + L.textSursaGata(true) + "'") >= 0 && faceSe.indexOf("'" + L.textSursaGata(false) + "'") >= 0 && /pornita: !!on/.test(faceSe) && /body: \{ pornita \}/.test(S.endpoints));
-    T('limita: „Fără limită" / „Cel mult…", caseta doar la „Cel mult", ca pe web', /<option value="fara">Fără limită<\/option>/.test(S.comp) && /<option value="cel">Cel mult…<\/option>/.test(S.comp) && /\[\['fara', 'Fără limită'\], \['cel', 'Cel mult…'\]\]/.test(INSP) && /\{cel \? <>/.test(S.comp));
-    T('…la „Fără limită", se șterge doar dacă omul avea limită; cifra goală nu pleacă', /if \(v === 'fara'\) \{ setCel\(false\); if \(o\.cuLimita\) onSalveaza\(o\.id, ''\); \}/.test(S.comp) && /if \(sel\.value === 'fara'\) \{ arata\(false\); if \(cuLim\) window\.insightLimita\(o\.id, ''\); \}/.test(functie(INSP, 'async function deseneazaPachetConturi(main)')) && /String\(v\)\.trim\(\) !== ''\) onSalveaza/.test(S.comp));
+    // 16.11 (Alin: „nu există fără limită, îi derutăm"): colegul „Fără întrebări libere" / „Cel mult…", administratorul „Restul" / „Cel mult…".
+    const etS = require('./pachete').ETICHETE_CIFRA;
+    T('cifra pe lună: aceleași alegeri pe rol ca pe web, cu etichetele serverului; fără „Fără limită"',
+      J(L.optiuniLimita(false, etS)) === J([['fara', 'Fără întrebări libere'], ['cel', 'Cel mult…']]) && J(L.optiuniLimita(true, etS)) === J([['fara', 'Restul'], ['cel', 'Cel mult…']])
+      && J(L.optiuniLimita(false, {})) === J(L.optiuniLimita(false, etS)) && J(L.optiuniLimita(true, {})) === J(L.optiuniLimita(true, etS))
+      && /\[\['fara', o\.admin \? \(et\.restul \|\| 'Restul'\) : \(et\.fara \|\| 'Fără întrebări libere'\)\], \['cel', et\.cifra \|\| 'Cel mult…'\]\]/.test(INSP)
+      && /\(o\.optiuni as \[string, string\]\[\]\)\.map\(\(x\) => <option value=\{x\[0\]\}>\{x\[1\]\}<\/option>\)/.test(S.comp) && /\{cel \? <>/.test(S.comp)
+      && !/Fără limită/.test(faraComentarii(S.comp + S.lib)) && !/Fără limită/.test(faraComentarii(functie(INSP, 'async function deseneazaPachetConturi(main)'))), J(L.optiuniLimita(true, etS)));
+    T('…la „fără cifră", se șterge doar dacă omul avea una (sau una care nu încape); cifra goală nu pleacă', /if \(v === 'fara'\) \{ setCel\(false\); if \(o\.cuLimita \|\| ni\) onSalveaza\(o\.id, ''\); \}/.test(S.comp) && /if \(sel\.value === 'fara'\) \{ arata\(false\); if \(cuLim \|\| nuInc\) window\.insightLimita\(o\.id, '', o\.nume\); \}/.test(functie(INSP, 'async function deseneazaPachetConturi(main)')) && /String\(v\)\.trim\(\) !== ''\) onSalveaza/.test(S.comp));
+    T('„Treci la …": telefonul deschide aceeași confirmare (ruta trecerii), din „Pachet și conturi" și din „Vezi pachetele" (`treci`)',
+      /async function trece\(cod: string\) \{[\s\S]*?Api\.insightPachetTrecere\(cod\)/.test(S.comp) && /<FoaieTrecere cod=\{trecere\.cod\}[\s\S]*?setNi\(null\)/.test(S.comp)
+      && /if \(c && c\.alege\) alege\(treci\);/.test(S.comp) && /treciFacut\.current = true;/.test(S.comp));
     T('comutatorul: la nuPoate, oprit; a da un cont cere confirmare, a-l lua nu', /disabled=\{!o\.loc && !!o\.nuPoate\}/.test(S.comp) && /if \(o\.loc\) pune\(o\.id, false, o\.nume\); else setDaLoc\(o\)/.test(S.comp));
     T('„Schimbările de pachet": butoanele de hârtie ale telefonului, pe adresa serverului', /<HartieBtns path=\{t\.pdf\} ce="Confirmarea"/.test(S.comp));
     T('fără HTML de la server', !/dangerouslySetInnerHTML|innerHTML/.test(faraComentarii(S.lib + S.comp + S.control + S.bani)));
@@ -537,9 +555,9 @@ async function parteaServerului() {
   // 13.11 (Alin: „și la basic aș vrea ca adminul să poată să împartă"): pe Basic limita pe om merge.
   T('pe Basic limita pe om e primită de server (din 13.11)', !(await eroare(() => Api.setUserAiLimita(omB.id, 10))));
   const coLimB = await Api.insightPachetConturi();
-  T('…„Pachet și conturi" o arată: rezumatul spune cât e dat cu limită, iar telefonul arată alegerea pe om', /Date cu limită: 10 întrebări/.test((coLimB.rezumat || []).join(' ')) && L.planConturi(coLimB).oameni.some((o) => o.arataLimita), J(coLimB.rezumat));
+  T('…„Pachet și conturi" o arată: rezumatul spune cât e dat pe nume și cât rămâne la administrator, iar telefonul arată alegerea pe om', /Date pe nume: 10 întrebări · la administrator rămân 190\./.test((coLimB.rezumat || []).join(' ')) && L.planConturi(coLimB).oameni.some((o) => o.arataLimita), J(coLimB.rezumat));
   await comparaConturi('„Pachet și conturi", Basic cu o limită', coLimB);
-  await Api.setUserAiLimita(omB.id, null);   // înapoi la „Fără limită", ca restul probei
+  await Api.setUserAiLimita(omB.id, null);   // înapoi fără cifră, ca restul probei
 
   // Administratorul FĂRĂ cont: le-a dat colegilor; intră tot în „Pachet și conturi".
   await Api.setUserAiSeat(admB.id, false);
@@ -582,9 +600,13 @@ async function parteaServerului() {
   T('limita: „Cel mult 40" se ține minte, folositele „0 din 40"', omLim.cuLimita && omLim.limita === '40' && omLim.arataLimita && /din 40/.test(omLim.folosite), J(omLim));
   await comparaConturi('„Pachet și conturi", cu limită', coLim);
   const preaMult = await eroare(() => Api.setUserAiLimita(omB.id, 100000));
-  T('…peste întrebările pachetului: refuzat de server', !!preaMult && !!preaMult.message, preaMult && preaMult.message);
+  T('…peste întrebările pachetului: refuzat de server, cu cât mai încape; niciun pachet nu le cuprinde, deci fără „Treci la"', !!preaMult && !!preaMult.message && preaMult.data && preaMult.data.maxim === 600 && !preaMult.data.recomandat, preaMult && J(preaMult.data));
+  // 16.11: o cifră care ar încăpea într-un pachet mai mare → „Treci la Business", de la server, doar administratorului.
+  const preaMult2 = await eroare(() => Api.setUserAiLimita(omB.id, 700));
+  const ni2 = preaMult2 && L.nuIncapeDin(preaMult2.data, omB.id, 'Om B', '700');
+  T('…700 pe Pro: caseta „nu încape" a telefonului, cu „Treci la Business" și „Pune 600 pentru Om B"', !!ni2 && ni2.maxim === 600 && !!ni2.rec && ni2.rec.cod === 'business' && /^Treci la Business/.test(ni2.rec.buton) && L.textPuneMaxim(ni2) === 'Pune 600 pentru Om B', preaMult2 && J(preaMult2.data));
   await Api.setUserAiLimita(omB.id, null);
-  T('…„Fără limită" o scoate', L.planConturi(await Api.insightPachetConturi()).oameni.find((o) => o.id === omB.id).cuLimita === false);
+  T('…fără cifră („Fără întrebări libere") o scoate', L.planConturi(await Api.insightPachetConturi()).oameni.find((o) => o.id === omB.id).cuLimita === false);
 
   // Trecerea programată în jos: `urmator`, pe ecran și pe rând.
   const jos = await Api.insightPachetTrecere('basic');
@@ -769,15 +791,21 @@ function parteaDesenului() {
   T('„Vezi pachetele": textul serverului rămâne text', hp.indexOf('<img') < 0 && hp.indexOf('&lt;img') >= 0, hp.slice(0, 300));
   T('…cele patru, „Pachetul tău", „Alege", comparația pe celule', ['Pachetul tău', 'Alege Start', 'Alege Basic', 'Alege Business', 'pk-cel', L.TITLU_COMPARATIE, L.TITLU_IN_TOATE].every((x) => hp.indexOf(x) >= 0) && hp.indexOf('Alege Pro') < 0, hp.slice(0, 400));
   T('…fără tabel lat pe telefon', hp.indexOf('<table') < 0);
-  // PaginaPachetConturi: j, err, daLoc.
-  const jC = { pachet: { cod: 'pro', nume: 'Pro', imparte: true, conturi: 5, intrebari: 600, ramase: 150 }, urmator: RAU, treceri: [{ id: 3, cand: '02.11', cine: RAU, rezumat: 'Basic → Pro', email: 'trimisă', pdf: '/api/insight/pachet-trecere/3/pdf' }], rezumat: [RAU, 'doi'], oameni: [{ id: 1, nume: RAU, rol: 'Admin', loc: true, limita: 40, folositeText: '3 din 40' }, { id: 2, nume: 'Ion', rol: 'Manager', loc: false, folositeText: null, nuPoate: 'Nu mai sunt conturi.' }], nota: RAU, luna: 'noiembrie', sursa: { nume: 'Sursă externă', explicatie: RAU, oprita: false, text: RAU } };
-  stari.length = 0; stari.push(jC, '', null);
-  // Limita are stările ei (cel, val), citite tot de aici, după pagină.
-  stari.push(true, '40');
+  // PaginaPachetConturi: j, err, daLoc, ni (cifra care nu încape), trecere, cer.
+  const jC = { pachet: { cod: 'pro', nume: 'Pro', imparte: true, conturi: 5, intrebari: 600, ramase: 150 }, etichete: PK.ETICHETE_CIFRA, recomandatConturi: { cod: 'business', nume: 'Business', buton: 'Treci la Business', text: RAU }, urmator: RAU, treceri: [{ id: 3, cand: '02.11', cine: RAU, rezumat: 'Basic → Pro', email: 'trimisă', pdf: '/api/insight/pachet-trecere/3/pdf' }], rezumat: [RAU, 'doi'], oameni: [{ id: 1, nume: RAU, rol: 'Admin', admin: true, loc: true, limita: 40, folositeText: '3 din 40' }, { id: 4, nume: 'Maria', rol: 'Dispecer', loc: true, limita: null, folositeText: '0' }, { id: 2, nume: 'Ion', rol: 'Manager', loc: false, folositeText: null, nuPoate: 'Nu mai sunt conturi.' }], nota: RAU, luna: 'noiembrie', sursa: { nume: 'Sursă externă', explicatie: RAU, oprita: false, text: RAU } };
+  stari.length = 0; stari.push(jC, '', null, null, null, '');
+  // Fiecare cifră are stările ei (cel, val), citite tot de aici, după pagină: administratorul (40), Maria (fără cifră).
+  stari.push(true, '40', false, '');
   const hc = r(h(C.PaginaPachetConturi, { laPachete() {}, onSchimbat() {} }));
   T('„Pachet și conturi": textul serverului rămâne text', hc.indexOf('<img') < 0 && hc.indexOf('&lt;img') >= 0, hc.slice(0, 300));
   T('…rezumatul și bara, nu cartonașele vechi', /pkc-rez/.test(hc) && /width:25%/.test(hc) && !/pkc-card|cartonase/.test(hc), hc.slice(0, 400));
-  T('…limita: „Fără limită" / „Cel mult…", caseta cu cifra, „pe lună"', hc.indexOf('Fără limită') >= 0 && hc.indexOf('Cel mult…') >= 0 && hc.indexOf('pe lună') >= 0 && /value="40"/.test(hc), hc);
+  T('…cifra pe lună: administratorul „Restul", colegul „Fără întrebări libere", „Cel mult…", caseta cu cifra, „pe lună"; fără „Fără limită"', hc.indexOf('>Restul<') >= 0 && hc.indexOf('>Fără întrebări libere<') >= 0 && hc.indexOf('Cel mult…') >= 0 && hc.indexOf('pe lună') >= 0 && /value="40"/.test(hc) && hc.indexOf('Fără limită') < 0, hc);
+  T('…„Treci la Business" sub cel care nu mai poate primi cont (conturile pline)', /Nu mai sunt conturi\.<\/div><div class="pkc-treci"><button[^>]*>.*?Treci la Business<\/button>/.test(hc), hc.slice(hc.indexOf('Nu mai sunt'), hc.indexOf('Nu mai sunt') + 400));
+  // Cifra care nu încape (pusă pe administrator): caseta rămâne sub listă, cu ce a scris, chenarul roșu și cele două butoane.
+  stari.length = 0; stari.push(jC, '', null, { id: 1, nume: 'Maria', valoare: '700', text: RAU, maxim: 560, rec: { cod: 'business', nume: 'Business', buton: 'Treci la Business', text: 'Pe Business ai 1.000.' } }, null, '');
+  stari.push(true, '700', false, '');
+  const hn = r(h(C.PaginaPachetConturi, { laPachete() {}, onSchimbat() {} }));
+  T('…cifra care nu încape: caseta rămâne, textul serverului ca text, „Treci la Business", „Pune 560 pentru Maria", chenarul roșu pe cifră', /class="pkc-ni"/.test(hn) && hn.indexOf('&lt;img') >= 0 && /Pe Business ai 1\.000\./.test(hn) && hn.indexOf('Treci la Business') >= 0 && hn.indexOf('Pune 560 pentru Maria') >= 0 && /class="pkc-lim pkc-lim-nu"[^>]*value="700"|value="700"[^>]*class="pkc-lim pkc-lim-nu"/.test(hn), hn.slice(hn.indexOf('pkc-ni'), hn.indexOf('pkc-ni') + 600));
   T('…comutatorul oprit la `nuPoate`, cu motivul sub el', /Nu mai sunt conturi\./.test(hc) && /role="switch"[^>]*aria-checked="false"[^>]*disabled/.test(hc), hc.slice(0, 600));
   T('…PDF-ul prin butoanele de hârtie', /href="\/api\/insight\/pachet-trecere\/3\/pdf"/.test(hc));
   stari.length = 0;

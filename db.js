@@ -1618,8 +1618,12 @@ async function initDb() {
     // factura urmează numărul de locuri aprinse. Fără bifa asta, oricine avea „vede rapoartele"
     // putea întreba — adică toată firma, la prețul unui singur cont.
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_seat BOOLEAN DEFAULT false');
-    // Pachetele RA Insight (14.10): câte întrebări pe lună i-a dat administratorul omului (NULL = „la comun”, din ce nu e dat nimănui).
+    // Pachetele RA Insight (14.10): câte întrebări pe lună i-a dat administratorul omului (NULL = fără cifră: colegul are doar
+    // răspunsurile pe loc, administratorul folosește restul — 16.11). `ai_limita_pachet` = cheia pachetului în care s-a dat cifra
+    // (pachete.cheiePachet): la o schimbare de pachet cheia se schimbă, iar cifra nu mai contează (Alin, 16.11: „trebuie să distribuie
+    // din nou întrebările").
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_limita INTEGER');
+    await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_limita_pachet TEXT');
     // UN SINGUR NUME pentru administratorul unei firme. A purtat două, după calea pe care a fost
     // făcut: „company_admin" (Companii → Client nou) și „admin" (formularul din Utilizatori).
     // Drepturile erau identice, dar în aceeași listă apăreau două etichete pentru aceeași putere.
@@ -5066,15 +5070,32 @@ async function setUserAiSeat(userId, on) {
   return r.rows[0] || null;
 }
 // ─── Pachetele RA Insight (14.10) ──────────────────────────────────────────────────────────────────────────────────────
-// Limita pe om (NULL = „la comun”). Stingerea locului șterge și limita: un om fără RA Insight nu ține întrebări rezervate.
-async function setUserAiLimita(userId, limita) {
-  const r = await pool.query('UPDATE users SET ai_limita = $2 WHERE id = $1 RETURNING id, username, ai_seat, ai_limita', [userId, limita == null ? null : Math.round(Number(limita))]);
+// Cifra pe om (NULL = fără cifră), cu cheia pachetului în care s-a dat (16.11). Stingerea locului șterge și cifra: un om fără RA
+// Insight nu ține întrebări rezervate.
+async function setUserAiLimita(userId, limita, cheie) {
+  const v = limita == null ? null : Math.round(Number(limita));
+  const r = await pool.query('UPDATE users SET ai_limita = $2, ai_limita_pachet = $3 WHERE id = $1 RETURNING id, username, ai_seat, ai_limita, ai_limita_pachet',
+    [userId, v, v == null ? null : String(cheie || '')]);
   return r.rows[0] || null;
+}
+// La o schimbare de pachet (16.11): cifrele date în pachetul de dinainte se șterg (citirea le ignoră oricum, după cheie).
+async function stergeCifreVechi(companyId, cheie) {
+  const r = await pool.query('UPDATE users SET ai_limita = NULL, ai_limita_pachet = NULL WHERE company_id = $1 AND ai_limita IS NOT NULL ' +
+    'AND ai_limita_pachet IS DISTINCT FROM $2 RETURNING id', [companyId, String(cheie || '')]);
+  return r.rows.length;
+}
+// O singură dată (16.11): cifrele date înainte de cheie primesc cheia pachetului de acum al firmei lor, ca să nu se șteargă la publicare.
+async function cifreFaraCheie() {
+  const r = await pool.query('SELECT id, company_id FROM users WHERE ai_limita IS NOT NULL AND ai_limita_pachet IS NULL AND company_id IS NOT NULL');
+  return r.rows;
+}
+async function puneCheieCifra(userId, cheie) {
+  await pool.query('UPDATE users SET ai_limita_pachet = $2 WHERE id = $1 AND ai_limita IS NOT NULL AND ai_limita_pachet IS NULL', [userId, String(cheie || '')]);
 }
 // Oamenii cu RA Insight ai unei firme (activi), cu limita lor — pentru împărțirea întrebărilor și pentru poartă.
 async function getAiSeatHolders(companyId) {
   const r = await pool.query(
-    "SELECT id, username, full_name, role, ai_limita FROM users WHERE company_id = $1 AND ai_seat = true AND active IS NOT false AND role <> 'superadmin' ORDER BY id",
+    "SELECT id, username, full_name, role, ai_limita, ai_limita_pachet FROM users WHERE company_id = $1 AND ai_seat = true AND active IS NOT false AND role <> 'superadmin' ORDER BY id",
     [companyId]);
   return r.rows;
 }
@@ -5343,7 +5364,7 @@ async function getUsers(companyId) {
   const where = companyId != null ? "WHERE u.company_id = $1 AND u.role <> 'superadmin'" : '';
   const params = companyId != null ? [companyId] : [];
   const result = await pool.query(`
-    SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.functie, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat, u.ai_limita,
+    SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.functie, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat, u.ai_limita, u.ai_limita_pachet,
       -- Data până la care are acces (conturile demo aprobate expiră). Fără ea, ecranul nu putea
       -- spune „expiră în 3 zile" — se afla doar intrând în fișa omului.
       u.access_until,
@@ -5402,7 +5423,7 @@ async function getUserById(id) {
   const result = await pool.query(
     // role_slug = rolul PROPRIU al firmei, dacă omul are unul. Fără el aici, refreshAuth nu-l vede și
     // ajustările rolului propriu n-ar avea niciun efect.
-    'SELECT id, username, role, role_slug, full_name, email, phone, functie, active, last_login, company_id, created_at, access_until, demo_request_id, ai_seat, ai_limita FROM users WHERE id = $1',
+    'SELECT id, username, role, role_slug, full_name, email, phone, functie, active, last_login, company_id, created_at, access_until, demo_request_id, ai_seat, ai_limita, ai_limita_pachet FROM users WHERE id = $1',
     [id]
   );
   return result.rows[0] || null;
@@ -7349,7 +7370,7 @@ module.exports = {
   treceCerereEchipa, interventiiCalendar,
   getAiUsageByCompany, getAiUsageByKind, getAiTokensForCompany, getAiCallsForCompany,
   getAiMonthUsage, getAiMonthUsageByCompany, AI_BILLABLE_KINDS, AI_KINDS_COST_FIRMA, sursaExternaLuna, sursaExternaLunaToate,
-  setUserAiLimita, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata, costAiDeLa, costAiPeZile, aiLunaPeFel,
+  setUserAiLimita, stergeCifreVechi, cifreFaraCheie, puneCheieCifra, getAiSeatHolders, noteazaTrecerePachet, emailTrecerePachet, getTrecerePachet, listTreceriPachet, noteazaRaspunsReguli, raspunsuriReguliLuna, raspunsuriReguliLunaToate, raspunsuriReguliPeOm, costAiLunaFirma, costAiLunaToata, costAiDeLa, costAiPeZile, aiLunaPeFel,
   getAiSeats, setUserAiSeat, getAiMonthUsageByUser, getAiMonthUsageByUserAll, getAiMonthUsageForUser,
   getAiUsageByMonth, getInvoicesSince, abonamentVechiLuna, lastActivityByCompany, companyAdmins, deviceCanBits,
   setCompanyOferta,

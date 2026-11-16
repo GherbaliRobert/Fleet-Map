@@ -408,7 +408,11 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   „Acces", fereastra pachetului cu textul de la server (rândurile de pe factură), (8) anunțurile noastre despre RA Insight duc în „RA Insight ·
   control", (9) anunțul de la capăt (100%) al administratorului duce în „Pachet și conturi". De acum, poarta de pe GitHub verifică și telefonul
   întreg (`tsc --noEmit`), ca la APK. **Seara:** (10) „Abonament & plăți" fără comutatoarele modulelor AI (stau doar în „Acces"). Limitele pe om
-  de pe Basic merg și pe telefonul de azi: alegerea o arată telefonul după ce i-o cere serverul.
+  de pe Basic merg și pe telefonul de azi: alegerea o arată telefonul după ce i-o cere serverul. **16.11:** (11) în „Pachet și conturi", alegerea
+  pe om fără „Fără limită" (colegul: „Fără întrebări libere" / „Cel mult…"; administratorul: „Restul" / „Cel mult…"), caseta „nu încape" cu
+  „Treci la Pro" și „Pune N pentru …", „Treci la …" la conturile pline; (12) „Treci la Pro" în caseta de la capătul întrebărilor din RA
+  Insight; (13) anunțul „De azi aveți pachetul …" duce în „Pachet și conturi". ⚠ Pe telefonul de azi lista arată încă „Fără limită": e
+  doar numele (fără cifră = colegul are doar răspunsurile pe loc, cum spune serverul).
 - [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Din lotul 3: 8, 10, 11 și, din 7, „Pachet și conturi". Din lotul 4: 15 și capătul lui 14 (ecranul Alerte). Rămâne APK-ul.** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
@@ -597,6 +601,43 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
 
 ---
+
+## 2026-11-16
+
+### CLIENT · RA Insight: întrebările le împarte administratorul; „Fără limită" nu mai există; „Treci la Pro"
+*Alin, 16.11: „1.DA 2.DA 3.DA (e treaba lor cum vor să și împartă și dacă vor să își împartă întrebările) 4.DA" — după „Fără limită?
+nu există… îi derutăm" și „propun ca de fiecare dată când își schimbă planul, el trebuie să distribuie din nou întrebările".*
+
+**Ce am schimbat:**
+- **Un coleg are întrebări libere (cu AI) doar câte îi dă administratorul**, pe lună, din RA Insight → „Pachet și conturi" („Cel mult …").
+  Fără cifră („Fără întrebări libere"), colegul are doar răspunsurile pe loc (butoanele: unde e o mașină, km, staționări, rapoarte), iar
+  mesajul îi spune: „Nu ai întrebări libere pe noiembrie: le împarte administratorul firmei, din „Pachet și conturi”."
+- **Ce nu e dat nimănui rămâne la administratori** („Restul"). Doi administratori folosesc restul împreună; își pot pune și ei o cifră.
+  O firmă nouă: în prima zi toate întrebările sunt la administrator. Exemplu, Pro (600): 200 Maria, 100 dispecerul → la administrator 300.
+- **La orice schimbare de pachet** (în sus sau în jos, pusă de noi sau de administrator), din ziua în care pornește, cifrele date pe nume
+  se șterg singure; totul e la administratori, care le împart din nou. În ziua aceea administratorii primesc anunțul „De azi aveți pachetul
+  RA Insight Pro: 600 de întrebări pe lună. Până le împarți colegilor…". Fereastra de confirmare a trecerii spune dinainte că se șterg.
+  De la o lună la alta, cifrele rămân.
+- **„Treci la Pro"** (pachetul cel mai mic care încape, cu prețul lui): în „Pachet și conturi", sub cifra care nu încape — mesajul rămâne
+  acolo (nu mai e o bulă de două secunde), cu „Treci la Pro" și „Pune 50 pentru Maria" — și la conturile pline; în anunțurile de 80% și
+  de la capăt ale administratorului; în caseta de la capătul întrebărilor din RA Insight. Butonul deschide confirmarea care exista deja
+  (textul, bifa, PDF-ul). Nimic nu se pune singur după trecere: administratorul hotărăște.
+- Pe ecran: rezumatul spune „Date pe nume: 300 de întrebări · la administrator rămân 300."; nota de sub listă explică regula.
+- Ghidul (ce citește RA Insight), pagina pachetelor din aplicație și de pe site (`/pachete-ra-insight`, data și amprenta noi): „Fiecare
+  coleg are câte întrebări îi dai tu; ce nu dai rămâne la administrator".
+- Telefonul: la fel (aplicația următoare) — alegerea pe rol, caseta „nu încape", „Treci la …" (deschide „Vezi pachetele" cu confirmarea
+  peste), anunțul nou duce în „Pachet și conturi". Pe telefon, anunțul de 80% duce tot în „Pachet și conturi" (un rând de anunț are un
+  singur buton), de unde „Vezi pachetele" e la un pas.
+- Cum se ține minte: fiecare cifră e scrisă cu pachetul de atunci (`users.ai_limita_pachet` = `pachete.cheiePachet`); o cifră a altui
+  pachet nu mai contează, iar tura de la 15 minute (`impartireTick`) le șterge și trimite anunțul. Cifrele de dinainte de azi au primit,
+  o dată, pachetul de acum.
+- Probe: `verify_pachete.js`, `verify_telefon_pachete.js` (web și telefon pe aceleași răspunsuri; caseta „nu încape" desenată),
+  `verify_telefon_lot5.js` (anunțul nou), `verify_telefon_insight.js`, `verify_sold_ai.js`, `verify_insight_ghid.js`, `verify_site_public.js`.
+
+**Ce vede fondatorul:** nimic nou în ecranele noastre; fereastra din „Acces" spune, la o firmă cu cifre pe nume, că se vor șterge.
+
+**Ce vede clientul:** administratorul împarte întrebările; colegii fără cifră au doar răspunsurile pe loc; „Treci la Pro" acolo unde nu
+mai încape; la fiecare schimbare de pachet, anunțul și împărțirea de la capăt.
 
 ## 2026-11-13
 

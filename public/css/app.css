@@ -4240,6 +4240,15 @@ body.dark .pkc-pill { color: #3FE07D; background: color-mix(in srgb, #3FE07D 15%
 .pkc-lim { width: 84px; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border-light); color: var(--text-primary); border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 13px; }
 .pkc-gol { color: var(--text-muted); }
 .pkc-nota { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+/* Cifra care nu încape (16.11): mesajul rămâne sub tabel, cu „Treci la Pro" și „Pune N pentru …" — nu mai e o bulă de două secunde.
+   Dunga din stânga = „azi nu încape" (portocaliul închis pe alb, cel deschis pe negru). */
+.pkc-ni { position: relative; padding: 12px 44px 12px 14px; border: 1px solid var(--border-light); border-left: 4px solid #b45309; border-radius: 12px; background: var(--bg-panel); display: grid; gap: 6px; }
+body.dark .pkc-ni { border-left-color: #f59e0b; }
+.pkc-ni-t { font-size: 13.5px; font-weight: 700; color: var(--text-primary); line-height: 1.45; }
+.pkc-ni-r { font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
+.pkc-ni-b { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.pkc-ni-x { position: absolute; top: 8px; right: 8px; }
+.pkc-treci { margin-top: 6px; }
 /* „Sursă externă" pentru toată firma (28.10). */
 .pkc-se { margin: 14px 0 4px; padding: 12px 14px; border: 1px solid var(--border-light); border-radius: 12px; }
 .pkc-se-h { display: flex; align-items: center; gap: 8px; font-size: 14px; }
@@ -5344,6 +5353,9 @@ body.dark {
 /* Stările listelor „cu căutare" și ale calendarului (deschis) — cu aceeași greutate, altfel forma de sus le-ar călca. */
 :is(#ra-campuri, html) :is(#ra-campuri, body) :is(.ss-wrap.ss-open .ss-input, .rep-dt-input.active) {
   border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+/* „Pachet și conturi" (16.11): cifra care nu încape rămâne în casetă, cu chenarul roșu, până o schimbă omul. */
+:is(#ra-campuri, html) :is(#ra-campuri, body) .pkc-lim.pkc-lim-nu { border-color: #b91c1c; }
+:is(#ra-campuri, html) :is(#ra-campuri, body).dark .pkc-lim.pkc-lim-nu { border-color: #f87171; }
 
 /* 2. Lista derulantă închisă: săgeata noastră (pe browserele fără lista nouă rămâne desenată ca fundal). */
 :is(#ra-campuri, html) :is(#ra-campuri, body) select:not([multiple]):not([size]):not(.flatpickr-monthDropdown-months):where(:not(.chat-caseta *, .msb-search *, .vp-search *, .mnt-search *, .sim-oprire *, .tr-grid *, .tr-f *, .mnt-ivc *, .doc-reqc *, .flatpickr-calendar *, .leaflet-control *, .ss-native, .camp-liber, .camp-liber *)) {
