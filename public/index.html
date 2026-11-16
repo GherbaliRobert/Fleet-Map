@@ -12311,25 +12311,21 @@ const pozitii = await r.json();</code></pre>
           row.appendChild(tdL);
           if (imp) {
             var tdM = el('td');
-            if (o.loc) {
-              // Pe rândul omului (16.11, Alin: „nu există fără limită, îi derutăm"): colegul — „Fără întrebări libere" sau „Cel mult…";
-              // administratorul — „Restul" (ce nu e dat nimănui) sau „Cel mult…". Etichetele vin de la server; caseta cifrei doar la „Cel mult".
-              var et = j.etichete || {};
-              var sel = document.createElement('select'); sel.className = 'pkc-sel'; sel.setAttribute('aria-label', 'Întrebări pe lună pentru ' + o.nume);
-              [['fara', o.admin ? (et.restul || 'Restul') : (et.fara || 'Fără întrebări libere')], ['cel', et.cifra || 'Cel mult…']].forEach(function (x) { var op = document.createElement('option'); op.value = x[0]; op.textContent = x[1]; sel.appendChild(op); });
+            if (o.principal && o.cota) {
+              // Primul administrator (16.11, Alin: „îi dă 500 lui Y, la X apare că mai are 500"): fără casetă — cifra lui = ce nu e dat
+              // colegilor, socotită de server (`cota`: numărul și textul).
+              var cw = el('span', 'pkc-cota'); cw.appendChild(el('b', null, o.cota.numar)); cw.appendChild(el('span', null, o.cota.text));
+              tdM.appendChild(cw);
+            } else if (o.loc) {
+              // Colegul (și ceilalți administratori): o casetă cu cifra lui pe lună; 0 = doar răspunsurile pe loc (fără „Restul" /
+              // „Cel mult" — Alin: „nu e profesional"). Cifra care nu încape rămâne scrisă, cu chenar roșu (S.nuIncape).
               var nuInc = S.nuIncape && S.nuIncape.id === o.id ? S.nuIncape : null;
-              var cuLim = o.limita != null; sel.value = cuLim || nuInc ? 'cel' : 'fara';
               var inp = document.createElement('input'); inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.className = 'pkc-lim' + (nuInc ? ' pkc-lim-nu' : '');
-              inp.value = nuInc ? String(nuInc.valoare) : (cuLim ? String(o.limita) : ''); inp.setAttribute('aria-label', 'Cel mult câte întrebări pe lună pentru ' + o.nume);
+              inp.value = nuInc ? String(nuInc.valoare) : (o.limita != null ? String(o.limita) : '0'); inp.setAttribute('aria-label', 'Întrebări pe lună pentru ' + o.nume);
               var pe = el('span', 'pkc-pel', 'pe lună');
-              var arata = function (v) { inp.style.display = v ? '' : 'none'; pe.style.display = v ? '' : 'none'; };
-              arata(cuLim || !!nuInc);
-              sel.onchange = function () {
-                if (sel.value === 'fara') { arata(false); if (cuLim || nuInc) window.insightLimita(o.id, '', o.nume); }
-                else { arata(true); inp.focus(); }
-              };
-              inp.onchange = function () { if (String(inp.value).trim() !== '') window.insightLimita(o.id, inp.value, o.nume); };
-              tdM.appendChild(sel); tdM.appendChild(inp); tdM.appendChild(pe);
+              var vechi = o.limita != null ? String(o.limita) : '0';
+              inp.onchange = function () { var v = String(inp.value).trim() === '' ? '0' : String(inp.value).trim(); if (v !== vechi || nuInc) window.insightLimita(o.id, v, o.nume); };
+              tdM.appendChild(inp); tdM.appendChild(pe);
             } else tdM.appendChild(el('span', 'pkc-gol', '—'));
             row.appendChild(tdM);
           }
@@ -12394,15 +12390,15 @@ const pozitii = await r.json();</code></pre>
         else (window.raxToast || function () {})(on ? 'RA Insight pornit pentru „' + nume + '"' : 'RA Insight oprit pentru „' + nume + '"', 'success');
         incarcaPachet(); deseneazaMain();
       };
-      // Cifra pe lună a unui om (Basic / Pro / Business); gol = fără cifră (colegul — doar răspunsurile pe loc; administratorul — restul).
+      // Cifra pe lună a unui coleg (Basic / Pro / Business); 0 sau gol = fără întrebări libere (doar răspunsurile pe loc). Primul administrator n-are cifră.
       // Serverul spune dacă trece de întrebările pachetului: atunci mesajul rămâne sub tabel (S.nuIncape), cu ce a scris omul.
       window.insightLimita = async function (id, val, nume) {
         var v = String(val == null ? '' : val).trim();
-        var r = await cere('PUT', '/api/users/' + id + '/ai-limita', { limita: v === '' ? null : Number(v) });
+        var r = await cere('PUT', '/api/users/' + id + '/ai-limita', { limita: v === '' || Number(v) === 0 ? null : Number(v) });
         if (r.s !== 200) {
           if (r.j && r.j.maxim != null) S.nuIncape = { id: id, nume: String(nume || ''), valoare: v, text: r.j.error || '', maxim: Number(r.j.maxim) || 0, rec: r.j.recomandat || null };
           else { S.nuIncape = null; (window.raxToast || alert)((r.j && r.j.error) || 'Nu s-a putut salva cifra.', 'error'); }
-        } else { S.nuIncape = null; (window.raxToast || function () {})(v === '' ? 'S-a salvat: fără cifră pe lună' : 'S-a salvat: cel mult ' + v + ' pe lună', 'success'); }
+        } else { S.nuIncape = null; (window.raxToast || function () {})(v === '' || Number(v) === 0 ? 'S-a salvat: 0 pe lună — doar răspunsurile pe loc' : 'S-a salvat: ' + v + ' pe lună', 'success'); }
         incarcaPachet(); deseneazaMain();
       };
       // „Pachet și conturi" deschis din alt ecran (Setări → Utilizatori).

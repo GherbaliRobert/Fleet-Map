@@ -146,31 +146,23 @@ export function PaginaPachete({ onSchimbat, treci }: { onSchimbat: () => void; t
   );
 }
 
-// Un om, cu cifra lui pe lună (16.11): colegul — „Fără întrebări libere" / „Cel mult…"; administratorul — „Restul" / „Cel mult…"
-// (`o.optiuni`, etichetele de la server). Caseta cifrei apare doar la „Cel mult"; o cifră care nu încape rămâne scrisă, cu chenar roșu.
+// Un coleg, cu cifra lui pe lună (16.11, Alin: fără „Restul" / „Cel mult" — „nu e profesional"): o casetă; 0 = doar răspunsurile
+// pe loc. Cifra care nu încape rămâne scrisă, cu chenar roșu (web: S.nuIncape). Primul administrator n-are casetă (`Cota`).
 function Limita({ o, ni, onSalveaza }: { o: any; ni: NuIncape | null; onSalveaza: (id: any, val: string) => void }) {
-  const [cel, setCel] = useState(o.cuLimita || !!ni);
-  const [val, setVal] = useState(ni ? ni.valoare : o.limita);
-  useEffect(() => { setCel(o.cuLimita || !!ni); setVal(ni ? ni.valoare : o.limita); }, [o.cuLimita, o.limita, ni]);
-  const ref = useRef<HTMLInputElement | null>(null);
+  const vechi = o.cuLimita ? o.limita : '0';
+  const [val, setVal] = useState(ni ? ni.valoare : vechi);
+  useEffect(() => { setVal(ni ? ni.valoare : vechi); }, [vechi, ni]);
   return (
     <span class="pkc-lim-w">
-      <select class="pkc-sel" aria-label={'Întrebări pe lună pentru ' + o.nume} value={cel ? 'cel' : 'fara'}
-        onChange={(e) => {
-          const v = (e.target as HTMLSelectElement).value;
-          if (v === 'fara') { setCel(false); if (o.cuLimita || ni) onSalveaza(o.id, ''); }
-          else { setCel(true); setTimeout(() => { if (ref.current) ref.current.focus(); }, 30); }
-        }}>
-        {(o.optiuni as [string, string][]).map((x) => <option value={x[0]}>{x[1]}</option>)}
-      </select>
-      {cel ? <>
-        <input ref={ref} class={'pkc-lim' + (ni ? ' pkc-lim-nu' : '')} type="number" inputMode="numeric" min="0" step="1" value={val} aria-label={'Cel mult câte întrebări pe lună pentru ' + o.nume}
-          onInput={(e) => setVal((e.target as HTMLInputElement).value)}
-          onChange={(e) => { const v = (e.target as HTMLInputElement).value; if (String(v).trim() !== '') onSalveaza(o.id, v); }} />
-        <span class="pkc-pel">pe lună</span>
-      </> : null}
+      <input class={'pkc-lim' + (ni ? ' pkc-lim-nu' : '')} type="number" inputMode="numeric" min="0" step="1" value={val} aria-label={'Întrebări pe lună pentru ' + o.nume}
+        onInput={(e) => setVal((e.target as HTMLInputElement).value)}
+        onChange={(e) => { const v = String((e.target as HTMLInputElement).value).trim() || '0'; if (v !== vechi || ni) onSalveaza(o.id, v); }} />
+      <span class="pkc-pel">pe lună</span>
     </span>
   );
+}
+function Cota({ c }: { c: { numar: string; text: string } }) {
+  return <span class="pkc-cota"><b>{c.numar}</b><span>{c.text}</span></span>;
 }
 
 // ── „Pachet și conturi": doar administratorul firmei, chiar și fără un cont RA Insight al lui ──
@@ -243,7 +235,7 @@ export function PaginaPachetConturi({ laPachete, onSchimbat }: { laPachete: () =
               <div class="pkc-treci"><ButonProp text={p.recomandatConturi.buton} ic="arrowUp" prim disabled={!!cer} onClick={() => trece(p.recomandatConturi!.cod)} /></div>
             ) : null}
             {p.imparte ? (
-              <div class="pkc-kv"><span>Întrebări pe lună</span>{o.arataLimita ? <Limita o={o} ni={ni && ni.id === o.id ? ni : null} onSalveaza={(id, v) => limita(id, v, o.nume)} /> : <span class="pkc-gol">—</span>}</div>
+              <div class="pkc-kv"><span>Întrebări pe lună</span>{o.principal ? <Cota c={o.cota} /> : o.arataLimita ? <Limita o={o} ni={ni && ni.id === o.id ? ni : null} onSalveaza={(id, v) => limita(id, v, o.nume)} /> : <span class="pkc-gol">—</span>}</div>
             ) : null}
             <div class="pkc-kv"><span>{p.coloane[p.coloane.length - 1]}</span><b>{o.folosite}</b></div>
           </div>

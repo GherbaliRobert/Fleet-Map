@@ -494,6 +494,9 @@
 .pkc-sel, .pkc-lim { height: 38px; box-sizing: border-box; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-card); color: var(--text-primary); font-size: 16px; padding: 0 8px; }
 .pkc-lim { width: 78px; }
 .pkc-pel { font-size: 12.5px; color: var(--text-secondary); }
+.pkc-cota { display: inline-flex; align-items: baseline; gap: 8px; }
+.pkc-cota b { font-size: 16px; color: var(--text-primary); }
+.pkc-cota span { font-size: 12.5px; color: var(--text-secondary); }
 .pkc-nota { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
 /* Cifra care nu încape (16.11, web: .pkc-ni): mesajul rămâne sub listă, cu „Treci la Pro" și „Pune N pentru …". */
 .pkc-ni { position: relative; min-width: 0; padding: 12px 44px 12px 14px; border: 1px solid var(--border-light); border-left: 4px solid var(--i-pk-urm-cant); border-radius: 12px; background: var(--bg-panel); display: grid; gap: 6px; }

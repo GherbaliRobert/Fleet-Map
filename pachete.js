@@ -124,13 +124,15 @@ function refuzLimita(p, limita, sumaAltor) {
 
 // ─── Starea: ce mai poate face omul ACUM ─────────────────────────────────────────────────────────────────────────────
 // o = { pachet, peOm (starea unui OM anume; fără = a firmei), folositeFirma, folositeOm, limitaOm (null = fără cifră),
-//       adminOm (omul e administrator al firmei), sumaLimite, folositeCuLimita (întrebările puse de oamenii CU cifră), costLei }
+//       principalOm (omul e PRIMUL administrator al firmei — ține ce nu e dat colegilor), sumaLimite (cifrele celorlalți),
+//       folositeCuLimita (întrebările puse de oamenii CU cifră), costLei }
 // La Start, „folosite" = răspunsurile pe butoane (nu are AI). La celelalte, întrebările către RA Insight (cele pe
 // butoane nu se numără). Ordinea motivelor: plasa → cota firmei → cifra omului → fără cifră → restul. Ultimele trei privesc
 // un om: starea FIRMEI (rezumatul agenților, fără om) se oprește doar la plasă și la cotă.
-// Împărțirea (16.11, Alin: „1. DA… 3. DA, e treaba lor cum vor să și le împartă"): un coleg are întrebări libere DOAR câte îi
-// dă administratorul („Cel mult … pe lună"); fără cifră, doar răspunsurile pe loc (`faraNumar`). Ce nu e dat nimănui („restul")
-// îl folosesc împreună administratorii firmei fără cifră; un administrator își poate pune și el o cifră.
+// Împărțirea (16.11, Alin: „implicit toate întrebările sunt la administrator, apoi el decide… îi dă 500 lui Y, la X apare că mai
+// are 500"; „primul administrator dă întrebările și celui de-al doilea"): toate sunt la PRIMUL administrator al firmei (cel mai
+// vechi cont de administrator cu RA Insight); el le dă colegilor — și celorlalți administratori —, iar cifra lui se socotește
+// singură: ce n-a dat (`comun`). Un coleg fără cifră (0) are doar răspunsurile pe loc (`faraNumar`).
 function stare(o) {
   const p = o.pachet;
   const folosite = Math.max(0, Number(o.folositeFirma) || 0);
@@ -145,12 +147,12 @@ function stare(o) {
   if (p.ai && plafon > 0 && cost >= plafon) motiv = 'plasa';
   else if (folosite >= p.intrebari) motiv = 'cota';
   else if (o.peOm && p.imparte && lim != null && folositeOm >= lim) motiv = 'limita';
-  else if (o.peOm && p.imparte && lim == null && !o.adminOm) motiv = 'faraNumar';
+  else if (o.peOm && p.imparte && lim == null && !o.principalOm) motiv = 'faraNumar';
   else if (o.peOm && p.imparte && lim == null && folositeComun >= comun) motiv = 'comun';
   return {
     cod: p.cod, nume: p.nume, ai: p.ai, ramuri: p.ramuri, imparte: p.imparte, pretRON: p.pretRON != null ? p.pretRON : p.pret,
     conturi: p.conturi, intrebari: p.intrebari, folosite: folosite, ramase: Math.max(0, p.intrebari - folosite),
-    limitaOm: p.imparte ? lim : null, folositeOm: folositeOm, adminOm: !!o.adminOm,
+    limitaOm: p.imparte ? lim : null, folositeOm: folositeOm, principalOm: !!o.principalOm,
     ramaseOm: p.imparte && lim != null ? Math.max(0, lim - folositeOm) : null,
     sumaLimite: sumaLimite, comun: comun, ramaseComun: Math.max(0, comun - folositeComun),
     plafonLei: plafon, costLei: r2(cost), plasaProcent: plafon > 0 ? Math.min(1, cost / plafon) : 0,
@@ -185,8 +187,8 @@ function textBlocat(st, acum) {
       'de pe butoane: unde e o mașină, km, staționări, rapoarte.';
   }
   if (st.motiv === 'comun') {
-    return 'Ați folosit întrebările rămase nedate din ' + r.luna + ' (celelalte sunt date colegilor). ' + pe1 + ' ' + PE_BUTOANE +
-      ' Puteți lua înapoi o parte de la colegi, din „Pachet și conturi”, sau trece la un pachet mai mare.';
+    return 'Ai folosit întrebările care ți-au rămas din ' + r.luna + ' (celelalte le-ai dat colegilor). ' + pe1 + ' ' + PE_BUTOANE +
+      ' Poți lua înapoi o parte de la colegi, din „Pachet și conturi”, sau trece la un pachet mai mare.';
   }
   // plasa: clientul NU află de costuri — află doar că RA Insight s-a oprit pe luna asta și când revine.
   return 'RA Insight a ajuns la limita lunii ' + r.luna + ' pentru firma voastră. ' + pe1 + ' ' + PE_BUTOANE;
@@ -212,15 +214,15 @@ function textScurt(st) {
   if (st.imparte && st.limitaOm != null) return 'îți rămân ' + _nrRo(st.motiv === 'plasa' ? 0 : st.ramaseOm);
   if (st.motiv === 'faraNumar') return 'fără întrebări libere';
   if (st.motiv === 'comun') return 'îți rămân 0';
-  if (st.imparte && st.adminOm && st.sumaLimite > 0) return 'îți rămân ' + _nrRo(st.motiv === 'plasa' ? 0 : Math.min(st.ramaseComun, st.ramase));
+  if (st.imparte && st.principalOm && st.sumaLimite > 0) return 'îți rămân ' + _nrRo(st.motiv === 'plasa' ? 0 : Math.min(st.ramaseComun, st.ramase));
   return _nrRo(ramaseAfisate(st)) + ' din ' + _nrRo(st.intrebari);
 }
-// Al doilea rând din caseta pachetului: „Tu: 38 din 100 (date de administrator)" / restul administratorului / colegul fără cifră.
+// Al doilea rând din caseta pachetului: „Tu: 38 din 100 (date de administrator)" / primul administrator / colegul fără cifră.
 function textOm(st) {
   if (st.motiv === 'faraNumar') return 'Tu: nu ai întrebări libere date de administrator';
-  if (st.motiv === 'comun') return 'Tu: s-au terminat întrebările rămase nedate';
-  if (st.imparte && st.limitaOm == null && st.adminOm && st.sumaLimite > 0) {
-    return 'Tu: ' + _nrRo(st.motiv === 'plasa' ? 0 : Math.min(st.ramaseComun, st.ramase)) + ' din restul de ' + _nrRo(st.comun) + ' (nedate colegilor)';
+  if (st.motiv === 'comun') return 'Tu: s-au terminat întrebările care ți-au rămas';
+  if (st.imparte && st.limitaOm == null && st.principalOm && st.sumaLimite > 0) {
+    return 'Tu: ' + _nrRo(st.motiv === 'plasa' ? 0 : Math.min(st.ramaseComun, st.ramase)) + ' din ' + _nrRo(st.comun) + ' (ce n-ai dat colegilor)';
   }
   if (!(st.imparte && st.limitaOm != null)) return null;
   return 'Tu: ' + _nrRo(st.motiv === 'plasa' ? 0 : st.ramaseOm) + ' din ' + _nrRo(st.limitaOm) + ' (date de administrator)';
@@ -265,7 +267,10 @@ function anuntAproape(o, acum) {
 
 // ─── „Pachet și conturi" (pasul 3): cartonașele de sus, cât a folosit fiecare om, nota de jos ───────────────────────────
 function _lei(x) { const n = Number(x) || 0; return Number.isInteger(n) ? n + deNr(n) + 'lei' : n.toLocaleString('ro-RO') + ' lei'; }
-function cartonaseConturi(st, conturiDate, acum) {
+// `o` = { principal: numele primului administrator (cel care ține ce nu e dat), eu: cel care se uită e chiar el, maiMulti: firma
+// are și alți administratori } — textele spun „la tine" sau „la Andrei".
+function _laCine(o) { const x = o || {}; return x.eu ? 'la tine' : (x.principal ? 'la ' + x.principal : 'la administrator'); }
+function cartonaseConturi(st, conturiDate, acum, o) {
   const r = reincarcare(acum), date = Number(conturiDate) || 0;
   const out = [
     { k: 'pachet', titlu: 'Pachetul', val: st.nume, sub: st.pretRON > 0 ? _lei(st.pretRON) + ' pe lună' : 'inclus în contract' },
@@ -274,42 +279,46 @@ function cartonaseConturi(st, conturiDate, acum) {
     { k: 'conturi', titlu: 'Conturi', val: String(date),
       sub: st.conturi == null ? 'conturi nelimitate' : 'din ' + st.conturi + (date < st.conturi ? ' · mai poți da ' + (st.conturi - date === 1 ? 'unul' : (st.conturi - date)) : ' · toate date') }
   ];
-  if (st.imparte) out.push({ k: 'limite', titlu: 'Date pe nume', val: _nrRo(st.sumaLimite),
-    sub: st.sumaLimite ? 'la administrator rămân ' + _nrRo(st.comun) : 'toate sunt la administrator' });
+  if (st.imparte) out.push({ k: 'limite', titlu: 'Date colegilor', val: _nrRo(st.sumaLimite),
+    sub: st.sumaLimite ? _laCine(o) + ' rămân ' + _nrRo(st.comun) : 'toate sunt ' + _laCine(o) });
   return out;
 }
 // „Pachet și conturi" pe ecranul web (macheta din 15.10, Alin: „3. da, 4. da"): în locul cartonașelor, unul-două rânduri —
 // câte conturi s-au dat, câte întrebări au rămas și, de la Basic în sus, cât e dat pe nume. (Cartonașele rămân în răspuns pentru
 // telefonul de azi.)
-function rezumatConturi(st, conturiDate, acum) {
+function rezumatConturi(st, conturiDate, acum, o) {
   const r = reincarcare(acum), date = Number(conturiDate) || 0;
   const conturi = st.conturi == null ? 'Conturi: ' + date + ' (nelimitate)' : 'Conturi: ' + date + ' din ' + st.conturi;
   const ramase = (st.cod === 'start' ? 'Răspunsuri pe butoane rămase: ' : 'Întrebări rămase: ') + _nrRo(ramaseAfisate(st)) + ' din ' + _nrRo(st.intrebari) +
     ' (se reîncarcă pe 1 ' + r.urmatoarea + ')';
   const out = [conturi + ' · ' + ramase];
-  if (st.imparte) out.push(st.sumaLimite ? 'Date pe nume: ' + cant(st.sumaLimite, 'întrebare', 'întrebări') + ' · la administrator rămân ' + _nrRo(st.comun) + '.'
-    : 'Nimic dat pe nume: toate cele ' + _nrRo(st.intrebari) + deNr(st.intrebari) + 'întrebări sunt la administrator.');
+  if (st.imparte) out.push(st.sumaLimite ? 'Date colegilor: ' + cant(st.sumaLimite, 'întrebare', 'întrebări') + ' · ' + _laCine(o) + ' rămân ' + _nrRo(st.comun) + '.'
+    : 'Nimic dat colegilor: toate cele ' + _nrRo(st.intrebari) + deNr(st.intrebari) + 'întrebări sunt ' + _laCine(o) + '.');
   return out;
 }
 // „58 din 200" (omul cu limită) / „64" (fără limită) — câte a folosit în luna asta.
 function textFolositeOm(limita, folosite) { return limita != null ? _nrRo(Number(folosite) || 0) + ' din ' + _nrRo(limita) : _nrRo(Number(folosite) || 0); }
-function notaConturi(p) {
+function notaConturi(p, o) {
   if (p.cod === 'start') return 'Pe Start, RA Insight îl are doar administratorul. De la Basic îl pot avea și colegii.';
   if (!p.imparte) return 'Pe ' + p.nume + ', toți cei cu RA Insight folosesc aceleași ' + _nrRo(p.intrebari) + deNr(p.intrebari) + 'întrebări. Limita pe om e de la Basic.';
-  return 'Un coleg are întrebări libere doar câte îi dai tu, pe lună („' + ETICHETE_CIFRA.cifra + '”); fără cifră, are doar răspunsurile pe loc. ' +
-    'Ce nu dai nimănui rămâne la administratori („' + ETICHETE_CIFRA.restul + '”). Cifrele nu pot trece de cele ' + _nrRo(p.intrebari) + deNr(p.intrebari) +
-    'întrebări ale pachetului și se șterg la orice schimbare de pachet: atunci le împarți din nou.';
+  const x = o || {};
+  const cine = x.eu || !x.principal ? 'la tine' : 'la primul administrator al firmei, ' + x.principal;
+  return 'Toate întrebările pachetului sunt ' + cine + '. Scrie la fiecare coleg câte îi dai pe lună; ce nu dai rămâne ' +
+    (x.eu || !x.principal ? 'la tine' : 'la el') + ' și se socotește singur. Un coleg cu 0 are doar răspunsurile pe loc (butoanele). ' +
+    (x.maiMulti ? 'Ceilalți administratori primesc întrebări ca orice coleg. ' : '') +
+    'Cifrele nu pot trece de cele ' + _nrRo(p.intrebari) + deNr(p.intrebari) + 'întrebări ale pachetului; la orice schimbare de pachet, colegii trec pe 0 și le împarți din nou.';
 }
-// Alegerile de pe rândul unui om, în „Pachet și conturi" (web și telefon le iau de aici): administratorul — „Restul" (ce nu e dat
-// nimănui) sau o cifră; colegul — „Fără întrebări libere" sau o cifră. („Fără limită" a ieșit pe 16.11: Alin, „nu există fără limită,
-// îi derutăm".)
-const ETICHETE_CIFRA = { restul: 'Restul', fara: 'Fără întrebări libere', cifra: 'Cel mult…' };
+// Rândul primului administrator în „Pachet și conturi" (16.11, Alin: „la X apare că mai are 500"): fără casetă — cifra lui se
+// socotește singură. `eu` = cel care se uită e chiar el.
+function cotaPrincipal(st, eu) {
+  return { numar: _nrRo(st.comun), text: (eu ? 'îți rămân' : 'îi rămân') + ' din ' + _nrRo(st.intrebari) };
+}
 
 // ─── Cifrele țin cât ține pachetul (16.11, Alin: „de fiecare dată când își schimbă planul, el trebuie să distribuie din nou
 // întrebările către userii săi, ca să excludem orice variante") ──────────────────────────────────────────────────────────
 // Cheia perioadei pachetului de acum: „pro@<clipa în care a început pachetul>". O cifră dată pe nume ține doar cât ține cheia cu
 // care a fost dată; la orice schimbare de pachet — noi din „Acces”, administratorul din „Vezi pachetele”, trecerea programată ajunsă
-// pe 1 — cheia se schimbă, iar cifrele vechi nu mai contează (toate întrebările sunt ale administratorilor până le împarte din nou).
+// pe 1 — cheia se schimbă, iar cifrele vechi nu mai contează (toate întrebările sunt ale primului administrator până le împarte din nou).
 // Fără ceas: cheia se socotește din istoricul firmei, în clipa citirii.
 function cheiePachet(settings, acum) {
   const t = Number(acum) || Date.now();
@@ -345,8 +354,8 @@ function anuntImpartire(p, acum) {
   if (!p || !p.imparte) return null;
   const n = _nrRo(p.intrebari) + deNr(p.intrebari) + 'întrebări';
   return { nivel: 'info', titlu: 'RA Insight: de azi aveți pachetul ' + p.nume,
-    text: 'De azi aveți pachetul RA Insight ' + p.nume + ': ' + n + ' pe lună. Până le împarți colegilor, din „Pachet și conturi”, sunt toate ' +
-      'ale administratorilor firmei; colegii fără întrebări date au doar răspunsurile pe loc.' };
+    text: 'De azi aveți pachetul RA Insight ' + p.nume + ': ' + n + ' pe lună. Până le împarte colegilor, din „Pachet și conturi”, sunt toate ' +
+      'la primul administrator al firmei; colegii au 0 și primesc doar răspunsurile pe loc.' };
 }
 
 // ─── Oferta, contractul, factura (pasul 5) ─────────────────────────────────────────────────────────────────────────────
@@ -519,7 +528,7 @@ function trecere(o) {
       text: 'Firma ' + F + ' trece de la ' + _pePachet(a, pV) + ' la ' + _pePachet(n, pN) + ', din ' + dataLunga(deLa) + '. ' +
         'Luna ' + LUNI[z.luna - 1] + ' se facturează pe zile: pentru ' + (ramase === nL ? 'toată luna' : 'cele ' + cant(ramase, 'zi rămasă', 'zile rămase')) +
         ' se adaugă diferența de ' + _bani(dif) + ' fără TVA, pe factura din 1 ' + urm + '. ' +
-        (cifreSterse > 0 ? 'Întrebările date colegilor pe nume se șterg de azi: până le împarți din nou, din „Pachet și conturi”, sunt toate ale administratorilor. ' : '') +
+        (cifreSterse > 0 ? 'Întrebările date colegilor se șterg de azi: până le împarți din nou, din „Pachet și conturi”, sunt toate la primul administrator al firmei. ' : '') +
         FINAL_CONFIRMARE });
   }
   const loc = n.conturi, c = Math.max(0, Math.round(Number(o.conturi) || 0));
@@ -532,7 +541,7 @@ function trecere(o) {
   return Object.assign(de, { sens: 'jos', deLa: deLa, cuCifre: cifreSterse > 0,
     text: 'Firma ' + F + ' trece de la ' + _pePachet(a, pV) + ' la ' + _pePachet(n, pN) + ', din ' + dataLunga(deLa) + '. Până atunci rămâne pachetul ' + a.nume + '.' +
       (n.cod === 'start' ? ' Pe Start, RA Insight îl are doar administratorul, cu răspunsuri pe butoane, fără AI.' : '') +
-      (cifreSterse > 0 && n.imparte ? ' Din ' + dataLunga(deLa) + ' se șterg și întrebările date colegilor pe nume: până le împarți din nou, din „Pachet și conturi”, sunt toate ale administratorilor.' : '') +
+      (cifreSterse > 0 && n.imparte ? ' Din ' + dataLunga(deLa) + ' se șterg și întrebările date colegilor: până le împarți din nou, din „Pachet și conturi”, sunt toate la primul administrator al firmei.' : '') +
       ' ' + FINAL_CONFIRMARE });
 }
 // Schimbarea pachetului de către NOI, din fila „Acces" a firmei (13.11, Alin: „1. DA"). Fereastra spune exact ce se întâmplă:
@@ -558,14 +567,14 @@ function textSchimbareNoi(o) {
   else if (linii.length) text += ' Pe factura din 1 ' + urm + ', la RA Insight: ' + linii.map(function (l) { return '„' + l.desc + '” ' + _bani(l.pret); }).join(' și ') + ', fără TVA.';
   else text += ' De pe factura din 1 ' + urm + ', RA Insight nu mai apare pe factură.';
   if (ORDINE[n.cod] < ORDINE[a.cod]) text += ' Ce s-a facturat deja nu se schimbă: nu se dau bani înapoi.';
-  if (Number(o.cuCifre) > 0) text += ' Întrebările date colegilor pe nume se șterg de azi: până le împarte din nou administratorul firmei, sunt toate ale administratorilor.';
+  if (Number(o.cuCifre) > 0) text += ' Întrebările date colegilor se șterg de azi: până le împarte din nou primul administrator al firmei, sunt toate la el.';
   return { titlu: 'Pachetul ' + n.nume + '?', text: text, ok: 'Trece pe ' + n.nume, sens: ORDINE[n.cod] > ORDINE[a.cod] ? 'sus' : 'jos' };
 }
 // Ce scrie serverul după confirmare (ecranul doar îl arată). `email` = { trimis, catre } — cum a plecat confirmarea.
 function textDupaTrecere(t, email) {
   const conf = email && email.trimis ? ' Confirmarea a plecat pe email (' + email.catre + '), în PDF.'
     : ' Confirmarea, în PDF, o găsești în „Pachet și conturi”' + (email && email.motiv ? ' (emailul n-a plecat: ' + email.motiv + ')' : '') + '.';
-  if (t.sens === 'sus') return 'Gata: firma are pachetul ' + t.numeNou + ' de azi.' + (t.cuCifre ? ' Întrebările date pe nume s-au șters: împarte-le din nou din „Pachet și conturi”.' : '') + conf;
+  if (t.sens === 'sus') return 'Gata: firma are pachetul ' + t.numeNou + ' de azi.' + (t.cuCifre ? ' Întrebările date colegilor s-au șters: împarte-le din nou din „Pachet și conturi”.' : '') + conf;
   if (t.sens === 'jos') return 'Gata: firma trece pe pachetul ' + t.numeNou + ' din ' + dataLunga(t.deLa) + '. Până atunci rămâne ' + t.numeVechi + '.' + conf;
   return 'Gata: firma rămâne pe pachetul ' + t.numeVechi + '.' + conf;
 }
@@ -730,7 +739,7 @@ module.exports = {
   dupaCod, pachetFirma, curataPachet, plafonLei, esteAdmin, refuzLoc, refuzLimita, stare,
   reincarcare, textBlocat, textDoarButoane, textRamase, textScurt, textOm, textReincarcare, ramaseAfisate, publice, deNr,
   PROCENT_ANUNT_FIRMA, procentFolosit, anuntAproape,
-  cartonaseConturi, rezumatConturi, textFolositeOm, notaConturi, ETICHETE_CIFRA, cheiePachet, recomanda, recomandare, anuntImpartire,
+  cartonaseConturi, rezumatConturi, textFolositeOm, notaConturi, cotaPrincipal, cheiePachet, recomanda, recomandare, anuntImpartire,
   COST_INTREBARE_LEI, CLAUZA_TRECERE, CHEI_PRET, eticheta, descriere, marja, preturiLista,
   ORDINE, FINAL_CONFIRMARE, ziuaRo, ziRo, zileLuna, inceputZi, inceputLunaUrm, dataScurta, dataLunga,
   istoricFirma, adaugaIstoric, consolideaza, pretLa, pretAvans, bucatiLuna, liniiFactura, trecere, textDupaTrecere, butonTrecere, rezumatTrecere,

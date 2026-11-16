@@ -412,7 +412,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   pe om fără „Fără limită" (colegul: „Fără întrebări libere" / „Cel mult…"; administratorul: „Restul" / „Cel mult…"), caseta „nu încape" cu
   „Treci la Pro" și „Pune N pentru …", „Treci la …" la conturile pline; (12) „Treci la Pro" în caseta de la capătul întrebărilor din RA
   Insight; (13) anunțul „De azi aveți pachetul …" duce în „Pachet și conturi". ⚠ Pe telefonul de azi lista arată încă „Fără limită": e
-  doar numele (fără cifră = colegul are doar răspunsurile pe loc, cum spune serverul).
+  doar numele (fără cifră = colegul are doar răspunsurile pe loc, cum spune serverul). **16.11, seara:** (14) în „Pachet și conturi" nu mai
+  sunt liste: primul administrator are cifra lui socotită („500 · îți rămân din 1.000"), colegii o casetă cu cifra (0 = doar butoanele).
 - [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Din lotul 3: 8, 10, 11 și, din 7, „Pachet și conturi". Din lotul 4: 15 și capătul lui 14 (ecranul Alerte). Rămâne APK-ul.** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
@@ -603,6 +604,30 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-16
+
+### CLIENT · RA Insight: întrebările stau la primul administrator; colegii au o casetă cu cifra (fără „Restul" / „Cel mult")
+*Alin, 16.11: „RESTUL nu e profesional, sau «Cel mult»… implicit toate întrebările sunt la administrator, apoi el decide: are 1.000,
+dă 500 lui Y, la X apare că mai are 500"; „rămâne ca un administrator poate face pe altcineva administrator… dar primul administrator
+dă întrebările și celui de-al doilea cont de administrator"; „1. da" la machetă.*
+
+**Ce am schimbat:**
+- În „Pachet și conturi", rândul **primului administrator** al firmei (cel mai vechi cont de administrator cu RA Insight) n-are casetă:
+  arată cât îi rămâne, socotit singur — „500 · îți rămân din 1.000". Colegii (și ceilalți administratori) au **o casetă cu cifra lor pe
+  lună**; 0 = doar răspunsurile pe loc. Listele „Restul" / „Fără întrebări libere" / „Cel mult…" au ieșit.
+- Sus: „Date colegilor: 500 de întrebări · la tine rămân 500." (văzut de al doilea administrator: „la Andrei rămân 500"). Nota de sub
+  listă spune regula; cu doi administratori, adaugă „Ceilalți administratori primesc întrebări ca orice coleg."
+- Primului administrator nu i se poate scrie o cifră (refuz cu explicație). Al doilea administrator are aceleași drepturi (poate
+  completa casetele), dar întrebările lui sunt câte îi dă primul.
+- Mesajele: la capătul celor rămase, primul administrator citește „Ai folosit întrebările care ți-au rămas… Poți lua înapoi o parte de la
+  colegi… sau trece la un pachet mai mare"; anunțul de la schimbarea pachetului și ferestrele de trecere spun „sunt toate la primul
+  administrator al firmei". Ghidul la fel.
+- Telefonul: la fel (aplicația următoare). Pe telefonul de azi rămân listele vechi până la APK.
+- Probe: `verify_pachete.js` (regula, al doilea administrator pe server pornit, 0 = fără cifră), `verify_telefon_pachete.js` (web și
+  telefon pe aceleași răspunsuri, ecranele desenate).
+
+**Ce vede fondatorul:** nimic nou.
+
+**Ce vede clientul:** primul administrator vede cât îi rămâne, fără să scrie nimic la el; la colegi scrie doar cifra.
 
 ### AMÂNDOI · Cifrele de peste o mie se scriu cu punct: „992 din 1.000"
 *Alin, 16.11: „Fac „992 din 1.000”, cu punct… — DA. O FACEM ACUM."*

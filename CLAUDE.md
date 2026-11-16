@@ -1609,17 +1609,21 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   `.rau-ra` „RA Insight" + capul listei cu „Schimbă în Pachet și conturi →"; butonul baghetă al regulii vechi (`raxAiSeat`, pe
   telefon `arataBagheta`) a ieșit pe 11.11. Omul fără cont află drumul: `_mesajFaraLoc()` → `MESAJ_FARA_LOC_PACHET` („…din RA Insight →
   „Pachet și conturi”"); `MESAJ_FARA_LOC_AI` („din Utilizatori") a ieșit și el.
-- **Pe om (din 16.11): colegul „Fără întrebări libere" / „Cel mult…", administratorul „Restul" / „Cel mult…"** (`select.pkc-sel` + caseta
-  cifrei doar la „Cel mult"; etichetele = `pachete.ETICHETE_CIFRA`, trimise ca `etichete`, alese după `admin` de pe rând). **„Fără limită" NU
-  mai există** (Alin: „îi derutăm") — NU-l pune la loc. Sus, `pachete.rezumatConturi` + bara („Date pe nume: N · la administrator rămân M.").
-  Din 13.11 Basic împarte și el, deci „la comun" a ieșit și din comparația pachetelor (aplicație + `/pachete-ra-insight`).
+- **Pe om (16.11, Alin: „«Restul» nu e profesional, sau «Cel mult»"): FĂRĂ liste.** Primul administrator — cifra lui, socotită de server
+  (`pachete.cotaPrincipal` → `cota` pe rând: „500 · îți rămân din 1.000"), fără casetă; colegii și ceilalți administratori — o casetă cu cifra
+  (0 / gol = fără întrebări libere, trimis ca `null`). NU pune la loc „Restul", „Cel mult…", „Fără întrebări libere" sau „Fără limită".
+  Sus, `pachete.rezumatConturi(st, conturi, acum, laCine)` + bara („Date colegilor: N · la tine / la Andrei rămân M."); nota `notaConturi(p,
+  laCine)`. Din 13.11 Basic împarte și el, deci „la comun" a ieșit și din comparația pachetelor (aplicație + `/pachete-ra-insight`).
 - Ghidul (`ra_insight`) spune drumul nou și nu mai pomenește factura unui cont. Telefonul (Robert, APK-ul următor): eticheta în loc de
   bagheta din AdminUsers pe firmele cu pachet, alegerea pe rol și caseta „nu încape" în „Pachet și conturi".
 
 ### Întrebările le împarte administratorul; „Treci la Pro" (16.11; Alin: „1.DA 2.DA 3.DA (e treaba lor…) 4.DA")
-- **Un coleg are întrebări libere (AI) DOAR câte îi dă administratorul** (cifra pe lună). Fără cifră → doar răspunsurile pe loc (motivul
-  `faraNumar`, `textBlocat`: „Nu ai întrebări libere pe …: le împarte administratorul firmei…"). Ce nu e dat nimănui = „Restul", folosit de
-  administratorii fără cifră, împreună (motivul `comun`); un administrator își poate pune și el o cifră. Firmă nouă = totul la administrator.
+- **Toate întrebările sunt la PRIMUL administrator al firmei** (16.11, Alin: „primul administrator dă întrebările și celui de-al doilea") =
+  cel mai vechi cont de administrator CU RA Insight (`_principalDin(db.getAiSeatHolders)`, ordonați după id). El le dă colegilor — și
+  celorlalți administratori, care au altfel aceleași drepturi —, iar cifra lui = ce n-a dat (`comun`; motivul `comun` la capăt; `stare({
+  principalOm })`). Lui nu i se scrie o cifră (`ai-limita` → 400), iar una rămasă scrisă nu contează (`_cifraOm`). Un coleg fără cifră (0) →
+  doar răspunsurile pe loc (`faraNumar`). Firmă nouă = totul la primul administrator. Dacă el pleacă sau își stinge contul RA Insight, primul
+  devine următorul administrator cu cont.
 - **Fiecare cifră e scrisă cu pachetul de atunci:** `users.ai_limita_pachet` = `pachete.cheiePachet(settings, acum)` (`cod@<începutul șirului
   de același cod din istoric>`). Server: `_cheieCo`, `_cifraValida` (o cifră a altui pachet = fără cifră), `_cuCifre` (câte cifre valide).
   Orice schimbare de pachet (din „Acces", trecerea clientului, micșorarea programată pe 1) le face nevalide pe loc, fără ceas; `impartireTick`

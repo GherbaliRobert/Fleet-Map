@@ -80,16 +80,9 @@ export function recomandareCurata(r: any): null | { cod: string; nume: string; b
   if (!r || !/^[a-z]+$/.test(String(r.cod || ''))) return null;
   return { cod: String(r.cod), nume: String(r.nume || ''), buton: String(r.buton || ('Treci la ' + (r.nume || ''))), text: String(r.text || '') };
 }
-// Ce scrie lista de pe rândul omului (16.11, Alin: „nu există fără limită, îi derutăm"): colegul — „Fără întrebări libere" sau
-// „Cel mult…"; administratorul — „Restul" (ce nu e dat nimănui) sau „Cel mult…". Etichetele vin de la server (web: aceleași).
-export function optiuniLimita(admin: boolean, et: any): [string, string][] {
-  const e = et || {};
-  return [['fara', admin ? String(e.restul || 'Restul') : String(e.fara || 'Fără întrebări libere')], ['cel', String(e.cifra || 'Cel mult…')]];
-}
 export function planConturi(j: any) {
   const p = (j && j.pachet) || null;
   const imp = !!(p && p.imparte);
-  const et = (j && j.etichete) || {};
   return {
     pilula: p && p.nume ? String(p.nume) : '',
     urmator: j && j.urmator ? String(j.urmator) : '',
@@ -101,11 +94,12 @@ export function planConturi(j: any) {
     // Conturile pline: „Treci la Pro", sub rândul celui care nu poate primi cont (doar administratorului care poate schimba pachetul).
     recomandatConturi: recomandareCurata(j && j.recomandatConturi),
     oameni: ((j && j.oameni) || []).map((o: any) => ({
-      id: o.id, nume: String(o.nume || ''), rol: String(o.rol || ''), loc: !!o.loc, admin: !!o.admin,
+      id: o.id, nume: String(o.nume || ''), rol: String(o.rol || ''), loc: !!o.loc,
+      // Primul administrator (16.11): fără casetă — cifra lui (ce nu e dat colegilor) și textul vin de la server (web: aceleași).
+      principal: !!(o.principal && o.cota), cota: o.principal && o.cota ? { numar: String(o.cota.numar || ''), text: String(o.cota.text || '') } : null,
       nuPoate: !o.loc && o.nuPoate ? String(o.nuPoate) : '',
       cuLimita: o.limita != null, limita: o.limita != null ? String(o.limita) : '',
-      arataLimita: imp && !!o.loc,      // „Restul" / „Fără întrebări libere" / „Cel mult … pe lună": de la Basic în sus și cu cont
-      optiuni: optiuniLimita(!!o.admin, et),
+      arataLimita: imp && !!o.loc && !(o.principal && o.cota),   // caseta cu cifra pe lună: de la Basic în sus, cu cont, nu la primul administrator
       folosite: o.loc || o.folositeText ? String(o.folositeText || '0') : 'fără cont',
     })),
     nota: String((j && j.nota) || ''),
@@ -118,10 +112,10 @@ export const TITLU_DAI_LOC = 'Dai RA Insight?';
 export const OK_DAI_LOC = 'Dă-i acces';
 export function textDaiLoc(nume: any): string { return '„' + nume + '" primește RA Insight. Prețul pachetului rămâne același, oricâte conturi dai.'; }
 export function textLocGata(on: boolean, nume: any): string { return on ? 'RA Insight pornit pentru „' + nume + '"' : 'RA Insight oprit pentru „' + nume + '"'; }
-export function textLimitaGata(v: any): string { return String(v == null ? '' : v).trim() === '' ? 'S-a salvat: fără cifră pe lună' : 'S-a salvat: cel mult ' + String(v).trim() + ' pe lună'; }
+export function textLimitaGata(v: any): string { const x = String(v == null ? '' : v).trim(); return x === '' || Number(x) === 0 ? 'S-a salvat: 0 pe lună — doar răspunsurile pe loc' : 'S-a salvat: ' + x + ' pe lună'; }
 export function textSursaGata(on: boolean): string { return on ? 'Sursa externă e pornită pentru toată firma.' : 'Sursa externă e oprită pentru toată firma.'; }
-// Ce pleacă la PUT /api/users/:id/ai-limita: gol = fără cifră (colegul — doar răspunsurile pe loc; administratorul — restul).
-export function corpLimita(val: any) { const v = String(val == null ? '' : val).trim(); return { limita: v === '' ? null : Number(v) }; }
+// Ce pleacă la PUT /api/users/:id/ai-limita: 0 sau gol = fără întrebări libere (doar răspunsurile pe loc).
+export function corpLimita(val: any) { const v = String(val == null ? '' : val).trim(); return { limita: v === '' || Number(v) === 0 ? null : Number(v) }; }
 // Cifra care nu încape (web: S.nuIncape): serverul refuză cu 400 și `maxim` (cât mai încape) și, la administratorul care poate schimba
 // pachetul, `recomandat` („Treci la Pro"). Mesajul rămâne sub listă până îl închide omul sau schimbă ceva — nu o bulă de două secunde.
 export type NuIncape = { id: any; nume: string; valoare: string; text: string; maxim: number; rec: ReturnType<typeof recomandareCurata> };

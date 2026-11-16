@@ -3311,10 +3311,13 @@ app.put('/api/users/:id/ai-limita', requireAuth, requireAdmin, withCompany, asyn
     const p = _pachetCo(co);
     if (!p) return res.status(400).json({ error: 'Contul nu e într-o firmă.' });
     const b = req.body || {};
-    const limita = (b.limita == null || b.limita === '') ? null : Number(b.limita);
+    // 0 = fără întrebări libere, ca un loc gol (16.11: colegul are o casetă cu cifra; 0 = doar răspunsurile pe loc).
+    const limita = (b.limita == null || b.limita === '' || Number(b.limita) === 0) ? null : Number(b.limita);
     const oameni = await db.getAiSeatHolders(tinta.company_id);
-    const cheie = _cheieCo(co);
-    const sumaAltor = oameni.reduce(function (a, h) { const c = h.id !== id ? _cifraValida(h, cheie) : null; return a + (c || 0); }, 0);
+    const cheie = _cheieCo(co), principalId = _principalDin(oameni);
+    // Primul administrator ține ce nu e dat colegilor (16.11): lui nu i se scrie o cifră.
+    if (id === principalId) return res.status(400).json({ error: 'Primul administrator al firmei are întrebările pe care nu le dă colegilor; lui nu i se scrie o cifră.' });
+    const sumaAltor = oameni.reduce(function (a, h) { const c = h.id !== id ? _cifraOm(h, cheie, principalId) : null; return a + (c || 0); }, 0);
     const refuz = pachete.refuzLimita(p, limita, sumaAltor);
     if (refuz) {
       const out = { error: refuz }, n = Number(limita);
@@ -3913,9 +3916,18 @@ function _pachetCo(co) { return co && plans ? plans.pachetAi(co) : null; }   // 
 // întrebările"): fiecare cifră poartă cheia pachetului în care s-a dat (pachete.cheiePachet); alta = cifra nu mai contează.
 function _cheieCo(co, acum) { return pachete.cheiePachet(co && co.settings, acum || Date.now()); }
 function _cifraValida(u, cheie) { return u && u.ai_limita != null && u.ai_limita_pachet === cheie ? Number(u.ai_limita) : null; }
-// Câți colegi au acum o cifră dată pe nume (textele trecerii spun că se șterg).
+// PRIMUL administrator al firmei (16.11, Alin: „primul cont de administrator… dă întrebările și celui de-al doilea"): cel mai vechi
+// cont de administrator cu RA Insight (`oameni` = db.getAiSeatHolders, ordonați după id). El ține ce nu e dat colegilor; cifra lui
+// (dacă a rămas una scrisă) nu contează. null = niciun administrator cu RA Insight.
+function _principalDin(oameni) { const x = (oameni || []).filter(function (h) { return pachete.esteAdmin(h.role); })[0]; return x ? x.id : null; }
+// Cifra unui om, cum contează ea azi: a pachetului de acum și nu a primului administrator.
+function _cifraOm(h, cheie, principalId) { return h && h.id !== principalId ? _cifraValida(h, cheie) : null; }
+// Câți colegi au acum o cifră dată (textele trecerii spun că se șterg).
 async function _cuCifre(co) {
-  try { const cheie = _cheieCo(co); return (await db.getAiSeatHolders(co.id)).filter(function (h) { return _cifraValida(h, cheie) != null; }).length; } catch (e) { return 0; }
+  try {
+    const cheie = _cheieCo(co), oameni = await db.getAiSeatHolders(co.id), pr = _principalDin(oameni);
+    return oameni.filter(function (h) { return _cifraOm(h, cheie, pr) != null; }).length;
+  } catch (e) { return 0; }
 }
 // Luna de acum, „AAAA-LL" (UTC, ca rândurile din ai_usage și din ai_corecturi): „RA Insight · control" (corecturile, estimarea lunii).
 function _lunaAcum() { return new Date().toISOString().slice(0, 7); }
@@ -3934,19 +3946,19 @@ async function _starePachet(companyId, userId, opts) {
   try { co = await db.getCompanyById(companyId); } catch (e) { if (strict) throw e; return null; }
   const p = _pachetCo(co);
   if (!p) return null;
-  let folositeFirma = 0, folositeOm = 0, folositeCuLimita = 0, sumaLimite = 0, limitaOm = null, costLei = 0, conturi = 0, adminOm = false;
+  let folositeFirma = 0, folositeOm = 0, folositeCuLimita = 0, sumaLimite = 0, limitaOm = null, costLei = 0, conturi = 0, principalOm = false, principalId = null;
   try {
     const oameni = await db.getAiSeatHolders(companyId);
     conturi = oameni.length;
     const cheie = _cheieCo(co);
-    const eu = userId != null ? oameni.filter(function (h) { return h.id === userId; })[0] : null;
-    adminOm = !!(eu && pachete.esteAdmin(eu.role));
+    principalId = _principalDin(oameni);
+    principalOm = userId != null && userId === principalId;
     if (p.ai) {
       folositeFirma = (await db.getAiMonthUsage(companyId)).questions;
       const peOm = {};
       (await db.getAiMonthUsageByUser(companyId)).forEach(function (r) { peOm[r.user_id] = Number(r.questions) || 0; });
       oameni.forEach(function (h) {
-        const c = _cifraValida(h, cheie);
+        const c = _cifraOm(h, cheie, principalId);
         if (c != null) { sumaLimite += c; folositeCuLimita += peOm[h.id] || 0; }
         if (userId != null && h.id === userId) limitaOm = c;
       });
@@ -3960,8 +3972,9 @@ async function _starePachet(companyId, userId, opts) {
     }
   } catch (e) { if (strict) throw e; }
   const st = pachete.stare({ pachet: p, peOm: userId != null, folositeFirma: folositeFirma, folositeOm: folositeOm, limitaOm: limitaOm, sumaLimite: sumaLimite,
-    folositeCuLimita: folositeCuLimita, costLei: costLei, adminOm: adminOm });
+    folositeCuLimita: folositeCuLimita, costLei: costLei, principalOm: principalOm });
   st.conturiDate = conturi;
+  st.principalId = principalId;
   return { co: co, pachet: p, st: st };
 }
 // Ce vede omul (bara, caseta pachetului): FĂRĂ bani — costul și plasa sunt doar pentru noi.
@@ -5856,13 +5869,21 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
     if (p.ai) (await db.getAiMonthUsageByUser(req.companyId)).forEach(function (r) { peOm[r.user_id] = Number(r.questions) || 0; });
     else peOm = await db.raspunsuriReguliPeOm(req.companyId);
     const conturi = users.filter(function (u) { return u.ai_seat; }).length;
-    const cheie = _cheieCo(sp.co, acum);
+    const cheie = _cheieCo(sp.co, acum), prId = st.principalId;
+    // Primul administrator (16.11): rândul lui n-are casetă — cifra lui = ce nu e dat colegilor (`cota`), socotită de server.
+    const pr = prId != null ? users.filter(function (u) { return u.id === prId; })[0] : null;
+    const euId = Number(req.auth && req.auth.userId != null ? req.auth.userId : (req.apiAuth ? req.apiAuth.userId : (req.session && req.session.userId)));
+    const eu = prId != null && euId === prId;
+    const admini = users.filter(function (u) { return u.ai_seat && pachete.esteAdmin(u.role); }).length;
+    const laCine = { principal: pr ? (pr.full_name || pr.username) : null, eu: eu, maiMulti: admini > 1 };
     const oameni = users.map(function (u) {
-      const lim = p.imparte && u.ai_seat ? _cifraValida(u, cheie) : null;
-      return { id: u.id, nume: u.full_name || u.username, rol: _incRolEt(u, aj), admin: pachete.esteAdmin(u.role), loc: !!u.ai_seat, limita: lim,
-        folosite: peOm[u.id] || 0, folositeText: u.ai_seat || peOm[u.id] ? pachete.textFolositeOm(lim, peOm[u.id] || 0) : null,
+      const principal = p.imparte && u.id === prId;
+      const lim = p.imparte && u.ai_seat && !principal ? _cifraValida(u, cheie) : null;
+      return { id: u.id, nume: u.full_name || u.username, rol: _incRolEt(u, aj), principal: principal, loc: !!u.ai_seat, limita: lim,
+        cota: principal ? pachete.cotaPrincipal(st, u.id === euId) : undefined,
+        folosite: peOm[u.id] || 0, folositeText: u.ai_seat || peOm[u.id] ? pachete.textFolositeOm(principal ? st.comun : lim, peOm[u.id] || 0) : null,
         nuPoate: u.ai_seat ? null : pachete.refuzLoc(p, conturi, u.role) };
-    }).sort(function (a, b) { return (b.loc - a.loc) || String(a.nume).localeCompare(String(b.nume), 'ro'); });
+    }).sort(function (a, b) { return (b.principal - a.principal) || (b.loc - a.loc) || String(a.nume).localeCompare(String(b.nume), 'ro'); });
     // Trecerea programată (un pachet mai mic, de la 1 a lunii următoare) și confirmările firmei, cu PDF-ul fiecăreia (pasul 6).
     const treceri = (await db.listTreceriPachet(req.companyId, 20).catch(function () { return []; })).map(function (r) {
       return { id: r.id, cand: pachete.dataScurta(r.creat_la), cine: r.user_nume || '', rezumat: pachete.rezumatTrecere(r),
@@ -5875,12 +5896,12 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
       if (rec) recomandatConturi = pachete.recomandare(rec, (await _preturiPachetFirma(sp.co))[rec.cod], false);
     }
     res.json({ pachet: { cod: p.cod, nume: p.nume, imparte: p.imparte, conturi: p.conturi, intrebari: p.intrebari, ramase: pachete.ramaseAfisate(st) },
-      etichete: pachete.ETICHETE_CIFRA, recomandatConturi: recomandatConturi,
+      recomandatConturi: recomandatConturi,
       urmator: p.urmator ? 'Din ' + pachete.dataLunga(p.urmator.deLa) + ' firma trece pe pachetul ' + p.urmator.nume + ' (ales de administrator). Până atunci rămâne ' + p.nume + '.' : null,
       treceri: treceri,
       // `rezumat` = ecranul web (un rând, macheta din 15.10); `cartonase` rămân pentru telefonul de azi.
-      rezumat: pachete.rezumatConturi(st, conturi, acum), cartonase: pachete.cartonaseConturi(st, conturi, acum), oameni: oameni,
-      nota: pachete.notaConturi(p), luna: pachete.reincarcare(acum).luna, sursa: await _sursaPentruFirma(req.companyId, acum) });
+      rezumat: pachete.rezumatConturi(st, conturi, acum, laCine), cartonase: pachete.cartonaseConturi(st, conturi, acum, laCine), oameni: oameni,
+      nota: pachete.notaConturi(p, laCine), luna: pachete.reincarcare(acum).luna, sursa: await _sursaPentruFirma(req.companyId, acum) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // „Sursă externă" în „Pachet și conturi" (28.10): rândul firmei — pornită / oprită pentru toată firma, câte s-au folosit. Doar
