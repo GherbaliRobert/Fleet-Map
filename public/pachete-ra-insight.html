@@ -23,6 +23,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Telefonul cu RA Insight (16.11): UN fișier, același pe prima pagină, aici și în aplicație. Iconițele: Font Awesome, ca pe prima pagină. -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/ra-insight-demo.css">
+  <script src="/js/ra-insight-demo.js" defer></script>
 
   <!-- Ce primește fiecare pachet e scris O DATĂ, în pachete.js (DESCRIERE / publice), aceleași texte ca în aplicație.
        Pagina le copiază, iar verify_site_public.js le compară cuvânt cu cuvânt cu pachete.publice({ cuPret: false }).
@@ -120,7 +124,7 @@
     .pachet li.nu::before{content:"–";color:var(--muted)}
     .pachet .cere{margin-top:auto;display:block;text-align:center;font-weight:700;border:1px solid var(--accent);border-radius:999px;padding:7px 10px;font-size:13.5px}
     .pachet .cere:hover{text-decoration:none;background:rgba(63,224,125,.08)}
-    .pachet.ai{border-color:rgba(167,139,250,.45)}
+    .pachet.ai{border-color:rgba(63,224,125,.45)}   /* verde din 16.11 (până atunci mov): RA Insight e în culorile siglei din 05.11 */
     .pachet{position:relative}
     .pachet .eti{position:absolute;top:-11px;left:14px;font-size:11.5px;font-weight:800;padding:2px 10px;border-radius:999px;background:#FFFFFF;color:#0B0E11;white-space:nowrap}
     .pachet dl.cifre{margin:0 0 12px;border-top:1px solid var(--border)}
@@ -140,7 +144,7 @@
     .comparatie small{display:block;margin-top:2px;font-size:12.5px;font-weight:500;color:var(--muted);line-height:1.4}
     .comparatie tr.g th{background:#0E1318;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding-top:8px;padding-bottom:8px}
     .comparatie td.v{text-align:center;font-weight:700;color:#fff;width:15%}
-    .comparatie td.v.ai,.comparatie th.p.ai{background:rgba(167,139,250,.08)}
+    .comparatie td.v.ai,.comparatie th.p.ai{background:rgba(63,224,125,.07)}
     .comparatie .da{color:var(--accent);font-weight:800}
     .comparatie .nu{color:var(--muted);font-weight:600}
     .comparatie tbody tr:last-child th,.comparatie tbody tr:last-child td{border-bottom:0}
@@ -161,6 +165,14 @@
     .vezi{margin:26px 0 0;font-size:14px;color:var(--muted)}
     .back{display:inline-block;margin-top:18px;font-size:14px}
     @media (max-width:560px){h1{font-size:24px}h2{font-size:18.5px}}
+    /* RA Insight pe telefon (16.11, Alin: „3. DA"): Start și pachetele plătite, unul lângă altul; telefonul: /css/ra-insight-demo.css. */
+    .tel-doi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:26px 0 8px}
+    .tel-col{display:grid;justify-items:center;align-content:start;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px 12px 16px;min-width:0}
+    .tel-col h3{margin:0;font-size:17px;text-align:center;line-height:1.35}
+    .tel-col h3 small{display:block;font-size:13px;color:var(--muted);font-weight:600}
+    .tel-col .tel-p{margin:0;text-align:center;font-size:14px;line-height:1.55;max-width:40ch;min-height:3.1em}
+    .tel-col [data-ri-demo="platit"]{width:100%}
+    @media (max-width:720px){.tel-doi{grid-template-columns:minmax(0,1fr)}.tel-col .tel-p{min-height:0}}
   </style>
 </head>
 <body>
@@ -170,6 +182,25 @@
 
     <h1>Pachetele RA Insight</h1>
     <p class="intro">RA Insight e asistentul flotei: îl întrebați în limba română, iar el caută răspunsul în rapoartele aplicației — câți kilometri a făcut o mașină, de ce a crescut consumul, ce acte expiră luna asta. Se alege pe firmă, într-unul din cele patru pachete de mai jos. Start e inclus în orice contract; pentru celelalte, prețul îl primiți în ofertă.</p>
+
+    <!-- RA Insight pe telefon (16.11, Alin: „3. DA, cu comutator la telefonul care arată pachetele plătite"): stânga Start (un buton),
+         dreapta pachetele plătite, cu Basic / Pro / Business. Le desenează /js/ra-insight-demo.js — același telefon ca pe prima pagină
+         și în aplicație. Textele pachetelor sunt cele din pachete.js (verify_ra_insight_demo.js le compară). -->
+    <div class="tel-doi">
+      <div class="tel-col">
+        <h3>Start<small>inclus în orice contract</small></h3>
+        <p class="tel-p">Alegeți din butoane; răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.</p>
+        <div class="ri-pk-sel" aria-hidden="true"><span class="ri-pk-b" aria-pressed="true">Start</span></div>
+        <div class="ri-pk-info"><b>Răspunsuri pe loc, din rapoarte.</b> Pentru orice firmă, din prima zi.<div class="ri-pk-cifre">Conturi: 1 · administratorul · Răspunsuri pe loc: 50 pe lună</div></div>
+        <div class="ri-tel" data-ri-demo="start" role="img" aria-label="Telefon cu RA Insight pe pachetul Start: un buton și răspunsul pe loc"></div>
+        <span class="ri-exemplu">În telefon: Andrei, administratorul · Exemplu cu o flotă de probă</span>
+      </div>
+      <div class="tel-col">
+        <h3>Basic, Pro, Business<small>întrebări libere, cu AI</small></h3>
+        <p class="tel-p">Scrieți orice întrebare, în cuvintele dumneavoastră: RA Insight caută în rapoarte, compară și explică.</p>
+        <div data-ri-demo="platit"></div>
+      </div>
+    </div>
 
     <div class="pachete">
       <div class="pachet">

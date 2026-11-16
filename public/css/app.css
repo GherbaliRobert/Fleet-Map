@@ -4186,6 +4186,15 @@ body.dark .insp-pk-toate li i { color: var(--accent); }
 .insp-pk-toate li b { display: block; color: var(--text-primary); }
 .insp-pk-toate li span { color: var(--text-secondary); }
 .insp-pk-schimb { margin-top: 14px; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+/* „Vezi pachetele" la firmele de pe Start (16.11, Alin: „4. DA"): telefonul pachetelor plătite, cu Basic / Pro / Business — același
+   ca pe ratrack.ro (public/js/ra-insight-demo.js + public/css/ra-insight-demo.css). Ecranul telefonului e închis pe ambele teme
+   (Alin: „2. închis"); comenzile din jurul lui (Basic / Pro / Business, rândul pachetului) iau culorile temei de aici. */
+.insp-pk-demo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px 28px; align-items: start; margin: 18px 0 4px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-dark);
+  --ri-c-fg: var(--text-primary); --ri-c-mut: var(--text-secondary); --ri-c-line: var(--border-light); }
+.insp-pk-demo-t { padding-top: 10px; }
+.insp-pk-demo-t .insp-pk-h { margin-top: 0; }
+.insp-pk-demo-t p { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.55; max-width: 46ch; }
+@media (max-width: 760px) { .insp-pk-demo { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; } }
 /* Trecerea la alt pachet (pasul 6): butonul de pe cartonaș, ce e programat, fereastra de confirmare */
 .insp-pk-alege { margin-top: 12px; width: 100%; justify-content: center; }
 /* Ofertare Live, sub alegerea pachetului: „ce rămâne la noi" — verdele casei pe alb e 1,7, deci verde închis pe tema deschisă */

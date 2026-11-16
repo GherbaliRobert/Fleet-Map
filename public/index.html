@@ -30,6 +30,8 @@
   <meta name="apple-mobile-web-app-title" content="RA Track">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="/css/app.css?v=6">
+  <!-- Telefonul cu RA Insight (16.11): același ca pe ratrack.ro; aici, în „Vezi pachetele", la firmele de pe Start. -->
+  <link rel="stylesheet" href="/css/ra-insight-demo.css">
   <link rel="stylesheet" href="/css/demo-modules.css?v=1">
   <link rel="stylesheet" href="/css/map-tools.css?v=3">
   <link rel="stylesheet" href="/css/vehicle-popup.css?v=1">
@@ -3806,6 +3808,7 @@ const pozitii = await r.json();</code></pre>
   <script src="/js/license-cats.js"></script>
   <script src="/js/maint-types.js"></script>
   <script src="/js/can-flags.js"></script>
+  <script src="/js/ra-insight-demo.js"></script>
   <script src="/js/can-icons.js"></script>
   <script src="/js/io-format.js"></script>
   <script>
@@ -12730,14 +12733,14 @@ const pozitii = await r.json();</code></pre>
       window.insightPachete = async function () {
         var r = await cere('GET', '/api/insight/pachete');
         if (r.s !== 200) { (window.raxToast || alert)(r.j.error || 'Nu am putut încărca pachetele.', 'error'); return; }
-        var j = r.j, vechi = $i('insp-pk-ov'); if (vechi) vechi.remove();
+        var j = r.j, vechi = $i('insp-pk-ov'); if (vechi) inchidePachete(vechi);
         var ov = el('div', 'insp-pk-ov'); ov.id = 'insp-pk-ov';
         var bx = el('div', 'insp-pk-box'); bx.setAttribute('role', 'dialog'); bx.setAttribute('aria-label', 'Pachetele RA Insight');
         var cap = el('div', 'insp-pk-cap');
         var tw = el('div'); tw.appendChild(el('h3', null, 'Pachetele RA Insight')); tw.appendChild(el('div', 'insp-pk-sub', j.reincarcare || ''));
         if (j.urmator && j.urmator.text) tw.appendChild(el('div', 'insp-pk-sub insp-pk-urmtext', j.urmator.text));
         cap.appendChild(tw);
-        var bi = el('button', 'chat-ib'); bi.type = 'button'; bi.title = 'Închide'; bi.setAttribute('aria-label', 'Închide'); bi.innerHTML = '<i class="fas fa-xmark"></i>'; bi.onclick = function () { ov.remove(); };
+        var bi = el('button', 'chat-ib'); bi.type = 'button'; bi.title = 'Închide'; bi.setAttribute('aria-label', 'Închide'); bi.innerHTML = '<i class="fas fa-xmark"></i>'; bi.onclick = function () { inchidePachete(ov); };
         cap.appendChild(bi); bx.appendChild(cap);
         var gr = el('div', 'insp-pk-gr');
         (j.pachete || []).forEach(function (p) {
@@ -12768,6 +12771,16 @@ const pozitii = await r.json();</code></pre>
           gr.appendChild(c);
         });
         bx.appendChild(gr);
+        // Firma de pe Start (16.11, Alin: „4. DA"): telefonul pachetelor plătite, cu Basic / Pro / Business — același ca pe
+        // ratrack.ro/pachete-ra-insight (public/js/ra-insight-demo.js; NU scrie a doua variantă aici). Arată ce primești de la Basic.
+        if (j.actual === 'start' && window.RaInsightDemo) {
+          var dm = el('div', 'insp-pk-demo'), dmt = el('div', 'insp-pk-demo-t');
+          dmt.appendChild(el('div', 'insp-pk-h', 'Cum arată de la Basic'));
+          dmt.appendChild(el('p', null, 'Pe Start alegi din butoane. De la Basic scrii orice întrebare, în cuvintele tale: RA Insight caută în rapoarte, compară și îți explică.'));
+          dm.appendChild(dmt);
+          var dmp = el('div'); dmp.setAttribute('data-ri-demo', 'platit'); dm.appendChild(dmp);
+          bx.appendChild(dm);
+        }
         // Tot ce include fiecare pachet, rând cu rând (pachete.comparatie; aici cu prețul pe o întrebare). Celula: da / nu / text + rând mic.
         if (Array.isArray(j.comparatie) && j.comparatie.length) {
           bx.appendChild(el('div', 'insp-pk-h', 'Tot ce include fiecare pachet'));
@@ -12806,9 +12819,12 @@ const pozitii = await r.json();</code></pre>
         }
         bx.appendChild(el('div', 'insp-pk-schimb', j.schimbText || ''));
         ov.appendChild(bx);
-        ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+        ov.onclick = function (e) { if (e.target === ov) inchidePachete(ov); };
         document.body.appendChild(ov);
+        if (window.RaInsightDemo) window.RaInsightDemo.porneste(ov);
       };
+      // Fereastra pachetelor se închide: telefonul dinăuntru (dacă e) se oprește întâi.
+      function inchidePachete(ov) { try { if (window.RaInsightDemo) window.RaInsightDemo.opreste(ov); } catch (e) {} ov.remove(); }
       // ── Trecerea la alt pachet (pasul 6): textul EXACT de la server, bifa „Am citit și sunt de acord", apoi confirmarea. Dacă
       // între timp s-a schimbat ceva (prețul, ziua, conturile), serverul trimite textul nou și omul îl citește din nou.
       window.insightTrecere = async function (cod) {

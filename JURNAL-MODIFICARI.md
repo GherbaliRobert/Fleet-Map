@@ -605,6 +605,46 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-16
 
+### AMÂNDOI · RA Insight în prim-plan: telefonul animat pe prima pagină, pe pagina pachetelor și în „Vezi pachetele"
+*Alin, 16.11: „vreau să scoatem în evidență chatul RA Insight… e vedeta aplicației… pe home page, în planuri, cu mockup-uri cum ar arăta
+pe un telefon"; la macheta https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt: „1. A, 2. închis, 3. DA (cu toggle la telefonul care indică
+planurile plătite, să treci pe toate cele 3 planuri), 4. DA, 5. DA"; „sper că mi-l faci exact așa animat ca în machetă".*
+
+**Ce am schimbat:**
+- **Prima pagină (ratrack.ro), primul ecran:** pe două coloane. În stânga textul de până acum (titlul, butoanele și cele trei cifre
+  rămân; rândul de deasupra titlului e acum „RA Insight: întrebi flota în cuvintele tale"). În dreapta, un telefon în care RA Insight
+  lucrează singur, exact ca în machetă: scrie întrebarea, „se gândește", răspunde cuvânt cu cuvânt. Patru întrebări în aceeași discuție:
+  unde e mașina, de ce a crescut consumul, foaia de parcurs pe ieri, alerta de viteză (cu „Da" apăsat și „Gata"); apoi o ia de la capăt.
+  Sub telefon, patru butoane aleg una, plus „Exemplu cu o flotă de probă".
+- **Secțiune nouă „RA Insight", imediat sub primul ecran:** „Întreabă-ți flota. Îți răspunde în câteva secunde."; patru cartonașe
+  (răspunde pe loc · îți explică de ce · îți face rapoartele · pregătește, tu apeși „Da"), fiecare cu bucata lui de ecran, „de la Basic"
+  pe cele două care cer AI; patru motive de încredere (cifrele vin din rapoarte · vede doar mașinile tale · conversațiile le vede doar
+  omul care le-a scris · nimic fără „Da"-ul tău, „se poate anula 10 minute"); pachetele (cartonașele de azi, mutate aici); „Cere cont
+  demo" și „Compară pachetele RA Insight". Caseta veche de sub cei 6 agenți a ieșit. „RA Insight" e primul în meniul site-ului (sus, pe
+  telefon, în subsol).
+- **Pagina pachetelor:** sub textul de început, două telefoane. Start: apasă „Ce a făcut flota ieri?", răspunde pe loc, contorul scade
+  din 50. Pachetele plătite, cu **comutatorul Basic / Pro / Business** (trece și singur de la unul la altul): Basic — Andrei, patronul,
+  întreabă de ce a crescut consumul; Pro — Maria, dispecerul, care șofer a mers cel mai mult peste 90 km/h; Business — Radu, șef de
+  echipă, pornește „Sursă externă" și întreabă câte ore poate conduce un șofer de camion pe săptămână. Deasupra telefonului, ce primește
+  pachetul (textele din pachete.js) și „Sursă externă: 10 / 30 / 50 pe lună"; contorul de lângă casetă scade cu o întrebare.
+- **Aplicația, „Vezi pachetele":** la firmele de pe Start, același telefon cu Basic / Pro / Business, sub cartonașele pachetelor („Cum
+  arată de la Basic"). Se oprește când se închide fereastra.
+- **Mov → verde (punctul 5):** chenarul pachetului Basic (prima pagină și pagina pachetelor) și coloana pachetelor cu AI din comparație
+  rămăseseră mov; acum sunt verzi, ca restul lui RA Insight din 05.11.
+- **Cum e făcut:** un singur fișier (`public/js/ra-insight-demo.js` + `public/css/ra-insight-demo.css`), folosit în toate trei locurile;
+  ecranul telefonului e închis peste tot. Textele sunt cele pe care le scrie aplicația; mașinile, oamenii și cifrele sunt de probă; zilele
+  se socotesc față de azi. Cine are „mai puțină mișcare" pornit vede răspunsurile gata scrise.
+- Găsit și reparat pe drum: în telefon, punctul portocaliu din „Azi la tine" nu se vedea (avea aceeași clasă ca cuvintele care se aprind
+  treptat).
+- Probe: `verify_ra_insight_demo.js` (nouă, în `npm test`: cele trei locuri, fără mov, textele legate de aplicație, cele 7 întrebări din
+  telefoane trecute prin regulile adevărate ale aplicației, culorile; în browser: scrie, răspunde, „Gata", comutatorul, 390 px, „mai
+  puțină mișcare"); `verify_site_public.js` (datele paginilor; „10 minute" și „50 de răspunsuri" legate de cod; pachetele de pe prima
+  pagină căutate în secțiunea nouă).
+
+**Ce vede fondatorul:** pe ratrack.ro, prima pagină și pagina pachetelor noi; în aplicație nimic nou (fondatorul n-are pachet).
+
+**Ce vede clientul:** pe site, la fel; în aplicație, administratorul unei firme de pe Start vede telefonul în „Vezi pachetele".
+
 ### CLIENT · RA Insight: întrebările stau la primul administrator; colegii au o casetă cu cifra (fără „Restul" / „Cel mult")
 *Alin, 16.11: „RESTUL nu e profesional, sau «Cel mult»… implicit toate întrebările sunt la administrator, apoi el decide: are 1.000,
 dă 500 lui Y, la X apare că mai are 500"; „rămâne ca un administrator poate face pe altcineva administrator… dar primul administrator

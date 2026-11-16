@@ -462,6 +462,33 @@ Confidențialitate.
   TrackGPS" — TrackGPS e marca altei firme; scos pe 03.10.
 - Păzit de `verify_site_public.js` (în `npm test`), inclusiv pe server pornit (sitemap, 301, robots.txt).
 
+### RA Insight în prim-plan: telefonul animat (16.11; Alin: „1. A, 2. închis, 3. DA, cu comutator Basic / Pro / Business, 4. DA, 5. DA")
+Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: „exact așa animat ca în machetă".
+- **UN fișier: `public/js/ra-insight-demo.js` + `public/css/ra-insight-demo.css`**, folosit în trei locuri: prima pagină (primul ecran =
+  `data-ri-demo="erou"` lângă titlu, cu butoanele `[data-ri-taburi] [data-sc]`; secțiunea `#ra-insight` imediat sub primul ecran, cu
+  bucățile `data-ri-demo="bucata"`), `/pachete-ra-insight` (`start` + `platit`, cu comutatorul Basic / Pro / Business, care trece și singur)
+  și aplicația („Vezi pachetele", `insightPachete`, doar `j.actual === 'start'`; `RaInsightDemo.porneste(ov)` după ce fereastra e pe ecran,
+  `inchidePachete` → `opreste`). NU scrie a doua variantă: un `<div data-ri-demo="…">` și, dacă vine după încărcare, `porneste`.
+- **Animația = macheta, întocmai** (scrie literă cu literă, „Mă gândesc…" cu inelul, cuvintele aprinse treptat, ce urmează după, atingerea pe
+  „Da", „Gata" cu „Anulează · mai ai 9:59" care scade; timpii din machetă). Se mișcă doar cât e pe ecran; „mai puțină mișcare" = răspunsurile
+  gata scrise (`static`). Ecranul telefonului e ÎNCHIS peste tot, și în aplicație pe tema deschisă (Alin: „2. închis").
+- **Ce scrie în telefon e ce scrie aplicația**, legat prin `verify_ra_insight_demo.js`: cartonașul alertei și „Gata" (propuneri.js),
+  raportul cerut (cartonasRaport, reports.js), răspunsul pe loc (fleet_quick.js), insignele (pachete.insigna), „Cifrele le-am luat din…" și
+  „Surse de pe internet" (sursa_externa.js), „Azi la tine" (azi_la_tine.js), butoanele de sub casetă (CARDURI / CARDURI_REGULI), pachetele
+  (pachete.js + sursa_externa.PE_PACHET), culorile (app.css, tema închisă). Schimbi unul în aplicație → proba pică până schimbi și telefonul.
+  **Întrebările din telefoane trec prin regulile ADEVĂRATE** (proba le rulează): o întrebare nouă trebuie înțeleasă de aplicație exact cum o
+  arată telefonul (pe loc / analiză / raport cerut / propunere / întrebare liberă).
+- **Mașinile, oamenii și cifrele sunt de probă** (B 204 RAT, B 77 TIR; Andrei, Maria, Radu); sub fiecare telefon scrie „Exemplu cu o flotă de
+  probă". Zilele se socotesc față de azi, pe ora României, cu anul doar când e altul (ca `_zi` din propuneri.js / `ramuri.zz`) — NU scrie date
+  de mână. Fără prețuri, fără numele furnizorului de AI, fără „gratuit" / „tokeni" / „24/7" (proba citește toate textele fișierului).
+- **Clasele telefonului încep cu „ri-"**; `ri-w` = cuvintele care se aprind (opacity 0) — NU-l da altui element (punctul portocaliu din „Azi la
+  tine" a fost `ri-w` și nu se vedea; acum `ri-st-w`). Culorile comenzilor din jur (`--ri-c-fg / mut / line`) au în foaia telefonului doar valori
+  de rezervă (site-ul, închis); aplicația le dă din tema ei (`.insp-pk-demo`, app.css) — NU le defini pe elementele telefonului.
+- **Pe site:** „RA Insight" primul în meniu (sus, pe telefon, subsol); caseta veche de sub agenți (`.ra-insight`) a ieșit; cartonașele pachetelor
+  stau în `#ra-insight` (3d le caută acolo); „de la Basic" pe analiză și pe propunerile cu „Da"; cifrele de lângă telefoane sunt în `LEGATE` („se
+  poate anula 10 minute" = `ANULARE_MIN`, „50 de răspunsuri" = Start). Chenarul Basic și coloana lui din comparație sunt VERZI (mov până pe 16.11).
+- Păzit de **`verify_ra_insight_demo.js`** (în `npm test`; partea din browser se sare fără Chromium) și `verify_site_public.js`.
+
 ## Compania DEMO (acces la CERERE, aprobat de super-admin)
 Aplicația seedează la pornire o **companie demo** built-in — „RA Track Demo" (pe 09.10, câteva ore, „RA Tracks Demo"; numele acela se corectează o dată, la pornire), 5 vehicule **sintetice** (DEMO-1..5: Timișoara, București, Iași, Brașov, Cluj-Napoca) + cont `demo` (viewer) + simulator de poziții. Vezi `server.js` (blocul „DEMO mode", gated pe `process.env.DEMO_DISABLED !== 'true'`) + `demo-sim.js` (`DEMO_IMEIS`, `ROUTES`).
 

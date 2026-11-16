@@ -272,6 +272,9 @@ const LEGATE = [
   ['/pachete-ra-insight', '<b>Un pachet mai mare</b> se aplică din ziua confirmării, iar luna aceea se facturează pe zile', /const deLa = inceputZi\(acum\)/.test(PKJS) && /function liniiFactura\(o\)/.test(PKJS), 'trecerea la un pachet mai mare din pachete.js (din ziua confirmării, pe zile)'],
   ['/pachete-ra-insight', '<b>Un pachet mai mic</b> se aplică de la 1 a lunii următoare', /const deLa = inceputLunaUrm\(acum\)/.test(PKJS), 'trecerea la un pachet mai mic din pachete.js (de la 1 a lunii următoare)'],
   ['/pachete-ra-insight', 'confirmarea vine pe email, în PDF', /_trimiteConfirmarePachet\(rand, r\.co, u\)/.test(SRV), 'emailul confirmării (server.js)'],
+  // RA Insight în prim-plan (16.11, Alin: „1. A … 3. da"): cifrele scrise lângă telefoane.
+  ['/', 'și se poate anula 10 minute', require('./soferi_masini.js').ANULARE_MIN === 10, 'ANULARE_MIN din soferi_masini.js (cât ține „Anulează" după „Da")'],
+  ['/pachete-ra-insight', 'răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
 ];
 for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
   if (doarme && DE_HOTARAT[doarme]) continue;
@@ -326,8 +329,9 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
 {
   const html = HTML['/'] || '';
   const i = html.indexOf('class="ri-pachete"');
-  check(i > 0, '/: lipsesc cartonașele pachetelor RA Insight din banda RA Insight');
-  const bloc = i > 0 ? html.slice(i, html.indexOf('class="agents-foot', i)) : '';
+  check(i > 0, '/: lipsesc cartonașele pachetelor RA Insight din secțiunea RA Insight');
+  // Din 16.11 cartonașele stau în secțiunea RA Insight (sub primul ecran), nu în banda de sub agenți: blocul ține până la capătul ei.
+  const bloc = i > 0 ? html.slice(i, html.indexOf('</section>', i)) : '';
   const vazut = faraMarcaj(bloc);
   for (const p of PK.publice({ cuPret: false })) {
     const bucati = [p.nume, p.pentru, p.subPret].concat(p.eticheta ? [p.eticheta] : [], p.cifre.map((c) => c.et), p.cifre.filter((c) => c.val != null).map((c) => c.val));
