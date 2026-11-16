@@ -407,7 +407,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   putut face (`tsc` pica). Reparat pe 13.11; telefonul trece acum `tsc --noEmit` întreg. **Tot 13.11, după-amiază:** (7) în fișa firmei →
   „Acces", fereastra pachetului cu textul de la server (rândurile de pe factură), (8) anunțurile noastre despre RA Insight duc în „RA Insight ·
   control", (9) anunțul de la capăt (100%) al administratorului duce în „Pachet și conturi". De acum, poarta de pe GitHub verifică și telefonul
-  întreg (`tsc --noEmit`), ca la APK.
+  întreg (`tsc --noEmit`), ca la APK. **Seara:** (10) „Abonament & plăți" fără comutatoarele modulelor AI (stau doar în „Acces"). Limitele pe om
+  de pe Basic merg și pe telefonul de azi: alegerea o arată telefonul după ce i-o cere serverul.
 - [ ] **Robert: telefonul și „un singur RA Insight" (APK-ul următor). Adăugat pe 15.10 (Capitolul 2, pasul 1).** **02.11: cod gata pentru discuție — punctele 2, 3, 5, 9, 12, 13, 14 (1: rândul din meniu; pe telefon nu e bulă; 6: „Safe Drive" nu apărea). Din lotul 2: 4 și, din 7, „Pagini" și „Ghid". Din lotul 3: 8, 10, 11 și, din 7, „Pachet și conturi". Din lotul 4: 15 și capătul lui 14 (ecranul Alerte). Rămâne APK-ul.** Pe web sunt gata;
   pe telefon: (1) bula duce în RA Insight; (2) „Azi la tine" sub salut, din `GET /api/insight/azi` (rândurile și butoanele le dă
   serverul); (3) cartonașul raportului cerut în cuvinte (`raport` din răspuns: „Deschide raportul" → Istoric, „Descarcă Excel"
@@ -598,6 +599,43 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-13
+
+### CLIENT · RA Insight: și pe Basic, administratorul împarte întrebările pe oameni
+*Alin, 13.11: „și la basic aș vrea ca adminul să poată să împartă, ca de exemplu 100 el, 100 dispecerul sau 150 el și 50 dispecerul."*
+
+**Ce am schimbat:**
+- Pe **Basic** (200 de întrebări pe lună, 2 conturi), administratorul firmei alege acum la fiecare om „Fără limită" sau „Cel mult … pe
+  lună" (RA Insight → „Pachet și conturi"), ca pe Pro și Business. Totalul dat pe nume nu trece de 200: la 150 dat deja, încă 60 se
+  refuză cu „Pachetul Basic are 200 de întrebări pe lună, iar colegilor le-ați dat deja 150 de întrebări. Mai puteți da cel mult 50."
+  Cei lăsați „Fără limită" folosesc ce n-a fost dat nimănui; când nu mai rămâne nimic, au doar răspunsurile pe loc (butoanele).
+- Pe Start rămâne cum era (RA Insight îl are doar administratorul); refuzul spune acum „Limita pe om e de la Basic în sus".
+- Pagina pachetelor (în aplicație, „Vezi pachetele", și pe site, `/pachete-ra-insight`): la Basic, rândul „Împarți întrebările pe
+  oameni" și bifa din comparație; „200 pe lună" fără „la comun". La Pro, titlul e „Toată echipa întreabă: până la 5 oameni." —
+  „tu împarți întrebările" nu mai e doar al lui Pro. Ghidul spune „Pe Basic, Pro și Business…". Oferta, contractul și factura scriu
+  doar conturile și întrebările pachetului — neschimbate.
+- Telefonul: alegerea pe om apare singură și pe Basic (o cere serverul).
+- Probe: `verify_pachete.js` (regula, comparația; pe server pornit: 50 primite, 160 lângă 50 refuzate), `verify_telefon_pachete.js`
+  (limita pe Basic primită, „Pachet și conturi" la fel pe web și pe telefon), `verify_site_public.js` (pagina, data și amprenta noi).
+
+**Ce vede fondatorul:** nimic nou în ecranele noastre; pachetele, în aplicație și pe site, spun noua regulă.
+
+**Ce vede clientul:** administratorul unei firme pe Basic poate da întrebări pe nume (de exemplu 150 pentru el, 50 pentru dispecer).
+
+### FONDATOR · Modulele AI se pornesc doar din fila „Acces"
+*Alin, 13.11: „1 da" (la „Le las doar în «Acces» și le scot din «Abonament & plăți»?").*
+
+**Ce am schimbat:**
+- În fișa firmei → „Abonament & plăți" → „Module AI" au ieșit bifele „Asistent AI" și „Agenți AI" (erau același comutator ca în fila
+  „Acces", pus a doua oară). În locul lor: „RA Insight (pe pachete) și cei 6 agenți AI se pornesc și se opresc din fila „Acces”; tot
+  acolo se alege pachetul RA Insight. Agenții AI sunt incluși, fără cost." și butonul „Deschide „Acces”".
+- După o schimbare făcută în „Acces" (un modul pornit sau oprit, alt pachet), fereastra firmei își cere din nou datele când treci pe
+  altă filă — altfel „Preț lunar estimat" din „Abonament & plăți" arăta prețul de dinainte până la redeschiderea ferestrei.
+- Telefonul: la fel (aplicația următoare); fila „Acces" de pe telefon își recitea deja fișa după o schimbare.
+- Probe: `verify_telefon_pachete.js` (bifele au ieșit pe web și pe telefon, „Acces" le are, prețul se cere din nou), `verify_pachete.js`.
+
+**Ce vede fondatorul:** în „Abonament & plăți", un rând și butonul spre „Acces"; modulele se pornesc doar din „Acces".
+
+**Ce vede clientul:** nimic.
 
 ### FONDATOR · Fila „Acces": fereastra pachetului spune exact rândurile de pe factură; trecerea pornește de la începutul zilei
 *Alin, 13.11: „1. … DA" (punctul 3 din explicația cu poze); „2. Prețul e cel pe care l-am decis ultima dată — acela să fie."*

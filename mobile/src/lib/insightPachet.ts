@@ -90,7 +90,7 @@ export function planConturi(j: any) {
       id: o.id, nume: String(o.nume || ''), rol: String(o.rol || ''), loc: !!o.loc,
       nuPoate: !o.loc && o.nuPoate ? String(o.nuPoate) : '',
       cuLimita: o.limita != null, limita: o.limita != null ? String(o.limita) : '',
-      arataLimita: imp && !!o.loc,      // „Fără limită" / „Cel mult … pe lună": doar la Pro / Business și cu cont
+      arataLimita: imp && !!o.loc,      // „Fără limită" / „Cel mult … pe lună": de la Basic în sus și cu cont
       folosite: o.loc || o.folositeText ? String(o.folositeText || '0') : 'fără cont',
     })),
     nota: String((j && j.nota) || ''),

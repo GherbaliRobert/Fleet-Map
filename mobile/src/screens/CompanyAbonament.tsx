@@ -78,7 +78,6 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
   const [of, setOf] = useState(() => formaOfertei(ov));
   const [can, setCan] = useState<Record<string, boolean>>(() => bifeCan(ov));
   const [modificat, setModificat] = useState(false);
-  const [feats, setFeats] = useState<Record<string, boolean>>(() => Object.assign({ ai_assistant: false, agents: false }, ov.features || {}));
   const [susp, setSusp] = useState<{ cere: boolean; motiv: string }>({ cere: false, motiv: '' });
   const [reactivez, setReactivez] = useState(false);
   const [busy, setBusy] = useState('');
@@ -87,11 +86,10 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
   const [pastCob, setPastCob] = useState<{ de: number; la: number; pret: number } | null>(null);
 
   // Fișa s-a recitit → formularul pornește din ce a scris serverul. DAR nu peste ce scrii acum: o fișă
-  // recitită după un comutator de modul nu are voie să-ți șteargă prețurile tastate și încă nesalvate.
+  // recitită (de exemplu după o schimbare din fila „Acces") nu are voie să-ți șteargă prețurile tastate și încă nesalvate.
   const ofAtins = useRef(false), pastAtins = useRef(false);
   useEffect(() => {
     if (!ofAtins.current) { setOf(formaOfertei(ov)); setCan(bifeCan(ov)); setModificat(false); }
-    setFeats(Object.assign({ ai_assistant: false, agents: false }, ov.features || {}));
     if (!pastAtins.current) setPast(formaPastrarii(ov));
   }, [ov]);
 
@@ -159,16 +157,6 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
     try { await Api.setCompanyOferta(id, oferta); showToast('Ofertă salvată'); ofAtins.current = false; onReload(); }
     catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { setBusy(''); }
-  }
-  async function modul(key: string) {
-    const on = !feats[key], prev = feats;
-    setFeats({ ...feats, [key]: on });
-    try {
-      const r: any = await Api.setCompanyFeatures(id, { [key]: on });
-      if (r && r.features) setFeats((f) => Object.assign({}, f, r.features));
-      showToast('Modul ' + (on ? 'activat' : 'dezactivat'));
-      onReload(); // prețul lunar se schimbă cu modulele (pachetul RA Insight intră în preț doar cu modulul pornit)
-    } catch (e: any) { setFeats(prev); showToast(e?.message || 'Eroare', true); }
   }
 
   // ── Păstrarea istoricului (raxSavePastrare) ──
@@ -295,20 +283,11 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         </div>
       </div>
 
-      {/* Modulele AI + drumul spre pachetul RA Insight */}
+      {/* Modulele AI se pornesc DOAR din fila „Acces" (13.11, Alin: „1 da"), ca pe web: aici stăteau încă o dată, ca
+          comutatoare („Asistent AI", „Agenți AI"). Prețul lunar le citește tot de la server. */}
       <div class="fm-card pad">
         <h3 style="margin-top:0">Module AI</h3>
-        <button class="fm-tgl" onClick={() => modul('ai_assistant')} role="switch" aria-checked={!!feats.ai_assistant}>
-          <span class="lbl">Asistent AI<small>chat + RA Insight</small></span><span class={'sw' + (feats.ai_assistant ? ' on' : '')} />
-        </button>
-        <button class="fm-tgl" onClick={() => modul('agents')} role="switch" aria-checked={!!feats.agents}>
-          <span class="lbl">Agenți AI<small>cei 6 agenți (Watch / Dispatch / …)</small></span><span class={'sw' + (feats.agents ? ' on' : '')} />
-        </button>
-        <div class="co-note">Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”.</div>
-
-        {/* RA Insight se vinde pe pachete (regula veche, „pe cont", a ieșit pe 11.11): pachetul se alege din fila „Acces". */}
-        <div class="fm-sec" style="margin-top:16px">RA Insight</div>
-        <div class="co-note">Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.</div>
+        <div class="co-note">RA Insight (pe pachete) și cei 6 agenți AI se pornesc și se opresc din fila „Acces”; tot acolo se alege pachetul RA Insight. Agenții AI sunt incluși, fără cost.</div>
         <button class="fm-btn" onClick={() => loc.route(rutaFisa(id, 'acces'), true)}><Icon name="layers" size={15} /> Deschide „Acces”</button>
       </div>
 

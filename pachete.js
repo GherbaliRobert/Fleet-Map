@@ -6,7 +6,8 @@
 // Curat: fără bază de date și fără server — serverul adună cifrele și le dă aici.
 //
 //   Start    — inclus în orice contract: DOAR administratorul, 50 de răspunsuri pe butoane pe lună, fără AI.
-//   Basic    — 10 lei: 2 conturi, 200 de întrebări pe lună la comun, ramurile.
+//   Basic    — 10 lei: 2 conturi, 200 de întrebări pe lună, ramurile, împărțirea pe oameni (din 13.11, Alin: „și la basic…
+//              100 el, 100 dispecerul sau 150 el și 50 dispecerul").
 //   Pro      — 20 de lei: până la 5 conturi, 600 de întrebări, împărțirea pe oameni.
 //   Business — 30 de lei: conturi nelimitate, 1.000 de întrebări, împărțirea pe oameni.
 //
@@ -20,7 +21,7 @@ const sursaExterna = require('./sursa_externa');
 
 const PACHETE = [
   { cod: 'start', nume: 'Start', pret: 0, conturi: 1, intrebari: 50, ai: false, ramuri: false, imparte: false, doarAdmin: true },
-  { cod: 'basic', nume: 'Basic', pret: 10, conturi: 2, intrebari: 200, ai: true, ramuri: true, imparte: false, doarAdmin: false },
+  { cod: 'basic', nume: 'Basic', pret: 10, conturi: 2, intrebari: 200, ai: true, ramuri: true, imparte: true, doarAdmin: false },
   { cod: 'pro', nume: 'Pro', pret: 20, conturi: 5, intrebari: 600, ai: true, ramuri: true, imparte: true, doarAdmin: false },
   { cod: 'business', nume: 'Business', pret: 30, conturi: null, intrebari: 1000, ai: true, ramuri: true, imparte: true, doarAdmin: false },
 ];
@@ -101,12 +102,12 @@ function refuzLoc(p, conturiAcum, rol) {
   return null;
 }
 
-// ─── Împărțirea întrebărilor pe oameni (Pro și Business) ─────────────────────────────────────────────────────────────
+// ─── Împărțirea întrebărilor pe oameni (Basic, Pro și Business; Basic din 13.11) ──────────────────────────────────────
 // `limita` = întrebările date omului pe lună (null = „Fără limită": folosește din ce nu e dat nimănui cu limită). `sumaAltor` =
 // limitele celorlalți. null = bine. (Macheta din 15.10, Alin: „4. da" — pe ecran „Fără limită" / „Cel mult … pe lună", nu „la comun".)
 function refuzLimita(p, limita, sumaAltor) {
   if (!p) return 'Firma nu are un pachet RA Insight.';
-  if (!p.imparte) return 'Pe pachetul ' + p.nume + ' toți cei cu RA Insight folosesc aceleași întrebări. Limita pe om e de la Pro în sus.';
+  if (!p.imparte) return 'Pe pachetul ' + p.nume + ', RA Insight îl are doar administratorul. Limita pe om e de la Basic în sus.';
   if (limita == null) return null;
   const n = Number(limita);
   if (!Number.isInteger(n) || n < 0) return 'Limita e un număr întreg de întrebări (0 sau mai mult).';
@@ -260,7 +261,7 @@ function cartonaseConturi(st, conturiDate, acum) {
   return out;
 }
 // „Pachet și conturi" pe ecranul web (macheta din 15.10, Alin: „3. da, 4. da"): în locul cartonașelor, unul-două rânduri —
-// câte conturi s-au dat, câte întrebări au rămas și, pe Pro / Business, cât e dat pe nume. (Cartonașele rămân în răspuns pentru
+// câte conturi s-au dat, câte întrebări au rămas și, de la Basic în sus, cât e dat pe nume. (Cartonașele rămân în răspuns pentru
 // telefonul de azi.)
 function rezumatConturi(st, conturiDate, acum) {
   const r = reincarcare(acum), date = Number(conturiDate) || 0;
@@ -275,7 +276,7 @@ function rezumatConturi(st, conturiDate, acum) {
 function textFolositeOm(limita, folosite) { return limita != null ? (Number(folosite) || 0) + ' din ' + limita : String(Number(folosite) || 0); }
 function notaConturi(p) {
   if (p.cod === 'start') return 'Pe Start, RA Insight îl are doar administratorul. De la Basic îl pot avea și colegii.';
-  if (!p.imparte) return 'Pe ' + p.nume + ', toți cei cu RA Insight folosesc aceleași ' + p.intrebari + deNr(p.intrebari) + 'întrebări. Limita pe om e de la Pro.';
+  if (!p.imparte) return 'Pe ' + p.nume + ', toți cei cu RA Insight folosesc aceleași ' + p.intrebari + deNr(p.intrebari) + 'întrebări. Limita pe om e de la Basic.';
   return '„Fără limită” = omul folosește din întrebările firmei care nu sunt date cu limită altcuiva. „Cel mult … pe lună” = omul se ' +
     'oprește la cifra aceea, iar întrebările lui nu le folosesc ceilalți. Limitele nu pot trece de cele ' + p.intrebari + deNr(p.intrebari) +
     'întrebări ale pachetului.';
@@ -523,10 +524,11 @@ const DESCRIERE = {
     include: ['Întrebi în cuvintele tale: „De ce a crescut consumul la Caddy?”', '„De ce?”, „compară”, „ce să fac”: face rapoartele și ți le explică',
       'Sursă externă: caută și pe internet ce nu e în aplicație, cu site-ul lângă fiecare cifră (' + _sursaRand('basic') + ')',
       'Face, cu „Da”-ul tău: șoferul pe mașină, alerta de viteză, revizia, actul, raportul programat',
-      'Cinci pagini: RA Drive, Combustibil, Ore de condus, Mentenanță & acte, Șoferi pe mașini'] },
-  pro: { titlu: 'Toată echipa întreabă, tu împarți întrebările.', pentru: 'Pentru firme cu dispecerat.', plus: 'În plus față de Basic',
-    include: ['Până la 5 oameni cu RA Insight', 'De trei ori mai multe întrebări: 600 pe lună', 'Sursă externă: ' + _sursaRand('pro'),
+      'Cinci pagini: RA Drive, Combustibil, Ore de condus, Mentenanță & acte, Șoferi pe mașini',
       'Împarți întrebările pe oameni: „Fără limită” sau „Cel mult … pe lună”'] },
+  // Pro (13.11): împărțirea pe oameni e de la Basic, deci titlul nu mai spune „tu împarți întrebările”.
+  pro: { titlu: 'Toată echipa întreabă: până la 5 oameni.', pentru: 'Pentru firme cu dispecerat.', plus: 'În plus față de Basic',
+    include: ['Până la 5 oameni cu RA Insight', 'De trei ori mai multe întrebări: 600 pe lună', 'Sursă externă: ' + _sursaRand('pro')] },
   business: { titlu: 'Oricâți oameni, 1.000 de întrebări.', pentru: 'Pentru flote mari, cu mai multe echipe.', plus: 'În plus față de Pro',
     include: ['Oricâți oameni cu RA Insight', '1.000 de întrebări pe lună', 'Sursă externă: ' + _sursaRand('business')] },
 };

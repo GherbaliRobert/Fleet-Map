@@ -35,7 +35,7 @@ console.log('1. Regula pachetelor (pachete.js)');
 const p = (c) => P.dupaCod(c);
 T('patru pachete, în ordine: Start, Basic, Pro, Business', P.PACHETE.map((x) => x.nume).join() === 'Start,Basic,Pro,Business');
 T('Start: 0 lei, 1 cont (administratorul), 50 de răspunsuri, fără AI, fără ramuri', p('start').pret === 0 && p('start').conturi === 1 && p('start').intrebari === 50 && !p('start').ai && !p('start').ramuri && p('start').doarAdmin);
-T('Basic: 10 lei, 2 conturi, 200 de întrebări la comun, cu AI și ramuri, fără împărțire', p('basic').pret === 10 && p('basic').conturi === 2 && p('basic').intrebari === 200 && p('basic').ai && p('basic').ramuri && !p('basic').imparte);
+T('Basic: 10 lei, 2 conturi, 200 de întrebări, cu AI și ramuri, cu împărțirea pe oameni (din 13.11)', p('basic').pret === 10 && p('basic').conturi === 2 && p('basic').intrebari === 200 && p('basic').ai && p('basic').ramuri && p('basic').imparte);
 T('Pro: 20 de lei, până la 5 conturi, 600 de întrebări, împărțire', p('pro').pret === 20 && p('pro').conturi === 5 && p('pro').intrebari === 600 && p('pro').imparte);
 T('Business: 30 de lei, conturi nelimitate, 1.000 de întrebări, împărțire', p('business').pret === 30 && p('business').conturi === null && p('business').intrebari === 1000 && p('business').imparte);
 // Din 28.10 fără bugetul de analiză aprofundată pe Sonnet (Alin: „nu o mai vreau… avem Haiku"; „1 da" la analiza atentă pe Haiku).
@@ -55,7 +55,9 @@ T('Basic: al treilea cont se refuză, cu drumul spre Pro', P.refuzLoc(p('basic')
 T('Pro: al șaselea, spre Business (conturi nelimitate); Business: niciodată plin', /treceți la Business \(conturi nelimitate\)/.test(P.refuzLoc(p('pro'), 5, 'viewer') || '') && P.refuzLoc(p('business'), 500, 'viewer') === null);
 
 console.log('   împărțirea întrebărilor');
-T('Basic: toți folosesc aceleași întrebări (limita pe om e de la Pro)', /toți cei cu RA Insight folosesc aceleași întrebări\. Limita pe om e de la Pro în sus/.test(P.refuzLimita(p('basic'), 50, 0) || ''));
+// 13.11 (Alin: „și la basic… 100 el, 100 dispecerul sau 150 el și 50 dispecerul"): Basic împarte și el.
+T('Basic: 150 pentru el lângă 50 pentru dispecer — da; 160 lângă 50 — nu, cu „cel mult 150"', P.refuzLimita(p('basic'), 150, 50) === null && P.refuzLimita(p('basic'), 100, 100) === null && /Pachetul Basic are 200 de întrebări pe lună.*Mai puteți da cel mult 150\./.test(P.refuzLimita(p('basic'), 160, 50) || ''), P.refuzLimita(p('basic'), 160, 50));
+T('Start: limita pe om e de la Basic (pe Start RA Insight îl are doar administratorul)', /doar administratorul\. Limita pe om e de la Basic în sus/.test(P.refuzLimita(p('start'), 10, 0) || ''), P.refuzLimita(p('start'), 10, 0));
 T('Pro: 100 lângă 300 date altora — da; 400 lângă 300 — nu, cu „cel mult 300"', P.refuzLimita(p('pro'), 100, 300) === null && /Mai puteți da cel mult 300\./.test(P.refuzLimita(p('pro'), 400, 300) || ''), P.refuzLimita(p('pro'), 400, 300));
 T('Pro: limita e un întreg ≥ 0; gol = „Fără limită"', !!P.refuzLimita(p('pro'), 2.5, 0) && !!P.refuzLimita(p('pro'), -1, 0) && P.refuzLimita(p('pro'), null, 0) === null && P.refuzLimita(p('pro'), 0, 0) === null);
 
@@ -115,9 +117,9 @@ T('analiza aprofundată (Sonnet) nu mai e în pachete — Alin, 27.10: „nu o m
 const cmpA = P.comparatie({ cuPret: true, preturi: { start: 0, basic: 10, pro: 20, business: 30 } }), cmpS = P.comparatie({ cuPret: false });
 const rand = (c, t) => [].concat(...c.map((g) => g.randuri)).find((r) => r.t === t);
 const cel = (r) => r.v.map((x) => x.da === true ? '✓' : x.da === false ? '—' : x.text).join(' | ');
-T('comparația: conturi, întrebări libere (Basic „la comun”), răspunsuri pe loc, pagini și „Da"-ul de la Basic, „Azi la tine" peste tot',
+T('comparația: conturi, împărțirea pe oameni de la Basic (13.11), întrebări libere (fără „la comun”), răspunsuri pe loc, pagini și „Da"-ul de la Basic, „Azi la tine" peste tot',
   cel(rand(cmpS, 'Conturi RA Insight')) === '1 | 2 | până la 5 | nelimitate' && cel(rand(cmpS, 'Întrebări libere, cu AI')) === '— | 200 pe lună | 600 pe lună | 1.000 pe lună' &&
-  rand(cmpS, 'Întrebări libere, cu AI').v[1].mic === 'la comun' && cel(rand(cmpS, 'Răspunsuri pe loc, din rapoarte')) === '50 pe lună | fără limită | fără limită | fără limită' &&
+  cel(rand(cmpS, 'Împarți întrebările pe oameni')) === '— | ✓ | ✓ | ✓' && !rand(cmpS, 'Întrebări libere, cu AI').v.some((x) => x.mic === 'la comun') && cel(rand(cmpS, 'Răspunsuri pe loc, din rapoarte')) === '50 pe lună | fără limită | fără limită | fără limită' &&
   cel(rand(cmpS, 'Domeniile RA Insight')) === '— | ✓ | ✓ | ✓' && cel(rand(cmpS, 'RA Insight face, cu „Da”-ul tău')) === '— | ✓ | ✓ | ✓' && cel(rand(cmpS, '„Azi la tine”')) === '✓ | ✓ | ✓ | ✓',
   JSON.stringify(cmpS.map((g) => g.randuri.map((r) => r.t + ': ' + cel(r)))));
 T('…prețul pe o întrebare liberă doar în aplicație: 5 bani / 3,3 bani / 3 bani la prețurile de listă (Start: —); pe site lipsește',
@@ -568,8 +570,12 @@ const LUNA = P.reincarcare(Date.now()).luna;
   const bBut2 = await intreaba(bAdm, 'De ce a crescut consumul?', { buton: true });
   T('un buton pe care regulile nu-l știu merge la model (și se numără)', bBut2.j.source === 'ai' && nCereri() === n1 + 2 && (await cota(bAdm)).used === 2, bBut2.j.source);
   T('ramurile sunt deschise pe Basic', (await json('GET', '/api/insight/mentenanta', bAdm.ck)).status === 200);
+  // 13.11: pe Basic administratorul împarte și el întrebările (cel mult cele 200 ale pachetului).
   const bLim = await json('PUT', '/api/users/' + bM1.id + '/ai-limita', bAdm.ck, { limita: 50 });
-  T('pe Basic nu se împart întrebările (400, „de la Pro")', bLim.status === 400 && /de la Pro/.test(bLim.j.error || ''));
+  T('pe Basic administratorul împarte întrebările: 50 pentru un coleg — primite', bLim.status === 200 && Number(bLim.j.ai_limita) === 50, JSON.stringify(bLim.j));
+  const bPeste = await json('PUT', '/api/users/' + bAdm.id + '/ai-limita', bAdm.ck, { limita: 160 });
+  T('…dar nu peste cele 200: 160 lângă 50 → 400, „Mai puteți da cel mult 150"', bPeste.status === 400 && /Mai puteți da cel mult 150\./.test(bPeste.j.error || ''), JSON.stringify(bPeste.j));
+  await json('PUT', '/api/users/' + bM1.id + '/ai-limita', bAdm.ck, { limita: null });   // înapoi la „Fără limită", ca restul probei
   // plasa: un răspuns pe Sonnet de 1.000.000 de tokeni = 2 $ ≈ 9,2 lei > 8 lei
   await json('POST', '/api/test/ai-usage', S, { companyId: coB.id, userId: bAdm.id, kind: 'insight', usage: { input_tokens: 1000000, output_tokens: 0 }, model: 'claude-sonnet-5-5' });
   const qPl = await cota(bAdm);
@@ -695,7 +701,7 @@ const LUNA = P.reincarcare(Date.now()).luna;
   T('…fișa firmei nu mai trimite nimic al regulii vechi (`ai_regula_veche`, `ai_quota`)', !('ai_regula_veche' in ovSt.j) && !('ai_regula_veche' in ovV.j) && !('ai_quota' in ovV.j));
   T('…pe ecran: nici „Limită AI lunară", nici „RA Insight — conturi și fond de întrebări"; doar drumul spre „Acces"',
     PAG.indexOf('Limită AI lunară') < 0 && PAG.indexOf('RA Insight — conturi și fond de întrebări') < 0 && !/regulaVeche/.test(PAG) &&
-    /Se vinde pe pachete; pachetul firmei se alege din fila „Acces”/.test(PAG));
+    /tot acolo se alege pachetul RA Insight\./.test(PAG) && !/raxAboToggleFeat|rax-abo-tog/.test(PAG));
   const rau = await json('PUT', '/api/companies/' + coB.id + '/settings', S, { ai_pachet: { cod: 'gold' } });
   T('un pachet necunoscut se refuză (400)', rau.status === 400 && /Start, Basic, Pro, Business/.test(rau.j.error || ''));
   const laV = await json('PUT', '/api/companies/' + coV.id + '/settings', S, { ai_pachet: { cod: 'pro' } });

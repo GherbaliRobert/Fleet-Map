@@ -1470,8 +1470,8 @@ pentru personalizare. Ce există deja, ca să nu se refacă din greșeală:
 
 ### Pachetele RA Insight (Alin, 14.10, capitolul 1) — pașii 1–7 GATA (regula, chatul, conturile, tabloul, oferta, trecerea, site-ul)
 RA Insight se vinde în **pachete fixe pe FIRMĂ** — **Start** 0 lei (inclus: DOAR administratorul, 50 de răspunsuri pe butoane,
-fără AI, fără ramuri) · **Basic** 10 lei (2 conturi, 200 de întrebări, ramurile) · **Pro** 20 lei (până la 5 conturi, 600,
-împărțirea pe oameni) · **Business** 30 lei (conturi nelimitate, 1.000). Analiza aprofundată pe Sonnet a ieșit din pachete pe 27.10
+fără AI, fără ramuri) · **Basic** 10 lei (2 conturi, 200 de întrebări, ramurile, împărțirea pe oameni — din 13.11, Alin: „și la basic…
+100 el, 100 dispecerul sau 150 el și 50 dispecerul") · **Pro** 20 lei (până la 5 conturi, 600) · **Business** 30 lei (conturi nelimitate, 1.000). Analiza aprofundată pe Sonnet a ieșit din pachete pe 27.10
 (Alin: „nu o mai vreau… avem Haiku") și din cod pe 28.10 (Alin: „1 da" la analiza atentă pe Haiku — vezi „Analiza atentă"). Se
 reîncarcă pe 1; FĂRĂ pachete de
 întrebări în plus; pe ecran „Pachet RA Insight Pro", NU „Plan". Platforma rămâne fără planuri (ofertă → contract → abonament pe
@@ -1515,7 +1515,8 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   confirmă din nou. NU scrie fraze despre factură în pagină. **Trecerea pusă de noi pornește la `pachete.inceputZi(acum)`** (miezul nopții
   României, ca la client); prețul = lista din „Prețurile noastre" (`_preturiPachete`; Alin, 13.11: „cel pe care l-am decis ultima dată").
   Datele de pe ecran (`din …`) cu `timeZone: 'Europe/Bucharest'`. Păzit de `verify_pachete.js`, `verify_telefon_pachete.js`. Limita pe om:
-  `PUT /api/users/:id/ai-limita` (administratorul firmei; Pro / Business; suma ≤ întrebările pachetului; stingerea locului o șterge).
+  `PUT /api/users/:id/ai-limita` (administratorul firmei; Basic / Pro / Business — `imparte` din `PACHETE`, Basic din 13.11; suma ≤ întrebările
+  pachetului; stingerea locului o șterge). Pe Start refuzul spune „Limita pe om e de la Basic în sus”.
 - `plans.FEATURE_IMPLICIT.ai_assistant = true` (Start inclus la toate firmele); unde l-am oprit noi, rămâne oprit. Suma fixă
   veche „Asistent AI" (`custom_plan.aiAssistantRON`) a ieșit pe 11.11: RA Insight se plătește doar prin pachet.
 - **Pe ecran** (blocul „secțiunea RA Insight"): `incarcaPachet` / `deseneazaPachet` / `actualizeazaCaseta` (doar textele serverului:
@@ -1608,8 +1609,9 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   „Pachet și conturi”"); `MESAJ_FARA_LOC_AI` („din Utilizatori") a ieșit și el.
 - **Pe om: „Fără limită" / „Cel mult … pe lună"** (`select.pkc-sel` + caseta cifrei doar la „Cel mult"), NU „la comun". Aceleași
   cuvinte în textele serverului: `refuzLimita`, `textBlocat` (motivul `comun`), `textOm`, `notaConturi`, cartonașul `limite` („Date cu
-  limită"). Sus, `pachete.rezumatConturi` (unul-două rânduri) + bara, în locul cartonașelor. Descrierea pachetului Basic de pe site
-  („200 de întrebări pe lună, la comun") rămâne: spune ce primește pachetul, nu e alegerea de pe om.
+  limită"). Sus, `pachete.rezumatConturi` (unul-două rânduri) + bara, în locul cartonașelor. Din 13.11 Basic împarte și el, deci „la comun"
+  a ieșit și din comparația pachetelor (aplicație + `/pachete-ra-insight`), iar titlul lui Pro nu mai spune „tu împarți întrebările".
+  Cei cu „Fără limită" folosesc ce n-a fost dat nimănui; dacă administratorul a dat tot pe nume, ei au doar răspunsurile pe loc.
 - Ghidul (`ra_insight`) spune drumul nou și nu mai pomenește factura unui cont. Telefonul (Robert, APK-ul următor): eticheta în loc de
   bagheta din AdminUsers pe firmele cu pachet, „Fără limită / Cel mult" în „Pachet și conturi".
 - ⚠ **Administratorul fără cont RA Insight al lui intră TOT în „Pachet și conturi"** (`deseneazaMain`: `S.ramura === 'pachet' &&
@@ -2809,7 +2811,10 @@ Opt file: **Stare** (prima, implicită) · Detalii · Utilizatori · Vehicule ·
   conturi / fond / folosite).
 - **„Acces" = comutatoarele modulelor, agenții AI, limita AI.** Panoul separat (`rax-cfg-overlay`) a fost ȘTERS;
   `raxOpenCompanyConfig(id)` deschide fereastra pe „Acces". NU pune înapoi a doua cale. Modulele: `_RAX_MODS` (web) =
-  `MODULE_FIRMA` (telefon), legate prin probă.
+  `MODULE_FIRMA` (telefon), legate prin probă. **Din 13.11 (Alin: „1 da") nici în „Abonament & plăți"**: bifele „Asistent AI" / „Agenți
+  AI" de acolo au ieșit (web și telefon); rămâne un rând + „Deschide „Acces”". După o schimbare în „Acces" (modul sau pachet),
+  `window._raxCodVechi` face ca fila următoare să ceară din nou `/overview` (`raxCodTab` → `raxOpenCompanyDetail`), ca prețul estimat să nu
+  rămână cel vechi; telefonul își recitește fișa prin `onChanged`. Păzit de `verify_telefon_pachete.js`.
 - **Modulul `incarcare` (simulatorul) merge DUPĂ FLOTĂ cât nu-l alegem noi** (Robert: „1.a"): `plans.featuresFor` →
   `areFlotaGrea(id)`, flota ținută minte de server (`_flotaGreaReincarca` → `db.firmeCuFlotaGrea(plans.TIPURI_CU_MARFA)`).
   Se reîncarcă la pornire, la 2 minute și la orice cale care schimbă felul sau firma unui vehicul (aparat nou, import,

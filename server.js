@@ -1397,7 +1397,7 @@ const PAGINI_PUBLICE = [
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: 'e61545caec7e', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'db99238df383', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-11', amprenta: '478fea3b4ad1', prio: '0.8', freq: 'monthly' },
-  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-11', amprenta: '8979f8d99268', prio: '0.8', freq: 'monthly' },
+  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-13', amprenta: '375446dc53af', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-10-09', amprenta: '2e8705146d04', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-11', amprenta: '5a9739f0d3cc', prio: '0.3', freq: 'yearly' },
   { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-11', amprenta: 'ff491637243d', prio: '0.3', freq: 'yearly' },
@@ -3296,7 +3296,7 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
     res.json({ ok: true, id: id, ai_seat: !!u.ai_seat, seats: seats });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Câte întrebări pe lună are un om (Pro și Business). null / gol = „la comun". Le dă administratorul firmei.
+// Câte întrebări pe lună are un om (Basic, Pro și Business; Basic din 13.11). null / gol = „Fără limită". Le dă administratorul firmei.
 app.put('/api/users/:id/ai-limita', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);

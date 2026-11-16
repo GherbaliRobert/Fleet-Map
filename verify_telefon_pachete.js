@@ -372,9 +372,16 @@ function parteaUtilizatorilor() {
       && typeof L.confirmarePachetFirma === 'undefined' && (S.acces + S.lib).indexOf('Pe factură ajunge odată') < 0);
     T('fila „Acces": butoanele pachetului, nota și confirmarea; fără limita AI veche', /butonPachetFirma\(p\)/.test(S.acces) && /alegePachet\(p\)/.test(S.acces)
       && !/peRegulaVeche|setCompanyAiLimit|Limită AI lunară|ai_monthly_limit/.test(S.acces + S.lib + S.endpoints) && html.indexOf('Limită AI lunară') < 0 && !/raxCfgSaveAiLimit/.test(html));
-    T('„Abonament & plăți": doar drumul spre „Acces", ca pe web; întrebările pe cont și „Asistent AI" au ieșit', /Se vinde pe pachete; pachetul firmei se alege din fila „Acces”\./.test(S.abon) && html.indexOf('Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.') >= 0 && /rutaFisa\(id, 'acces'\), true/.test(S.abon)
+    T('„Abonament & plăți": doar drumul spre „Acces", ca pe web; întrebările pe cont și „Asistent AI" au ieșit', S.abon.indexOf('RA Insight (pe pachete) și cei 6 agenți AI se pornesc și se opresc din fila „Acces”; tot acolo se alege pachetul RA Insight. Agenții AI sunt incluși, fără cost.') >= 0 && html.indexOf('RA Insight (pe pachete) și cei 6 agenți AI se pornesc și se opresc din fila „Acces”; tot acolo se alege pachetul RA Insight. Agenții AI sunt incluși, fără cost.') >= 0 && /rutaFisa\(id, 'acces'\), true/.test(S.abon)
       && !/ai_regula_veche|ai_quota|aiAssistantRON|questionsPerSeat/.test(S.abon) && !/ai_regula_veche/.test(server) && !/raxSaveAiQuota|rax-aiq-n|aiAssistantRON/.test(html));
-    T('…și telefonul nu mai pomenește „Module & limite"', !/Module &amp; limite/.test(S.abon) && html.indexOf('Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”.') >= 0 && S.abon.indexOf('Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”.') >= 0);
+    T('…și telefonul nu mai pomenește „Module & limite"', !/Module &amp; limite/.test(S.abon));
+    // 13.11 (Alin: „1 da"): comutatoarele „Asistent AI" / „Agenți AI" stau DOAR în fila „Acces" — în „Abonament & plăți" erau a doua oară.
+    T('comutatoarele modulelor AI doar în „Acces": fără bife în „Abonament & plăți" (web și telefon), iar fila „Acces" le are pe amândouă',
+      !/raxAboToggleFeat|rax-abo-tog/.test(html) && !/modul\('ai_assistant'\)|modul\('agents'\)|setCompanyFeatures/.test(faraComentarii(S.abon)) &&
+      /\['agents', 'Agenți AI'/.test(html) && /\['ai_assistant', 'Asistent AI'/.test(html) && /setCompanyFeatures\(companyId/.test(S.acces));
+    T('…și după o schimbare în „Acces", fila „Abonament & plăți" își cere din nou prețul (fără preț vechi pe ecran)',
+      /window\._raxCodVechi && tab !== 'acces'\) \{ window\._raxCodVechi = false; return raxOpenCompanyDetail\(d\.company\.id, tab\); \}/.test(html) &&
+      (html.match(/window\._raxCodVechi = true;/g) || []).length === 2 && /onChanged\(\);/.test(S.acces));
     // Suma fixă pentru agenții AI („Add-on AI", 13.11, Alin: „2. DA"): nici caseta, nici în preț, nici pe factură — agenții sunt incluși.
     const cod = (x) => faraComentarii(x);
     T('„Agenți AI (lei pe lună)" a ieșit: caseta (web + telefon), prețul, rândul de factură, oferta salvată', !/aiAgentsRON|Add-on AI|Module AI \(la plată\)/.test(cod(S.abon)) &&
@@ -527,7 +534,12 @@ async function parteaServerului() {
   const fara = co2.oameni.find((o) => !o.loc);
   const ref = await eroare(() => Api.setUserAiSeat(fara.id, true));
   T('…și serverul îl refuză, cu mesajul lui', !!ref && !!ref.message && (ref.status === 403 || ref.status === 400 || ref.status === 409), ref && (ref.status + ' ' + ref.message));
-  T('limita nu e pe Basic: refuzată de server', !!(await eroare(() => Api.setUserAiLimita(omB.id, 10))));
+  // 13.11 (Alin: „și la basic aș vrea ca adminul să poată să împartă"): pe Basic limita pe om merge.
+  T('pe Basic limita pe om e primită de server (din 13.11)', !(await eroare(() => Api.setUserAiLimita(omB.id, 10))));
+  const coLimB = await Api.insightPachetConturi();
+  T('…„Pachet și conturi" o arată: rezumatul spune cât e dat cu limită, iar telefonul arată alegerea pe om', /Date cu limită: 10 întrebări/.test((coLimB.rezumat || []).join(' ')) && L.planConturi(coLimB).oameni.some((o) => o.arataLimita), J(coLimB.rezumat));
+  await comparaConturi('„Pachet și conturi", Basic cu o limită', coLimB);
+  await Api.setUserAiLimita(omB.id, null);   // înapoi la „Fără limită", ca restul probei
 
   // Administratorul FĂRĂ cont: le-a dat colegilor; intră tot în „Pachet și conturi".
   await Api.setUserAiSeat(admB.id, false);

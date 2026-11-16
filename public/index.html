@@ -1610,9 +1610,6 @@
     .rax-abo-f input { box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); border-radius: 8px; padding: 9px 11px; font-size: 13px; font-family: inherit; }
     .rax-abo-f input:focus { border-color: var(--accent); outline: none; }
     .rax-abo .hint { font-size: 11px; color: var(--text-muted); }
-    .rax-abo-tog { display: flex; align-items: center; gap: 8px; padding: 7px 0; font-size: 13.5px; font-weight: 600; cursor: pointer; }
-    .rax-abo-tog input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
-    .rax-abo-tog .hint { font-weight: 400; }
     #rax-abo-preview { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; max-width: 380px; }
     .rax-abo-ln { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
     .rax-abo-ln.dim { color: var(--text-muted); }
@@ -12267,7 +12264,7 @@ const pozitii = await r.json();</code></pre>
         arataJos();
       }
       // ── „Pachet și conturi" (pasul 3, macheta din 14.10; simplificat după macheta din 15.10, Alin: „3. da, 4. da"): doar
-      // administratorul. SINGURUL loc în care dă RA Insight colegilor și, pe Pro / Business, câte întrebări are fiecare („Fără limită"
+      // administratorul. SINGURUL loc în care dă RA Insight colegilor și, pe Basic / Pro / Business, câte întrebări are fiecare („Fără limită"
       // sau „Cel mult … pe lună"). Sus, unul-două rânduri (`rezumat`, de la server) în locul cartonașelor. Cifrele și textele le dă
       // serverul; conturile și limitele pleacă pe rutele lor.
       async function deseneazaPachetConturi(main) {
@@ -12374,7 +12371,7 @@ const pozitii = await r.json();</code></pre>
         else (window.raxToast || function () {})(on ? 'RA Insight pornit pentru „' + nume + '"' : 'RA Insight oprit pentru „' + nume + '"', 'success');
         incarcaPachet(); deseneazaMain();
       };
-      // Limita pe lună a unui om (Pro / Business); gol = „Fără limită". Serverul spune dacă trece de întrebările pachetului.
+      // Limita pe lună a unui om (Basic / Pro / Business); gol = „Fără limită". Serverul spune dacă trece de întrebările pachetului.
       window.insightLimita = async function (id, val) {
         var v = String(val == null ? '' : val).trim();
         var r = await cere('PUT', '/api/users/' + id + '/ai-limita', { limita: v === '' ? null : Number(v) });
@@ -24413,6 +24410,7 @@ const pozitii = await r.json();</code></pre>
     };
     // Răspunsul serverului e adevărul: comutatoarele, „automat / ales de noi" și fila „Stare" (modulele pornite).
     function _raxCfgDupaRaspuns(j) {
+      window._raxCodVechi = true;   // prețul din „Abonament & plăți" și fila „Stare" se citesc din nou (raxCodTab)
       if (j.features) _raxCfg.feats = j.features;
       if (j.features_setate) _raxCfg.setate = j.features_setate;
       if (j.flota_grea !== undefined) _raxCfg.flotaGrea = !!j.flota_grea;
@@ -24454,6 +24452,7 @@ const pozitii = await r.json();</code></pre>
           if (r.status === 409 && j && j.schimbare) { t = j.schimbare; continue; }
           if (!r.ok || j.error) { toast(j.error || 'Eroare', 'error'); return; }
           _raxCfg.pachet = j.ai_pachet ? { cod: j.ai_pachet.cod, nume: p.nume, pretRON: j.ai_pachet.pretRON, deLa: j.ai_pachet.de_la } : null;
+          window._raxCodVechi = true;   // prețul lunar din „Abonament & plăți" se citește din nou (raxCodTab)
           _raxRenderCfg();
           toast('Pachet RA Insight ' + p.nume, 'success');
           return;
@@ -25440,14 +25439,11 @@ const pozitii = await r.json();</code></pre>
           '<div class="rax-abo-f"><label>Notă (intern)</label><input type="text" id="rax-abo-note" value="' + esc(o.note || '') + '" placeholder="detalii ofertă / contract"></div>' +
           '<button class="rax-btn primary" style="margin-top:14px;width:100%;justify-content:center;" onclick="raxAboSaveOffer(this)"><i class="fas fa-check"></i> Salvează oferta</button></div>';
       }
+      // Modulele AI se pornesc DOAR din fila „Acces" (13.11, Alin: „1 da"): aici stăteau încă o dată, ca bife („Asistent AI",
+      // „Agenți AI") — același comutator în două locuri. Prețul estimat de mai jos le citește tot de la server.
       html += '<div class="rax-abo-sect"><h4>Module AI</h4>' +
-        '<label class="rax-abo-tog"><input type="checkbox" ' + (s.feats.ai_assistant ? 'checked' : '') + ' onchange="raxAboToggleFeat(\'ai_assistant\',this.checked)"> Asistent AI <span class="hint">chat + RA Insight</span></label>' +
-        '<label class="rax-abo-tog"><input type="checkbox" ' + (s.feats.agents ? 'checked' : '') + ' onchange="raxAboToggleFeat(\'agents\',this.checked)"> Agenți AI <span class="hint">cei 6 agenți (Watch / Dispatch / …)</span></label>' +
-        '<div class="hint">Agenții AI sunt incluși, fără cost; îi pornești și îi oprești din fila „Acces”.</div>' +
-        // RA Insight se vinde pe pachete (regula veche, „pe cont", a ieșit pe 11.11): pachetul se alege din fila „Acces".
-        '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"><div style="font-size:12px;font-weight:700;margin-bottom:4px;">RA Insight</div>' +
-          '<div class="hint">Se vinde pe pachete; pachetul firmei se alege din fila „Acces”.</div>' +
-          '<button class="rax-btn" style="margin-top:8px;" onclick="raxOpenCompanyDetail(' + s.id + ', \'acces\')"><i class="fas fa-layer-group"></i> Deschide „Acces”</button></div></div>';
+        '<div class="hint">RA Insight (pe pachete) și cei 6 agenți AI se pornesc și se opresc din fila „Acces”; tot acolo se alege pachetul RA Insight. Agenții AI sunt incluși, fără cost.</div>' +
+        '<button class="rax-btn" style="margin-top:8px;" onclick="raxCodTab(\'acces\')"><i class="fas fa-toggle-on"></i> Deschide „Acces”</button></div>';
       html += _raxPastrareHtml(s);
       html += _raxChirieHtml(s);
       html += '<div class="rax-abo-sect"><h4>Preț lunar estimat</h4><div id="rax-abo-preview"></div></div>';
@@ -25585,17 +25581,6 @@ const pozitii = await r.json();</code></pre>
         raxOpenCompanyDetail(_raxAbo.id, 'abonament');
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); if (btn) btn.disabled = false; }
     }
-    window.raxAboToggleFeat = async function (key, on) {
-      if (!_raxAbo) return;
-      _raxAbo.feats[key] = !!on; raxAboRecalc();
-      try {
-        var b = { features: {} }; b.features[key] = !!on;
-        var j = await fetch('/api/companies/' + _raxAbo.id + '/features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(b) }).then(function (r) { return r.json(); });
-        if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
-        if (j.features) { _raxAbo.feats = Object.assign(_raxAbo.feats, j.features); raxAboRecalc(); }
-        (window.raxToast || function () { })('Modul ' + (on ? 'activat' : 'dezactivat'), 'success');
-      } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
-    };
     // ─── Ecranul „Contracte": toate contractele, la un loc ───────────────────────────────────
     // Pasul dintre ofertă și client. Până acum un contract se vedea DOAR intrând într-o firmă,
     // deci n-aveai de unde ști câte așteaptă semnătura sau cui îi expiră luna asta. Aici sunt toate,
@@ -28074,6 +28059,9 @@ const pozitii = await r.json();</code></pre>
 
     window.raxCodTab = function (tab) {
       var d = window._raxCod; if (!d) return;
+      // Un modul sau pachetul schimbat în „Acces" (13.11: comutatoarele stau doar acolo) schimbă prețul din „Abonament & plăți" și
+      // fila „Stare": la trecerea pe altă filă, datele firmei se cer din nou, ca să nu arate prețul de dinainte.
+      if (window._raxCodVechi && tab !== 'acces') { window._raxCodVechi = false; return raxOpenCompanyDetail(d.company.id, tab); }
       window._raxCodFila = tab;   // reîmprospătarea după o editare rămâne pe fila pe care erai, nu sare pe „Stare"
       document.querySelectorAll('#rax-codetail-overlay .rax-cod-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-ct') === tab); });
       var body = document.getElementById('rax-cod-body'); if (!body) return;
@@ -28109,7 +28097,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var d = await fetch('/api/companies/' + id + '/overview', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         if (d.error) { document.getElementById('rax-cod-body').innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red)">' + esc(d.error) + '</div>'; return; }
-        window._raxCod = d;
+        window._raxCod = d; window._raxCodVechi = false;   // date proaspete
         document.getElementById('rax-cod-title').innerHTML = '<i class="fas fa-building" style="color:var(--accent)"></i> ' + esc(d.company.name) +
           ' <span style="font-size:12px;font-weight:400;color:var(--text-muted)">· ' + (d.counts.vehicles || 0) + ' vehicule · ' + (d.counts.users || 0) + ' utilizatori</span>';
         raxCodTab(tab || 'stare');
