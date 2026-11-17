@@ -3,7 +3,7 @@
 // Notă: buildCtx suprascrie ctx.hist cu db.getDeviceHistory → mock-uim db.getDeviceHistory, NU ctx.hist.
 const agents = require('./agents.js');
 let pass = 0, fail = 0;
-function ok(c, m) { if (c) { pass++; console.log('  PASS ' + m); } else { fail++; console.log('  FAIL ' + m); } }
+function ok(c, m, d) { if (c) { pass++; console.log('  PASS ' + m); } else { fail++; console.log('  FAIL ' + m + (d !== undefined ? '  → ' + d : '')); } }
 
 const NOW = Date.parse('2026-06-15T12:00:00Z');
 const realNow = Date.now;
@@ -79,6 +79,22 @@ function has(r, prefix) { return (r.findings || []).some(f => f.fkey && f.fkey.s
     const base = { imeis: ['SRV2'], livePositions: live, companyId: 1, db: { getDeviceHistory: async () => [], getDeviceFull: async () => ({ vehicle_type: 'Camion' }) } };
     const r = await care(base);
     ok(!has(r, 'care_service_'), 'service departe (50.000 km) → FĂRĂ finding');
+  }
+
+  console.log('\n— Cifrele din textele agenților, românește (17.11: RA Client scria „Azi: 1240 km") —');
+  {
+    ok(agents.nrRo(1240) === '1.240' && agents.nrRo(123456.7) === '123.457' && agents.nrRo(999) === '999' && agents.nrRo(-1500) === '-1.500',
+      'nrRo: punctul miilor („1.240", „123.457", „-1.500")');
+    ok(agents.nrRo(12.46, 1) === '12,5' && agents.nrRo(-0.04, 1) === '0,0' && agents.nrRo(1234567.89, 1) === '1.234.567,9', 'nrRo: virgula zecimalelor („12,5")');
+    const live = new Map([['SRV3', { name: 'B 77 TIR', timestamp: new Date(NOW).toISOString(), io: { can_distance_to_service: -1240 } }]]);
+    const base = { imeis: ['SRV3'], livePositions: live, companyId: 1, db: { getDeviceHistory: async () => [], getDeviceFull: async () => ({ vehicle_type: 'Camion' }) } };
+    const r = await care(base);
+    const f = (r.findings || []).find(x => x.fkey && x.fkey.startsWith('care_service_'));
+    ok(f && f.title === 'B 77 TIR: service DEPĂȘIT cu 1.240 km', 'RA Care: „service DEPĂȘIT cu 1.240 km"', f && f.title);
+    // Nicio cifră lipită direct în text fără nrRo (Math.round(...) + ' km' / ' L' / ' min' / ' lei', toFixed(...) + ' L').
+    const SRC = require('fs').readFileSync(require('path').join(__dirname, 'agents.js'), 'utf8');
+    const lipite = SRC.match(/(Math\.round\([^;]*?\)|toFixed\(\d\)) \+ ' (km|L|min|lei|h)\b/g) || [];
+    ok(lipite.length === 0, 'textele agenților trec cifrele prin nrRo' + (lipite.length ? ': ' + lipite.join(' | ') : ''));
   }
 
   Date.now = realNow;

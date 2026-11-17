@@ -611,6 +611,42 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-17
 
+### AMÂNDOI · Prima pagină: la pachete, telefoanele animate; suportul, pe două rânduri
+*Alin, 17.11: „vreau ce am făcut mock-up-urile din compară pachetele să apară pe home în secțiunea pachete la Insight… și compararea scriptică
+să fie când dai pe butonul Compară pachetele" → „2. da"; la suport: „Știi mereu unde e cererea ta…" + „Ne anunți din aplicație sau direct pe
+adresele de contact; te sunăm în cel mult o zi lucrătoare… împachetat" → „1. da".*
+
+**Ce am schimbat:**
+- **Pachetele RA Insight, pe prima pagină:** în locul celor patru cartonașe cu text stau acum cele două telefoane animate de pe pagina
+  pachetelor — în stânga Start (un buton și răspunsul pe loc), în dreapta Basic / Pro / Business, cu comutatorul (trece și singur de la unul
+  la altul). Comparația scrisă rămâne pe pagina pachetelor, la butonul „Compară pachetele RA Insight".
+- **„Despre noi", suportul:** rândul „Suport tehnic în limba română, de la oameni reali" a devenit două rânduri:
+  - „Ne anunți din aplicație sau pe email; te sunăm în cel mult o zi lucrătoare"
+  - „Cererea din aplicație o urmărești pas cu pas: preluată, programată, rezolvată"
+  Pașii sunt ai cererilor trimise din aplicație („Anunță echipa RA Track"); un email nu-i are, de aceea stau pe rânduri separate. Termenul
+  de o zi lucrătoare e cel din aplicație; pentru emailuri e promisiunea voastră.
+
+**Ce vede fondatorul:** prima pagină de mai sus.
+
+**Ce vede clientul:** la fel, pe ratrack.ro.
+
+Reper: `public/landing.html` (`.tel-doi`), amprenta în `PAGINI_PUBLICE`; probele: `verify_site_public.js` (3d = telefoanele pe prima pagină;
+termenul și pașii legați de `cereri_echipa.js`), `verify_ra_insight_demo.js` (textele lui Start și pe prima pagină; telefoanele desenate).
+
+### AMÂNDOI · Agenții scriu cifrele cu punctul miilor: „Azi: 1.240 km"
+*Găsit pe 17.11 la machetele agenților; Alin: „rezolvă acum".*
+
+**Ce am schimbat:** RA Client scria ziua flotei „Azi: 1240 km · 7/8 active", iar peste tot în rest aplicația scrie „1.240". Acum toate cifrele
+din textele agenților se scriu românește, cu punctul miilor și virgula zecimalelor: RA Client („Azi: 1.240 km", „cel mai activ: … (412 km)",
+„ieri, până la aceeași oră: 1.105 km"), RA Care („service DEPĂȘIT cu 1.240 km", „Odometru 123.457 km ≥ scadență 125.000 km"), RA Watch
+(litrii și minutele), RA Optimize („Risipă estimată ~12,5 L (~94 lei)" — zecimala era cu punct, „12.5").
+
+**Ce vede fondatorul:** pagina agenților și „Azi la tine", cu cifrele scrise românește.
+
+**Ce vede clientul:** la fel, la agenți și în RA Insight, la „Azi la tine".
+
+Reper: `agents.js` (`nrRo`); proba: `test_agents.js` (pasul „Unit" al porții de pe GitHub).
+
 ### AMÂNDOI · Prima pagină: RA Insight și cei 6 agenți AI, un singur capitol, „Inteligență artificială"
 *Alin, 17.11: „trebuie îmbinată și partea de pe pagina principală cu cei 6 agenți… tot capitolul inteligență artificială se numește și
 asta… gândește cum să o facem frumos împachetată"; din cele două variante cu poze: „1A"; „2. Meniul de sus rămâne «RA Insight · Agenți AI ·

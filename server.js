@@ -1393,7 +1393,7 @@ const NO_CACHE = 'no-cache, no-store, must-revalidate';
 // care Google învață s-o ignore. `amprenta` n-o citește serverul: e amprenta textului, verificată de
 // `verify_site_public.js`. Schimbi textul unei pagini și uiți data → proba pică și îți spune ce să scrii.
 const PAGINI_PUBLICE = [
-  { cale: '/', fisier: 'landing.html', modificat: '2026-11-17', amprenta: 'feeb916ae25d', prio: '1.0', freq: 'weekly' },
+  { cale: '/', fisier: 'landing.html', modificat: '2026-11-17', amprenta: 'aaa2815e83ee', prio: '1.0', freq: 'weekly' },
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-10-09', amprenta: 'e61545caec7e', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-10-09', amprenta: 'db99238df383', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-17', amprenta: '8ab8144f3835', prio: '0.8', freq: 'monthly' },

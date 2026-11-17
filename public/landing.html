@@ -447,23 +447,15 @@
     .ri-cta{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:30px}
     @media (max-width:1000px){.ri-fct,.ri-inc{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:560px){.ri-fct,.ri-inc{grid-template-columns:minmax(0,1fr)}}
-    /* Pachetele RA Insight (27.10; în secțiunea RA Insight din 16.11): patru cartonașe scurte, fără prețuri; chenarul verde = de aici
-       începe AI-ul (până pe 16.11 mov — RA Insight e în culorile siglei din 05.11). */
-    .ri-pachete{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 12px;margin-top:26px;position:relative;z-index:1}
-    @media (max-width:1000px){.ri-pachete{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:560px){.ri-pachete{grid-template-columns:minmax(0,1fr)}}
-    .ri-pk{position:relative;background:rgba(11,14,17,.55);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 14px 8px;display:flex;flex-direction:column;min-width:0}
-    .ri-pk.ai{border-color:rgba(63,224,125,.45)}
-    .ri-pk-eti{position:absolute;top:-10px;left:12px;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;background:#FFFFFF;color:#0B0E11;white-space:nowrap}
-    .ri-pk-n{font-size:17px;font-weight:800;color:var(--text)}
-    .ri-pk-pr{font-size:13px;color:var(--muted);margin:2px 0 4px}
-    .ri-pk-pe{font-size:13px;color:var(--muted);margin:0 0 8px}
-    .ri-pk dl{margin:auto 0 0;border-top:1px solid var(--border)}
-    .ri-pk dl div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;line-height:1.4}
-    .ri-pk dl div:last-child{border-bottom:0}
-    .ri-pk dt{color:var(--muted)}
-    .ri-pk dd{margin:0;font-weight:700;color:var(--text);text-align:right}
-    .ri-pk dd.nu{color:var(--muted);font-weight:600}
+    /* Pachetele RA Insight (17.11): cele două telefoane de pe /pachete-ra-insight — Start și Basic / Pro / Business. Telefoanele și
+       comutatorul au foaia lor (/css/ra-insight-demo.css); aici doar coloanele. Până pe 17.11: patru cartonașe cu text (.ri-pachete). */
+    .tel-doi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:6px;position:relative;z-index:1}
+    .tel-col{display:grid;justify-items:center;align-content:start;gap:12px;background:linear-gradient(180deg,var(--surface) 0%,#121519 100%);border:1px solid var(--border);border-radius:var(--radius);padding:18px 12px 16px;min-width:0}
+    .tel-col h3{margin:0;font-size:17px;font-weight:800;text-align:center;line-height:1.35}
+    .tel-col h3 small{display:block;font-size:13px;color:var(--muted);font-weight:600}
+    .tel-col .tel-p{margin:0;text-align:center;color:var(--muted);font-size:14px;line-height:1.55;max-width:40ch;min-height:3.1em}
+    .tel-col [data-ri-demo="platit"]{width:100%}
+    @media (max-width:720px){.tel-doi{grid-template-columns:minmax(0,1fr)}.tel-col .tel-p{min-height:0}}
 
     /* ---------- ABOUT ---------- */
     .about{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center}
@@ -841,52 +833,25 @@
         </div>
       </div>
 
-      <!-- Pachetele RA Insight (27.10, Alin: „fără preț în pagina publică, pe home page"): copia lui pachete.publice({ cuPret: false }),
-           comparată de verify_site_public.js (3d). Comparația întreagă stă pe /pachete-ra-insight. Mutate aici pe 16.11, din caseta
-           RA Insight de sub agenți. -->
+      <!-- Pachetele RA Insight (17.11, Alin: „mock-up-urile din compară pachetele să apară pe home… compararea scriptică să fie când dai
+           pe butonul Compară pachetele"): cele două telefoane de pe /pachete-ra-insight — Start și Basic / Pro / Business, cu comutatorul.
+           Le desenează /js/ra-insight-demo.js; textele pachetelor sunt cele din pachete.js (verify_ra_insight_demo.js, verify_site_public.js
+           3d). Comparația scrisă stă pe /pachete-ra-insight, la butonul „Compară pachetele RA Insight". Până pe 17.11: patru cartonașe cu text. -->
       <div class="ai-parte ai-parte-pk reveal"><span class="ai-nr ai-nr-pk" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span><div><h3>Pachetele RA Insight</h3>
         <p>Start e inclus în orice contract; de la Basic întrebi orice, cu inteligență artificială.</p></div></div>
-      <div class="ri-pachete" aria-label="Pachetele RA Insight">
-        <div class="ri-pk">
-          <div class="ri-pk-n">Start</div>
-          <div class="ri-pk-pr">Inclus în orice contract</div>
-          <div class="ri-pk-pe">Pentru orice firmă, din prima zi.</div>
-          <dl>
-            <div><dt>Conturi</dt><dd>1 · administratorul</dd></div>
-            <div><dt>Întrebări libere, cu AI</dt><dd class="nu">—</dd></div>
-            <div><dt>Răspunsuri pe loc</dt><dd>50 pe lună</dd></div>
-          </dl>
+      <div class="tel-doi">
+        <div class="tel-col reveal">
+          <h3>Start<small>inclus în orice contract</small></h3>
+          <p class="tel-p">Alegi din butoane; răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.</p>
+          <div class="ri-pk-sel" aria-hidden="true"><span class="ri-pk-b" aria-pressed="true">Start</span></div>
+          <div class="ri-pk-info"><b>Răspunsuri pe loc, din rapoarte.</b> Pentru orice firmă, din prima zi.<div class="ri-pk-cifre">Conturi: 1 · administratorul · Răspunsuri pe loc: 50 pe lună</div></div>
+          <div class="ri-tel" data-ri-demo="start" role="img" aria-label="Telefon cu RA Insight pe pachetul Start: un buton și răspunsul pe loc"></div>
+          <span class="ri-exemplu">În telefon: Andrei, administratorul · Exemplu cu o flotă de probă</span>
         </div>
-        <div class="ri-pk ai">
-          <span class="ri-pk-eti">De aici: întrebări libere cu AI</span>
-          <div class="ri-pk-n">Basic</div>
-          <div class="ri-pk-pr">Cere ofertă</div>
-          <div class="ri-pk-pe">Pentru patron și încă un om.</div>
-          <dl>
-            <div><dt>Conturi</dt><dd>2</dd></div>
-            <div><dt>Întrebări libere, cu AI</dt><dd>200 pe lună</dd></div>
-            <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
-          </dl>
-        </div>
-        <div class="ri-pk">
-          <div class="ri-pk-n">Pro</div>
-          <div class="ri-pk-pr">Cere ofertă</div>
-          <div class="ri-pk-pe">Pentru firme cu dispecerat.</div>
-          <dl>
-            <div><dt>Conturi</dt><dd>până la 5</dd></div>
-            <div><dt>Întrebări libere, cu AI</dt><dd>600 pe lună</dd></div>
-            <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
-          </dl>
-        </div>
-        <div class="ri-pk">
-          <div class="ri-pk-n">Business</div>
-          <div class="ri-pk-pr">Cere ofertă</div>
-          <div class="ri-pk-pe">Pentru flote mari, cu mai multe echipe.</div>
-          <dl>
-            <div><dt>Conturi</dt><dd>nelimitate</dd></div>
-            <div><dt>Întrebări libere, cu AI</dt><dd>1.000 pe lună</dd></div>
-            <div><dt>Răspunsuri pe loc</dt><dd>fără limită</dd></div>
-          </dl>
+        <div class="tel-col reveal">
+          <h3>Basic, Pro, Business<small>întrebări libere, cu AI</small></h3>
+          <p class="tel-p">Scrii orice întrebare, cu cuvintele tale: RA Insight caută în rapoarte, compară și explică.</p>
+          <div data-ri-demo="platit"></div>
         </div>
       </div>
 
@@ -999,7 +964,8 @@
           <ul class="check-list">
             <li><span class="ck"><i class="fa-solid fa-check"></i></span> Date din echipamente profesionale, nu din telefonul șoferului</li>
             <li><span class="ck"><i class="fa-solid fa-check"></i></span> Interfață rapidă, pe calculator și pe telefon</li>
-            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Suport tehnic în limba română, de la oameni reali</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Ne anunți din aplicație sau pe email; te sunăm în cel mult o zi lucrătoare</li>
+            <li><span class="ck"><i class="fa-solid fa-check"></i></span> Cererea din aplicație o urmărești pas cu pas: preluată, programată, rezolvată</li>
             <li><span class="ck"><i class="fa-solid fa-check"></i></span> Datele tale rămân ale tale, în siguranță</li>
           </ul>
         </div>

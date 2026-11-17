@@ -82,7 +82,8 @@ T('secțiunea RA Insight stă imediat după primul ecran (înaintea „Funcții"
 const bucati = [...sec.matchAll(/data-ri-demo="bucata" data-sc="([a-z]+)"/g)].map((m) => m[1]);
 T('…cu cele patru bucăți de ecran (aceleași patru întrebări)', JSON.stringify(bucati) === JSON.stringify(DEMO._ORDINE.slice()), bucati);
 T('…„de la Basic" pe cele două lucruri care cer AI (analiza, propunerile cu „Da")', (sec.match(/class="ri-de">de la Basic</g) || []).length === 2);
-T('…pachetele (cartonașele scurte) stau în ea, cu legătura spre comparație', sec.includes('class="ri-pachete"') && sec.includes('href="/pachete-ra-insight"'));
+T('…pachetele = cele două telefoane (Start + Basic / Pro / Business), cu butonul spre comparația scrisă (17.11, Alin: „2. da")',
+  /class="tel-doi"[\s\S]*data-ri-demo="start"[\s\S]*data-ri-demo="platit"/.test(sec) && !/class="ri-pachete"/.test(L) && sec.includes('href="/pachete-ra-insight"'));
 T('caseta veche de sub agenți a plecat (.ra-insight)', !/class="ra-insight/.test(L) && !/^\s*\.ra-insight[\s{.:,]/m.test(L));
 T('meniul de sus: „RA Insight" primul, spre secțiune', /<div class="nav-links">\s*<a href="#ra-insight">RA Insight<\/a>/.test(L));
 T('…apoi „Agenți AI" (partea 2 a capitolului) și „Funcții" (17.11)', /<div class="nav-links">\s*<a href="#ra-insight">RA Insight<\/a>\s*<a href="#agenti-ai">Agenți AI<\/a>\s*<a href="#functii">Funcții<\/a>/.test(L));
@@ -94,7 +95,7 @@ const S = faraCom(sec), LF = faraCom(L);
 T('capitolul „Inteligență artificială": eticheta, partea 1 (RA Insight) și partea 2 (cei 6 agenți), în aceeași secțiune',
   S.includes('<span class="eyebrow">Inteligență artificială</span>') && /<span class="ai-nr">1<\/span>\s*<div><h3>RA Insight /.test(S) &&
   /id="agenti-ai">\s*<span class="ai-nr">2<\/span>\s*<div><h3>Cei 6 agenți AI /.test(S));
-const ordAi = ['<span class="ai-nr">1</span>', 'class="ri-fct"', 'class="ri-inc"', 'class="ai-punte', 'id="agenti-ai"', 'class="agents-grid"', 'class="ai-parte ai-parte-pk', 'class="ri-pachete"', 'class="ri-cta"'].map((x) => S.indexOf(x));
+const ordAi = ['<span class="ai-nr">1</span>', 'class="ri-fct"', 'class="ri-inc"', 'class="ai-punte', 'id="agenti-ai"', 'class="agents-grid"', 'class="ai-parte ai-parte-pk', 'class="tel-doi"', 'class="ri-cta"'].map((x) => S.indexOf(x));
 T('…în ordinea din machetă: RA Insight, ce face, de ce te poți baza pe el, puntea, agenții, pachetele, butoanele', ordAi.every((x, i) => x > 0 && (i === 0 || x > ordAi[i - 1])), ordAi);
 T('…cele 6 cartonașe ale agenților stau în capitol, iar secțiunea lor de dinainte (după „Funcții") a plecat',
   (S.match(/<div class="agent reveal">/g) || []).length === 6 && (LF.match(/<div class="agent reveal">/g) || []).length === 6 &&
@@ -116,7 +117,8 @@ const MOV = /#6d28d9|#7c3aed|#8b5cf6|#a78bfa|#c4b5fd|#5b21b6|#818cf8|#4f46e5|#a5
 for (const [n, s] of [['prima pagină', L], ['pagina pachetelor', P], ['ra-insight-demo.css', CSS], ['ra-insight-demo.js', JS], ['app.css (.insp-pk-demo)', intre(CSSAPP, '/* „Vezi pachetele" la firmele de pe Start', '/* Trecerea la alt pachet')]]) {
   T(n + ': niciun mov', s.length > 0 && !MOV.test(s), (s.match(MOV) || [''])[0]);
 }
-T('chenarul pachetului Basic e verde (prima pagină și pagina pachetelor)', /\.ri-pk\.ai\{border-color:rgba\(63,224,125,\.45\)\}/.test(L) && /\.pachet\.ai\{border-color:rgba\(63,224,125,\.45\)\}/.test(P));
+// Prima pagină n-are cartonașe de pachete din 17.11 (telefoanele de pe /pachete-ra-insight); chenarul Basic stă pe pagina pachetelor.
+T('chenarul pachetului Basic e verde (pagina pachetelor)', /\.pachet\.ai\{border-color:rgba\(63,224,125,\.45\)\}/.test(P) && !/\.ri-pk\.ai\{/.test(L));
 T('coloana pachetelor cu AI din comparație e verde', /\.comparatie td\.v\.ai,\.comparatie th\.p\.ai\{background:rgba\(63,224,125,\.07\)\}/.test(P));
 
 console.log('\n3. Ce scrie în telefon e ce scrie aplicația');
@@ -206,9 +208,9 @@ for (const k of DEMO._PLANURI) {
 }
 T('textScurt scrie „N din M" (fără împărțire) și „îți rămân N" (cu cifra omului)', PKJS.includes("return 'îți rămân ' + _nrRo(st.motiv === 'plasa' ? 0 : st.ramaseOm);") && PKJS.includes("return _nrRo(ramaseAfisate(st)) + ' din ' + _nrRo(st.intrebari);"));
 const st0 = PUB.find((x) => x.cod === 'start');
-T('Start: telefonul numără din ' + PK.dupaCod('start').intrebari + ' și coloana lui de pe pagina pachetelor are textele din pachete.js',
-  DEMO._START.contor.every((c) => new RegExp(' din ' + PK.dupaCod('start').intrebari + '$').test(c)) && P.includes('<b>' + st0.titlu + '</b> ' + st0.pentru) &&
-  P.includes('Conturi: ' + st0.cifre[0].val + ' · Răspunsuri pe loc: ' + st0.cifre[2].val) && P.includes(PK.dupaCod('start').intrebari + ' de răspunsuri pe lună'));
+T('Start: telefonul numără din ' + PK.dupaCod('start').intrebari + ' și coloana lui (pagina pachetelor și prima pagină) are textele din pachete.js',
+  DEMO._START.contor.every((c) => new RegExp(' din ' + PK.dupaCod('start').intrebari + '$').test(c)) && [P, L].every((H) => H.includes('<b>' + st0.titlu + '</b> ' + st0.pentru) &&
+  H.includes('Conturi: ' + st0.cifre[0].val + ' · Răspunsuri pe loc: ' + st0.cifre[2].val) && H.includes(PK.dupaCod('start').intrebari + ' de răspunsuri pe lună')));
 
 console.log('\n4. Întrebările din telefoane trec prin regulile aplicației și ies cum le arată telefonul');
 const FISA = INS.fisaFlotei([{ imei: '1', name: 'VW Caddy', plate: 'B 204 RAT', driver_name: 'Mihai Ionescu' }, { imei: '2', name: 'Iveco Stralis', plate: 'B 77 TIR', driver_name: 'Ion Popa' },
@@ -302,6 +304,7 @@ void DARK;
     T('…apoi scrie întrebarea și răspunde (antetul RA Insight · Instant)', await astepta(p, () => !!document.querySelector('[data-ri-demo="erou"] .ri-pu') && /RA Insight/.test((document.querySelector('[data-ri-demo="erou"] .ri-cap') || {}).textContent || ''), null, 12000));
     T('…butonul „Unde e" e cel aprins', await astepta(p, () => (document.querySelector('[data-ri-taburi] [aria-pressed="true"]') || {}).getAttribute && document.querySelector('[data-ri-taburi] [aria-pressed="true"]').getAttribute('data-sc') === 'unde', null, 3000));
     T('…cele patru bucăți din secțiunea RA Insight sunt desenate', await p.evaluate(() => document.querySelectorAll('#ra-insight .ri-ecran .ri-pa').length) === 4);
+    T('…și telefoanele pachetelor de pe prima pagină: Start și comutatorul Basic / Pro / Business (17.11)', await astepta(p, () => !!document.querySelector('#ra-insight [data-ri-demo="start"] .ri-scr') && document.querySelectorAll('#ra-insight [data-ri-demo="platit"] .ri-pk-b').length === 3, null, 4000));
     T('…punctele din „Azi la tine" se văd (roșu, portocaliu, verde — clasele lor nu sunt „ri-w", a cuvintelor care se aprind)', await p.evaluate(() => Array.from(document.querySelectorAll('[data-ri-demo="erou"] .ri-azi-st')).map((e) => getComputedStyle(e).opacity).join()) === '1,1,1');
     await p.click('[data-ri-taburi] [data-sc="alerta"]');
     T('„Alertă": scrie, propune, apasă „Da" și ajunge la „Gata"', await astepta(p, () => !!document.querySelector('[data-ri-demo="erou"] .ri-gata') && !!document.querySelector('[data-ri-demo="erou"] .ri-prop.ri-inchis'), null, 16000));

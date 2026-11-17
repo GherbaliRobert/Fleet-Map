@@ -432,6 +432,9 @@ Confidențialitate.
   corectate, lista e goală.
 - **Termeni / Confidențialitate:** „Ultima actualizare" e data FIXĂ = `modificat` (`<time datetime>`), nu ziua de
   azi din browser — cum era până pe 03.10, o dată falsă pe un document legal. Schimbi textul → schimbi amândouă.
+- **Suportul din „Despre" (17.11, Alin: „1. da"):** „Ne anunți din aplicație sau pe email; te sunăm în cel mult o zi lucrătoare" + „Cererea din
+  aplicație o urmărești pas cu pas: preluată, programată, rezolvată" — termenul și pașii LEGATE de `cereri_echipa.js` (`TERMEN`, `ETICHETE`).
+  Pașii sunt doar ai cererilor din aplicație (un email n-are pași): NU le pune în aceeași frază cu emailul. Fără „în limba română".
 - **Contactul public = emailul și formularul, fără telefon** (Robert, 02.11: „fără date publice"). Formularul (`/api/public/demo-request` → `notifyDemoRequest`) trimite MEREU la `DEMO_REQUEST_EMAIL`, altfel `_adresaSuport()` (noreply@ devine contact@), cu „Răspuns la" = cel care a scris; cererea rămâne în „Cereri demo" și dacă emailul nu pleacă. Telefonul din formular e al vizitatorului. NU pune telefon sau WhatsApp pe pagini: `verify_formular_site.js` pică.
 - **Fiecare pagină publică:** titlu (≤ 70), descriere, adresă canonică, UN `<h1>`, Nunito, iconiță și bannerul de
   cookie-uri (`/js/consent.js`).
@@ -487,8 +490,8 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
 - **Clasele telefonului încep cu „ri-"**; `ri-w` = cuvintele care se aprind (opacity 0) — NU-l da altui element (punctul portocaliu din „Azi la
   tine" a fost `ri-w` și nu se vedea; acum `ri-st-w`). Culorile comenzilor din jur (`--ri-c-fg / mut / line`) au în foaia telefonului doar valori
   de rezervă (site-ul, închis); aplicația le dă din tema ei (`.insp-pk-demo`, app.css) — NU le defini pe elementele telefonului.
-- **Pe site:** „RA Insight" primul în meniu (sus, pe telefon, subsol); caseta veche de sub agenți (`.ra-insight`) a ieșit; cartonașele pachetelor
-  stau în `#ra-insight` (3d le caută acolo); „de la Basic" pe analiză și pe propunerile cu „Da"; cifrele de lângă telefoane sunt în `LEGATE` („se
+- **Pe site:** „RA Insight" primul în meniu (sus, pe telefon, subsol); caseta veche de sub agenți (`.ra-insight`) a ieșit; pachetele de pe prima
+  pagină = cele două telefoane (`.tel-doi`, în `#ra-insight`; 3d le caută acolo); „de la Basic" pe analiză și pe propunerile cu „Da"; cifrele de lângă telefoane sunt în `LEGATE` („se
   poate anula 10 minute" = `ANULARE_MIN`, „50 de răspunsuri" = Start). Chenarul Basic și coloana lui din comparație sunt VERZI (mov până pe 16.11).
 - **Primul ecran, textele din 17.11 (Alin, după patru variante: „Monitorizează-ți flota mi se pare autoritar"; „Vezi ce poate RA Insight,
   exclus"):** eticheta „RA Insight · asistentul AI al flotei tale", titlul „Monitorizare GPS și analiză cu inteligență artificială"
@@ -499,7 +502,7 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
 - **Capitolul „Inteligență artificială" (17.11; Alin: „1A", meniul „RA Insight · Agenți AI · Funcții · Despre · Contact"):** RA Insight și cei
   6 agenți stau ÎNTR-O secțiune (`#ra-insight`, imediat sub primul ecran, eticheta „Inteligență artificială"): partea 1 (`.ai-parte` cu `1`,
   RA Insight: `.ri-fct` + `.ri-inc`) → puntea „Azi la tine" (`.ai-punte`; adevărat: `_aziLaTine` citește și ce au scris agenții azi) → partea 2
-  (`.ai-parte#agenti-ai` cu `2` + `.agents-grid`, cele 6 cartonașe) → pachetele (`.ai-parte-pk` + `.ri-pachete`) → butoanele (`.ri-cta`, și „Ce
+  (`.ai-parte#agenti-ai` cu `2` + `.agents-grid`, cele 6 cartonașe) → pachetele (`.ai-parte-pk` + `.tel-doi`, telefoanele) → butoanele (`.ri-cta`, și „Ce
   face fiecare agent, pe larg"). Secțiunea separată a agenților (`.section-ai`, după „Funcții") a ieșit — NU o pune la loc. `#agenti-ai` are
   `scroll-margin-top` (bara de sus e lipită, 70 px). Textele `LEGATE` („RA Watch verifică flota în fiecare oră", „La fiecare oră") stau în partea 2.
 - Păzit de **`verify_ra_insight_demo.js`** (în `npm test`; partea din browser se sare fără Chromium) și `verify_site_public.js`.
@@ -1631,9 +1634,11 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   Start, „Cere ofertă" la celelalte. Textele sunt COPIA lui `pachete.publice({ cuPret: false })`, `comparatie({ cuPret: false })`
   (în ordinea din cod) și `IN_TOATE` — `verify_site_public.js` (3c) le compară cuvânt cu cuvânt și pică la orice preț pe pagină.
   **Pe prima pagină** (28.10, Alin: „fără preț în pagina publică, pe home page, și cu prețuri când clientul are cont și face
-  upgrade"): în banda RA Insight, cele patru cartonașe scurte `.ri-pachete` (numele, eticheta, pentru cine, cifrele, „Inclus" /
-  „Cere ofertă") și legătura „Compară pachetele RA Insight" — păzit de 3d, tot fără prețuri. Schimbi `DESCRIERE` în pachete.js →
-  schimbi și cele două pagini (și `amprenta` / `modificat`). Nicio pagină nu mai spune „RA Insight pe cont" (păzit).
+  upgrade"; 17.11: „2. da"): în capitolul „Inteligență artificială", cele DOUĂ TELEFOANE de pe `/pachete-ra-insight` (`.tel-doi`: Start cu
+  textele lui din pachete.js + Basic / Pro / Business cu comutatorul, `data-ri-demo="start"` / `"platit"`) — NU cartonașe cu text (cele patru
+  `.ri-pachete` au ieșit pe 17.11); comparația scrisă stă DOAR pe `/pachete-ra-insight`, la butonul „Compară pachetele RA Insight". Păzit de 3d
+  și de `verify_ra_insight_demo.js`, fără prețuri. Schimbi `DESCRIERE` în pachete.js → schimbi și pagina pachetelor (și `amprenta` /
+  `modificat`). Nicio pagină nu mai spune „RA Insight pe cont" (păzit).
 - Păzit de `verify_pachete.js` (în `npm test`; 231, pe server pornit cu modelul simulat și Brevo fals), `verify_tarife.js`,
   `verify_ofertare.js`, `verify_oferta_telefon.js`, `verify_contracte.js`, `verify_factura.js`, `verify_site_public.js` (3c, 3d).
 
@@ -3445,6 +3450,11 @@ caută forma în tot panoul.
   acum", „12.10, 09:14 → acum" · „24 de zile", sub un minut = „sub un minut"; ora din `cereri_echipa`). Web: `istoricIncarca` /
   `istoricDeseneaza` (text, `.vist*` pe variabilele temei); telefon: `components/IstoricSoferi.tsx`. Ecranele nu scriu textele.
 - Păzit de **`verify_soferi_istoric.js`** (în `npm test`; pe server pornit, cu o legătură veche pusă în bază înainte de pornire).
+
+## Agenții AI: cifrele din texte, românește (17.11; Alin: „rezolvă acum" — RA Client scria „Azi: 1240 km")
+- Orice cifră din titlul sau textul unei constatări trece prin **`nrRo(x, zecimale)`** (agents.js, fără Intl): punctul miilor, virgula
+  zecimalelor — „Azi: 1.240 km", „Odometru 123.457 km", „~12,5 L". NU lipi `Math.round(…) + ' km'` / `toFixed(1) + ' L'` într-un text nou.
+- Păzit de `test_agents.js` (pasul „Unit" al porții): `nrRo`, „service DEPĂȘIT cu 1.240 km" și nicio cifră lipită direct în text.
 
 ## Alertele: contactul și marja de viteză (Alin, 26.10: „1. da, 2. da")
 - **Pornire / oprire motor = la SCHIMBAREA contactului, o dată:** `_schimbariContact(anterior, records)` (server.js) citește poziția vie

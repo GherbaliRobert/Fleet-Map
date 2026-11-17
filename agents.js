@@ -21,6 +21,16 @@ const FUEL_PRICE = 7.5;        // lei/L (estimare pentru costuri)
 const IDLE_BURN_LPH = 1.5;     // L/h consum la ralanti (estimare)
 
 // Ore zecimale → „Xh Ym" (userul vrea ore+minute peste tot în texte, nu „1.6 h").
+// Cifrele din textele agenților se scriu românește: punctul miilor și virgula zecimalelor („1.240 km", „12,5 L") — Alin,
+// 17.11: RA Client scria „Azi: 1240 km". Fără Intl: agenții rulează pe toată flota, o dată pe oră.
+function nrRo(x, zecimale) {
+  const v = Number(x);
+  if (!Number.isFinite(v)) return String(x);
+  const z = zecimale || 0;
+  const s = Math.abs(v).toFixed(z), p = s.split('.');
+  const intreg = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (v < 0 && Number(s) !== 0 ? '-' : '') + intreg + (p[1] ? ',' + p[1] : '');
+}
 function hmH(hours) {
   const s = Math.max(0, Math.round((hours || 0) * 3600));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
@@ -151,9 +161,9 @@ async function raWatch(ctx) {
       const ageMin = (now - lastTs) / 60000;
       if (esteFaraSemnal(ageMin, offlineMin)) {
         const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
-        const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (Math.round(ageMin) + ' min');
+        const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (nrRo(ageMin) + ' min');
         // Fapt + ce poate face clientul; NU „verifică dispozitivul / alimentarea / SIM-ul": echipamentul e treaba noastră (Alin, 19.10).
-        findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + Math.round(offlineMin) + ' min. Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal.' });
+        findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + nrRo(offlineMin) + ' min. Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal.' });
       }
     }
     // (4) Tahograf neconfigurat — pentru camioane cu contact pornit dar zero semnal tahograf
@@ -176,7 +186,7 @@ async function raWatch(ctx) {
                   imei, severity: 'warning', agent: 'watch', fkey: 'tacho_missing_' + imei,
                   // Fără „verifică cablajul": legătura cu tahograful e treaba noastră (Alin, 19.10). Clientului — doar ce ține de el.
                   title: name + ': nu vin date de la tahograf',
-                  body: 'Camion cu contactul pornit de peste ' + Math.round(tachoGraceMin) + ' min, dar nu vin date de la tahograf (viteză, distanță, card șofer). Dacă descărcați datele tahografului de la distanță, cardul de companie trebuie să fie introdus în tahograf.'
+                  body: 'Camion cu contactul pornit de peste ' + nrRo(tachoGraceMin) + ' min, dar nu vin date de la tahograf (viteză, distanță, card șofer). Dacă descărcați datele tahografului de la distanță, cardul de companie trebuie să fie introdus în tahograf.'
                 });
               }
             }
@@ -200,7 +210,7 @@ async function raWatch(ctx) {
               prevFuel = fl;
             }
           }
-          if (drop) findings.push({ imei, severity: 'critical', agent: 'watch', fkey: 'fuel_' + imei, title: name + ': scădere combustibil ~' + Math.round(drop) + ' L', body: 'Posibil furt sau scurgere (prag ' + Math.round(fuelDropL) + ' L). Verifică traseul și opririle.' });
+          if (drop) findings.push({ imei, severity: 'critical', agent: 'watch', fkey: 'fuel_' + imei, title: name + ': scădere combustibil ~' + nrRo(drop) + ' L', body: 'Posibil furt sau scurgere (prag ' + nrRo(fuelDropL) + ' L). Verifică traseul și opririle.' });
 
           // (2b) FURT după pornire: oprit la nivel X, după pornire scade și NU revine în 5 min (> fuelDropPct% SAU > fuelTheftL litri).
           // Funcționează și pe FMS (procente), nu doar pe litri. Folosește tranziția contact 0→1 din istoricul zilei.
@@ -243,8 +253,8 @@ async function raWatch(ctx) {
             const u = theft.unit === 'pct' ? '%' : ' L';
             findings.push({
               imei, severity: 'critical', agent: 'watch', fkey: 'fuel_theft_' + imei,
-              title: name + ': posibil furt combustibil ~' + Math.round(theft.drop) + u + ' după pornire',
-              body: 'Nivel la oprire ' + Math.round(theft.from) + u + ', iar la 5 min după pornire ' + Math.round(theft.to) + u + ' (scădere nerevenită). Prag: ' + Math.round(theft.unit === 'pct' ? fuelDropPct : fuelTheftL) + u + '. Verifică opririle/traseul.'
+              title: name + ': posibil furt combustibil ~' + nrRo(theft.drop) + u + ' după pornire',
+              body: 'Nivel la oprire ' + nrRo(theft.from) + u + ', iar la 5 min după pornire ' + nrRo(theft.to) + u + ' (scădere nerevenită). Prag: ' + nrRo(theft.unit === 'pct' ? fuelDropPct : fuelTheftL) + u + '. Verifică opririle/traseul.'
             });
           }
           // (3) Ralanti prelungit (motor pornit + viteză ≤ 3 km/h, neîntrerupt). Gap între puncte > 5min = discontinuitate (anti-fals-pozitiv pe istoric rar).
@@ -261,7 +271,7 @@ async function raWatch(ctx) {
               idleMaxMin = Math.max(idleMaxMin, (idleLastT - idleStart) / 60000);
             } else { idleStart = null; idleLastT = null; }
           }
-          if (idleMaxMin >= idleMaxMinPrag) findings.push({ imei, severity: 'info', agent: 'watch', fkey: 'idle_' + imei, title: name + ': ralanti ~' + Math.round(idleMaxMin) + ' min azi', body: 'Motor pornit, staționat îndelung (peste ' + Math.round(idleMaxMinPrag) + ' min). Combustibil irosit.' });
+          if (idleMaxMin >= idleMaxMinPrag) findings.push({ imei, severity: 'info', agent: 'watch', fkey: 'idle_' + imei, title: name + ': ralanti ~' + nrRo(idleMaxMin) + ' min azi', body: 'Motor pornit, staționat îndelung (peste ' + nrRo(idleMaxMinPrag) + ' min). Combustibil irosit.' });
         }
       } catch (e) {
         // Eroare tranzitorie la istoric (furt/idle) → log observabil; alertele time-sensitive nu mai dispar tăcut.
@@ -298,8 +308,8 @@ async function raCare(ctx) {
     // 1) Distanță până la service din CAN (dacă vehiculul o expune)
     const dts = live ? num(io(live).can_distance_to_service) : null;
     if (dts != null) {
-      if (dts <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_service_' + imei, title: name + ': service DEPĂȘIT cu ' + Math.round(-dts) + ' km', body: 'Vehiculul a depășit intervalul de revizie indicat de bord. Programează service-ul urgent.' + staleNote });
-      else if (dts <= serviceSoonKm) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_service_' + imei, title: name + ': revizie în ' + Math.round(dts) + ' km', body: 'Se apropie intervalul de service (prag ' + Math.round(serviceSoonKm) + ' km). Programează din timp.' + staleNote });
+      if (dts <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_service_' + imei, title: name + ': service DEPĂȘIT cu ' + nrRo(-dts) + ' km', body: 'Vehiculul a depășit intervalul de revizie indicat de bord. Programează service-ul urgent.' + staleNote });
+      else if (dts <= serviceSoonKm) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_service_' + imei, title: name + ': revizie în ' + nrRo(dts) + ' km', body: 'Se apropie intervalul de service (prag ' + nrRo(serviceSoonKm) + ' km). Programează din timp.' + staleNote });
     }
 
     // 2) Înregistrări de mentenanță (revizie, distribuție…) — pe dată sau pe km
@@ -319,8 +329,8 @@ async function raCare(ctx) {
         hasKmDue = true;
         if (odo != null) {
           const left = m.due_km - odo;
-          if (left <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' — km depășiți', body: 'Odometru ' + Math.round(odo) + ' km ≥ scadență ' + m.due_km + ' km.' + staleNote });
-          else if (left <= kmLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' în ' + Math.round(left) + ' km', body: 'Programează service-ul din timp (prag ' + Math.round(kmLead) + ' km).' + staleNote });
+          if (left <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' — km depășiți', body: 'Odometru ' + nrRo(odo) + ' km ≥ scadență ' + nrRo(m.due_km) + ' km.' + staleNote });
+          else if (left <= kmLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_km_' + m.id, title: name + ': ' + tlabel + ' în ' + nrRo(left) + ' km', body: 'Programează service-ul din timp (prag ' + nrRo(kmLead) + ' km).' + staleNote });
         }
       }
     }
@@ -393,7 +403,7 @@ async function raOptimize(ctx) {
   if (fleetIdleH >= 2) {
     const _fp = (ctx && Number(ctx.fuelPrice) > 0) ? Number(ctx.fuelPrice) : FUEL_PRICE; // prețul REAL al companiei (motorină), fallback 7.5
     const wasteL = fleetIdleH * IDLE_BURN_LPH; const cost = wasteL * _fp;
-    findings.push({ imei: null, severity: 'info', agent: 'optimize', fkey: 'opt_fleet_idle', title: 'Flotă: ' + hmH(fleetIdleH) + ' ralanti azi', body: 'Risipă estimată ~' + wasteL.toFixed(1) + ' L (~' + Math.round(cost) + ' lei). Reducerea ralantiului scade direct costurile.' });
+    findings.push({ imei: null, severity: 'info', agent: 'optimize', fkey: 'opt_fleet_idle', title: 'Flotă: ' + hmH(fleetIdleH) + ' ralanti azi', body: 'Risipă estimată ~' + nrRo(wasteL, 1) + ' L (~' + nrRo(cost) + ' lei). Reducerea ralantiului scade direct costurile.' });
   }
   return { findings, evaluated }; // evaluated = câte vehicule au rulat efectiv azi (mesaj cinstit când nu-s semnalări)
 }
@@ -489,10 +499,10 @@ async function raClient(ctx) {
   if (nComp) issues.push({ key: 'compliance', agent: 'RA Compliance', text: nComp + (nComp === 1 ? ' semnalare la orele de condus' : ' semnalări la orele de condus') });
   const bits = issues.map(function (b) { return b.text + ' (' + b.agent + ')'; });
 
-  const title = 'Azi: ' + Math.round(totalKm) + ' km · ' + active + '/' + fleetSize + ' active' + cmp;
+  const title = 'Azi: ' + nrRo(totalKm) + ' km · ' + active + '/' + fleetSize + ' active' + cmp;
   const body = 'Flotă: ' + fleetSize + (fleetSize === 1 ? ' vehicul' : ' vehicule') + ' · active azi: ' + active + (unused ? ' · nefolosite azi: ' + unused : '')
-    + (topKm > 0 ? ' · cel mai activ: ' + topName + ' (' + Math.round(topKm) + ' km)' : '')
-    + (ydKm != null ? ' · ieri, până la aceeași oră: ' + Math.round(ydKm) + ' km' : '') + '. '
+    + (topKm > 0 ? ' · cel mai activ: ' + topName + ' (' + nrRo(topKm) + ' km)' : '')
+    + (ydKm != null ? ' · ieri, până la aceeași oră: ' + nrRo(ydKm) + ' km' : '') + '. '
     + (bits.length ? 'De verificat: ' + bits.join(' · ') + '.' : 'Ceilalți agenți n-au semnalat nimic — zi curată.');
   findings.push({ imei: null, severity: hasCrit ? 'warning' : 'info', agent: 'client', fkey: 'client_digest', title, body });
   // `summary` = date STRUCTURATE pentru interfață (ca sinteza să fie afișată aerisit, nu ca un bloc de text).
@@ -589,4 +599,4 @@ async function runAll(base, allowedKeys) {
   return { findings: all, meta };
 }
 
-module.exports = { AGENTS, runAgent, runAll, esteFaraSemnal, esteLiber, OFFLINE_MIN };
+module.exports = { AGENTS, runAgent, runAll, esteFaraSemnal, esteLiber, OFFLINE_MIN, nrRo };

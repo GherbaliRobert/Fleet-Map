@@ -245,6 +245,7 @@ const nLucrari = (MT.WORK || []).length;
 const watchOrar = /setInterval\(runAgentsWorker, 60 \* 60 \* 1000\)/.test(SRV);
 const PK = require('./pachete.js');
 const PKJS = citeste('pachete.js');
+const CE = require('./cereri_echipa.js');
 const LEGATE = [
   // [pagina, textul exact de pe pagină, e încă adevărat în cod?, unde se uită, (rândul din DE_HOTARAT care îl ține adormit)]
   ['/', '— 16 tipuri, cu pragurile tale', nAlerte === 16, 'ALERT_TYPES din public/index.html are ' + nAlerte + ' tipuri', 'primaPagina'],
@@ -275,6 +276,11 @@ const LEGATE = [
   // RA Insight în prim-plan (16.11, Alin: „1. A … 3. da"): cifrele scrise lângă telefoane.
   ['/', 'și se poate anula 10 minute', require('./soferi_masini.js').ANULARE_MIN === 10, 'ANULARE_MIN din soferi_masini.js (cât ține „Anulează" după „Da")'],
   ['/pachete-ra-insight', 'răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
+  // Pachetele pe prima pagină = telefoanele de pe /pachete-ra-insight (17.11, Alin: „2. da").
+  ['/', 'răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
+  // Suportul, în „Despre" (17.11, Alin: „1. da"): promisiunea și pașii lui „Anunță echipa RA Track" (cereri_echipa.js).
+  ['/', 'te sunăm în cel mult o zi lucrătoare', CE.TERMEN === 'Te sunăm în cel mult o zi lucrătoare.', 'TERMEN din cereri_echipa.js e „' + CE.TERMEN + '"'],
+  ['/', 'o urmărești pas cu pas: preluată, programată, rezolvată', ['preluata', 'programata', 'rezolvata'].map((k) => (CE.ETICHETE[k] || '').toLowerCase()).join(', ') === 'preluată, programată, rezolvată', 'pașii cererii (ETICHETE din cereri_echipa.js)'],
 ];
 for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
   if (doarme && DE_HOTARAT[doarme]) continue;
@@ -323,22 +329,24 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
   }
 }
 
-// ── 3d. Pachetele pe prima pagină (27.10, Alin: „fără preț în pagina publică, pe home page") ──────────────
-// Cele patru cartonașe scurte din banda RA Insight: numele, eticheta, „Inclus în orice contract" / „Cere ofertă", pentru cine și
-// cifrele — copia lui pachete.publice({ cuPret: false }). Fără prețuri. Comparația întreagă stă pe /pachete-ra-insight.
+// ── 3d. Pachetele pe prima pagină (27.10, Alin: „fără preț în pagina publică, pe home page"; 17.11: „2. da") ──────────────
+// Din 17.11 = cele două telefoane de pe /pachete-ra-insight: Start (cu textele lui, din pachete.js) și Basic / Pro / Business (le desenează
+// ra-insight-demo.js, cu textele din pachete.js — verify_ra_insight_demo.js). Comparația scrisă stă DOAR pe /pachete-ra-insight, la butonul
+// „Compară pachetele RA Insight". Fără prețuri. Până pe 17.11: patru cartonașe cu text (.ri-pachete), copia lui pachete.publice.
 {
   const html = HTML['/'] || '';
-  const i = html.indexOf('class="ri-pachete"');
-  check(i > 0, '/: lipsesc cartonașele pachetelor RA Insight din secțiunea RA Insight');
-  // Din 16.11 cartonașele stau în secțiunea RA Insight (sub primul ecran), nu în banda de sub agenți: blocul ține până la capătul ei.
-  const bloc = i > 0 ? html.slice(i, html.indexOf('</section>', i)) : '';
+  const iS = html.indexOf('id="ra-insight"');
+  const sec = iS > 0 ? html.slice(iS, html.indexOf('</section>', iS)) : '';
+  const i = sec.indexOf('class="tel-doi"');
+  check(i > 0, '/: lipsesc telefoanele pachetelor RA Insight din capitolul „Inteligență artificială" (#ra-insight)');
+  const bloc = i > 0 ? sec.slice(i, sec.indexOf('class="ri-cta"', i)) : '';
+  check(/data-ri-demo="start"/.test(bloc) && /data-ri-demo="platit"/.test(bloc), '/: la pachete trebuie telefonul Start (data-ri-demo="start") și cel cu Basic / Pro / Business (data-ri-demo="platit")');
+  const st = PK.publice({ cuPret: false }).find((p) => p.cod === 'start');
   const vazut = faraMarcaj(bloc);
-  for (const p of PK.publice({ cuPret: false })) {
-    const bucati = [p.nume, p.pentru, p.subPret].concat(p.eticheta ? [p.eticheta] : [], p.cifre.map((c) => c.et), p.cifre.filter((c) => c.val != null).map((c) => c.val));
-    for (const b of bucati) check(vazut.includes(b), '/: pachetul ' + p.nume + ' — lipsește în cartonaș „' + b + '" (din pachete.js)');
-  }
-  check(!/\d\s*(de\s+)?lei\b|\blei\s*\//i.test(vazut) && !/€/.test(vazut), '/: în cartonașele pachetelor apare un preț — pe site nu se afișează prețuri');
-  check(/href="\/pachete-ra-insight"/.test(html), '/: lipsește legătura spre comparația pachetelor (/pachete-ra-insight)');
+  for (const b of [st.titlu, st.pentru, 'Conturi: ' + st.cifre[0].val + ' · Răspunsuri pe loc: ' + st.cifre[2].val]) check(vazut.includes(b), '/: coloana Start — lipsește „' + b + '" (din pachete.js)');
+  check(!/class="ri-pachete"/.test(html), '/: cartonașele cu text ale pachetelor au ieșit de pe prima pagină (comparația scrisă stă pe /pachete-ra-insight)');
+  check(!/\d\s*(de\s+)?lei\b|\blei\s*\//i.test(vazut) && !/€/.test(vazut), '/: la pachete apare un preț — pe site nu se afișează prețuri');
+  check(/<a href="\/pachete-ra-insight" class="btn btn-ghost">Compară pachetele RA Insight /.test(sec), '/: lipsește butonul „Compară pachetele RA Insight" spre comparația scrisă (/pachete-ra-insight)');
 }
 
 // ── 3e. Numele furnizorilor și cuvintele de șablon (11.11, Alin) ─────────────────────────────────────────────────────
