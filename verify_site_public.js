@@ -358,6 +358,13 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
     check(!m, p.cale + ': cuvânt de șablon / din engleză pe pagină: „' + (m ? m[0] : '') + '"');
   }
   check(/Anthropic/.test(faraMarcaj(HTML['/confidentialitate'] || '')), '/confidentialitate: trebuie să spună cui trimitem datele pentru AI (Anthropic) — legea o cere');
+  // Alin, 17.11: „îți răspunde în română… ce-i asta?" — limba nu e o calitate de lăudat pe un site românesc. Nici în text, nici în
+  // descrierile pentru Google (meta), de aceea se caută în tot HTML-ul. (Fără `\b`: JavaScript nu vede „î" ca literă.)
+  const IN_ROMANA = /(răspund|întreb)[^.<"]{0,40}[\s,]în (limba )?român[ăa]/i;
+  for (const p of PAGINI) {
+    const m = (HTML[p.cale] || '').match(IN_ROMANA);
+    check(!m, p.cale + ': nu scriem că RA Insight răspunde / e întrebat „în română": „' + (m ? m[0] : '') + '"');
+  }
 }
 
 // ── 4. Pe serverul pornit ───────────────────────────────────────────────────────────────────────────

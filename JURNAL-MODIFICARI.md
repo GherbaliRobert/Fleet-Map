@@ -611,6 +611,25 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-17
 
+### AMÂNDOI · Site-ul nu mai spune că RA Insight „răspunde în română”
+*Alin, 17.11: „îți răspunde în română… scoate textele de genul… ce-i asta?”*
+
+**Ce am schimbat:** șase fraze de pe site, scoase sau rescrise fără limbă:
+- prima pagină, secțiunea RA Insight: „…și îți răspunde cu cifrele din rapoartele aplicației” (era „…îți răspunde în română, cu…”);
+- pagina agenților: textul de sub agenți („asistentul pe care îl întrebați orice despre flotă”) și cele două descrieri pentru Google;
+- pagina pachetelor: textul de început („îl întrebați ce vreți să aflați”) și descrierea pentru Google.
+
+O probă păzește de acum ca nicio pagină să nu mai scrie că RA Insight „răspunde” sau „e întrebat” „în română”.
+Rândul „Suport tehnic în limba română, de la oameni reali” (prima pagină, „Despre”) a rămas: e despre suport. L-am întrebat pe Alin
+dacă îl scoatem și pe el.
+
+**Ce vede fondatorul:** paginile de mai sus, fără „în română”.
+
+**Ce vede clientul:** la fel.
+
+Reper: `public/landing.html`, `public/agenti-ai.html`, `public/pachete-ra-insight.html`; datele și amprentele în `PAGINI_PUBLICE`;
+proba în `verify_site_public.js` (3e).
+
 ### AMÂNDOI · Prima pagină: primul ecran cu inteligența artificială în titlu, „Cere cont demo" după ce omul a citit
 *Alin, 16–17.11, după patru variante și machete: „Monitorizează-ți flota mi se pare autoritar… nu e profesional"; „Vezi ce poate RA
 Insight, exclus"; apoi textele lui, cosmetizate împreună: „asistentul AI al flotei tale"; la titlul secțiunii: „Inteligența artificială

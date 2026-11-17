@@ -440,6 +440,9 @@ Confidențialitate.
   îl numește (legea cere să spunem cui dăm datele). Paginile legale fără cuvintele englezești ale șablonului (procesator, DPA, SCC, bcrypt,
   multi-tenant, CDN / DNS / proxy, credențiale, retenție, „scopat", tracking) — Alin: „vezi pe unde mai sunt greșeli de genul acesta". Păzit de
   `verify_site_public.js` (3e).
+- **Fără „îți răspunde în română” / „îl întrebați în limba română”** (Alin, 17.11: „ce-i asta?”): limba nu e o calitate de lăudat pe un site
+  românesc. Nici în text, nici în descrierile pentru Google. Păzit de `verify_site_public.js` (3e, pe tot HTML-ul). Instrucțiunile modelului
+  („răspunzi în limba română”) rămân: pe ele nu le vede nimeni.
 - **Întrebările din datele pentru Google (FAQPage) sunt IDENTICE cu cele de pe pagină**, cuvânt cu cuvânt, în aceeași
   ordine, pe toate paginile (pe întrebările frecvente erau 10 din 11, rezumate, până pe 03.10). Schimbi o întrebare
   pe pagină → o schimbi și în bloc.
