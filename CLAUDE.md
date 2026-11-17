@@ -502,9 +502,10 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
 - **Capitolul „Inteligență artificială" (17.11; Alin: „1A", meniul „RA Insight · Agenți AI · Funcții · Despre · Contact"):** RA Insight și cei
   6 agenți stau ÎNTR-O secțiune (`#ra-insight`, imediat sub primul ecran, eticheta „Inteligență artificială"): partea 1 (`.ai-parte` cu `1`,
   RA Insight: `.ri-fct` + `.ri-inc`) → puntea „Azi la tine" (`.ai-punte`; adevărat: `_aziLaTine` citește și ce au scris agenții azi) → partea 2
-  (`.ai-parte#agenti-ai` cu `2` + `.agents-grid`, cele 6 cartonașe) → pachetele (`.ai-parte-pk` + `.tel-doi`, telefoanele) → butoanele (`.ri-cta`, și „Ce
-  face fiecare agent, pe larg"). Secțiunea separată a agenților (`.section-ai`, după „Funcții") a ieșit — NU o pune la loc. `#agenti-ai` are
-  `scroll-margin-top` (bara de sus e lipită, 70 px). Textele `LEGATE` („RA Watch verifică flota în fiecare oră", „La fiecare oră") stau în partea 2.
+  (`.ai-parte#agenti-ai` cu `2` + `.agd`, butoanele și telefonul cu agenții — vezi „Agenții AI pe prima pagină") → pachetele (`.ai-parte-pk` +
+  `.tel-doi`, telefoanele) → butoanele (`.ri-cta`, și „Ce face fiecare agent, pe larg"). Secțiunea separată a agenților (`.section-ai`, după
+  „Funcții") a ieșit — NU o pune la loc. `#agenti-ai` are `scroll-margin-top` (bara de sus e lipită, 70 px). Textele `LEGATE` („RA Watch verifică
+  flota în fiecare oră", „Verifică flota în fiecare oră:" de pe butonul RA Watch) stau în partea 2. Iconițele punții = cele ale butoanelor (AGP_META).
 - Păzit de **`verify_ra_insight_demo.js`** (în `npm test`; partea din browser se sare fără Chromium) și `verify_site_public.js`.
 
 ## Compania DEMO (acces la CERERE, aprobat de super-admin)
@@ -3451,10 +3452,32 @@ caută forma în tot panoul.
   `istoricDeseneaza` (text, `.vist*` pe variabilele temei); telefon: `components/IstoricSoferi.tsx`. Ecranele nu scriu textele.
 - Păzit de **`verify_soferi_istoric.js`** (în `npm test`; pe server pornit, cu o legătură veche pusă în bază înainte de pornire).
 
-## Agenții AI: cifrele din texte, românește (17.11; Alin: „rezolvă acum" — RA Client scria „Azi: 1240 km")
+## Agenții AI: cifrele din texte, românește (17.11; Alin: „rezolvă acum" — RA Client scria „Azi: 1240 km"; apoi „DAA, rezolvă" — „în 25 zile", „1 critice")
 - Orice cifră din titlul sau textul unei constatări trece prin **`nrRo(x, zecimale)`** (agents.js, fără Intl): punctul miilor, virgula
   zecimalelor — „Azi: 1.240 km", „Odometru 123.457 km", „~12,5 L". NU lipi `Math.round(…) + ' km'` / `toFixed(1) + ' L'` într-un text nou.
-- Păzit de `test_agents.js` (pasul „Unit" al porții): `nrRo`, „service DEPĂȘIT cu 1.240 km" și nicio cifră lipită direct în text.
+- **Un număr lângă cuvântul lui = `cate(n, unu, multe)`** (agents.js): „1 zi", „12 zile", „25 de zile", „101 zile", „1.000 de zile". NU scrie
+  `n + (n === 1 ? ' zi' : ' zile')` — uita „de" de la 20 (proba caută forma). Pe pagina agenților (web) același acord cu `_rDe`; pe telefon cu
+  `nrDe` (lib/numar.ts); jetoanele: „1 constatare nouă / critică / avertisment / informativă". Cartonașul RA Client scrie km-ii cu `_roNum` / `nrRo`.
+- **RA Watch verifică din oră în oră — NU „24/7", „non-stop", „Paznic"** (rolul: „Supraveghere", în agents.js; explicația: „Verifică flota din oră
+  în oră și te anunță la…", web `AGP_TUT` + telefon `TUT_FACE`; „Acasă": „Ce urmăresc pe N vehicule").
+- Păzit de `test_agents.js` (pasul „Unit" al porții): `nrRo`, `cate`, „service DEPĂȘIT cu 1.240 km", „ITP expiră în 25 de zile", nicio cifră lipită
+  direct în text, nimic „24/7" / „non-stop"; plus `verify_statistici_flota.js` („Ce urmăresc pe").
+
+## Agenții AI pe prima pagină: telefonul (17.11; Alin, la cele trei machete: „hai să facem varianta B să o testez")
+Macheta: https://claude.ai/artifact/E2G99v9is5kxgLpF2HKowC (varianta B). Partea 2 a capitolului „Inteligență artificială": în stânga șase butoane
+(`.agd-b[data-k]`, în pagină: iconița din aplicație, numele, textul de pe site), în dreapta un telefon cu pagina agentului din aplicație.
+- **UN fișier: `public/js/agenti-demo.js` + `public/css/agenti-demo.css`.** Rama telefonului = a telefonului RA Insight (`.ri-tel`, `.ri-scr`… din
+  ra-insight-demo.css), restul pe clase `agd-`. Trece singur la ~8,5 s, cât e pe ecran; un clic alege agentul; mouse-ul / tastatura pe el îl opresc;
+  „mai puțină mișcare" = fără schimbări singure. Textele se pun cu textContent.
+- **Ce scrie în telefon = ce scriu AGENȚII ADEVĂRAȚI**: `agenti_demo_flota.js` = flota de probă (8 mașini, numele = numărul, o zi de poziții, actele,
+  km-ii) pe care `verify_agenti_demo.js` rulează `agents.runAll` la ora din telefon (14:30, ora României — RA Dispatch caută mașinile nefolosite
+  după 12) și compară titlul, textul, culoarea și ordinea fiecărei constatări, plus cartonașul lui RA Client. Numele, rolurile, descrierile =
+  `AGENTS` (agents.js); iconițele = `AGP_META`; etichetele = `agpOpen` / `agpLiveRefresh` / `_agpClientCard`. Schimbi un text la agenți → proba
+  pică până schimbi și `date()` din telefon (sau flota, dacă s-a schimbat regula). Zilele (ITP peste 12 zile, RCA peste 19) se socotesc față de azi.
+- Pe ≤ 1000 px butoanele trec pe 3 coloane (doar numele), telefonul dedesubt; pe ≤ 620 px pe 2. Totul încape în telefon la fiecare agent —
+  proba măsoară, pe calculator și la 360 px; un rând nou în telefon = măsurat din nou.
+- Păzit de **`verify_agenti_demo.js`** (în `npm test`; partea din browser se sare fără Chromium), plus `verify_ra_insight_demo.js` (ordinea
+  capitolului) și `verify_site_public.js` (`LEGATE`).
 
 ## Alertele: contactul și marja de viteză (Alin, 26.10: „1. da, 2. da")
 - **Pornire / oprire motor = la SCHIMBAREA contactului, o dată:** `_schimbariContact(anterior, records)` (server.js) citește poziția vie

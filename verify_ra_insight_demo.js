@@ -95,10 +95,11 @@ const S = faraCom(sec), LF = faraCom(L);
 T('capitolul „Inteligență artificială": eticheta, partea 1 (RA Insight) și partea 2 (cei 6 agenți), în aceeași secțiune',
   S.includes('<span class="eyebrow">Inteligență artificială</span>') && /<span class="ai-nr">1<\/span>\s*<div><h3>RA Insight /.test(S) &&
   /id="agenti-ai">\s*<span class="ai-nr">2<\/span>\s*<div><h3>Cei 6 agenți AI /.test(S));
-const ordAi = ['<span class="ai-nr">1</span>', 'class="ri-fct"', 'class="ri-inc"', 'class="ai-punte', 'id="agenti-ai"', 'class="agents-grid"', 'class="ai-parte ai-parte-pk', 'class="tel-doi"', 'class="ri-cta"'].map((x) => S.indexOf(x));
+const ordAi = ['<span class="ai-nr">1</span>', 'class="ri-fct"', 'class="ri-inc"', 'class="ai-punte', 'id="agenti-ai"', 'data-agenti-demo', 'class="ai-parte ai-parte-pk', 'class="tel-doi"', 'class="ri-cta"'].map((x) => S.indexOf(x));
 T('…în ordinea din machetă: RA Insight, ce face, de ce te poți baza pe el, puntea, agenții, pachetele, butoanele', ordAi.every((x, i) => x > 0 && (i === 0 || x > ordAi[i - 1])), ordAi);
-T('…cele 6 cartonașe ale agenților stau în capitol, iar secțiunea lor de dinainte (după „Funcții") a plecat',
-  (S.match(/<div class="agent reveal">/g) || []).length === 6 && (LF.match(/<div class="agent reveal">/g) || []).length === 6 &&
+// 17.11 (Alin, la machete: „varianta B"): cei 6 = butoanele + telefonul cu pagina agentului (verify_agenti_demo.js le păzește).
+T('…cei 6 agenți (butoanele, cu telefonul lor) stau în capitol, iar secțiunea lor de dinainte (după „Funcții") a plecat',
+  (S.match(/<button type="button" class="agd-b" data-k=/g) || []).length === 6 && (LF.match(/<button type="button" class="agd-b" data-k=/g) || []).length === 6 &&
   !/class="section section-ai"|class="agents-foot/.test(LF) && (LF.match(/id="agenti-ai"/g) || []).length === 1);
 T('…puntea: ce găsesc agenții azi apare și la „Azi la tine"', /class="ai-punte[^"]*"[\s\S]*?Ce găsesc agenții azi îți apare și în RA Insight, la <b>„Azi la tine”<\/b>/.test(S));
 T('…„Ce face fiecare agent, pe larg" stă cu butoanele de la capăt (spre /agenti-ai)', /<a href="\/agenti-ai" class="btn btn-ghost">Ce face fiecare agent, pe larg /.test(intre(sec, '<div class="ri-cta">', '</div>')));

@@ -121,7 +121,8 @@ T('spune că veghează flota', /Agenții AI veghează flota/.test(html));
 T('spune când a fost ultima verificare', /ultima verificare/.test(ag) && /din oră în oră/.test(ag));
 T('și dacă verificarea automată e oprită din Setări', /verificarea automată e oprită din Setări/.test(ag));
 T('când n-a găsit nimic, o spune', /Nimic de rezolvat\. Agenții au verificat/.test(ag));
-T('listează CE urmăresc, pe câte vehicule', /Ce urmăresc, non-stop pe/.test(ag) && /nrVehicule/.test(ag));
+// 17.11 (Alin: „rezolvă"): fără „non-stop" — RA Watch verifică din oră în oră; „25 de vehicule", nu „25 vehicule".
+T('listează CE urmăresc, pe câte vehicule (fără „non-stop", cu „de" de la 20)', /Ce urmăresc pe /.test(ag) && /nrVehicule/.test(ag) && !/non-stop/.test(ag) && /r >= 1 && r <= 19/.test(ag));
 T('textul fiecărui agent vine din AGP_META (`checks`), nu scris de mână', /m\.checks \|\| m\.desc/.test(ag));
 T('dacă sunt opriți pe firma aia, o spune', /Agenții AI sunt opriți pentru firma asta/.test(ag));
 T('iar fondatorului îi arată și de unde-i pornește',

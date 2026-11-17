@@ -87,6 +87,8 @@
   <!-- Telefonul cu RA Insight (16.11): UN fișier, același pe prima pagină, pe /pachete-ra-insight și în aplicație. -->
   <link rel="stylesheet" href="/css/ra-insight-demo.css">
   <script src="/js/ra-insight-demo.js" defer></script>
+  <link rel="stylesheet" href="/css/agenti-demo.css">
+  <script src="/js/agenti-demo.js" defer></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{
@@ -362,58 +364,8 @@
       padding:4px 10px;border-radius:999px;
     }
 
-    /* ---------- AGENTI AI: cartonașele celor șase (din 17.11 în capitolul „Inteligență artificială", partea 2) ---------- */
-    .agents-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-    .agent{
-      position:relative;overflow:hidden;
-      background:linear-gradient(180deg,var(--surface) 0%,#121519 100%);
-      border:1px solid var(--border);border-radius:var(--radius);
-      padding:26px 24px;
-      transition:transform .3s var(--ease),border-color .3s var(--ease),box-shadow .3s var(--ease);
-    }
-    .agent::after{
-      content:"";position:absolute;inset:0;border-radius:var(--radius);
-      background:radial-gradient(120% 80% at 100% 0%, rgba(63,224,125,.12), transparent 55%);
-      opacity:0;transition:opacity .3s var(--ease);pointer-events:none;
-    }
-    .agent:hover{transform:translateY(-6px);border-color:rgba(63,224,125,.45);box-shadow:0 24px 50px -28px rgba(63,224,125,.4)}
-    .agent:hover::after{opacity:1}
-    .agent-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-    .agent .ic{
-      width:50px;height:50px;border-radius:14px;flex:0 0 auto;
-      display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);
-      background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.25);
-    }
-    .agent .live{
-      margin-left:auto;display:inline-flex;align-items:center;gap:7px;
-      font-size:11.5px;font-weight:600;letter-spacing:.2px;color:#9fe9bd;
-      background:rgba(63,224,125,.07);border:1px solid rgba(63,224,125,.22);
-      padding:5px 11px;border-radius:999px;white-space:nowrap;
-    }
-    .agent .live .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2.2s infinite}
-    .agent .role{font-size:11.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
-    .agent h3{font-size:19px;font-weight:700;margin-bottom:9px;letter-spacing:-.3px}
-    .agent p{color:var(--muted);font-size:14.5px;line-height:1.6}
-    /* Iconitele prind viata la hover — ca in aplicatie, fiecare cu o miscare potrivita rolului ei.
-       Iconitele de aici difera de cele din app la 4 din 6 agenti, deci animatia e potrivita pe desenul
-       de pe pagina (balanta se echilibreaza, plicul se ridica, traseul inainteaza). */
-    .agent .ic > i{transform-origin:center;will-change:transform}
-    @keyframes agGuard{0%,100%{transform:scale(1)}40%{transform:scale(1.16)}60%{transform:scale(1.06)}}
-    @keyframes agWrench{0%{transform:rotate(0)}28%{transform:rotate(-30deg)}58%{transform:rotate(13deg)}100%{transform:rotate(0)}}
-    @keyframes agSway{0%,100%{transform:rotate(-13deg) translateY(0)}50%{transform:rotate(13deg) translateY(-1.5px)}}
-    @keyframes agBalance{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
-    @keyframes agLift{0%,100%{transform:translateY(0)}40%{transform:translateY(-3.5px)}70%{transform:translateY(1px)}}
-    @keyframes agRoute{0%,100%{transform:translate(0,0) scale(1)}45%{transform:translate(2px,-2px) scale(1.09)}}
-    .agent:hover .ic > i.fa-shield-halved{animation:agGuard 1.05s ease-in-out infinite}
-    .agent:hover .ic > i.fa-screwdriver-wrench{animation:agWrench .72s ease-in-out infinite}
-    .agent:hover .ic > i.fa-leaf{animation:agSway 1.5s ease-in-out infinite}
-    .agent:hover .ic > i.fa-scale-balanced{animation:agBalance 1.25s ease-in-out infinite}
-    .agent:hover .ic > i.fa-envelope-open-text{animation:agLift 1.15s ease-in-out infinite}
-    .agent:hover .ic > i.fa-route{animation:agRoute 1.2s ease-in-out infinite}
-
-    @media (prefers-reduced-motion:reduce){
-      .agent:hover .ic > i{animation:none!important}
-    }
+    /* ---------- AGENȚII AI (17.11, Alin: „varianta B"): butoanele celor șase și telefonul cu pagina agentului, în
+       /css/agenti-demo.css (cu /js/agenti-demo.js). Până pe 17.11: șase cartonașe cu text (.agents-grid / .agent), scoase. */
 
     /* ---------- INTELIGENȚĂ ARTIFICIALĂ (17.11, Alin: „1A"): RA Insight + cei 6 agenți, un capitol sub primul ecran ----------
        Telefonul și bucățile de ecran au foaia lor (/css/ra-insight-demo.css), aceeași în aplicație. Până pe 16.11 RA Insight era
@@ -590,7 +542,7 @@
 
     /* ---------- RESPONSIVE ---------- */
     @media (max-width:980px){
-      .features-grid,.agents-grid{grid-template-columns:repeat(2,1fr)}
+      .features-grid{grid-template-columns:repeat(2,1fr)}
       .pricing-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}
       .about{grid-template-columns:1fr;gap:36px}
       .about-media{order:-1}
@@ -601,7 +553,7 @@
       .hamburger{display:flex}
       .section{padding:72px 0}
       .hero{min-height:calc(100vh - 70px);padding:60px 0}
-      .features-grid,.agents-grid{grid-template-columns:1fr}
+      .features-grid{grid-template-columns:1fr}
       .stat + .stat{border-left:none}
       .stat{flex-basis:100%}
       .stat:not(:last-child){border-bottom:1px solid var(--border)}
@@ -763,73 +715,30 @@
       </div>
 
       <!-- Puntea dintre cele două părți: „Azi la tine" din RA Insight arată și ce au găsit agenții azi. Iconițele = ale celor
-           șase agenți, în ordinea cartonașelor. -->
-      <div class="ai-punte reveal"><div class="ai-punte-ic" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i><i class="fa-solid fa-screwdriver-wrench"></i><i class="fa-solid fa-leaf"></i><i class="fa-solid fa-scale-balanced"></i><i class="fa-solid fa-envelope-open-text"></i><i class="fa-solid fa-route"></i></div><p>Ce găsesc agenții azi îți apare și în RA Insight, la <b>„Azi la tine”</b>.</p></div>
+           șase agenți din aplicație (AGP_META), în ordinea butoanelor de mai jos. -->
+      <div class="ai-punte reveal"><div class="ai-punte-ic" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i><i class="fa-solid fa-wrench"></i><i class="fa-solid fa-leaf"></i><i class="fa-solid fa-clipboard-check"></i><i class="fa-solid fa-file-lines"></i><i class="fa-solid fa-compass"></i></div><p>Ce găsesc agenții azi îți apare și în RA Insight, la <b>„Azi la tine”</b>.</p></div>
 
       <div class="ai-parte reveal" id="agenti-ai">
         <span class="ai-nr">2</span>
         <div><h3>Cei 6 agenți AI <span>· urmăresc flota pe domenii</span></h3>
         <p>Incluși în orice contract. RA Watch verifică flota în fiecare oră, iar ceilalți cinci fac analiza pe loc, când le deschizi pagina.</p></div>
       </div>
-      <div class="agents-grid">
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-shield-halved"></i></div>
-            <span class="live"><span class="dot"></span> La fiecare oră</span>
-          </div>
-          <div class="role">Supraveghere</div>
-          <h3>RA Watch</h3>
-          <p>Verifică flota în fiecare oră: vehicule care nu mai transmit, scăderi bruște de combustibil, ralanti prelungit și camioane fără date de tahograf.</p>
+      <!-- Cei 6 agenți (17.11, Alin, la cele trei machete: „hai să facem varianta B să o testez"): în stânga butoanele, în dreapta un
+           telefon cu pagina agentului din aplicație, care trece singur de la unul la altul (un clic alege agentul). Telefonul îl desenează
+           /js/agenti-demo.js, cu ce scriu AGENȚII ADEVĂRAȚI pe flota de probă (agenti_demo_flota.js; verify_agenti_demo.js compară).
+           Iconițele = cele din aplicație (AGP_META). Până pe 17.11: șase cartonașe cu text. -->
+      <div class="agd" data-agenti-demo>
+        <div class="agd-lista reveal" role="group" aria-label="Alege agentul pe care îl vezi în telefon">
+          <button type="button" class="agd-b" data-k="watch"><span class="agd-b-ic" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></span><span class="agd-b-n">RA Watch</span><span class="agd-b-d">Verifică flota în fiecare oră: vehicule care nu mai transmit, scăderi bruște de combustibil, ralanti prelungit și camioane fără date de tahograf.</span></button>
+          <button type="button" class="agd-b" data-k="care"><span class="agd-b-ic" aria-hidden="true"><i class="fa-solid fa-wrench"></i></span><span class="agd-b-n">RA Care</span><span class="agd-b-d">Adună într-un loc reviziile (pe km sau pe dată), ITP-ul, RCA-ul și asigurările care se apropie de termen. Fără surprize, fără penalizări.</span></button>
+          <button type="button" class="agd-b" data-k="optimize"><span class="agd-b-ic" aria-hidden="true"><i class="fa-solid fa-leaf"></i></span><span class="agd-b-n">RA Optimize</span><span class="agd-b-d">Calculează un scor eco pentru fiecare vehicul, din accelerări și frânări bruște, viteză și ralanti — vezi unde se pierde combustibil. Clasamentul șoferilor e în raportul EcoDrive.</span></button>
+          <button type="button" class="agd-b" data-k="compliance"><span class="agd-b-ic" aria-hidden="true"><i class="fa-solid fa-clipboard-check"></i></span><span class="agd-b-n">RA Compliance</span><span class="agd-b-d">Estimează din GPS orele de condus de azi la camioane și autobuze — 4h30 fără pauză, 9 ore pe zi (Reg. CE 561/2006) — și semnalează depășirile. Pentru controlul oficial rămâne tahograful.</span></button>
+          <button type="button" class="agd-b" data-k="client"><span class="agd-b-ic" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span><span class="agd-b-n">RA Client</span><span class="agd-b-d">Ziua flotei într-un rând: kilometri parcurși, vehicule active și nefolosite, comparația cu ieri la aceeași oră și ce au găsit ceilalți agenți.</span></button>
+          <button type="button" class="agd-b" data-k="dispatch"><span class="agd-b-ic" aria-hidden="true"><i class="fa-solid fa-compass"></i></span><span class="agd-b-n">RA Dispatch</span><span class="agd-b-d">Îți arată ce vehicule sunt libere acum și care au stat nefolosite azi. Pentru o cursă, alegi locul pe hartă și vezi cele mai apropiate mașini.</span></button>
         </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-screwdriver-wrench"></i></div>
-            <span class="live"><span class="dot"></span> Scadențe</span>
-          </div>
-          <div class="role">Mentenanță</div>
-          <h3>RA Care</h3>
-          <p>Adună într-un loc reviziile (pe km sau pe dată), ITP-ul, RCA-ul și asigurările care se apropie de termen. Fără surprize, fără penalizări.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-leaf"></i></div>
-            <span class="live"><span class="dot"></span> Scor eco</span>
-          </div>
-          <div class="role">Eco-driving</div>
-          <h3>RA Optimize</h3>
-          <p>Calculează un scor eco pentru fiecare vehicul, din accelerări și frânări bruște, viteză și ralanti — vezi unde se pierde combustibil. Clasamentul șoferilor e în raportul EcoDrive.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-scale-balanced"></i></div>
-            <span class="live"><span class="dot"></span> CE 561/2006</span>
-          </div>
-          <div class="role">Conformitate</div>
-          <h3>RA Compliance</h3>
-          <p>Estimează din GPS orele de condus de azi la camioane și autobuze — 4h30 fără pauză, 9 ore pe zi (Reg. CE 561/2006) — și semnalează depășirile. Pentru controlul oficial rămâne tahograful.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-envelope-open-text"></i></div>
-            <span class="live"><span class="dot"></span> Azi față de ieri</span>
-          </div>
-          <div class="role">Sinteza zilei</div>
-          <h3>RA Client</h3>
-          <p>Ziua flotei într-un rând: kilometri parcurși, vehicule active și nefolosite, comparația cu ieri la aceeași oră și ce au găsit ceilalți agenți.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-route"></i></div>
-            <span class="live"><span class="dot"></span> Timp real</span>
-          </div>
-          <div class="role">Alocare curse</div>
-          <h3>RA Dispatch</h3>
-          <p>Îți arată ce vehicule sunt libere acum și care au stat nefolosite azi. Pentru o cursă, alegi locul pe hartă și vezi cele mai apropiate mașini.</p>
+        <div class="agd-tel-col reveal">
+          <div class="agd-tel-loc"></div>
+          <span class="ri-exemplu">Exemplu cu o flotă de probă</span>
         </div>
       </div>
 

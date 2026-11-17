@@ -1,0 +1,100 @@
+/* Agenții AI — telefonul de prezentare de pe prima pagină (17.11; Alin, la machete: „hai să facem varianta B să o testez").
+   Stilul pentru public/js/agenti-demo.js. Rama telefonului e a telefonului RA Insight (.ri-tel, .ri-scr… din ra-insight-demo.css),
+   ca cele două telefoane ale paginii să fie la fel; ecranul are culorile paginii „Agenți AI" din aplicație, pe tema ÎNCHISĂ
+   (app.css: body.dark). Totul e pe clase „agd-", ca să nu se bată cu foaia paginii. Fontul se moștenește (Nunito). */
+.agd { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 34px; align-items: center; margin-top: 4px; }
+.agd-lista { display: grid; gap: 10px; }
+.agd-b { -webkit-appearance: none; appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid;
+  grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; align-items: center; position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #15181D 0%, #121519 100%); border: 1px solid #242A31; border-radius: 14px; padding: 12px 14px;
+  transition: border-color .2s, background .2s; }
+.agd-b:hover { border-color: #313842; }
+.agd-b:focus-visible { outline: 2px solid #3FE07D; outline-offset: 2px; }
+.agd-b[aria-pressed="true"] { border-color: rgba(63,224,125,.6); background: linear-gradient(180deg, #16211b 0%, #121914 100%); }
+.agd-b-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 17px; color: #3FE07D;
+  background: rgba(63,224,125,.08); border: 1px solid rgba(63,224,125,.25); grid-row: span 2; }
+.agd-b-n { font-size: 15.5px; font-weight: 800; line-height: 1.3; color: #FFFFFF; }
+.agd-b-d { font-size: 13px; color: #9AA4B2; line-height: 1.45; margin-top: 2px; text-wrap: pretty; }
+/* Bara de jos a butonului ales: cât mai stă agentul pe ecran până trece la următorul. */
+.agd-bara { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: #3FE07D; }
+.agd-b[aria-pressed="true"] .agd-bara { animation: agd-bara var(--agd-dur, 8.5s) linear forwards; }
+.agd.agd-pauza .agd-b[aria-pressed="true"] .agd-bara { animation-play-state: paused; }
+@keyframes agd-bara { to { width: 100%; } }
+.agd-tel-col { display: grid; justify-items: center; gap: 10px; }
+.agd-tel-loc:empty { display: none; }
+
+/* Ecranul telefonului = pagina agentului din aplicație (agpOpen), pe tema închisă. */
+.agd-tel .ri-bt { text-align: left; }
+.agd-corp { flex: 1; min-height: 0; overflow: hidden; padding: 9px 11px 4px; display: flex; flex-direction: column; gap: 6px; transition: opacity .25s; position: relative; }
+.agd-corp.agd-stins { opacity: 0; }
+.agd-corp::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(transparent, #0E1217); pointer-events: none; }
+.agd-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: #C2CAD6;
+  background: #15181D; border: 1px solid #242A31; border-radius: 8px; padding: 3px 8px; }
+.agd-head { display: flex; align-items: center; gap: 10px; }
+.agd-head .agd-b-ic { width: 36px; height: 36px; font-size: 15px; border-radius: 12px; background: rgba(63,224,125,.13); border: 0; grid-row: auto; }
+.agd-head b { display: block; font-size: 15px; line-height: 1.2; font-weight: 800; }
+.agd-head small { display: block; font-size: 11px; color: #8A93A3; }
+.agd-activ { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #3FE07D;
+  background: rgba(63,224,125,.12); border: 1px solid rgba(63,224,125,.3); border-radius: 999px; padding: 3px 8px; }
+.agd-desc { font-size: 11px; color: #C2CAD6; background: #15181D; border: 1px solid #242A31; border-radius: 10px; padding: 6px 9px; line-height: 1.4; }
+.agd-act { display: flex; gap: 7px; }
+.agd-act span { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; border-radius: 8px; padding: 4px 8px;
+  border: 1px solid #242A31; color: #C2CAD6; background: #15181D; }
+.agd-act span.agd-p { background: #3FE07D; color: #06210F; border-color: #3FE07D; }
+.agd-fh { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; font-weight: 800; letter-spacing: .09em;
+  text-transform: uppercase; color: #8A93A3; margin-top: 2px; }
+.agd-fh span { text-transform: none; letter-spacing: 0; font-weight: 700; color: #C2CAD6; display: inline-flex; align-items: center; gap: 5px; }
+.agd-fh span i { color: #3FE07D; }
+.agd-feed { display: flex; flex-direction: column; gap: 7px; min-height: 0; }
+.agd-fi { display: flex; gap: 8px; background: #15181D; border: 1px solid #242A31; border-radius: 11px; padding: 6px 9px; transition: opacity .35s, transform .35s; }
+.agd-fd { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex: none; background: #3FE07D; }
+.agd-fi.agd-c .agd-fd { background: #ef4444; }
+.agd-fi.agd-w .agd-fd { background: #f97316; }
+.agd-fi.agd-scan .agd-fd { background: #8A93A3; }
+.agd-fi-b { min-width: 0; flex: 1; }
+.agd-ti { font-weight: 700; font-size: 12px; line-height: 1.35; color: #FFFFFF; text-wrap: pretty; }
+.agd-ti i { margin-right: 4px; color: #8A93A3; }
+.agd-bo { font-size: 11px; color: #C2CAD6; margin-top: 2px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.agd-tm { font-size: 10px; color: #8A93A3; margin-top: 2px; }
+.agd-ascuns { opacity: 0; transform: translateY(8px); }
+/* RA Client: cartonașul zilei (_agpClientCard din aplicație). */
+.agd-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.agd-tile { background: #0B0E11; border: 1px solid #242A31; border-radius: 10px; padding: 4px 9px; }
+.agd-tile b { display: block; font-size: 14.5px; font-weight: 800; line-height: 1.2; }
+.agd-tile b small { font-size: 11px; font-weight: 600; color: #8A93A3; }
+.agd-tile span { display: block; font-size: 9.5px; color: #8A93A3; font-weight: 600; }
+.agd-tile.agd-or b { color: #f97316; }
+.agd-tile.agd-ok b { color: #3FE07D; }
+.agd-lin { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #C2CAD6; margin-top: 6px; }
+.agd-lin i { width: 14px; color: #8A93A3; }
+.agd-lin i.fa-trophy { color: #3FE07D; }
+.agd-lin b { color: #FFFFFF; }
+.agd-dv { border-top: 1px solid #242A31; padding-top: 6px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.agd-dv > div { font-size: 9.5px; font-weight: 800; letter-spacing: .4px; color: #8A93A3; }
+.agd-dv button { -webkit-appearance: none; appearance: none; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: #0B0E11; border: 1px solid #242A31; border-radius: 8px; padding: 3px 8px; color: #FFFFFF; font-size: 10.5px; line-height: 1.35; }
+.agd-dv button:focus-visible { outline: 2px solid #3FE07D; outline-offset: 1px; }
+.agd-dv button .agd-fd { margin-top: 0; width: 7px; height: 7px; background: #f97316; }
+.agd-dv-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agd-dv button em { font-style: normal; color: #8A93A3; }
+.agd-dv button i { color: #8A93A3; font-size: 10px; }
+.agd-f { flex: none; display: flex; align-items: flex-start; gap: 6px; font-size: 10px; line-height: 1.35; color: #8A93A3; padding: 6px 14px 3px; border-top: 1px solid #1d232b; }
+.agd-f i { margin-top: 2px; }
+.agd-f span { min-width: 0; }
+.agd-f b { color: #C2CAD6; }
+
+@media (max-width: 1000px) {
+  .agd { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .agd-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .agd-b-d { display: none; }
+}
+@media (max-width: 620px) {
+  .agd-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .agd-b { padding: 10px 11px; column-gap: 10px; }
+  .agd-b-ic { width: 34px; height: 34px; font-size: 14px; border-radius: 10px; }
+  .agd-b-n { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agd-corp, .agd-fi { transition: none; }
+  .agd-b[aria-pressed="true"] .agd-bara { animation: none; width: 0; }
+}

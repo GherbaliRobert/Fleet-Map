@@ -300,7 +300,7 @@ function AgentiVeghe({ nrVehicule, poateDeschide, onDeschide }: { nrVehicule: nu
       {activi.length > 0
         ? (
           <div class="sf-veghe">
-            <div class="cap">Ce urmăresc, non-stop pe {nrVehicule} {nrVehicule === 1 ? 'vehicul' : 'vehicule'}</div>
+            <div class="cap">Ce urmăresc pe {nrDe(nrVehicule, 'vehicul', 'vehicule')}</div>
             {activi.map((a) => <div class="r"><b>{a.name}</b>{a.desc ? ' — ' + a.desc : ''}</div>)}
           </div>
         )

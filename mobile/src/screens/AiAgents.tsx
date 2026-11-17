@@ -3,6 +3,7 @@ import { useLocation } from 'preact-iso';
 import { Api, type AgentFinding } from '../api/endpoints';
 import { Icon, type IconName } from '../components/Icon';
 import { me, showToast } from '../app/store';
+import { nrDe, nrRo } from '../lib/numar'; // „1 critică", „25 de vehicule" — acordul cu numărul, ca pe web
 import { PRAGURI } from './Settings'; // aceeași listă de praguri ca în Setări (AGP_THRESH de pe web) — nu a doua copie
 import './reports.css';
 import './admin.css'; // .fld (foaia „Praguri")
@@ -19,7 +20,7 @@ const FEED_HEAD: Record<string, string> = { dispatch: 'Disponibile acum', care: 
 // Explicația lungă de pe pagina agentului — aceleași texte ca pe web (AGP_TUT[k].face în public/index.html).
 // Serverul trimite doar descrierea scurtă (folosită pe card); dacă lipsește o cheie, rămâne descrierea scurtă.
 const TUT_FACE: Record<string, string> = {
-  watch: 'Veghează non-stop și te anunță la: vehicul offline (fără semnal), posibil furt de combustibil, scădere bruscă de combustibil, ralanti prelungit și tahograf neconfigurat pe camioane.',
+  watch: 'Verifică flota din oră în oră și te anunță la: vehicul offline (fără semnal), posibil furt de combustibil, scădere bruscă de combustibil, ralanti prelungit și tahograf neconfigurat pe camioane.',
   dispatch: 'Îți arată ce vehicule sunt libere ACUM (online și oprite) și, după-amiaza, care au rulat foarte puțin (subutilizate).',
   care: 'Urmărește ITP, RCA/asigurare, reviziile și intervalul de service (pe dată sau pe km din bord) și te avertizează înainte de scadență.',
   optimize: 'Dă un scor eco /100 per vehicul (penalizează accelerările/frânările bruște, virajele dure, depășirile și ralanti-ul) și estimează risipa de combustibil la ralanti, în lei.',
@@ -84,14 +85,14 @@ function okMsg(k: string, st: LiveState): { t: string; b: string } {
   if (k === 'optimize') {
     const ev = num(st.evaluated);
     if (ev === 0) return { t: 'Încă n-avem date de rulaj azi', b: 'Flota n-a rulat suficient azi ca să evaluăm consumul / scorul eco. Revino după ce vehiculele rulează.' };
-    if (ev != null && ev > 0) return { t: ev === 1 ? 'Vehiculul evaluat a condus eco azi' : `Toate cele ${ev} vehicule au condus eco azi`, b: 'Niciun vehicul sub pragul de scor eco și fără risipă notabilă la ralanti. Bravo flotei.' };
+    if (ev != null && ev > 0) return { t: ev === 1 ? 'Vehiculul evaluat a condus eco azi' : `Toate cele ${nrDe(ev, 'vehicul', 'vehicule')} au condus eco azi`, b: 'Niciun vehicul sub pragul de scor eco și fără risipă notabilă la ralanti. Bravo flotei.' };
     return { t: 'Conducere eco — totul e în regulă', b: 'Niciun vehicul sub pragul de scor eco azi.' };
   }
   if (k === 'compliance') {
     // RA Compliance se aplică DOAR vehiculelor cu tahograf (>3,5 t). Turismele nu intră sub Reg. 561.
     const mon = num(st.monitored), skp = num(st.skipped) || 0;
-    if (mon === 0) return { t: 'Niciun vehicul cu tahograf în flotă', b: 'Agentul se aplică doar vehiculelor de peste 3,5 t (camioane, autocare) — turismele nu intră sub Reg. CE 561/2006' + (skp ? ` (${skp} ${skp === 1 ? 'vehicul ignorat' : 'vehicule ignorate'}).` : '.') };
-    if (mon != null && mon > 0) return { t: mon === 1 ? 'Vehiculul cu tahograf e în limite' : `Toate cele ${mon} vehicule cu tahograf sunt în limite`, b: 'Nicio depășire de conducere continuă (4h30) sau zilnică (9h) azi' + (skp ? ` · ${skp} ${skp === 1 ? 'turism ignorat' : 'turisme ignorate'} (nu intră sub Reg. 561).` : '.') };
+    if (mon === 0) return { t: 'Niciun vehicul cu tahograf în flotă', b: 'Agentul se aplică doar vehiculelor de peste 3,5 t (camioane, autocare) — turismele nu intră sub Reg. CE 561/2006' + (skp ? ` (${nrDe(skp, 'vehicul ignorat', 'vehicule ignorate')}).` : '.') };
+    if (mon != null && mon > 0) return { t: mon === 1 ? 'Vehiculul cu tahograf e în limite' : `Toate cele ${nrDe(mon, 'vehicul', 'vehicule')} cu tahograf sunt în limite`, b: 'Nicio depășire de conducere continuă (4h30) sau zilnică (9h) azi' + (skp ? ` · ${nrDe(skp, 'turism ignorat', 'turisme ignorate')} (nu intră sub Reg. 561).` : '.') };
     return { t: 'Ore de condus — în limite', b: 'Nicio depășire azi la vehiculele cu tahograf.' };
   }
   return { t: 'Totul e în regulă', b: 'Agentul n-a găsit nimic de semnalat acum.' };
@@ -228,7 +229,7 @@ export function AiAgents() {
       const r = await Api.runAgents(k, undefined, co);
       if (alta()) {
         const n = r.stored || 0;
-        showToast(numeFirmaSauToate(co) + ': ' + (faraPlan(r.message) || (n ? `${n} ${n === 1 ? 'semnalare nouă' : 'semnalări noi'}` : 'verificare terminată · nicio semnalare nouă')));
+        showToast(numeFirmaSauToate(co) + ': ' + (faraPlan(r.message) || (n ? nrDe(n, 'semnalare nouă', 'semnalări noi') : 'verificare terminată · nicio semnalare nouă')));
         return;
       }
       const now = Date.now();
@@ -236,7 +237,7 @@ export function AiAgents() {
       if (k === 'all') setSummary(r.aiSummary || null);
       // „stored" = constatări NOI salvate; agenții live nu se salvează → numărul corespunde listei de mai jos.
       const n = r.stored || 0;
-      showToast(faraPlan(r.message) || (n ? `${n} ${n === 1 ? 'semnalare nouă' : 'semnalări noi'}` : 'Verificare terminată · nicio semnalare nouă'));
+      showToast(faraPlan(r.message) || (n ? nrDe(n, 'semnalare nouă', 'semnalări noi') : 'Verificare terminată · nicio semnalare nouă'));
       if (k === 'all') refreshLive(agents.map((a) => a.key));
       await loadFindings();
     } catch (e: any) {
@@ -364,7 +365,7 @@ export function AiAgents() {
     if (last) {
       const c = sevCol(last.severity);
       // RA Care: pe card doar TOTALUL scadențelor — detaliile la „Deschide agentul".
-      if (k === 'care') { const n = fs.length || 1; return line(c, <>Ai <b>{n}</b> {n === 1 ? 'scadență' : 'scadențe'} de urmărit</>); }
+      if (k === 'care') { const n = fs.length || 1; return line(c, <>Ai <b>{n}</b> {nrDe(n, 'scadență', 'scadențe').replace(/^-?[\d.]+ /, '')} de urmărit</>); }
       // RA Optimize: câte vehicule au scor slab (fără notificarea de ralanti pe flotă).
       const eco = fs.filter((f) => String(f.fkey || '').indexOf('opt_eco') === 0).length;
       if (k === 'optimize' && eco > 0) return line(c, <><b>{eco}</b> cu scor slab</>);
@@ -396,7 +397,7 @@ export function AiAgents() {
     const n = fs.length, sev = (fs[0] && fs[0].severity) || 'info', c = sevCol(sev);
     // RA Client e o SINTEZĂ (are mereu o constatare) — „1 semnalare" ar fi înșelător.
     if (k === 'client') return n && sev !== 'info' ? pill(c, 'de verificat') : pill('var(--accent)', <><Icon name="report" size={11} /> sinteză</>);
-    return n ? pill(c, `${n} ${n === 1 ? 'semnalare' : 'semnalări'}`) : pill('var(--accent)', <><Icon name="check" size={11} /> ok</>);
+    return n ? pill(c, nrDe(n, 'semnalare', 'semnalări')) : pill('var(--accent)', <><Icon name="check" size={11} /> ok</>);
   }
 
   const tile = (k: string, size = 38) => (
@@ -468,15 +469,15 @@ export function AiAgents() {
     return (
       <div style={PANEL}>
         <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px">
-          {big(<>{s.totalKm} <span style="font-size:12px;font-weight:600;color:var(--text-muted)">km</span></>, 'Parcurși azi')}
+          {big(<>{nrRo(s.totalKm)} <span style="font-size:12px;font-weight:600;color:var(--text-muted)">km</span></>, 'Parcurși azi')}
           {big(<>{s.active}<span style="font-size:13px;font-weight:600;color:var(--text-muted)">/{s.fleetSize}</span></>, 'Vehicule active')}
           {big(s.unused, 'Nefolosite azi', s.unused > 0 ? 'var(--orange)' : undefined)}
           {big(pct == null ? '—' : (pct >= 0 ? '+' : '') + pct + '%', 'Față de ieri', pct == null ? undefined : pct >= 0 ? 'var(--accent)' : 'var(--orange)')}
         </div>
         {(s.top || s.ydKm != null) ? (
           <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">
-            {s.top ? <div>{ic('truck', 'var(--accent)')} Cel mai activ: <b>{s.top.name}</b> — {s.top.km} km</div> : null}
-            {s.ydKm != null ? <div>{ic('clock', 'var(--text-muted)')} Ieri, până la aceeași oră: <b>{s.ydKm} km</b></div> : null}
+            {s.top ? <div>{ic('truck', 'var(--accent)')} Cel mai activ: <b>{s.top.name}</b> — {nrRo(s.top.km)} km</div> : null}
+            {s.ydKm != null ? <div>{ic('clock', 'var(--text-muted)')} Ieri, până la aceeași oră: <b>{nrRo(s.ydKm)} km</b></div> : null}
           </div>
         ) : null}
         {issues.length ? (
@@ -584,6 +585,8 @@ export function AiAgents() {
     );
   }
 
+  // Cuvântul de după cifra îngroșată: „1 critică", „3 critice", „25 de critice" (cifra o scrie jetonul, separat).
+  const cuvantul = (n: number, unu: string, multe: string) => nrDe(n, unu, multe).replace(/^-?[\d.]+ /, '');
   const chip = (body: any, c?: string) => (
     <span style="font-size:12px;padding:4px 10px;border-radius:999px;background:var(--bg-panel);border:1px solid var(--border);display:inline-flex;align-items:center;gap:5px">
       {c ? <span style={`width:7px;height:7px;border-radius:50%;background:${c}`} /> : null}{body}
@@ -609,10 +612,10 @@ export function AiAgents() {
         )}
         {agents.length ? (
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-            {chip(<><b>{recent.length}</b> constatări noi</>)}
-            {cCrit ? chip(<><b>{cCrit}</b> critice</>, 'var(--red)') : null}
-            {cWarn ? chip(<><b>{cWarn}</b> avertismente</>, 'var(--orange)') : null}
-            {cInfo ? chip(<><b>{cInfo}</b> informative</>, 'var(--accent)') : null}
+            {chip(<><b>{recent.length}</b> {cuvantul(recent.length, 'constatare nouă', 'constatări noi')}</>)}
+            {cCrit ? chip(<><b>{cCrit}</b> {cuvantul(cCrit, 'critică', 'critice')}</>, 'var(--red)') : null}
+            {cWarn ? chip(<><b>{cWarn}</b> {cuvantul(cWarn, 'avertisment', 'avertismente')}</>, 'var(--orange)') : null}
+            {cInfo ? chip(<><b>{cInfo}</b> {cuvantul(cInfo, 'informativă', 'informative')}</>, 'var(--accent)') : null}
           </div>
         ) : null}
         <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px">

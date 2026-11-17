@@ -31,6 +31,14 @@ function nrRo(x, zecimale) {
   const intreg = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return (v < 0 && Number(s) !== 0 ? '-' : '') + intreg + (p[1] ? ',' + p[1] : '');
 }
+// Un număr lângă cuvântul lui, pe românește (17.11, Alin: „rezolvă" — „expiră în 25 zile", „1 critice"): singularul la 1,
+// „de" de la 20 în sus, afară de cele care se termină în 01–19 („101 zile", „25 de zile", „1.000 de zile"); cifra cu nrRo.
+function cate(n, unu, multe) {
+  const x = Math.abs(Math.round(Number(n) || 0));
+  if (x === 1) return '1 ' + unu;
+  const r = x % 100;
+  return nrRo(x) + ((x < 20 || (r >= 1 && r <= 19)) ? ' ' : ' de ') + multe;
+}
 function hmH(hours) {
   const s = Math.max(0, Math.round((hours || 0) * 3600));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
@@ -109,7 +117,7 @@ function _hasAnyTachoSignal(p) {
   return false;
 }
 
-// ─── RA Watch — monitorizare 24/7 (anomalii operaționale) ───
+// ─── RA Watch — monitorizare din oră în oră (anomalii operaționale) ───
 // RA Watch — alerte de monitorizare:
 //  (1) Offline > OFFLINE_MIN (implicit 60 min, max 24h)
 //  (2) Scădere combustibil > prag (implicit FUEL_DROP_L = 15L)
@@ -323,7 +331,7 @@ async function raCare(ctx) {
       if (m.due_date) {
         const days = Math.ceil((new Date(m.due_date).getTime() - now) / DAY);
         if (days <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_due_' + m.id, title: name + ': ' + tlabel + ' scadent', body: (m.description ? m.description + '. ' : '') + 'Termen depășit (' + roDate(m.due_date) + ').' });
-        else if (days <= daysLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_due_' + m.id, title: name + ': ' + tlabel + ' expiră în ' + days + (days === 1 ? ' zi' : ' zile'), body: (m.description ? m.description + '. ' : '') + 'Scadent la ' + roDate(m.due_date) + '.' });
+        else if (days <= daysLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_due_' + m.id, title: name + ': ' + tlabel + ' expiră în ' + cate(days, 'zi', 'zile'), body: (m.description ? m.description + '. ' : '') + 'Scadent la ' + roDate(m.due_date) + '.' });
       }
       if (m.due_km) {
         hasKmDue = true;
@@ -342,8 +350,8 @@ async function raCare(ctx) {
       if (!d.expiry_date) continue;
       const days = Math.ceil((new Date(d.expiry_date).getTime() - now) / DAY);
       const dl = String(d.doc_type || 'Document').toUpperCase();
-      if (days <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' EXPIRAT' + (days < 0 ? ' de ' + (-days) + ' zile' : ''), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' a expirat la ' + roDate(d.expiry_date) + '. Reînnoiește urgent.' });
-      else if (days <= docDaysLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' expiră în ' + days + (days === 1 ? ' zi' : ' zile'), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' expiră la ' + roDate(d.expiry_date) + '.' });
+      if (days <= 0) findings.push({ imei, severity: 'critical', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' EXPIRAT' + (days < 0 ? ' de ' + cate(-days, 'zi', 'zile') : ''), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' a expirat la ' + roDate(d.expiry_date) + '. Reînnoiește urgent.' });
+      else if (days <= docDaysLead) findings.push({ imei, severity: 'warning', agent: 'care', fkey: 'care_doc_' + d.id, title: name + ': ' + dl + ' expiră în ' + cate(days, 'zi', 'zile'), body: dl + (d.number ? ' (' + d.number + ')' : '') + ' expiră la ' + roDate(d.expiry_date) + '.' });
     }
   }
   return { findings };
@@ -384,10 +392,10 @@ async function raOptimize(ctx) {
     if (score < ecoScoreMin) {
       // Ce a tras scorul jos (aceleași formule ca la penalizare) + sugestie CONCRETĂ per problemă, nu doar „instruire".
       const comps = [
-        { pen: Math.min(35, brake * per100 * 3.0), label: brake + (brake === 1 ? ' frânare bruscă' : ' frânări bruște'), tip: 'anticipează traficul și frânează lin, din timp — ține distanță față de mașina din față' },
-        { pen: Math.min(30, accel * per100 * 2.5), label: accel + (accel === 1 ? ' accelerare bruscă' : ' accelerări bruște'), tip: 'demarează lin, fără apăsări bruște pe accelerație' },
+        { pen: Math.min(35, brake * per100 * 3.0), label: cate(brake, 'frânare bruscă', 'frânări bruște'), tip: 'anticipează traficul și frânează lin, din timp — ține distanță față de mașina din față' },
+        { pen: Math.min(30, accel * per100 * 2.5), label: cate(accel, 'accelerare bruscă', 'accelerări bruște'), tip: 'demarează lin, fără apăsări bruște pe accelerație' },
         { pen: Math.min(25, speedShare * 100), label: 'depășiri de viteză', tip: 'respectă limitele de viteză (viteza mare crește consumul)' },
-        { pen: Math.min(20, hardTurn * per100 * 2.0), label: hardTurn + (hardTurn === 1 ? ' viraj dur' : ' viraje dure'), tip: 'redu viteza înainte de curbe și ia-le mai lin' },
+        { pen: Math.min(20, hardTurn * per100 * 2.0), label: cate(hardTurn, 'viraj dur', 'viraje dure'), tip: 'redu viteza înainte de curbe și ia-le mai lin' },
         { pen: Math.min(15, idleShare * 40), label: 'timp mult la ralanti', tip: 'oprește motorul la staționările lungi (peste ~1–2 min)' }
       ].filter(c => c.pen >= 3).sort((a, b) => b.pen - a.pen); // doar contribuitorii reali, cei mai mari primii
       const issues = comps.slice(0, 3).map(c => c.label).join(', ');
@@ -493,14 +501,14 @@ async function raClient(ctx) {
   const hasCrit = peers.some(function (f) { return f.severity === 'critical'; });
   const issues = [];
   const nWatch = nOf('watch'), nCare = nOf('care'), nOpt = nOf('optimize', 'opt_eco'), nComp = nOf('compliance');
-  if (nWatch) issues.push({ key: 'watch', agent: 'RA Watch', text: nWatch + (nWatch === 1 ? ' alertă de monitorizare' : ' alerte de monitorizare') });
-  if (nCare) issues.push({ key: 'care', agent: 'RA Care', text: nCare + (nCare === 1 ? ' scadență' : ' scadențe') });
-  if (nOpt) issues.push({ key: 'optimize', agent: 'RA Optimize', text: nOpt + (nOpt === 1 ? ' vehicul cu scor slab' : ' vehicule cu scor slab') });
-  if (nComp) issues.push({ key: 'compliance', agent: 'RA Compliance', text: nComp + (nComp === 1 ? ' semnalare la orele de condus' : ' semnalări la orele de condus') });
+  if (nWatch) issues.push({ key: 'watch', agent: 'RA Watch', text: cate(nWatch, 'alertă de monitorizare', 'alerte de monitorizare') });
+  if (nCare) issues.push({ key: 'care', agent: 'RA Care', text: cate(nCare, 'scadență', 'scadențe') });
+  if (nOpt) issues.push({ key: 'optimize', agent: 'RA Optimize', text: cate(nOpt, 'vehicul cu scor slab', 'vehicule cu scor slab') });
+  if (nComp) issues.push({ key: 'compliance', agent: 'RA Compliance', text: cate(nComp, 'semnalare la orele de condus', 'semnalări la orele de condus') });
   const bits = issues.map(function (b) { return b.text + ' (' + b.agent + ')'; });
 
   const title = 'Azi: ' + nrRo(totalKm) + ' km · ' + active + '/' + fleetSize + ' active' + cmp;
-  const body = 'Flotă: ' + fleetSize + (fleetSize === 1 ? ' vehicul' : ' vehicule') + ' · active azi: ' + active + (unused ? ' · nefolosite azi: ' + unused : '')
+  const body = 'Flotă: ' + cate(fleetSize, 'vehicul', 'vehicule') + ' · active azi: ' + active + (unused ? ' · nefolosite azi: ' + unused : '')
     + (topKm > 0 ? ' · cel mai activ: ' + topName + ' (' + nrRo(topKm) + ' km)' : '')
     + (ydKm != null ? ' · ieri, până la aceeași oră: ' + nrRo(ydKm) + ' km' : '') + '. '
     + (bits.length ? 'De verificat: ' + bits.join(' · ') + '.' : 'Ceilalți agenți n-au semnalat nimic — zi curată.');
@@ -532,8 +540,7 @@ async function raDispatch(ctx) {
   if (available.length) {
     const n = available.length;
     const names = available.slice(0, 8).map(a => a.name).join(', ') + (n > 8 ? ' …' : '');
-    const noun = n === 1 ? 'vehicul disponibil' : 'vehicule disponibile'; // acord gramatical corect (1 vehicul / N vehicule)
-    findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: n + ' ' + noun + ' acum pentru curse', body: 'Online și staționate: ' + names + '.' });
+    findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: cate(n, 'vehicul disponibil', 'vehicule disponibile') + ' acum pentru curse', body: 'Online și staționate: ' + names + '.' });
   }
   // Subutilizate (după-amiaza, pe ora României): disponibile dar fără rulaj azi → candidate pentru o cursă nouă
   if ((ctx.oraRO != null ? ctx.oraRO : insight.oraRO(now)) >= IDLE_HOUR) {
@@ -550,7 +557,7 @@ async function raDispatch(ctx) {
 // SURSĂ UNICĂ pentru numele și descrierea agenților: de aici pleacă spre /api/agents → web ȘI APK.
 // Textele sunt cele afișate clientului; nu ține liste paralele în interfețe (așa apăruseră descrieri vechi).
 const AGENTS = {
-  watch: { name: 'RA Watch', role: 'Paznic 24/7', desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.', run: raWatch },
+  watch: { name: 'RA Watch', role: 'Supraveghere', desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.', run: raWatch },
   dispatch: { name: 'RA Dispatch', role: 'Dispecerat', desc: 'Vehicule disponibile acum și cele subutilizate în ziua curentă.', run: raDispatch },
   care: { name: 'RA Care', role: 'Mentenanță', desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.', run: raCare },
   optimize: { name: 'RA Optimize', role: 'Eco-driving', desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', run: raOptimize },
@@ -599,4 +606,4 @@ async function runAll(base, allowedKeys) {
   return { findings: all, meta };
 }
 
-module.exports = { AGENTS, runAgent, runAll, esteFaraSemnal, esteLiber, OFFLINE_MIN, nrRo };
+module.exports = { AGENTS, runAgent, runAll, esteFaraSemnal, esteLiber, OFFLINE_MIN, nrRo, cate };

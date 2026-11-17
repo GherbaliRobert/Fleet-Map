@@ -611,6 +611,49 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-17
 
+### AMÂNDOI · Prima pagină: cei 6 agenți AI, într-un telefon (varianta B, de testat)
+*Alin, 17.11, la cele trei machete animate: „hai să facem varianta B să o testez să văd cum se vede".*
+
+**Ce am schimbat:** în capitolul „Inteligență artificială", partea 2, în locul celor șase cartonașe cu text stau:
+- în stânga, **șase butoane** (RA Watch, RA Care, RA Optimize, RA Compliance, RA Client, RA Dispatch), fiecare cu textul lui de pe site;
+- în dreapta, **un telefon cu pagina agentului din aplicație**: „Toți agenții", numele și rolul, „Rulează", apoi „Se verifică flota…" și ce a
+  găsit agentul, rând cu rând (roșu, portocaliu, verde). Trece singur la agentul următor la ~8 secunde; un clic pe un buton alege agentul;
+  cu mouse-ul pe el se oprește. La RA Client se vede cartonașul zilei (1.240 km, 7/8 active, +12% față de ieri) și „De verificat"; un clic
+  acolo deschide agentul respectiv, ca în aplicație.
+- **Ce scrie în telefon e ce scrie aplicația:** textele nu sunt scrise de mână — sunt ce scriu agenții adevărați pe o flotă de probă de 8 mașini
+  (B 204 RAT, B 77 TIR, B 18 VAN, B 31 LOG, B 90 CTR…), la 14:30. O probă îi rulează și compară rând cu rând; dacă se schimbă un text la
+  agenți, proba pică până se schimbă și telefonul. Datele (ITP-ul care expiră peste 12 zile) se socotesc față de azi.
+- Pe telefon (ecran îngust) butoanele devin două coloane, doar cu numele, iar telefonul stă dedesubt. „Mai puțină mișcare" = fără schimbări singure.
+- Iconițele de la „Azi la tine" (puntea de deasupra) sunt acum cele din aplicație, ca ale butoanelor.
+
+**Ce vede fondatorul:** prima pagină de mai sus, de testat.
+
+**Ce vede clientul:** la fel, pe ratrack.ro.
+
+Reper: `public/js/agenti-demo.js` + `public/css/agenti-demo.css` (rama telefonului = a telefonului RA Insight), `agenti_demo_flota.js` (flota de
+probă), butoanele în `public/landing.html`, amprenta lui „/"; proba: `verify_agenti_demo.js` (în `npm test`), plus `verify_ra_insight_demo.js`,
+`verify_site_public.js`.
+
+### AMÂNDOI · Pagina agenților: „în 25 de zile", „1 critică", RA Watch fără „24/7"; „1.240 km" și în cartonașul RA Client
+*Găsite pe 17.11 la machetele agenților; Alin: „DAA, rezolvă".*
+
+**Ce am schimbat:**
+- **„de" și singularul lângă cifre**, peste tot la agenți: „ITP expiră în 25 de zile" (era „25 zile"), „RCA expiră în 1 zi", „CASCO EXPIRAT de
+  25 de zile", „Flotă: 25 de vehicule", „20 de frânări bruște", „25 de vehicule disponibile acum". Pe pagina agenților, jetoanele de sus:
+  „1 constatare nouă", „1 critică", „1 avertisment", „1 informativă" (scria „1 critice", „1 avertismente"); la fel „20 de semnalări", „Ai 25 de
+  scadențe", „Toate cele 25 de vehicule…" și, la un singur vehicul, „Vehiculul evaluat a condus eco azi" (scria „Toate cele 1 au condus").
+- **RA Watch nu mai e „Paznic 24/7"**, ci „Supraveghere": verifică flota din oră în oră, nu non-stop. Și explicația de pe pagina lui începe
+  „Verifică flota din oră în oră și te anunță la…" (scria „Veghează non-stop"). Același lucru pe „Acasă", la „Ce urmăresc pe 25 de vehicule"
+  (scria „Ce urmăresc, non-stop pe 25 vehicule"), pe calculator și pe telefon.
+- **„1.240 km" și în cartonașul RA Client** (pătrățelul „Parcurși azi", „Cel mai activ", „Ieri, până la aceeași oră") — acolo scria încă „1240".
+
+**Ce vede fondatorul:** pagina „Agenți AI" și „Acasă", cu textele de mai sus.
+
+**Ce vede clientul:** la fel; pe telefon, la APK-ul următor (Robert).
+
+Reper: `agents.js` (`cate`), `public/index.html` (pagina agenților, „Acasă"), `mobile/src/screens/AiAgents.tsx`, `Stats.tsx`, `lib/numar.ts`
+(`nrRo`); probe: `test_agents.js`, `verify_statistici_flota.js`.
+
 ### AMÂNDOI · Prima pagină: la pachete, telefoanele animate; suportul, pe două rânduri
 *Alin, 17.11: „vreau ce am făcut mock-up-urile din compară pachetele să apară pe home în secțiunea pachete la Insight… și compararea scriptică
 să fie când dai pe butonul Compară pachetele" → „2. da"; la suport: „Știi mereu unde e cererea ta…" + „Ne anunți din aplicație sau direct pe

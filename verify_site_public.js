@@ -250,7 +250,7 @@ const LEGATE = [
   // [pagina, textul exact de pe pagină, e încă adevărat în cod?, unde se uită, (rândul din DE_HOTARAT care îl ține adormit)]
   ['/', '— 16 tipuri, cu pragurile tale', nAlerte === 16, 'ALERT_TYPES din public/index.html are ' + nAlerte + ' tipuri', 'primaPagina'],
   ['/', 'RA Watch verifică flota în fiecare oră', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră', 'primaPagina'],
-  ['/', '<span class="dot"></span> La fiecare oră</span>', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră', 'primaPagina'],
+  ['/', '<span class="agd-b-n">RA Watch</span><span class="agd-b-d">Verifică flota în fiecare oră:', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră', 'primaPagina'],
   ['/intrebari-frecvente', 'Istoricul pozițiilor se păstrează <b>12 luni</b>', C.LUNI_ISTORIC_INCLUSE === 12, 'LUNI_ISTORIC_INCLUSE din contracts.js e ' + C.LUNI_ISTORIC_INCLUSE, 'faqPastrare'],
   ['/intrebari-frecvente', 'aveți <b>30 de zile</b> să ne cereți datele', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE, 'faqPastrare'],
   // Termeni (11.11, Alin: „2. Da"): aceeași cifră ca în contract și în Confidențialitate, nu „un termen rezonabil".

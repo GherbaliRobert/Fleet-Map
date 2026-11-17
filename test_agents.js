@@ -97,6 +97,32 @@ function has(r, prefix) { return (r.findings || []).some(f => f.fkey && f.fkey.s
     ok(lipite.length === 0, 'textele agenților trec cifrele prin nrRo' + (lipite.length ? ': ' + lipite.join(' | ') : ''));
   }
 
+  console.log('\n— Un număr lângă cuvântul lui (17.11: „expiră în 25 zile", „1 critice") —');
+  {
+    const c = (n) => agents.cate(n, 'zi', 'zile');
+    ok(c(1) === '1 zi' && c(0) === '0 zile' && c(12) === '12 zile' && c(19) === '19 zile', 'cate: „1 zi", „12 zile", „19 zile", „0 zile"', [c(1), c(0), c(12), c(19)].join(' | '));
+    ok(c(20) === '20 de zile' && c(25) === '25 de zile' && c(100) === '100 de zile' && c(101) === '101 zile' && c(119) === '119 zile' && c(120) === '120 de zile',
+      'cate: „de" de la 20, fără „de" la 101–119', [c(20), c(25), c(100), c(101), c(119), c(120)].join(' | '));
+    ok(c(1000) === '1.000 de zile' && c(1012) === '1.012 zile', 'cate: cifra cu punctul miilor („1.000 de zile")', c(1000) + ' | ' + c(1012));
+    // RA Care pe acte: 25 de zile până la ITP, o zi până la RCA, CASCO expirat de 25 de zile
+    const zi = 86400000;
+    const docs = [{ imei: 'DOC1', doc_type: 'itp', expiry_date: new Date(NOW + 25 * zi - 3600000).toISOString(), id: 1 },
+      { imei: 'DOC1', doc_type: 'rca', expiry_date: new Date(NOW + zi - 3600000).toISOString(), id: 2 },
+      { imei: 'DOC1', doc_type: 'casco', expiry_date: new Date(NOW - 25 * zi).toISOString(), id: 3 }];
+    const live = new Map([['DOC1', { name: 'B 31 LOG', timestamp: new Date(NOW).toISOString(), io: {} }]]);
+    const r = await care({ imeis: ['DOC1'], livePositions: live, companyId: 1, db: { getVehicleDocuments: async () => docs, getDeviceHistory: async () => [], getDeviceFull: async () => ({ vehicle_type: 'Auto' }) } });
+    const t = (r.findings || []).map((f) => f.title);
+    ok(t.includes('B 31 LOG: ITP expiră în 25 de zile'), 'RA Care: „ITP expiră în 25 de zile"', t.join(' | '));
+    ok(t.includes('B 31 LOG: RCA expiră în 1 zi'), 'RA Care: „RCA expiră în 1 zi"', t.join(' | '));
+    ok(t.includes('B 31 LOG: CASCO EXPIRAT de 25 de zile'), 'RA Care: „CASCO EXPIRAT de 25 de zile"', t.join(' | '));
+    // Singularul și pluralul nu se mai scriu de mână lângă o cifră (n === 1 ? ' zi' : ' zile'): trec prin cate.
+    const SRC = require('fs').readFileSync(require('path').join(__dirname, 'agents.js'), 'utf8');
+    const deMana = SRC.match(/=== 1 \? ' [a-zăâîșț]+/g) || [];
+    ok(deMana.length === 0, 'singularul și „de" lângă cifre trec prin cate' + (deMana.length ? ': ' + deMana.join(' | ') : ''));
+    ok(!/24\/7|non-stop|Paznic/.test(SRC.replace(/\/\/[^\n]*/g, '')), 'RA Watch nu promite „24/7" / „non-stop" (verifică din oră în oră)');
+    ok(agents.AGENTS.watch.role === 'Supraveghere', 'rolul lui RA Watch: „Supraveghere"', agents.AGENTS.watch.role);
+  }
+
   Date.now = realNow;
   console.log('\nRESULT: ' + pass + ' pass / ' + fail + ' fail');
   process.exit(fail ? 1 : 0);
