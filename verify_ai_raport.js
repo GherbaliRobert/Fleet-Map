@@ -172,42 +172,42 @@ r = A.raspunde(U('costuri luna asta'), { valori: [
   { vehicul: ET(0), imei: DEV[0].imei, km: 800, litri: 56, pret: 7.5, cost: 420, estimat: false },
   { vehicul: ET(2), imei: DEV[2].imei, km: 1500, litri: 120, pret: 7.5, cost: 900, estimat: true }] }, X);
 T('costuri: „~1.320 de lei", cost pe km, litrii estimați spuși pe față', /a costat \*\*~1\.320 de lei\*\*/.test(r.text) && /estimați/.test(r.text) && r.tiles.some((t) => t.et === 'Cost pe km' && t.val === '0,57 lei'), r.text + ' ' + JSON.stringify(r.tiles));
-r = A.raspunde(U('ralanti azi'), { summary: { 'Evenimente ralanti': 0, 'Timp ralanti total': '0s', 'Combustibil irosit (L)': 0 } }, X);
-T('ralanti zero: o propoziție, nu „0s"', /nu a stat în ralanti/.test(r.text) && !/0s/.test(r.text), r.text);
-r = A.raspunde(U('ralanti saptamana asta'), { summary: { 'Evenimente ralanti': 9, 'Timp ralanti total': '3h 20m', 'Combustibil irosit (L)': 4.2 },
-  perVehicle: [{ vehicul: ET(0), summary: [['Evenimente ralanti', 0], ['Timp ralanti', '0s'], ['Combustibil irosit (L)', 0]] }, { vehicul: ET(2), summary: [['Evenimente ralanti', 9], ['Timp ralanti', '3h 20m'], ['Combustibil irosit (L)', 4.2]] }] }, X);
-T('ralanti: timpul, litrii arși și cât înseamnă în lei; tabelul fără mașinile cu zero', /3h 20m/.test(r.text) && /4,2 litri/.test(r.text) && r.sugestii.some((s) => /32 de lei pierduți \(la 7,5 lei litrul\)/.test(s.text)) && r.tabel.randuri.length === 1, r.text + ' ' + JSON.stringify(r.sugestii));
+r = A.raspunde(U('ralanti azi'), { summary: { 'Evenimente ralanti': 0, 'Timp ralanti total': '0 s', 'Combustibil irosit (L)': 0 } }, X);
+T('ralanti zero: o propoziție, nu „0 s"', /nu a stat în ralanti/.test(r.text) && !/0 s/.test(r.text), r.text);
+r = A.raspunde(U('ralanti saptamana asta'), { summary: { 'Evenimente ralanti': 9, 'Timp ralanti total': '3 h 20 min', 'Combustibil irosit (L)': 4.2 },
+  perVehicle: [{ vehicul: ET(0), summary: [['Evenimente ralanti', 0], ['Timp ralanti', '0 s'], ['Combustibil irosit (L)', 0]] }, { vehicul: ET(2), summary: [['Evenimente ralanti', 9], ['Timp ralanti', '3 h 20 min'], ['Combustibil irosit (L)', 4.2]] }] }, X);
+T('ralanti: timpul, litrii arși și cât înseamnă în lei; tabelul fără mașinile cu zero', /3 h 20 min/.test(r.text) && /4,2 litri/.test(r.text) && r.sugestii.some((s) => /32 de lei pierduți \(la 7,5 lei litrul\)/.test(s.text)) && r.tabel.randuri.length === 1, r.text + ' ' + JSON.stringify(r.sugestii));
 r = A.raspunde(U('depasiri de viteza in ultimele 7 zile'), { summary: { 'Depășiri': 7, 'Viteză maximă (km/h)': 132, 'Limită folosită': 90 },
   perVehicle: [{ vehicul: ET(0), summary: [['Depășiri', 6], ['Viteză max', 132]] }, { vehicul: ET(2), summary: [['Depășiri', 1], ['Viteză max', 95]] }] }, X);
 T('viteză: „7 depășiri", cea mai mare 132 km/h, limita folosită; mașina cu de două ori mai multe e numită', /\*\*7 depășiri\*\* de viteză/.test(r.text) && /132 km\/h/.test(r.text) && /limita folosită: 90/.test(r.text) && r.sugestii.some((s) => /B 154 UIP · Dacia Logan 3 are de două ori mai multe depășiri/.test(s.text)), r.text);
 r = A.raspunde(U('depasiri de viteza azi'), { summary: { 'Depășiri': 0, 'Viteză maximă (km/h)': 0, 'Limită folosită': 90 } }, X);
 T('viteză zero: „nicio depășire"', /nicio depășire de viteză/.test(r.text), r.text);
-r = A.raspunde(U('opriri ieri'), forma('rStops', [], { summary: { 'Opriri': 0, 'Timp staționat total': '0s' } }), X);
+r = A.raspunde(U('opriri ieri'), forma('rStops', [], { summary: { 'Opriri': 0, 'Timp staționat total': '0 s' } }), X);
 T('staționări zero: „Nicio staționare", nu un șir de zerouri', /^Nicio staționare/.test(r.text), r.text);
-const OPR = [[ET(0), '01.10.2026, 07:40:00', '01.10.2026, 08:05:00', '25m', 'Str. Lungă 5, Brașov'],
-  [ET(0), '01.10.2026, 10:30:00', '01.10.2026, 12:15:00', '1h 45m', 'Client X, Ploiești'],
-  [ET(0), '01.10.2026, 14:00:00', '01.10.2026, 17:10:00', '3h 10m', 'Depozit, Ploiești']];
-r = A.raspunde(U('unde a stat B 154 UIP ieri'), forma('rStops', OPR, { summary: { 'Opriri': 3, 'Timp staționat total': '5h 20m' } }), X);
-T('staționări pe o mașină: câte, cât în total, cea mai lungă cu locul și ora (pe o zi: doar ora)', /\*\*B 154 UIP · Dacia Logan 3\*\* a avut \*\*3 opriri\*\* — ieri, în total \*\*5h 20m\*\* pe loc\. Cea mai lungă: \*\*3h 10m\*\*, la Depozit, Ploiești \(de la 14:00\)\./.test(r.text), r.text);
-T('…cu fiecare oprire în tabel, în ordinea zilei, cu locul (nu șoferul)', r.tabel && r.tabel.randuri.length === 3 && r.tabel.randuri[0].join('|') === '07:40|08:05|25m|Str. Lungă 5, Brașov', JSON.stringify(r.tabel));
-const OPR2 = OPR.concat([[ET(2), '01.10.2026, 09:00:00', '01.10.2026, 09:20:00', '20m', 'Cluj']]);
-r = A.raspunde(U('staționări ieri pe flotă'), forma('rStops', OPR2, { summary: { 'Opriri': 4, 'Timp staționat total': '5h 40m' },
-  perVehicle: [{ vehicul: ET(2), summary: [['Opriri', 1], ['Timp staționat', '20m'], ['Cea mai lungă', '20m']] }, { vehicul: ET(0), summary: [['Opriri', 3], ['Timp staționat', '5h 20m'], ['Cea mai lungă', '3h 10m']] }] }), X);
-T('staționări pe flotă: totalul, iar mașinile ordonate după timpul pe loc', /Flota: \*\*4 opriri\*\* — ieri, în total \*\*5h 40m\*\* pe loc/.test(r.text) && r.tabel.randuri[0][0] === 'B 154 UIP · Dacia Logan 3' && r.tabel.randuri[0][2] === '5h 20m', r.text + ' ' + JSON.stringify(r.tabel));
+const OPR = [[ET(0), '01.10.2026, 07:40:00', '01.10.2026, 08:05:00', '25 min', 'Str. Lungă 5, Brașov'],
+  [ET(0), '01.10.2026, 10:30:00', '01.10.2026, 12:15:00', '1 h 45 min', 'Client X, Ploiești'],
+  [ET(0), '01.10.2026, 14:00:00', '01.10.2026, 17:10:00', '3 h 10 min', 'Depozit, Ploiești']];
+r = A.raspunde(U('unde a stat B 154 UIP ieri'), forma('rStops', OPR, { summary: { 'Opriri': 3, 'Timp staționat total': '5 h 20 min' } }), X);
+T('staționări pe o mașină: câte, cât în total, cea mai lungă cu locul și ora (pe o zi: doar ora)', /\*\*B 154 UIP · Dacia Logan 3\*\* a avut \*\*3 opriri\*\* — ieri, în total \*\*5 h 20 min\*\* pe loc\. Cea mai lungă: \*\*3 h 10 min\*\*, la Depozit, Ploiești \(de la 14:00\)\./.test(r.text), r.text);
+T('…cu fiecare oprire în tabel, în ordinea zilei, cu locul (nu șoferul)', r.tabel && r.tabel.randuri.length === 3 && r.tabel.randuri[0].join('|') === '07:40|08:05|25 min|Str. Lungă 5, Brașov', JSON.stringify(r.tabel));
+const OPR2 = OPR.concat([[ET(2), '01.10.2026, 09:00:00', '01.10.2026, 09:20:00', '20 min', 'Cluj']]);
+r = A.raspunde(U('staționări ieri pe flotă'), forma('rStops', OPR2, { summary: { 'Opriri': 4, 'Timp staționat total': '5 h 40 min' },
+  perVehicle: [{ vehicul: ET(2), summary: [['Opriri', 1], ['Timp staționat', '20 min'], ['Cea mai lungă', '20 min']] }, { vehicul: ET(0), summary: [['Opriri', 3], ['Timp staționat', '5 h 20 min'], ['Cea mai lungă', '3 h 10 min']] }] }), X);
+T('staționări pe flotă: totalul, iar mașinile ordonate după timpul pe loc', /Flota: \*\*4 opriri\*\* — ieri, în total \*\*5 h 40 min\*\* pe loc/.test(r.text) && r.tabel.randuri[0][0] === 'B 154 UIP · Dacia Logan 3' && r.tabel.randuri[0][2] === '5 h 20 min', r.text + ' ' + JSON.stringify(r.tabel));
 // Foaia de parcurs și „ce a făcut" (Situație zilnică), pe forma adevărată.
-const CRS = [[ET(0), '01.10.2026, 07:00:00', 'Str. Lungă 5, Brașov', '01.10.2026, 07:40:00', 'Client X, Ploiești', '40m', '61.20', '—', '—', 70, 96],
-  [ET(0), '01.10.2026, 08:05:00', 'Client X, Ploiești', '01.10.2026, 10:30:00', 'Depozit, Ploiești', '2h 25m', '120.84', '—', '—', 52, 88]];
-r = A.raspunde(U('ce curse a făcut B 154 UIP ieri'), forma('rTrips', CRS, { summary: { 'Curse': 2, 'Distanță totală (km)': 182, 'Durată totală': '3h 5m' } }), X);
-T('curse pe o mașină: câte, km, timpul la drum, prima plecare și ultima sosire cu locurile', /a făcut \*\*2 curse\*\* — ieri: \*\*182 de km\*\*, 3h 5m la drum\. Prima plecare: 07:00 \(Str\. Lungă 5, Brașov\); ultima sosire: 10:30 \(Depozit, Ploiești\)\./.test(r.text) && r.tabel.randuri[1].join('|') === '08:05|Client X, Ploiești|Depozit, Ploiești|120,8', r.text + ' ' + JSON.stringify(r.tabel));
-const ZIL = [[ET(0), '2026-10-01', '07:00 – 17:40', '182.4', 6, '4h 10m', '25m', '4h 35m', 5, 96]];
-r = A.raspunde(U('ce a făcut B 154 UIP ieri?'), forma('rDaily', ZIL, { summary: { 'Zile-vehicul': 1, 'Km total': 182, 'Ralanti total (flotă)': '25m' } }), X);
-T('„ce a făcut ieri": între ce ore a lucrat, km, curse, mers, ralanti, opriri, viteza maximă', /— ieri: a lucrat între \*\*07:00 – 17:40\*\*, \*\*182 de km\*\* în 6 curse; 4h 10m în mers, 25m în ralanti, 5 opriri\. Viteza cea mai mare: 96 km\/h\./.test(r.text), r.text);
-r = A.raspunde(U('ce a făcut B 154 UIP săptămâna asta?'), forma('rDaily', ZIL.concat([[ET(0), '2026-10-02', '—', '0.0', 0, '0s', '0s', '0s', 0, 0], [ET(0), '2026-10-03', '08:00 – 12:00', '40.0', 2, '1h 5m', '10m', '1h 15m', 1, 70]]), { summary: {} }), X);
-T('…pe mai multe zile: km, zilele cu mers, curse, mers și ralanti adunate, plus ziua săptămânii în tabel', /\*\*222 de km\*\* în \*\*2 zile\*\* de mers, 8 curse; 5h 15m în mers, 35m în ralanti\./.test(r.text) && r.tabel.randuri[0][0] === 'joi 01.10', r.text + ' ' + JSON.stringify(r.tabel && r.tabel.randuri[0]));
-r = A.raspunde(U('ce a făcut B 154 UIP azi'), forma('rDaily', [[ET(0), '2026-10-02', '—', '0.0', 0, '0s', '0s', '0s', 0, 0]], { summary: {} }), X);
+const CRS = [[ET(0), '01.10.2026, 07:00:00', 'Str. Lungă 5, Brașov', '01.10.2026, 07:40:00', 'Client X, Ploiești', '40 min', '61.20', '—', '—', 70, 96],
+  [ET(0), '01.10.2026, 08:05:00', 'Client X, Ploiești', '01.10.2026, 10:30:00', 'Depozit, Ploiești', '2 h 25 min', '120.84', '—', '—', 52, 88]];
+r = A.raspunde(U('ce curse a făcut B 154 UIP ieri'), forma('rTrips', CRS, { summary: { 'Curse': 2, 'Distanță totală (km)': 182, 'Durată totală': '3 h 5 min' } }), X);
+T('curse pe o mașină: câte, km, timpul la drum, prima plecare și ultima sosire cu locurile', /a făcut \*\*2 curse\*\* — ieri: \*\*182 de km\*\*, 3 h 5 min la drum\. Prima plecare: 07:00 \(Str\. Lungă 5, Brașov\); ultima sosire: 10:30 \(Depozit, Ploiești\)\./.test(r.text) && r.tabel.randuri[1].join('|') === '08:05|Client X, Ploiești|Depozit, Ploiești|120,8', r.text + ' ' + JSON.stringify(r.tabel));
+const ZIL = [[ET(0), '2026-10-01', '07:00 – 17:40', '182.4', 6, '4 h 10 min', '25 min', '4 h 35 min', 5, 96]];
+r = A.raspunde(U('ce a făcut B 154 UIP ieri?'), forma('rDaily', ZIL, { summary: { 'Zile-vehicul': 1, 'Km total': 182, 'Ralanti total (flotă)': '25 min' } }), X);
+T('„ce a făcut ieri": între ce ore a lucrat, km, curse, mers, ralanti, opriri, viteza maximă', /— ieri: a lucrat între \*\*07:00 – 17:40\*\*, \*\*182 de km\*\* în 6 curse; 4 h 10 min în mers, 25 min în ralanti, 5 opriri\. Viteza cea mai mare: 96 km\/h\./.test(r.text), r.text);
+r = A.raspunde(U('ce a făcut B 154 UIP săptămâna asta?'), forma('rDaily', ZIL.concat([[ET(0), '2026-10-02', '—', '0.0', 0, '0 s', '0 s', '0 s', 0, 0], [ET(0), '2026-10-03', '08:00 – 12:00', '40.0', 2, '1 h 5 min', '10 min', '1 h 15 min', 1, 70]]), { summary: {} }), X);
+T('…pe mai multe zile: km, zilele cu mers, curse, mers și ralanti adunate, plus ziua săptămânii în tabel', /\*\*222 de km\*\* în \*\*2 zile\*\* de mers, 8 curse; 5 h 15 min în mers, 35 min în ralanti\./.test(r.text) && r.tabel.randuri[0][0] === 'joi 01.10', r.text + ' ' + JSON.stringify(r.tabel && r.tabel.randuri[0]));
+r = A.raspunde(U('ce a făcut B 154 UIP azi'), forma('rDaily', [[ET(0), '2026-10-02', '—', '0.0', 0, '0 s', '0 s', '0 s', 0, 0]], { summary: {} }), X);
 T('…o zi fără mers: „n-a mers", nu „0 km în 0 curse"', /n-a mers — azi/.test(r.text) && !/0 curse/.test(r.text), r.text);
-r = A.raspunde(U('ce a făcut B 154 UIP ieri?'), forma('rDaily', [[ET(0), '2026-10-01', '11:30 – 13:42', '116.0', 2, '1h 43m', '0s', '1h 43m', 2, 60]], { summary: {} }), X);
-T('…fără ralanti: „fără ralanti", nu „0s în ralanti"', /1h 43m în mers, fără ralanti, 2 opriri/.test(r.text) && !/0s/.test(r.text), r.text);
+r = A.raspunde(U('ce a făcut B 154 UIP ieri?'), forma('rDaily', [[ET(0), '2026-10-01', '11:30 – 13:42', '116.0', 2, '1 h 43 min', '0 s', '1 h 43 min', 2, 60]], { summary: {} }), X);
+T('…fără ralanti: „fără ralanti", nu „0 s în ralanti"', /1 h 43 min în mers, fără ralanti, 2 opriri/.test(r.text) && !/0 s/.test(r.text), r.text);
 r = A.raspunde(U('alimentari luna asta'), { summary: { 'Vehicule alimentate': 0, 'Alimentări': 0, 'Litri alimentați': 0, 'Scăderi suspecte': 0, 'Litri scăzuți': 0 } }, X);
 T('alimentări zero: spune și de ce s-ar putea să nu le vadă (fără nivelul rezervorului)', /^Nicio alimentare/.test(r.text) && r.sugestii.some((s) => s.fel === 'info' && /nivelul rezervorului/.test(s.text)), r.text);
 r = A.raspunde(U('alimentari luna asta'), { summary: { 'Vehicule alimentate': 2, 'Alimentări': 3, 'Litri alimentați': 150, 'Scăderi suspecte': 1, 'Litri scăzuți': 23 } }, X);

@@ -27,9 +27,9 @@ function fmtScurt(iso: string) {
 }
 function fmtTime(s: string) { try { return new Date(s).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }); } catch { return '—'; } }
 function fmtDur(sec: number) {
-  if (!sec || sec < 0) return '0m';
+  if (!sec || sec < 0) return '0 min';
   const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
-  return h ? (h + 'h ' + m + 'm') : (m + 'm');
+  return h ? (h + ' h ' + m + ' min') : (m + ' min');
 }
 function ptMs(p: any) { return new Date(p.timestamp || p.server_time || p.time || 0).getTime(); }
 const MAX_ZILE = 92; // aceeași limită ca serverul (/api/history)

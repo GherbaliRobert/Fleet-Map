@@ -171,7 +171,7 @@ sect('4. Mai multe zile, în ordine, cu abateri săptămânale');
   T('condus pe zi = 570 min (9h30)', zi.drivingMin === 570, zi.drivingMin);
   T('totalul de conducere = 7 × 570', r.totals.conducereMin === 7 * 570, r.totals.conducereMin);
   T('abaterea săptămânală peste 56h e prinsă',
-    r.infringements.some(i => /săptămânală peste 56h/.test(i.rule)),
+    r.infringements.some(i => /săptămânală peste 56 de ore/.test(i.rule)),
     JSON.stringify([...new Set(r.infringements.map(i => i.rule))]));
   T('zilele extinse peste 2 pe săptămână sunt prinse',
     r.infringements.some(i => /2 zile extinse/.test(i.rule)));
@@ -186,7 +186,7 @@ sect('5. Conducere zilnică peste 10h = gravă');
   }];
   const r = t.parse(fisierCard('ION', 'POPA', zi));
   T('660 de minute de condus', r.days[0].drivingMin === 660, r.days[0].drivingMin);
-  const inf = r.infringements.find(i => /peste 10h/.test(i.rule));
+  const inf = r.infringements.find(i => /peste 10 ore/.test(i.rule));
   T('e semnalată', !!inf, JSON.stringify(r.infringements.map(i => i.rule)));
   T('e „gravă"', inf && inf.severity === 'gravă');
 }

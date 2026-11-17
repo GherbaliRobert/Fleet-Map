@@ -14637,7 +14637,7 @@ const pozitii = await r.json();</code></pre>
       let num = 0, date = 0, dur = 0, tot = 0;
       for (const r of rows) { const s = String(r[ci] == null ? '' : r[ci]).trim(); if (!s || s === '—') continue; tot++;
         if (/^\d{2}\.\d{2}\.\d{4}/.test(s) || /^\d{4}-\d{2}-\d{2}/.test(s)) date++;
-        else if (/^\d+[hms]/.test(s) && /^(?:\d+h\s*)?(?:\d+m\s*)?(?:\d+s\s*)?$/.test(s)) dur++;
+        else if (/^\d/.test(s) && /^(?:\d+\s*h\s*)?(?:\d+\s*m(?:in)?\s*)?(?:\d+\s*s\s*)?$/.test(s)) dur++;   // „3 h 10 min” (și „3h 10m”, din Istoricul de dinainte de 17.11)
         else if (/^[+\-]?[\d.]/.test(s) && !isNaN(parseFloat(s))) num++;
       }
       if (!tot) return 'str';
@@ -14646,7 +14646,7 @@ const pozitii = await r.json();</code></pre>
     function _repCellVal(kind, v) {
       const s = String(v == null ? '' : v).trim();
       if (kind === 'num') { const n = parseFloat(s); return isNaN(n) ? -Infinity : n; }
-      if (kind === 'dur') { const m = s.match(/(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?/); return m ? (+(m[1]||0))*3600 + (+(m[2]||0))*60 + (+(m[3]||0)) : -Infinity; }
+      if (kind === 'dur') { const m = s.match(/(?:(\d+)\s*h)?\s*(?:(\d+)\s*m(?:in)?)?\s*(?:(\d+)\s*s)?/); return m ? (+(m[1]||0))*3600 + (+(m[2]||0))*60 + (+(m[3]||0)) : -Infinity; }
       if (kind === 'date') { let d = s.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:,?\s*(\d{2}):(\d{2})(?::(\d{2}))?)?/); if (d) return new Date(+d[3], +d[2]-1, +d[1], +(d[4]||0), +(d[5]||0), +(d[6]||0)).getTime(); let i = s.match(/^\d{4}-\d{2}-\d{2}/); return i ? new Date(s).getTime() : -Infinity; }
       return s.toLowerCase();
     }
@@ -15322,7 +15322,7 @@ const pozitii = await r.json();</code></pre>
           : d.idle.ongoing ? '<b style="color:#f59e0b;">acum — încă staționează</b>'
           : 'necunoscut']);
         if (d.idle.minutes) {
-          var _mm = d.idle.minutes >= 60 ? (Math.floor(d.idle.minutes / 60) + 'h ' + (d.idle.minutes % 60) + 'm') : (d.idle.minutes + ' min');
+          var _mm = d.idle.minutes >= 60 ? (Math.floor(d.idle.minutes / 60) + ' h ' + (d.idle.minutes % 60) + ' min') : (d.idle.minutes + ' min');
           rows.push(['Durată cu motor pornit', '<b style="color:#f59e0b;">' + _mm + (!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : '') + '</b>']);
         }
         if (d.idle.fuelL != null) {
@@ -19029,7 +19029,7 @@ const pozitii = await r.json();</code></pre>
         var _eot = (typeof s.engineOnTime === 'number') ? s.engineOnTime
           : (s.summary && typeof s.summary.engineOnTime === 'number') ? s.summary.engineOnTime : null;
         if (_eot == null || _eot <= 0) { var _mv = (typeof s.movingTime === 'number') ? s.movingTime : (s.summary && s.summary.movingTime); if (_mv > 0) _eot = _mv; }
-        if (_eh) _eh.textContent = (typeof _eot === 'number' && _eot > 0) ? formatDuration(_eot) : '0h 0m';
+        if (_eh) _eh.textContent = (typeof _eot === 'number' && _eot > 0) ? formatDuration(_eot) : '0 min';
 
         statsEl.innerHTML = '' +
           '<div style="border-top:1px solid var(--border);margin:8px 0;padding-top:10px;">' +
@@ -19041,8 +19041,8 @@ const pozitii = await r.json();</code></pre>
               '<div class="info-item"><div class="info-item-label">Viteza medie</div><div class="info-item-value">' + s.avgSpeed + ' km/h</div></div>' +
               '<div class="info-item"><div class="info-item-label">Viteza maxima</div><div class="info-item-value ' + (s.maxSpeed > 120 ? 'red' : '') + '">' + s.maxSpeed + ' km/h</div></div>' +
               '<div class="info-item"><div class="info-item-label">Opriri</div><div class="info-item-value">' + s.stops + '</div></div>' +
-              '<div class="info-item"><div class="info-item-label">Timp in miscare</div><div class="info-item-value">' + movH + 'h ' + movM + 'm</div></div>' +
-              '<div class="info-item"><div class="info-item-label">Timp stationare</div><div class="info-item-value">' + stopH + 'h ' + stopM + 'm</div></div>' +
+              '<div class="info-item"><div class="info-item-label">Timp in miscare</div><div class="info-item-value">' + movH + ' h ' + movM + ' min</div></div>' +
+              '<div class="info-item"><div class="info-item-label">Timp stationare</div><div class="info-item-value">' + stopH + ' h ' + stopM + ' min</div></div>' +
               (s.fuelConsumed !== null ? '<div class="info-item"><div class="info-item-label">Consum azi' + (s.fuelEstimated ? ' (est.)' : '') + '</div><div class="info-item-value orange">' + s.fuelConsumed + ' L</div></div>' : '') +
               '<div class="info-item"><div class="info-item-label">Recorduri GPS</div><div class="info-item-value" style="color:var(--text-muted);">' + s.recordCount + '</div></div>' +
             '</div>' +
@@ -20110,7 +20110,7 @@ const pozitii = await r.json();</code></pre>
       var tsEl = document.getElementById('hp-trip-summary');
       if (tsEl) {
         if (summary && (summary.distanceKm != null || summary.movingSec != null)) {
-          var _hm = function (sec) { sec = Math.max(0, Math.round(sec || 0)); var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); if (m === 60) { h++; m = 0; } return h > 0 ? (h + 'h ' + (m < 10 ? '0' : '') + m + 'm') : (m + ' min'); };
+          var _hm = function (sec) { sec = Math.max(0, Math.round(sec || 0)); var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); if (m === 60) { h++; m = 0; } return h > 0 ? (h + ' h' + (m ? ' ' + m + ' min' : '')) : (m + ' min'); };
           var _grp = function (n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
           document.getElementById('hp-ts-dist').textContent = (summary.distanceKm != null && !isNaN(summary.distanceKm)) ? _grp(summary.distanceKm) + ' km' : '—';
           document.getElementById('hp-ts-move').textContent = _hm(summary.movingSec);
@@ -20126,7 +20126,7 @@ const pozitii = await r.json();</code></pre>
       if (sumEl) {
         if (summary && summary.overspeedCount > 0) {
           var dur = summary.overspeedDurationSec || 0;
-          var durStr = dur < 60 ? dur + 's' : Math.floor(dur / 60) + 'min ' + (dur % 60) + 's';
+          var durStr = dur < 60 ? dur + ' s' : Math.floor(dur / 60) + ' min ' + (dur % 60) + ' s';
           sumEl.innerHTML = '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + summary.overspeedCount + ' depășiri</span> · max +' + summary.maxOverKmh + ' km/h · durată ' + durStr + (st.speedLimit ? ' · limită ' + st.speedLimit + ' km/h' : '');
         } else if (st.speedLimit) {
           sumEl.innerHTML = '<span style="color:#3FE07D;"><i class="fas fa-check"></i> Fără depășiri (limită ' + st.speedLimit + ' km/h)</span>';
@@ -20164,8 +20164,8 @@ const pozitii = await r.json();</code></pre>
       var m = Math.max(0, Math.round(ms / 60000));
       if (m < 60) return m + ' min';
       var h = Math.floor(m / 60), r = m % 60;
-      if (h >= 24) return Math.floor(h / 24) + 'z ' + (h % 24) + 'h';
-      return h + 'h ' + (r < 10 ? '0' : '') + r + 'm';
+      if (h >= 24) { var z = Math.floor(h / 24); return (z === 1 ? '1 zi' : z + (z < 20 || (z % 100 >= 1 && z % 100 <= 19) ? ' zile' : ' de zile')) + ' ' + (h % 24) + ' h'; }
+      return h + ' h ' + r + ' min';
     }
     function hpFlagMarker(latlng, pos, color, label, standMs, when, vehName) {
       var t = new Date(pos.timestamp);
@@ -21970,7 +21970,7 @@ const pozitii = await r.json();</code></pre>
           tbody.innerHTML = data.trips.map(function(t, i) {
             const loadStart = new Date(t.loadStartTime).toLocaleString('ro-RO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
             const unload = t.unloadTime ? new Date(t.unloadTime).toLocaleString('ro-RO', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '<em style="color:var(--text-muted);">in curs</em>';
-            const dur = t.durationSec ? Math.floor(t.durationSec/3600) + 'h ' + Math.floor((t.durationSec%3600)/60) + 'm' : '-';
+            const dur = t.durationSec ? Math.floor(t.durationSec/3600) + ' h ' + Math.floor((t.durationSec%3600)/60) + ' min' : '-';
             return '<tr>' +
               '<td style="padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-muted);">' + (i+1) + '</td>' +
               '<td style="padding:8px 10px;border-bottom:1px solid var(--border);"><i class="fas fa-arrow-down" style="color:var(--green);margin-right:4px;"></i>' + loadStart + '</td>' +
@@ -22214,7 +22214,7 @@ const pozitii = await r.json();</code></pre>
           heroCard('fa-tower-broadcast', (d.offlineCount > 0 ? 'var(--red)' : 'var(--green)'), (d.offlineCount > 0 ? 'var(--red)' : 'var(--green)'), 'Fără semnal', (d.offlineCount || 0), '', _subOffline) +
           heroCard('fa-road', 'var(--green)', 'var(--green)', 'Km azi', d.totalKm, ' km', 'total flotă azi') +
           // Orele de motor existau, dar scrise mic și gri sub bara de stare — adică nu le vedea nimeni.
-          heroCard('fa-clock', 'var(--green)', 'var(--green)', 'Timp de mers azi', (d.totalEngineTime > 0 ? formatDuration(d.totalEngineTime) : '0h 0m'), '', 'motoare pornite, însumat pe flotă') +
+          heroCard('fa-clock', 'var(--green)', 'var(--green)', 'Timp de mers azi', (d.totalEngineTime > 0 ? formatDuration(d.totalEngineTime) : '0 min'), '', 'motoare pornite, însumat pe flotă') +
           heroCard('fa-gas-pump', 'var(--orange)', 'var(--orange)', 'Consum azi', d.totalFuel, ' L', _consPer100) +
           heroCard('fa-bell', (_alertOn ? 'var(--red)' : 'var(--green)'), (_alertOn ? 'var(--red)' : 'var(--green)'), 'Alerte', d.totalAlerts, '', (_alertOn ? d.totalAlerts + ' necitite' : 'nicio alertă'));
 
@@ -22530,11 +22530,11 @@ const pozitii = await r.json();</code></pre>
     }
 
     function formatDuration(seconds) {
-      if (!seconds || seconds <= 0) return '0m';
+      if (!seconds || seconds <= 0) return '0 min';
       const h = Math.floor(seconds / 3600);
       const m = Math.floor((seconds % 3600) / 60);
-      if (h > 0) return h + 'h ' + m + 'm';
-      return m + 'm';
+      if (h > 0) return h + ' h ' + m + ' min';
+      return m + ' min';
     }
 
     function renderReportSummary(s) {
@@ -22696,14 +22696,14 @@ const pozitii = await r.json();</code></pre>
                 label: function(ctx) {
                   const hours = Math.floor(ctx.parsed.y);
                   const mins = Math.round((ctx.parsed.y - hours) * 60);
-                  return ctx.dataset.label + ': ' + hours + 'h ' + mins + 'm';
+                  return ctx.dataset.label + ': ' + hours + ' h ' + mins + ' min';
                 }
               }
             }
           },
           scales: {
             x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
-            y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + 'h'; } } }
+            y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' h'; } } }
           }
         });
       } else {
@@ -34131,7 +34131,7 @@ const pozitii = await r.json();</code></pre>
             '<i class="fas ' + (necitit ? 'fa-ban' : 'fa-file-arrow-down') + '"></i>' +
             '<div class="th-rt"><b>' + esc(f.filename) + '</b><span>' + esc(per) +
               (necitit ? ' · nu s-a putut citi — nu contează ca descărcare'
-                : (tt.zile ? ' · ' + tt.zile + ' zile · ' + Math.round((tt.conducereMin || 0) / 60) + 'h condus' : '')) + '</span></div>' +
+                : (tt.zile ? ' · ' + (tt.zile === 1 ? '1 zi' : tt.zile + ' zile') + ' · ' + Math.round((tt.conducereMin || 0) / 60) + ' h condus' : '')) + '</span></div>' +
             '<button class="rax-btn" onclick="event.stopPropagation();raxViewTacho(' + f.id + ')">Detalii</button>' +
             '<button class="rax-btn" onclick="event.stopPropagation();raxDelTacho(' + f.id + ')">Șterge</button></div>';
         }).join('') || '<div class="rax-co-meta">Nicio descărcare.</div>';

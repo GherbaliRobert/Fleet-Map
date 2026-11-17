@@ -17,7 +17,7 @@ function ziScurta(s: string | null) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
   return m ? `${m[3]}.${m[2]}.${m[1].slice(2)}` : (s || '—');
 }
-function hm(min: number) { if (min == null) return '—'; const h = Math.floor(min / 60); const m = Math.round(min % 60); return h + 'h ' + m + 'm'; }
+function hm(min: number) { if (min == null) return '—'; const h = Math.floor(min / 60); const m = Math.round(min % 60); return h + ' h ' + m + ' min'; }
 
 // Aceleași stări ca pe web: depășit / niciodată descărcat = roșu, aproape = portocaliu, restul verde.
 function stareCls(s: string) { return (s === 'depasit' || s === 'niciodata') ? 'over' : s === 'curand' ? 'soon' : 'ok'; }
@@ -454,7 +454,7 @@ function TahografEcran() {
                           <Icon name={necitit ? 'ban' : 'disc'} size={18} class="ic" />
                           <span class="mid">
                             <div class="nm">{f.filename}</div>
-                            <div class="sub">{per}{necitit ? ' · nu s-a putut citi' : citit ? ` · ${tt.zile} zile · ${Math.round((tt.conducereMin || 0) / 60)}h condus` : ' · activitatea nu se analizează încă'}</div>
+                            <div class="sub">{per}{necitit ? ' · nu s-a putut citi' : citit ? ` · ${tt.zile === 1 ? '1 zi' : tt.zile + ' zile'} · ${Math.round((tt.conducereMin || 0) / 60)} h condus` : ' · activitatea nu se analizează încă'}</div>
                           </span>
                           <Icon name="chevronR" size={16} color="var(--text-muted)" />
                         </button>

@@ -46,10 +46,10 @@
   function fmtDur(ms) {
     if (ms == null || isNaN(ms) || ms < 0) return '—';
     var m = Math.floor(ms / 60000), h = Math.floor(m / 60), zile = Math.floor(h / 24);
-    if (zile >= 1) return zile + 'z ' + (h % 24) + 'h';
-    if (h >= 1) return h + 'h ' + (m % 60) + 'm';
-    if (m >= 1) return m + 'm';
-    return 'sub 1m';
+    if (zile >= 1) return (zile === 1 ? '1 zi' : zile + (zile < 20 || (zile % 100 >= 1 && zile % 100 <= 19) ? ' zile' : ' de zile')) + ' ' + (h % 24) + ' h';
+    if (h >= 1) return h + ' h ' + (m % 60) + ' min';
+    if (m >= 1) return m + ' min';
+    return 'sub 1 min';
   }
   // Referință pentru durate: ULTIMA TRANSMISIE a vehiculului, nu „acum". Altfel, pentru un vehicul
   // offline, „motor pornit de" / „în staționare de" ar crește la nesfârșit deși nu mai dă semnal.

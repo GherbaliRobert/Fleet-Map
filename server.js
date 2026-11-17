@@ -328,7 +328,7 @@ function _pastrareRezumat() {
   const r = u.raport || {};
   const h = Math.round((Date.now() - u.at) / 360000) / 10;
   const sters = (r.pozitii || 0) + (r.curse || 0) + (r.alerte || 0);
-  return 'ultima rulare acum ' + h + 'h: ' + (sters ? (r.pozitii + ' poziții, ' + r.curse + ' curse, ' + r.alerte + ' alerte, la ' + r.masini + ' mașini') : 'nimic de șters')
+  return 'ultima rulare acum ' + String(h).replace('.', ',') + ' h: ' + (sters ? (r.pozitii + ' poziții, ' + r.curse + ' curse, ' + r.alerte + ' alerte, la ' + r.masini + ' mașini') : 'nimic de șters')
     + (r.erori ? ' · ' + r.erori + ' mașini amânate (' + r.primaEroare + ')' : '')
     + (r.sarite ? ' · ' + r.sarite + ' mașini sărite: setările firmei nu se pot citi' : '')
     + (r.epuizat ? ' · buget de timp epuizat — continuă la următoarea' : '');
@@ -17576,7 +17576,7 @@ app.get('/api/export/:imei', requireAuth, withScope, async (req, res) => {
     const formatTime = (seconds) => {
       const h = Math.floor(seconds / 3600);
       const m = Math.floor((seconds % 3600) / 60);
-      return `${h}h ${m}m`;
+      return `${h} h ${m} min`;
     };
 
     const emptyIoCols = ioKeys.map(() => '');
@@ -19600,7 +19600,7 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   add('backup_positions', 'Arhivă poziții (telemetrie)', !bp.enabled ? 'warn' : (bp.error ? 'crit' : (bp.at ? 'ok' : 'info')),
     !bp.enabled ? 'BACKUP_S3_* nesetat → pozițiile șterse de retenție NU au nicio copie; verifică separat ce fereastră de snapshot-uri are baza'
       : bp.error ? ('ultimul export a eșuat: ' + bp.error)
-        : bp.at ? ('ultimul export acum ' + bp.ageHours + 'h · ' + bp.days + ' zile, ' + bp.rows + ' rânduri' + (bp.lastDay ? ' (până la ' + bp.lastDay + ')' : ''))
+        : bp.at ? ('ultimul export acum ' + String(bp.ageHours).replace('.', ',') + ' h · ' + bp.days + ' zile, ' + bp.rows + ' rânduri' + (bp.lastDay ? ' (până la ' + bp.lastDay + ')' : ''))
           : 'programat, dar încă nicio rulare (prima pornește la 8 minute după boot)');
   add('backup_crypt', 'Criptare backup', bk.passphraseSet ? 'ok' : (bk.s3Configured ? 'crit' : 'warn'),
     bk.passphraseSet ? 'BACKUP_PASSPHRASE setat (AES-256-GCM)' : 'BACKUP_PASSPHRASE nesetat → dump-ul (hash-uri de parole, chei API) ar pleca necriptat');
@@ -19608,8 +19608,8 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   // Marca de timp e persistată, deci „niciodată" chiar înseamnă niciodată, nu „serverul s-a repornit".
   add('backup_fresh', 'Prospețime backup', bk.never ? 'info' : (bk.dead ? 'crit' : (bk.stale ? 'warn' : 'ok')),
     bk.never ? 'nicio rulare înregistrată încă (prima pornește la 5 minute după boot)'
-      : (bk.dead ? ('ULTIMA COPIE ARE ' + bk.ageHours + 'h — workerul de backup nu mai rulează' + (bk.error ? ': ' + bk.error : ''))
-        : ('acum ' + bk.ageHours + 'h')));
+      : (bk.dead ? ('ULTIMA COPIE ARE ' + String(bk.ageHours).replace('.', ',') + ' h — workerul de backup nu mai rulează' + (bk.error ? ': ' + bk.error : ''))
+        : ('acum ' + String(bk.ageHours).replace('.', ',') + ' h')));
   add('cookie_secure', 'Cookie sesiune „secure"', process.env.COOKIE_SECURE === 'true' ? 'ok' : 'crit',
     process.env.COOKIE_SECURE === 'true' ? 'da (+ HSTS)' : 'COOKIE_SECURE≠true → cookie-ul de sesiune poate pleca și pe HTTP');
   add('session_secret', 'SESSION_SECRET', isSet(process.env.SESSION_SECRET) ? 'ok' : 'warn',
@@ -21680,7 +21680,7 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
         const dd = haversineDistance(pr.latitude, pr.longitude, todayH[i].latitude, todayH[i].longitude); if (dd < 10) kmToday += dd;
       }
     }
-    const today_debug = { points: todayH.length, ignition_on_samples: ignOn, ignition_values_seen: ignitionValues, engine_on_sec: Math.round(engineOnSec), engine_on_fmt: Math.floor(engineOnSec / 3600) + 'h ' + Math.floor((engineOnSec % 3600) / 60) + 'm', km_today: +kmToday.toFixed(1) };
+    const today_debug = { points: todayH.length, ignition_on_samples: ignOn, ignition_values_seen: ignitionValues, engine_on_sec: Math.round(engineOnSec), engine_on_fmt: Math.floor(engineOnSec / 3600) + ' h ' + Math.floor((engineOnSec % 3600) / 60) + ' min', km_today: +kmToday.toFixed(1) };
     // Diagnostic combustibil: are CONTOR cumulativ (consum exact) sau doar NIVEL (consum mic = „est.")?
     let fCumFirst = null, fCumLast = null, fLvlFirst = null, fLvlLast = null, cumSum = 0, prevCum = null, prevLvl = null, lvlMaxJump = 0, lvlDropSum = 0;
     for (const r of todayH) {

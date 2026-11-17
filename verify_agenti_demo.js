@@ -82,7 +82,7 @@ T('„Se verifică flota…" și subsolurile: „Ultima rulare: azi …" la RA W
   AGP.includes("'" + APP.automat.slice(3) + "'") && LIVEF.includes("'<i class=\"fas fa-clock\"></i> " + APP.verificat + "<b>' + when + '</b>" + APP.seActualizeaza + "'"));
 T('cartonașul lui RA Client: aceleași etichete ca _agpClientCard', ['km', 'active', 'nefolosite', 'ieri'].every((k) => CL.includes("'" + APP.client[k] + "'")) &&
   CL.includes(APP.client.top + '<b>') && CL.includes(APP.client.ydKm + '<b>') && CL.includes('>' + APP.client.deVerificat + '</div>'));
-T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch a rulat la ora fixă de dinainte („acum 30m", ca _agpAgo)',
+T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch a rulat la ora fixă de dinainte („acum 30 min", ca _agpAgo)',
   DEMO.ORA === String(FL.ORA_TELEFON.h).padStart(2, '0') + ':' + String(FL.ORA_TELEFON.m).padStart(2, '0') && DEMO.RULARE === String(FL.ORA_TELEFON.h).padStart(2, '0') + ':00' &&
   DEMO.ACUM_RULARE === 'acum ' + FL.ORA_TELEFON.m + ' min' && /if \(s < 3600\) return 'acum ' \+ Math\.round\(s \/ 60\) \+ ' min';/.test(IX) && DEMO.ZILE_ITP === FL.ZILE_ITP && DEMO.ZILE_RCA === FL.ZILE_RCA);
 

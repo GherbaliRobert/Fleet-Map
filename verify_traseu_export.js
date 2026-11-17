@@ -155,13 +155,13 @@ const exportTs = citeste('mobile/src/lib/export.ts');
     const hmEcran = new Function('return ' + mHm[1])(), grpEcran = new Function('return ' + mGrp[1])(), durEcran = new Function('dur', 'return ' + mDur[1]);
     const secunde = [0, 1, 29, 30, 59, 60, 89, 90, 600, 3540, 3569, 3570, 3599, 3600, 3629, 3630, 5400, 7199, 7230, 86399, 90061, null, undefined, -5];
     const difHm = secunde.filter((s) => re.hmTraseu(s) !== hmEcran(s));
-    T('durata („1h 05m" / „45 min") — identică cu ecranul pe ' + secunde.length + ' cazuri', difHm.length === 0, J(difHm.map((s) => [s, re.hmTraseu(s), hmEcran(s)])));
+    T('durata („1 h 5 min" / „45 min") — identică cu ecranul pe ' + secunde.length + ' cazuri', difHm.length === 0, J(difHm.map((s) => [s, re.hmTraseu(s), hmEcran(s)])));
     const km = [0, 0.4, 4.6, 999.4, 999.5, 1000, 1250.4, 12345.6, 1234567];
     const difKm = km.filter((k) => re.kmTraseu(k) !== grpEcran(k) + ' km');
     T('distanța („1.250 km") — identică cu ecranul pe ' + km.length + ' cazuri', difKm.length === 0, J(difKm.map((k) => [k, re.kmTraseu(k), grpEcran(k)])));
     const dur = [0, 1, 45, 59, 60, 61, 200, 3725];
     const difDur = dur.filter((d) => re.durataDepasiri(d) !== durEcran(d));
-    T('durata depășirilor („3min 20s") — identică cu ecranul pe ' + dur.length + ' cazuri', difDur.length === 0, J(difDur.map((d) => [d, re.durataDepasiri(d), durEcran(d)])));
+    T('durata depășirilor („3 min 20 s") — identică cu ecranul pe ' + dur.length + ' cazuri', difDur.length === 0, J(difDur.map((d) => [d, re.durataDepasiri(d), durEcran(d)])));
   }
   T('direcția: 0° → N, 44° → NE, 90° → E, 180° → S, 225° → SV, 270° → V, 359° → N, fără unghi → gol',
     ['N', 'NE', 'E', 'S', 'SV', 'V', 'N', '', ''].join() === [0, 44, 90, 180, 225, 270, 359, null, 'x'].map(re.directieTraseu).join(),
@@ -185,10 +185,10 @@ const exportTs = citeste('mobile/src/lib/export.ts');
   T('nicio celulă nu e un cod brut sau „[object Object]"', v1.rows.every((r) => r.every((c) => typeof c !== 'string' || !/object Object|_control_flags|can_/.test(c))));
   const sumarV1 = Object.fromEntries(v1.sumar);
   T('sumarul are etichete fixe, în ordine', J(v1.sumar.map((x) => x[0])) === J(['Distanță', 'Timp în deplasare', 'Timp staționar', 'Consum', 'Viteză maximă', 'Limita de viteză a mașinii', 'Depășiri ale limitei', 'Depășirea cea mai mare', 'Durata depășirilor', 'Poziții GPS']), J(v1.sumar.map((x) => x[0])));
-  T('sumarul: 1.250 km · 1h 01m · 1 min · 6,0 L (estimat)', sumarV1['Distanță'] === '1.250 km' && sumarV1['Timp în deplasare'] === '1h 01m' && sumarV1['Timp staționar'] === '1 min' && sumarV1['Consum'] === '6,0 L (estimat)', J(v1.sumar));
-  T('sumarul: limita 50 km/h, 3 depășiri, +15 km/h, 3min 20s, viteza maximă 65 km/h, 3 poziții',
+  T('sumarul: 1.250 km · 1 h 1 min · 1 min · 6,0 L (estimat)', sumarV1['Distanță'] === '1.250 km' && sumarV1['Timp în deplasare'] === '1 h 1 min' && sumarV1['Timp staționar'] === '1 min' && sumarV1['Consum'] === '6,0 L (estimat)', J(v1.sumar));
+  T('sumarul: limita 50 km/h, 3 depășiri, +15 km/h, 3 min 20 s, viteza maximă 65 km/h, 3 poziții',
     sumarV1['Limita de viteză a mașinii'] === '50 km/h' && sumarV1['Depășiri ale limitei'] === 3 && sumarV1['Depășirea cea mai mare'] === '+15 km/h' &&
-    sumarV1['Durata depășirilor'] === '3min 20s' && sumarV1['Viteză maximă'] === '65 km/h' && sumarV1['Poziții GPS'] === 3, J(v1.sumar));
+    sumarV1['Durata depășirilor'] === '3 min 20 s' && sumarV1['Viteză maximă'] === '65 km/h' && sumarV1['Poziții GPS'] === 3, J(v1.sumar));
   const v2 = re.traseuVehicul({ imei: '862129084800001', dev: { name: 'Ford Transit', plate: 'B 22 FRD' }, history: istoric.slice(0, 2), limit: null, sum: {} });
   const sumarV2 = Object.fromEntries(v2.sumar);
   T('fără limită pe mașină: o spune, iar depășirile sunt „—", nu 0', /^nesetată/.test(sumarV2['Limita de viteză a mașinii']) && sumarV2['Depășiri ale limitei'] === '—' && sumarV2['Durata depășirilor'] === '—', J(v2.sumar));

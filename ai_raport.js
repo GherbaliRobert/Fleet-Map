@@ -436,13 +436,13 @@ function _sec(txt) {
   const h = /(\d+)\s*h/.exec(s), m = /(\d+)\s*m(?!s)/.exec(s), sc = /(\d+)\s*s/.exec(s);
   return (h ? +h[1] * 3600 : 0) + (m ? +m[1] * 60 : 0) + (sc ? +sc[1] : 0);
 }
-// Secunde → „3h 20m" (aceeași formă ca rapoartele).
+// Secunde → „3 h 20 min” (aceeași formă ca rapoartele, `fmtDur`).
 function _dur(sec) {
   sec = Math.round(sec || 0);
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-  if (h > 0) return m > 0 ? h + 'h ' + m + 'm' : h + 'h';
-  if (m > 0) return m + 'm';
-  return (sec % 60) + 's';
+  if (h > 0) return m > 0 ? h + ' h ' + m + ' min' : h + ' h';
+  if (m > 0) return m + ' min';
+  return (sec % 60) + ' s';
 }
 // Data scrisă de rapoarte („06.10.2026, 08:10:00") → „06.10, 08:10"; `doarOra` → „08:10".
 function _scurt(txt, doarOra) {
@@ -1204,4 +1204,5 @@ module.exports = {
   // „Și luna trecută?” = textul spune DOAR o perioadă — și pentru asistentul fondatorilor (asistent_fondatori.js, 30.10).
   doarPerioada: _doarPerioada,
   subiectDin, nr, cant, _numar, PENTRU_INSIGHT,
+  _dur, _sec,   // „3 h 10 min” ↔ secunde (verify_durate.js)
 };

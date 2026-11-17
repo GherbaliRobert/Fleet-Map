@@ -3478,6 +3478,19 @@ caută forma în tot panoul.
 - Păzit de `test_agents.js` (pasul „Unit" al porții): `nrRo`, `cate`, „service DEPĂȘIT cu 1.240 km", „ITP expiră în 25 de zile", nicio cifră lipită
   direct în text, nimic „24/7" / „non-stop"; plus `verify_statistici_flota.js` („Ce urmăresc pe").
 
+## Duratele pe românește: „3 h 10 min” (17.11; Alin: „5. da" — „„3h 10m” → „3 h 10 min”, pe site și în aplicație")
+„m" e simbolul metrului. Peste tot — rapoarte (ecran, Excel, PDF), Traseu (ecran + fișier), balonul de pe hartă, tahograf, RA Insight, cursele,
+graficele, dispecerizarea, telefonul — o durată se scrie **„3 h 10 min”, „2 h”, „45 min”, „40 s”, „5 min 30 s”, „2 zile 3 h”, „sub 1 min”**, fără
+zerouri în față („1 h 5 min”, nu „1h 05m”). Regulile fixe în cuvinte: „peste 10 ore”, „sub 9 ore”, „peste 56 de ore”; **„4h30” rămâne** (așa scrie
+regulamentul).
+- Formatoarele: `fmtDur` (reports.js, prin `_ajutor` pentru probe) = `_dur` (ai_raport.js); `hmTraseu` / `durataDepasiri` (report_export.js) =
+  `_hm` / `durStr` din `hpRenderSummary` (legate de `verify_traseu_export.js`); `fmtH` (tacho.js); `io_format.js`; `fmtDur` din
+  `public/js/vehicle-popup.js`; ecranele telefonului (Stats, RouteScreen, Tahograf, Dispatch, NotifDetail, AiAgents, PlatformDashboard).
+- **Cine citește o durată înapoi o citește în AMBELE forme:** `_sec` (ai_raport.js) și sortarea tabelului din Rapoarte (`_repColKind` /
+  `_repCellVal`) — rapoartele din Istoric (7 zile) au încă „3h 10m”.
+- NU lipi „h" / „m" / „z" de cifră într-un text nou. Păzit de **`verify_durate.js`** (în `npm test`): formele, sortarea, și caută forma veche în
+  server, pagină și telefon (fără comentarii).
+
 ## Agenții AI pe prima pagină: telefonul (17.11; Alin, la cele trei machete: „hai să facem varianta B să o testez")
 Macheta: https://claude.ai/artifact/E2G99v9is5kxgLpF2HKowC (varianta B). Partea 2 a capitolului „Inteligență artificială": în stânga șase butoane
 (`.agd-b[data-k]`, în pagină: iconița din aplicație, numele, textul de pe site), în dreapta un telefon cu pagina agentului din aplicație.

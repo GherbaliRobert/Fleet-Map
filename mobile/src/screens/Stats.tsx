@@ -23,11 +23,11 @@ import { nrDe } from '../lib/numar';
 // platforma, nefiltrate pe firmă — ar arăta fiecărui client alertele altora. Revine când le filtrează serverul.
 
 const n1 = (v: any) => Number(v || 0).toLocaleString('ro-RO', { maximumFractionDigits: 1 });
-// Ca pe web (formatDuration): secunde → „2h 15m" / „45m".
+// Ca pe web (formatDuration): secunde → „2 h 15 min” / „45 min”.
 function durata(sec: number) {
-  if (!sec || sec <= 0) return '0m';
+  if (!sec || sec <= 0) return '0 min';
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-  return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+  return h > 0 ? h + ' h ' + m + ' min' : m + ' min';
 }
 
 export function Stats() {
@@ -147,7 +147,7 @@ function Cartonase({ d, onFaraSemnal }: { d: any; onFaraSemnal: () => void }) {
       </div>
       <div class="sf-kpi">
         <div class="l"><Icon name="clock" size={14} color="var(--accent)" /> Timp de mers azi</div>
-        <div class="n">{d.totalEngineTime > 0 ? durata(d.totalEngineTime) : '0h 0m'}</div>
+        <div class="n">{d.totalEngineTime > 0 ? durata(d.totalEngineTime) : '0 min'}</div>
         <div class="s">motoare pornite, însumat pe flotă</div>
       </div>
       <div class="sf-kpi lat" style="border-left-color:var(--orange)">

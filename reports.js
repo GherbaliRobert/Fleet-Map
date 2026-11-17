@@ -47,9 +47,9 @@ function _satQ(n) {
 function fmtDur(sec) {
   sec = Math.round(sec || 0);
   const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
-  if (h > 0) return m > 0 ? (h + 'h ' + m + 'm') : (h + 'h');
-  if (m > 0) return m + 'm';
-  return s + 's';
+  if (h > 0) return m > 0 ? (h + ' h ' + m + ' min') : (h + ' h');
+  if (m > 0) return m + ' min';
+  return s + ' s';
 }
 function loc(p) { return p ? p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(5) : ''; }
 function io(p) { return p && p.io_data ? p.io_data : {}; }
@@ -885,13 +885,13 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
 // Legenda HOS — regulile Reg. 561 verificate + sursa (tahograf vs GPS) + limitele estimării.
 const HOS_LEGEND = { title: 'Reg. (CE) 561/2006 — regulile verificate', items: [
   ['Se aplică la', 'Camioane, autotractoare, TIR-uri, autobuze și autocare (după tipul din fișa mașinii) și orice mașină care trimite date de tahograf. La celelalte apare „Nu se aplică".'],
-  ['Condus continuu', 'Max 4h30 la volan fără o pauză de 45 min. Peste → încălcare.'],
-  ['Condus zilnic', 'Max 9h/zi, extensibil la 10h de cel mult 2 ori/săptămână. Peste 10h sau a 3-a zi extinsă → încălcare.'],
-  ['Repaus zilnic', 'Min 11h, reductibil la 9h de cel mult 3 ori/săptămână. Se verifică DOAR cu tahograf (din GPS, repausul cu motorul oprit nu e vizibil).'],
-  ['Condus săptămânal', 'Max 56h într-o săptămână (luni–duminică). Peste → încălcare. Săptămâna se socotește întreagă, de luni, chiar dacă perioada aleasă începe mai târziu.'],
-  ['Două săptămâni', 'Max 90h în două săptămâni la rând. Peste → încălcare.'],
+  ['Condus continuu', 'Cel mult 4h30 la volan fără o pauză de 45 de minute. Peste → încălcare.'],
+  ['Condus zilnic', 'Cel mult 9 ore pe zi, extensibil la 10 ore de cel mult 2 ori pe săptămână. Peste 10 ore sau a 3-a zi extinsă → încălcare.'],
+  ['Repaus zilnic', 'Cel puțin 11 ore, reductibil la 9 ore de cel mult 3 ori pe săptămână. Se verifică DOAR cu tahograf (din GPS, repausul cu motorul oprit nu e vizibil).'],
+  ['Condus săptămânal', 'Cel mult 56 de ore într-o săptămână (luni–duminică). Peste → încălcare. Săptămâna se socotește întreagă, de luni, chiar dacă perioada aleasă începe mai târziu.'],
+  ['Două săptămâni', 'Cel mult 90 de ore în două săptămâni la rând. Peste → încălcare.'],
   ['Sursă', '„tahograf" = citit din tahograful digital (exact, valoare legală). „GPS (est.)" = estimat din viteză/contact (orientativ).'],
-  ['Atenție', 'Estimările GPS sunt orientative, NU înlocuiesc cardul de tahograf. Repausul săptămânal (45h) nu e inclus.']
+  ['Atenție', 'Estimările GPS sunt orientative, NU înlocuiesc cardul de tahograf. Repausul săptămânal (45 de ore) nu e inclus.']
 ] };
 
 async function rHos(db, imeis, from, to, opts, devMap) {
@@ -1000,17 +1000,17 @@ async function rHos(db, imeis, from, to, opts, devMap) {
       if (subject) {
         if (d.contMax > 4.5) infr.push('condus continuu ' + fmtDur(d.contMax * 3600));
         const dh = d.drive / 3600;
-        if (dh > 10) infr.push('condus zilnic ' + fmtDur(d.drive) + ' (>10h)');
-        else if (dh > 9) { weekExt[wk] = (weekExt[wk] || 0) + 1; if (weekExt[wk] > 2) infr.push('a ' + weekExt[wk] + '-a zi extinsă (>9h)/săpt.'); }
+        if (dh > 10) infr.push('condus zilnic ' + fmtDur(d.drive) + ' (peste 10 ore)');
+        else if (dh > 9) { weekExt[wk] = (weekExt[wk] || 0) + 1; if (weekExt[wk] > 2) infr.push('a ' + weekExt[wk] + '-a zi extinsă (peste 9 ore) în săptămână'); }
         if (useTacho && d.drive > 0 && d.restMax > 0) { // repausul se verifică DOAR cu tahograf: din GPS, repausul cu motorul oprit e „gap", nu se vede → am da fals-pozitive
           const rh = d.restMax / 3600;
-          if (rh < 9) infr.push('repaus zilnic ' + fmtDur(d.restMax) + ' (<9h)');
-          else if (rh < 11) { weekRed[wk] = (weekRed[wk] || 0) + 1; if (weekRed[wk] > 3) infr.push('a ' + weekRed[wk] + '-a reducere de repaus/săpt.'); }
+          if (rh < 9) infr.push('repaus zilnic ' + fmtDur(d.restMax) + ' (sub 9 ore)');
+          else if (rh < 11) { weekRed[wk] = (weekRed[wk] || 0) + 1; if (weekRed[wk] > 3) infr.push('a ' + weekRed[wk] + '-a reducere de repaus în săptămână'); }
         }
         weekDrive[wk] = (weekDrive[wk] || 0) + d.drive;
-        if (weekDrive[wk] / 3600 > 56 && (weekDrive[wk] - d.drive) / 3600 <= 56) infr.push('condus săptămânal >56h');
+        if (weekDrive[wk] / 3600 > 56 && (weekDrive[wk] - d.drive) / 3600 <= 56) infr.push('condus săptămânal peste 56 de ore');
         const doua = (weekDrive[_ziPlusISO(wk, -7)] || 0) + weekDrive[wk];   // săptămâna dinainte + cea de acum, până azi
-        if (doua / 3600 > 90 && (doua - d.drive) / 3600 <= 90) infr.push('condus în două săptămâni la rând ' + fmtDur(doua) + ' (>90h)');
+        if (doua / 3600 > 90 && (doua - d.drive) / 3600 <= 90) infr.push('condus în două săptămâni la rând ' + fmtDur(doua) + ' (peste 90 de ore)');
       }
       const status = subject ? (infr.length ? 'Încălcare' : 'Conform') : 'Nu se aplică';
       const incCell = subject ? (infr.join('; ') || '—') : 'Reg. 561 nu se aplică';
@@ -2428,7 +2428,7 @@ async function rWeight(db, imeis, from, to, opts, devMap) { // Senzori greutate 
 
 async function rTipping(db, imeis, from, to, opts, devMap) { // Senzor de basculare — jurnal per-mașină (nr., oră, durată, unde)
   const DIN = opts.tipDin || 'digital_input_2';
-  const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + 'h ' + m + 'm') : (m > 0 ? (m + 'm ' + s + 's') : (s + 's')); };
+  const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + ' h ' + m + ' min') : (m > 0 ? (m + ' min ' + s + ' s') : (s + ' s')); };
   const rows = [], evPts = [], perVehicle = [], vCount = [];
   for (const imei of imeis) {
     const nm = label(devMap, imei);
@@ -2470,7 +2470,7 @@ async function rTipping(db, imeis, from, to, opts, devMap) { // Senzor de bascul
 
 async function rArm(db, imeis, from, to, opts, devMap) { // Senzor de braț (utilaje: excavator/macara/încărcător) — jurnal sesiuni de lucru
   const DIN = opts.armDin || 'digital_input_3';
-  const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + 'h ' + m + 'm') : (m > 0 ? (m + 'm ' + s + 's') : (s + 's')); };
+  const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + ' h ' + m + ' min') : (m > 0 ? (m + ' min ' + s + ' s') : (s + ' s')); };
   const rows = [], evPts = [], perVehicle = [], vHours = []; let fleetSec = 0, fleetSessions = 0;
   for (const imei of imeis) {
     const nm = label(devMap, imei);
@@ -2511,7 +2511,7 @@ async function rArm(db, imeis, from, to, opts, devMap) { // Senzor de braț (uti
 }
 
 async function rIoT(db, imeis, from, to, opts, devMap) { // Senzori IoT (frigorific) — temperatură + jurnal de abateri (alarme) + baterie senzor
-  const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + 'h ' + m + 'm') : (m > 0 ? (m + 'm ' + s + 's') : (s + 's')); };
+  const dur = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h > 0 ? (h + ' h ' + m + ' min') : (m > 0 ? (m + ' min ' + s + ' s') : (s + ' s')); };
   const rows = [], evPts = [], perVehicle = [], vTemp = [];
   for (const imei of imeis) {
     const nm = label(devMap, imei);
@@ -2835,5 +2835,6 @@ module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, an
   // Safe Drive (safe_drive.js) citește pozițiile și mașina cu ACELEAȘI funcții ca rapoartele: contactul, motorul, contorul
   // de combustibil, distanța, consumul și prețul — ca pagina și raportul EcoDrive / Ralanti să nu se contrazică.
   _ajutor: { ignOn, engineRunning, fuelCumul, haversineKm, idleRate, defConsumption, resolvePrice, fiecarePozitie,
+    fmtDur,                              // „3 h 10 min” — forma duratelor din rapoarte (17.11); probele o citesc de aici
     consumptionMap: _consumptionMap,     // ramura Combustibil: același motor ca rapoartele Consum / Costuri / Emisii
     coloanaSofer: _injectDriverColumn } };   // proba AI Raport pune rândurile pe forma ADEVĂRATĂ (cu „Șofer" pe locul 2)

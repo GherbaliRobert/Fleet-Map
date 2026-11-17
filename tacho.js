@@ -272,7 +272,7 @@ function statZi(zi) {
   };
 }
 
-function fmtH(min) { min = Math.round(min || 0); return Math.floor(min / 60) + 'h ' + String(min % 60).padStart(2, '0') + 'm'; }
+function fmtH(min) { min = Math.round(min || 0); return Math.floor(min / 60) + ' h ' + (min % 60) + ' min'; }
 function luniDin(dateStr) {
   const d = new Date(dateStr + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
@@ -291,10 +291,10 @@ function infringements(stats) {
 
     // Conducere zilnică: 9h, extensibil la 10h de cel mult 2 ori pe săptămână
     if (s.drivingMin > 600) {
-      out.push({ date: s.date, rule: 'Conducere zilnică peste 10h', value: fmtH(s.drivingMin), severity: 'gravă' });
+      out.push({ date: s.date, rule: 'Conducere zilnică peste 10 ore', value: fmtH(s.drivingMin), severity: 'gravă' });
     } else if (s.drivingMin > 540) {
       wkExtended[wk] = (wkExtended[wk] || 0) + 1;
-      if (wkExtended[wk] > 2) out.push({ date: s.date, rule: 'Peste 2 zile extinse (9-10h) în săptămână', value: fmtH(s.drivingMin), severity: 'serioasă' });
+      if (wkExtended[wk] > 2) out.push({ date: s.date, rule: 'Peste 2 zile extinse (9–10 ore) în săptămână', value: fmtH(s.drivingMin), severity: 'serioasă' });
     }
 
     // Conducere continuă peste 4h30 fără pauză de 45 min
@@ -305,22 +305,22 @@ function infringements(stats) {
     // Odihnă zilnică: 11h normal, reductibilă la 9h de cel mult 3 ori pe săptămână
     if ((s.drivingMin + s.workMin) > 60 && s.restMin > 0) {
       if (s.restMin < 540) {
-        out.push({ date: s.date, rule: 'Odihnă zilnică sub 9h', value: fmtH(s.restMin), severity: 'gravă' });
+        out.push({ date: s.date, rule: 'Odihnă zilnică sub 9 ore', value: fmtH(s.restMin), severity: 'gravă' });
       } else if (s.restMin < 660) {
         wkReduced[wk] = (wkReduced[wk] || 0) + 1;
-        if (wkReduced[wk] > 3) out.push({ date: s.date, rule: 'Peste 3 odihne reduse (9-11h) în săptămână', value: fmtH(s.restMin), severity: 'serioasă' });
+        if (wkReduced[wk] > 3) out.push({ date: s.date, rule: 'Peste 3 odihne reduse (9–11 ore) în săptămână', value: fmtH(s.restMin), severity: 'serioasă' });
       }
     }
   }
 
   const wks = Object.keys(wkDrive).sort();
   for (const wk of wks) {
-    if (wkDrive[wk] > 3360) out.push({ date: 'săpt. ' + wk, rule: 'Conducere săptămânală peste 56h', value: fmtH(wkDrive[wk]), severity: 'gravă' });
+    if (wkDrive[wk] > 3360) out.push({ date: 'săpt. ' + wk, rule: 'Conducere săptămânală peste 56 de ore', value: fmtH(wkDrive[wk]), severity: 'gravă' });
   }
   for (let i = 1; i < wks.length; i++) {
     const consecutive = (new Date(wks[i] + 'T00:00:00Z') - new Date(wks[i - 1] + 'T00:00:00Z')) === 7 * 86400000;
     if (consecutive && (wkDrive[wks[i - 1]] + wkDrive[wks[i]]) > 5400) {
-      out.push({ date: 'săpt. ' + wks[i - 1] + ' + ' + wks[i], rule: 'Conducere 2 săptămâni consecutive peste 90h', value: fmtH(wkDrive[wks[i - 1]] + wkDrive[wks[i]]), severity: 'gravă' });
+      out.push({ date: 'săpt. ' + wks[i - 1] + ' + ' + wks[i], rule: 'Conducere 2 săptămâni consecutive peste 90 de ore', value: fmtH(wkDrive[wks[i - 1]] + wkDrive[wks[i]]), severity: 'gravă' });
     }
   }
   return out;
@@ -477,5 +477,5 @@ module.exports = {
   TERMEN_CARD_ZILE, TERMEN_VU_ZILE, TIPURI_CU_TAHOGRAF, vehiculAreTahograf, supusReg561,
   // expuse pentru probe
   _citesteBlocuri: citesteBlocuri, _citesteZile: citesteZile, _numeDinIdentificare: numeDinIdentificare,
-  _cautaVin: cautaVin, _esteVu: esteVu, _LEN_IDENTIFICATION: LEN_IDENTIFICATION,
+  _cautaVin: cautaVin, _esteVu: esteVu, _LEN_IDENTIFICATION: LEN_IDENTIFICATION, _fmtH: fmtH,
 };

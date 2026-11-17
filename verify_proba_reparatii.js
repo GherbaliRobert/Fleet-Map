@@ -29,7 +29,7 @@ const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
 // ─── 1. Regulile curate ──────────────────────────────────────────────────────────────────────────────
 console.log('1. Regulile: cele mai mari valori, vorbele despre echipament, procentul din întrebare');
 const COL = ['Vehicul', 'Plecare', 'Sosire', 'Distanță (km)', 'Durată', 'Vit. max (km/h)'];
-const RAND = Array.from({ length: 119 }, (_, k) => ['B 154 UIP', '0' + (k % 9 + 1) + '.09.2026 08:00', 'Olteni', (10 + (k * 7) % 39).toFixed(2), '0h 30m', String(60 + (k * 11) % 80)]);
+const RAND = Array.from({ length: 119 }, (_, k) => ['B 154 UIP', '0' + (k % 9 + 1) + '.09.2026 08:00', 'Olteni', (10 + (k * 7) % 39).toFixed(2), '30 min', String(60 + (k * 11) % 80)]);
 RAND[73][3] = '49.17'; RAND[73][1] = '22.09.2026 17:02'; RAND[73][2] = 'București, Bulevardul Basarabia 28';
 const mari = I.celeMaiMari(COL, RAND, 5);
 T('din 119 curse: cea mai lungă (49,17 km, 22.09) e prima la „Distanță (km)", cu tot rândul ei', mari && mari['Distanță (km)'].length === 5 &&

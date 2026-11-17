@@ -615,6 +615,30 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-17
 
+### AMÂNDOI · Duratele, peste tot în aplicație: „3 h 10 min”, nu „3h 10m”
+*Alin, 17.11: „5. da” — „„3h 10m” / „acum 30m” → „3 h 10 min” / „acum 30 min”, pe site și în aplicație”. „m” e simbolul metrului.*
+
+**Ce am schimbat:**
+- **Rapoartele** (pe ecran, în Excel și în PDF): „3 h 10 min”, „45 min”, „40 s”, „2 h”; la senzori „5 min 30 s”. **Ore de condus:** încălcările
+  scrise în cuvinte — „condus zilnic 10 h 20 min (peste 10 ore)”, „condus săptămânal peste 56 de ore” — și legenda: „Cel mult 9 ore pe zi,
+  extensibil la 10 ore…” (era „Max 9h/zi…”). „4h30” rămâne, cum scrie în regulament.
+- **Traseu** (ecranul și Excelul descărcat): „1 h 5 min” (era „1h 05m”), durata depășirilor „3 min 20 s” (era „3min 20s”).
+- **Pe hartă**, în balonul mașinii (de cât stă, de cât e motorul pornit): „2 zile 3 h” (era „2z 3h”), „sub 1 min”.
+- **Tahograf:** „4 h 5 min” (era „4h 05m”), regulile „Conducere zilnică peste 10 ore”, „Odihnă zilnică sub 9 ore”, „peste 56 de ore”; sub fișier
+  „1 zi · 38 h condus” (scria „1 zile · 38h condus”).
+- **Și în rest:** RA Insight (răspunsurile pe loc), cursele, graficele, „Durată cu motor pornit”, timpul până la client la dispecerizare, orele de
+  motor din calculatorul mașinii, „Statistici flotă” („Timp de mers azi”). Pe telefon la fel, la APK-ul următor (Robert).
+- **Telefonul RA Insight de pe prima pagină** arată acum „ralanti în total 3 h 10 min” și „Durată totală 4 h 12 min”.
+- Tabelul din Rapoarte se sortează corect după durată în ambele forme (rapoartele vechi din Istoric au încă „3h 10m” până expiră, în 7 zile).
+
+**Ce vede fondatorul:** aceleași; în „Stare producție”, vârsta copiilor de siguranță: „acum 3,5 h”.
+
+**Ce vede clientul:** rapoartele, Traseul, harta, tahograful și RA Insight cu duratele de mai sus.
+
+Reper: `reports.js` (`fmtDur`, legenda și încălcările orelor de condus), `ai_raport.js` (`_dur` / `_sec`), `report_export.js` (`hmTraseu`,
+`durataDepasiri`), `tacho.js`, `io_format.js`, `public/index.html`, `public/js/vehicle-popup.js`, ecranele telefonului; proba nouă
+`verify_durate.js` (în `npm test`), plus `verify_traseu_export.js`, `verify_ai_raport.js`, `verify_ramuri.js`, `verify_tacho.js`.
+
 ### AMÂNDOI · Site-ul: „tu” peste tot, greșelile sigure corectate, Termenii și Confidențialitatea completate
 *Alin, 17.11, la inventarul greșelilor de pe site: „1. Da 2. da 3. da 4. Tu 5. da … 7. Hai să rezolvăm acum”.*
 

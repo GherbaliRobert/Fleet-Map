@@ -44,8 +44,8 @@ T('cel mult 4 cifre de sus (ca pe cartonașul din RA Insight)', (ER.continut({ k
 // ─── 2. Cifrele de sus: O socoteală ─────────────────────────────────────────────────────────────
 console.log('\n2. Cifrele de sus: aceeași socoteală pentru email și pentru RA Insight');
 const reports = require('./reports.js');
-const k1 = reports.kpiRaport({ summary: [['Curse', 12], ['Distanță totală (km)', 845.25], ['Atenție', 'x'], ['Gol', ''], ['Timp de mers', '14h 20m'], ['A', 1], ['B', 2]] });
-T('reports.kpiRaport: fără „Atenție" și fără goluri, cel mult 4, numerele pe românește', JSON.stringify(k1) === JSON.stringify([{ et: 'Curse', val: '12' }, { et: 'Distanță totală (km)', val: '845,3' }, { et: 'Timp de mers', val: '14h 20m' }, { et: 'A', val: '1' }]), JSON.stringify(k1));
+const k1 = reports.kpiRaport({ summary: [['Curse', 12], ['Distanță totală (km)', 845.25], ['Atenție', 'x'], ['Gol', ''], ['Timp de mers', '14 h 20 min'], ['A', 1], ['B', 2]] });
+T('reports.kpiRaport: fără „Atenție" și fără goluri, cel mult 4, numerele pe românește', JSON.stringify(k1) === JSON.stringify([{ et: 'Curse', val: '12' }, { et: 'Distanță totală (km)', val: '845,3' }, { et: 'Timp de mers', val: '14 h 20 min' }, { et: 'A', val: '1' }]), JSON.stringify(k1));
 T('…și sumarul scris ca obiect', JSON.stringify(reports.kpiRaport({ summary: { Curse: 3, Opriri: 0 } })) === JSON.stringify([{ et: 'Curse', val: '3' }, { et: 'Opriri', val: '0' }]) && reports.kpiRaport(null).length === 0);
 const SRV = citeste('server.js'), RS = citeste('report_schedules.js');
 T('serverul (cartonașul din RA Insight) cheamă aceeași funcție — nu mai are o copie a ei', /function _kpiRaport\(report\) \{ return reports\.kpiRaport\(report\); \}/.test(SRV) && !/const perechi = Array\.isArray\(s\)/.test(SRV));

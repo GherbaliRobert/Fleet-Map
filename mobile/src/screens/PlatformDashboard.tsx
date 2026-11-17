@@ -12,7 +12,7 @@ import './platforma.css';   // titlurile cartonașelor și cifrele mari, pe --fd
 
 // Super-admin: dashboard platformă (venituri + sănătate flotă + server + erori). Toate endpoint-urile requireSuperadmin.
 function n(v: any, d = 0) { return (v == null || isNaN(Number(v))) ? d : Number(v); }
-function fmtUptime(s: any) { const x = n(s); const h = Math.floor(x / 3600), m = Math.floor((x % 3600) / 60); return h >= 24 ? Math.floor(h / 24) + 'z ' + (h % 24) + 'h' : (h > 0 ? h + 'h ' + m + 'm' : m + 'm'); }
+function fmtUptime(s: any) { const x = n(s); const h = Math.floor(x / 3600), m = Math.floor((x % 3600) / 60); if (h < 24) return h > 0 ? h + ' h ' + m + ' min' : m + ' min'; const z = Math.floor(h / 24); return (z === 1 ? '1 zi' : z + (z < 20 || (z % 100 >= 1 && z % 100 <= 19) ? ' zile' : ' de zile')) + ' ' + (h % 24) + ' h'; }
 function fmtDT(s: any) { if (!s) return '—'; try { return new Date(s).toLocaleString('ro-RO'); } catch { return String(s); } }
 
 export function PlatformDashboard() {

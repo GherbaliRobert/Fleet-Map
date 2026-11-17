@@ -867,18 +867,18 @@ function directieTraseu(unghi) {
   const a = Number(unghi); if (!isFinite(a)) return '';
   return _DIRECTII[Math.round((((a % 360) + 360) % 360) / 45) % 8];
 }
-// „1h 05m" / „45 min" — ACEEAȘI formă ca sumarul de pe ecran (`_hm` din hpRenderSummary), legate printr-o probă.
+// „1 h 5 min” / „45 min” — ACEEAȘI formă ca sumarul de pe ecran (`_hm` din hpRenderSummary), legate printr-o probă.
 function hmTraseu(sec) {
   sec = Math.max(0, Math.round(sec || 0));
   let h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
   if (m === 60) { h++; m = 0; }
-  return h > 0 ? (h + 'h ' + (m < 10 ? '0' : '') + m + 'm') : (m + ' min');
+  return h > 0 ? (h + ' h' + (m ? ' ' + m + ' min' : '')) : (m + ' min');
 }
 // „70 km", „1.250 km" — ca pe ecran (`_grp` din hpRenderSummary: kilometrii rotunjiți, cu punct la mii).
 function _miiTraseu(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 function kmTraseu(n) { return _miiTraseu(n) + ' km'; }
 // Durata depășirilor, ca pe ecran (`durStr` din hpRenderSummary): „45s", „3min 20s".
-function durataDepasiri(sec) { const d = Math.max(0, Math.round(Number(sec) || 0)); return d < 60 ? d + 's' : Math.floor(d / 60) + 'min ' + (d % 60) + 's'; }
+function durataDepasiri(sec) { const d = Math.max(0, Math.round(Number(sec) || 0)); return d < 60 ? d + ' s' : Math.floor(d / 60) + ' min ' + (d % 60) + ' s'; }
 // Cel mult atâtea poziții într-un fișier (01.10). MĂSURAT: Excel-ul se face în memorie — 10.000 de poziții cer ~3 secunde
 // și ~0,6 GB; 50.000 (cam o lună a unei mașini) cer 16 secunde și 1,5 GB, timp în care serverul nu mai răspunde nimănui
 // (harta live, aparatele care trimit). Ecranul arată oricum tot traseul; fișierul e pentru câteva zile sau câteva mașini.

@@ -151,7 +151,7 @@ T('raportul: numele din catalog și capul cartonașului (nume · mașina · peri
   R.dupa.includes('>' + REP.REPORTS.trips.label + ' · ' + INS.eticheta({ nr: 'B 204 RAT', nume: 'VW Caddy' }) + ' · ieri<') && IX.includes("rp.label + ' · ' + (rp.vehicul || '') + (rp.perioada ? ' · ' + rp.perioada : '')"));
 const ieri = INS.perioada({ period: 'yesterday' }, ACUM);
 T('…„ieri" e eticheta perioadei din aplicație', INS.etichetaPerioadei(ieri.from, ieri.to, ACUM) === 'ieri', INS.etichetaPerioadei(ieri.from, ieri.to, ACUM));
-const kpi = REP.kpiRaport({ summary: { 'Curse': 6, 'Distanță totală (km)': 184.3, 'Durată totală': '4h 12m' } });
+const kpi = REP.kpiRaport({ summary: { 'Curse': 6, 'Distanță totală (km)': 184.3, 'Durată totală': REP._ajutor.fmtDur(4 * 3600 + 12 * 60) } });
 T('…cifrele de sus: cheile raportului „Foaie de parcurs" și forma lor (kpiRaport)', /summary: \{ 'Curse': count, 'Distanță totală \(km\)': [^,]+, 'Durată totală': fmtDur\(totalDur\) \}/.test(REPJS) &&
   R.dupa.includes('<div class="ri-kpi">' + kpi.map((k) => '<span><span class="ri-l">' + k.et + '</span><b>' + k.val + '</b></span>').join('') + '</div>'), kpi);
 T('…butoanele „Deschide raportul" / „Descarcă Excel" și „E și în Istoric rapoarte, până pe …" (cartonasRaport)', ['Deschide raportul', 'Descarcă Excel', 'E și în Istoric rapoarte, până pe '].every((t) => IX.includes(t) && R.dupa.includes(t)));
@@ -164,7 +164,7 @@ T('răspunsul pe loc „Unde e acum" = fleet_quick (titlul, mașina, locul, star
 // Pe butoane (Start): „Ce a făcut flota ieri?" — rezumatul pe mai multe mașini din ai_raport.js.
 T('„Ce a făcut flota ieri?" (Start): forma răspunsului pe reguli (ai_raport, rezumatul pe mai multe mașini)',
   AR.includes("r.text = (cine ? '**' + cine + '**' : 'Flota') + ' — ' + per + ': **' + cant(Math.round(kmTot), 'km', 'km') + '**; au mers '") && AR.includes("', ralanti în total '") &&
-  /^<p>Flota — ieri: <b>1\.240 km<\/b>; au mers 7 din 8 mașini, ralanti în total 3h 10m\.<\/p>$/.test(TX.sc.ieri.corp));
+  /^<p>Flota — ieri: <b>1\.240 km<\/b>; au mers 7 din 8 mașini, ralanti în total 3 h 10 min\.<\/p>$/.test(TX.sc.ieri.corp));
 T('…tabelul: aceleași coloane', AR.includes("coloane: ['Mașina', 'Km', 'Zile de mers', 'În mers']") && TX.sc.ieri.dupa.includes('<th>Mașina</th><th>Km</th><th>Zile de mers</th><th>În mers</th>'));
 // Insignele (pachete.insigna) și durata (_chatSecunde din pagină).
 const I = (f, o) => PK.insigna(f, o).detaliu;

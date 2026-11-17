@@ -30,7 +30,7 @@ function formatIoValue(key, value) {
   if (key === 'can_engine_rpm') return value + ' RPM';
   if (key === 'can_engine_temp') return value.toFixed ? value.toFixed(1) + ' \u00B0C' : value + ' \u00B0C';
   if (key === 'can_engine_load' || key === 'can_retarder_load') return value + ' %';
-  if (key === 'can_engine_worktime' || key === 'can_engine_worktime_counted') return Math.floor(value/60) + 'h ' + (value%60) + 'm';
+  if (key === 'can_engine_worktime' || key === 'can_engine_worktime_counted') return Math.floor(value/60) + ' h ' + (value%60) + ' min';
   // CAN Viteza
   if (key === 'can_vehicle_speed' || key === 'speed_io') return value + ' km/h';
   if (key === 'can_accelerator_pedal') return value + ' %';
@@ -101,7 +101,7 @@ function formatIoValue(key, value) {
   if (key === 'can_tacho_overspeed') return value ? '⚠ DA' : 'NU';
   if (key === 'can_tacho_driver1_card' || key === 'can_tacho_driver2_card') return value ? 'INSERATA' : 'LIPSA';
   if (key.match(/^can_tacho_driver[12]_(drive|break|continuous)_time$/)) {
-    return Math.floor(value/60) + 'h ' + (value%60) + 'm';
+    return Math.floor(value/60) + ' h ' + (value%60) + ' min';
   }
   // VIN
   if (key === 'can_vin') return String(value).substring(0, 17);

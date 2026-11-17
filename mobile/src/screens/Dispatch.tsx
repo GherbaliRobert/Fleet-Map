@@ -17,7 +17,7 @@ type Suggestion = {
   lat: number; lon: number;
 };
 
-const fmtEta = (m: number) => (m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + ' min');
+const fmtEta = (m: number) => (m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min');
 
 export function Dispatch() {
   const loc = useLocation();

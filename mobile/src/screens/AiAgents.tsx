@@ -65,8 +65,8 @@ function ago(ts?: string | null) {
   const t = tsOf(ts); if (!t) return '';
   const s = Math.max(0, (Date.now() - t) / 1000);
   if (s < 90) return 'acum';
-  if (s < 3600) return 'acum ' + Math.round(s / 60) + 'm';
-  if (s < 86400) return 'acum ' + Math.round(s / 3600) + 'h';
+  if (s < 3600) return 'acum ' + Math.round(s / 60) + ' min';
+  if (s < 86400) return 'acum ' + Math.round(s / 3600) + ' h';
   return new Date(t).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' });
 }
 function whenLabel(ms: number) {

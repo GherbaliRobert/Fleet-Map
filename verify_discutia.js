@@ -88,7 +88,7 @@ T('o cerere simplă nu e „analiză"; „de ce" da', !A.comanda('fa-mi foaia de
 // ─── 3. Sumele și cifrele (insight.js, cifre.js) ────────────────────────────────────────────────────
 console.log('\n3. Sumele pe mașină / zi și verificarea cifrelor');
 const cols = ['Vehicul', 'Șofer', 'Plecare', 'Loc. plecare', 'Sosire', 'Loc. sosire', 'Durată', 'Distanță (km)', 'Km plecare', 'Km sosire', 'Vit. medie', 'Vit. max'];
-const rd = (v, z, km, vm) => [v, 'x', z + ' 08:00', 'A', z + ' 09:00', 'B', '1h 0m', km.toFixed(2), '—', '—', 40, vm];
+const rd = (v, z, km, vm) => [v, 'x', z + ' 08:00', 'A', z + ' 09:00', 'B', '1 h', km.toFixed(2), '—', '—', 40, vm];
 const rows = [rd('Dacia Logan 3 (B 154 UIP)', '05.10.2026', 12.11, 90), rd('Dacia Logan 3 (B 154 UIP)', '05.10.2026', 47.29, 137), rd('Dacia Logan 3 (B 154 UIP)', '08.10.2026', 96.4, 159), rd('VW Caddy (B 268 ROY)', '05.10.2026', 19.4, 50)];
 const tot = I.totaluriPeMasina(cols, rows);
 T('totalurile pe mașină le face aplicația, pe TOATE rândurile: kilometrii adunați, viteza cea mai mare', tot.pe_masina.length === 2 && tot.pe_masina[0]['Distanță (km) (adunat)'] === 155.8 && tot.pe_masina[0]['Vit. max (cea mai mare)'] === 159 && tot.pe_masina[0].randuri === 3, JSON.stringify(tot.pe_masina));

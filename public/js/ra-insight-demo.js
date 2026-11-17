@@ -74,7 +74,7 @@
           dupa: ok('Cifrele le-am luat din rapoarte.') + '<div class="ri-surse">' + pas('fa-file-lines', 'Consum carburant') + pas('fa-file-lines', 'Ralanti') + '</div>' },
         raport: { q: 'Fă-mi și foaia de parcurs pe ieri', qSingur: 'Fă-mi foaia de parcurs pentru B 204 RAT, ieri', fel: 'instant', det: 'din rapoarte', gand: 1300,
           dupa: '<div class="ri-rap"><div class="ri-rap-h"><span class="ri-ic"><i class="fa-solid fa-file-lines"></i></span><span>Foaie de parcurs · B 204 RAT · VW Caddy · ieri</span></div>' +
-            '<div class="ri-kpi"><span><span class="ri-l">Curse</span><b>6</b></span><span><span class="ri-l">Distanță totală (km)</span><b>184,3</b></span><span><span class="ri-l">Durată totală</span><b>4h 12m</b></span></div>' +
+            '<div class="ri-kpi"><span><span class="ri-l">Curse</span><b>6</b></span><span><span class="ri-l">Distanță totală (km)</span><b>184,3</b></span><span><span class="ri-l">Durată totală</span><b>4 h 12 min</b></span></div>' +
             '<div class="ri-btns">' + pas('fa-up-right-from-square', 'Deschide raportul') + pas('fa-file-excel', 'Descarcă Excel') + '</div>' +
             '<div class="ri-mic">E și în Istoric rapoarte, până pe ' + zz(acum + 7 * ZI, acum, true) + '.</div></div>' },
         alerta: { q: 'Anunță-mă când B 204 RAT trece de 120 km/h', fel: 'instant', det: 'propunere', gand: 1000, faraAct: true,
@@ -92,10 +92,10 @@
             '<div class="ri-btns">' + pas('fa-rotate-left', 'Anulează · mai ai 9:59', 'ri-anul') + pas('fa-bell', 'Vezi alertele') + '</div>' +
             '<div class="ri-sub">În jurnal: „Andrei, prin RA Insight: alerta Viteză peste 120 — B 204 RAT” · ' + zzan(acum) + ', ' + ORA + '. O oprești oricând din Management › Alerte.</div></div>' },
         ieri: { q: 'Ce a făcut flota ieri?', fel: 'instant', det: '1 răspuns', gand: 900, chip: 0, numara: true,
-          corp: '<p>Flota — ieri: <b>1.240 km</b>; au mers 7 din 8 mașini, ralanti în total 3h 10m.</p>',
+          corp: '<p>Flota — ieri: <b>1.240 km</b>; au mers 7 din 8 mașini, ralanti în total 3 h 10 min.</p>',
           dupa: '<table class="ri-tab"><thead><tr><th>Mașina</th><th>Km</th><th>Zile de mers</th><th>În mers</th></tr></thead><tbody>' +
-            '<tr><td>B 77 TIR</td><td>412</td><td>1</td><td>5h 40m</td></tr><tr><td>B 31 LOG</td><td>268</td><td>1</td><td>3h 55m</td></tr>' +
-            '<tr><td>B 204 RAT</td><td>184</td><td>1</td><td>4h 12m</td></tr><tr><td>B 18 VAN</td><td>151</td><td>1</td><td>3h 5m</td></tr></tbody></table>' },
+            '<tr><td>B 77 TIR</td><td>412</td><td>1</td><td>5 h 40 min</td></tr><tr><td>B 31 LOG</td><td>268</td><td>1</td><td>3 h 55 min</td></tr>' +
+            '<tr><td>B 204 RAT</td><td>184</td><td>1</td><td>4 h 12 min</td></tr><tr><td>B 18 VAN</td><td>151</td><td>1</td><td>3 h 5 min</td></tr></tbody></table>' },
         soferi: { q: 'Care șofer a mers cel mai mult peste 90 km/h săptămâna trecută?', fel: 'ai', det: '1 întrebare', dur: '6 secunde', gand: 2100, numara: true,
           corp: '<p><b>Ion Popa</b> (B 77 TIR) a mers cel mai mult peste 90 km/h săptămâna trecută: <b>126 km</b>, în 4 zile. Urmează <b>Mihai Ionescu</b> (B 204 RAT), cu <b>41 km</b>.</p>' +
             '<p>Ceilalți șoferi au sub 10 km fiecare.</p>',

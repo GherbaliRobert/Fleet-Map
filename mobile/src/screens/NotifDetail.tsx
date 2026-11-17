@@ -337,7 +337,7 @@ export function NotifDetail() {
                 </span></div>
               ) : null}
               {isIdle && d.idle && d.idle.minutes ? (
-                <div class="adm-kv"><span class="k">Durată cu motor pornit</span><span style="color:var(--fl-warn);font-weight:800">{d.idle.minutes >= 60 ? Math.floor(d.idle.minutes / 60) + 'h ' + (d.idle.minutes % 60) + 'm' : d.idle.minutes + ' min'}{!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : ''}</span></div>
+                <div class="adm-kv"><span class="k">Durată cu motor pornit</span><span style="color:var(--fl-warn);font-weight:800">{d.idle.minutes >= 60 ? Math.floor(d.idle.minutes / 60) + ' h ' + (d.idle.minutes % 60) + ' min' : d.idle.minutes + ' min'}{!d.idle.end && !d.idle.ongoing ? ' (cel puțin)' : d.idle.ongoing ? ' (în curs)' : ''}</span></div>
               ) : null}
               {isIdle && d.idle && d.idle.fuelL != null ? (
                 <div class="adm-kv"><span class="k">Carburant irosit pe staționare</span><span style="font-weight:700">{(d.idle.fuelEstimated ? '~' : '') + String(d.idle.fuelL).replace('.', ',') + ' L' + (d.idle.fuelEstimated ? ' (estimat)' : ' (senzor)')}</span></div>
