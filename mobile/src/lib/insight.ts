@@ -73,7 +73,7 @@ export function stareDinQuota(q: any, fondator: boolean) {
   return { pachet, sursaInfo, peReguli, contor, fond: randFond(q, pachet, contor) };
 }
 export function placeholderCaseta(peReguli: boolean, pachet: any, poateRapoarte: boolean): string {
-  return !peReguli ? (poateRapoarte ? 'Scrie o întrebare sau cere un raport…' : 'Scrie o întrebare…') : (pachet && !pachet.ai ? 'Apasă „+" sau scrie o întrebare…' : 'Apasă „+" ca să alegi…');
+  return !peReguli ? (poateRapoarte ? 'Scrie o întrebare sau cere un raport…' : 'Scrie o întrebare…') : (pachet && !pachet.ai ? 'Apasă „+” sau scrie o întrebare…' : 'Apasă „+” ca să alegi…');
 }
 // Butonul „Sursă externă": pe Start și când butoanele răspund (fără AI) nu apare. Oprit = doar globul (pe ecran îngust, numele
 // pleacă, ca pe web); pornit = și câte au rămas, plus fraza de sub casetă. Când s-au terminat, rămâne cu „0 din 10".

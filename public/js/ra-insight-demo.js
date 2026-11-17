@@ -40,7 +40,7 @@
     basic: { nume: 'Basic', titlu: 'Întreabă orice despre flota ta.', pentru: 'Pentru patron și încă un om.', conturi: '2', intrebari: '200 pe lună', sursa: 10,
       cine: 'Andrei', rol: 'patronul', contor: ['198 din 200', '197 din 200'], sursaRamase: 7, sc: 'dece' },
     pro: { nume: 'Pro', titlu: 'Toată echipa întreabă: până la 5 oameni.', pentru: 'Pentru firme cu dispecerat.', conturi: 'până la 5', intrebari: '600 pe lună', sursa: 30,
-      cine: 'Maria', rol: 'dispecerul', contor: ['îți rămân 92', 'îți rămân 91'], sursaRamase: 24, sc: 'soferi' },
+      cine: 'Maria', rol: 'dispecera', contor: ['îți rămân 92', 'îți rămân 91'], sursaRamase: 24, sc: 'soferi' },
     business: { nume: 'Business', titlu: 'Oricâți oameni, 1.000 de întrebări.', pentru: 'Pentru flote mari, cu mai multe echipe.', conturi: 'nelimitate', intrebari: '1.000 pe lună', sursa: 50,
       cine: 'Radu', rol: 'șef de echipă', contor: ['îți rămân 184', 'îți rămân 183'], sursaRamase: 47, sc: 'ore' }
   };
@@ -50,7 +50,7 @@
   // Butoanele de sub casetă (CARDURI / CARDURI_REGULI din pagină) și textul din casetă.
   var CHIPS = [['fa-triangle-exclamation', 'Ce probleme are flota?'], ['fa-route', 'Km săptămâna trecută'], ['fa-file-signature', 'Ce acte expiră?']];
   var CHIPS_START = [['fa-clock-rotate-left', 'Ce a făcut flota ieri?'], ['fa-route', 'Km săptămâna trecută'], ['fa-file-signature', 'Ce acte expiră?']];
-  var LOC = 'Scrie o întrebare sau cere un raport…', LOC_START = 'Apasă „+" sau scrie o întrebare…';
+  var LOC = 'Scrie o întrebare sau cere un raport…', LOC_START = 'Apasă „+” sau scrie o întrebare…';
 
   // ── Textele, cu zilele socotite față de `acum` ──
   function texte(acum) {

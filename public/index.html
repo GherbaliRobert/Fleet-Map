@@ -12120,7 +12120,7 @@ const pozitii = await r.json();</code></pre>
       // Contorul, textul din casetă și ce se poate alege din „+": rapoartele doar cu dreptul la ele.
       function actualizeazaCaseta() {
         var c = $i('insp-cnt'); if (c) { c.textContent = S.contor || ''; c.style.display = S.contor ? '' : 'none'; c.classList.toggle('gata', !!(S.pachet && S.peReguli && S.pachet.ai)); }
-        var i = $i('insp-input'); if (i) i.placeholder = !S.peReguli ? (poateRapoarte() ? 'Scrie o întrebare sau cere un raport…' : 'Scrie o întrebare…') : (S.pachet && !S.pachet.ai ? 'Apasă „+" sau scrie o întrebare…' : 'Apasă „+" ca să alegi…');
+        var i = $i('insp-input'); if (i) i.placeholder = !S.peReguli ? (poateRapoarte() ? 'Scrie o întrebare sau cere un raport…' : 'Scrie o întrebare…') : (S.pachet && !S.pachet.ai ? 'Apasă „+” sau scrie o întrebare…' : 'Apasă „+” ca să alegi…');
         // „Sursă externă": oprit = doar numele; pornit (albastru) = și câte au rămas, plus fraza de sub casetă. Pe Start și când
         // butoanele răspund (fără AI) nu apare. Când s-au terminat, rămâne cu „0 din 10".
         var sb = $i('insp-sursa'), sn = $i('insp-sursa-nota'), si = S.peReguli ? null : S.sursaInfo;
@@ -34404,10 +34404,10 @@ const pozitii = await r.json();</code></pre>
 
     // ─── Pagina „Agenți AI" (client-facing) + launcher RA Insight ───
     var AGP_META = {
-      watch:      { name: 'RA Watch',      icon: 'fa-shield-halved',   tile: 'ag-t-green',  role: 'Supraveghere',   desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.', checks: 'fiecare vehicul pentru semnal (offline), ralanti prelungit, scădere și furt de combustibil și tahograf neconfigurat' },
+      watch:      { name: 'RA Watch',      icon: 'fa-shield-halved',   tile: 'ag-t-green',  role: 'Supraveghere',   desc: 'Mașini fără semnal, scăderi bruște de combustibil, ralanti prelungit, camioane fără date de tahograf.', checks: 'fiecare vehicul pentru semnal (fără semnal), ralanti prelungit, scădere și furt de combustibil și tahograf neconfigurat' },
       dispatch:   { name: 'RA Dispatch',   icon: 'fa-compass',         tile: 'ag-t-green',  role: 'Dispecerat',     desc: 'Vehicule disponibile acum și cele subutilizate în ziua curentă.', checks: 'ce vehicule sunt disponibile acum și care sunt subutilizate' },
       care:       { name: 'RA Care',       icon: 'fa-wrench',          tile: 'ag-t-green',  role: 'Mentenanță',     desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.', checks: 'scadențele de ITP, RCA, revizii și intervalele de service' },
-      optimize:   { name: 'RA Optimize',   icon: 'fa-leaf',            tile: 'ag-t-green',  role: 'Eco-driving',    desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', checks: 'scorul eco, frânările/accelerările bruște, viteza și risipa la ralanti' },
+      optimize:   { name: 'RA Optimize',   icon: 'fa-leaf',            tile: 'ag-t-green',  role: 'Condus economic', desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', checks: 'scorul eco, frânările/accelerările bruște, viteza și risipa la ralanti' },
       compliance: { name: 'RA Compliance', icon: 'fa-clipboard-check', tile: 'ag-t-green',  role: 'Ore de condus',  desc: 'Condus continuu și zilnic (Reg. 561) — doar vehicule cu tahograf, nu turisme.', checks: 'orele de condus continuu și zilnic la vehiculele cu tahograf (Reg. 561)' },
       client:     { name: 'RA Client',     icon: 'fa-file-lines',      tile: 'ag-t-green',  role: 'Sinteza zilei',  desc: 'Ziua într-un rând: km, active, comparație cu ieri + ce au găsit ceilalți agenți.', checks: 'activitatea zilei și concluziile celorlalți agenți' }
     };
@@ -34460,8 +34460,8 @@ const pozitii = await r.json();</code></pre>
       var t = new Date(ts).getTime(); if (!t) return '';
       var s = Math.max(0, (Date.now() - t) / 1000);
       if (s < 90) return 'acum';
-      if (s < 3600) return 'acum ' + Math.round(s / 60) + 'm';
-      if (s < 86400) return 'acum ' + Math.round(s / 3600) + 'h';
+      if (s < 3600) return 'acum ' + Math.round(s / 60) + ' min'; // „acum 30 min", ca pe telefon (17.11; era „acum 30m")
+      if (s < 86400) return 'acum ' + Math.round(s / 3600) + ' h';
       return new Date(ts).toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' });
     }
     function _agpSevCol(s) { return s === 'critical' ? 'var(--red)' : (s === 'warning' ? 'var(--orange)' : 'var(--accent)'); }
@@ -34768,7 +34768,7 @@ const pozitii = await r.json();</code></pre>
         }).join('');
       } else {
         var okMsg = (k === 'dispatch')
-          ? { t: 'Niciun vehicul disponibil acum', b: 'Momentan niciun vehicul online și oprit, gata de o cursă. Apasă „Dispecerizare" ca să cauți cel mai apropiat vehicul de o destinație.' }
+          ? { t: 'Niciun vehicul disponibil acum', b: 'Momentan niciun vehicul cu semnal și oprit, gata de o cursă. Apasă „Dispecerizare" ca să cauți cel mai apropiat vehicul de o destinație.' }
           : (k === 'care')
           ? { t: 'Nicio scadență acum — totul e în regulă', b: 'N-am găsit revizii, ITP/RCA sau service aproape de scadență. Poți sta liniștit.' }
           : (k === 'optimize')
@@ -34795,18 +34795,18 @@ const pozitii = await r.json();</code></pre>
       if (whenEl) {
         var t = (data && data.checkedAt) ? new Date(data.checkedAt) : new Date();
         var when = t.toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        whenEl.innerHTML = '<i class="fas fa-clock"></i> Verificat: <b>' + when + '</b> · se actualizează când deschizi pagina sau apeși „Rulează".';
+        whenEl.innerHTML = '<i class="fas fa-clock"></i> Verificat: <b>' + when + '</b> · se actualizează când deschizi pagina sau apeși „Rulează”.';
       }
     };
     // ── Tutorial per agent (ghid de folosire) ──
     var AGP_TUT = {
       watch: {
-        face: 'Verifică flota din oră în oră și te anunță la: vehicul offline (fără semnal), posibil furt de combustibil, scădere bruscă de combustibil, ralanti prelungit și tahograf neconfigurat pe camioane.',
-        use: 'Pragurile le reglezi chiar de aici, din butonul „Praguri" al agentului (offline, ralanti, scădere și furt de combustibil) — alegi din liste, nu scrii nimic.',
-        act: 'La „furt combustibil" verifici ora și traseul; la „offline" verifici dacă vehiculul e parcat/oprit sau are o problemă la tracker.'
+        face: 'Verifică flota din oră în oră și te anunță la: vehicul fără semnal, posibil furt de combustibil, scădere bruscă de combustibil, ralanti prelungit și tahograf neconfigurat pe camioane.',
+        use: 'Pragurile le reglezi chiar de aici, din butonul „Praguri" al agentului (fără semnal, ralanti, scădere și furt de combustibil) — alegi din liste, nu scrii nimic.',
+        act: 'La „furt combustibil" verifici ora și traseul; la „fără semnal", dacă mașina ar trebui să fie pe drum, suni șoferul.'
       },
       dispatch: {
-        face: 'Îți arată ce vehicule sunt libere ACUM (online și oprite) și, după-amiaza, care au rulat foarte puțin (subutilizate).',
+        face: 'Îți arată ce vehicule sunt libere ACUM (cu semnal și oprite) și, după-amiaza, care au rulat foarte puțin (subutilizate).',
         use: 'Se actualizează automat. Pentru „cel mai apropiat vehicul de o destinație + ETA" folosești dispecerizarea.',
         act: 'Când ai o cursă nouă, aloci vehiculul liber potrivit din listă.'
       },
@@ -34861,7 +34861,7 @@ const pozitii = await r.json();</code></pre>
     // ── Praguri / limite per agent (mutate din Setări direct pe card) ──
     var AGP_THRESH = {
       watch: { fields: [
-        { key: 'offlineMin', label: 'Offline (fără semnal)', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de atâta timp.',
+        { key: 'offlineMin', label: 'Fără semnal', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de atâta timp.',
           options: [{ v: 15, t: '15 minute' }, { v: 30, t: '30 minute' }, { v: 60, t: '1 oră (recomandat)' }, { v: 120, t: '2 ore' }, { v: 360, t: '6 ore' }, { v: 720, t: '12 ore' }] },
         { key: 'idleMaxMin', label: 'Ralanti prelungit', unit: 'min', min: 5, max: 1440, def: 120, hint: 'Alertă când motorul merge staționat (pe loc) de atâta timp.',
           options: [{ v: 15, t: '15 minute' }, { v: 30, t: '30 minute' }, { v: 60, t: '1 oră' }, { v: 120, t: '2 ore (recomandat)' }, { v: 180, t: '3 ore' }] },

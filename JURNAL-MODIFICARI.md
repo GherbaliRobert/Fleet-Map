@@ -41,6 +41,10 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   fiecărui om, cine o vede, ce nu intră în ea, cât se păstrează — cât timp omul are cont — și cum se șterge). **Tot din 11.11:** numele
   furnizorului de AI (Anthropic) a rămas doar în Confidențialitate (Alin: „e treaba noastră internă") — ajunge acolo felul firmei („un furnizor
   de inteligență artificială din SUA") sau trebuie numele?
+  **Din 17.11, golurile din Termeni și Confidențialitate sunt completate** (Alin: „2. da"): facturare lunară, în avans; preaviz 30 de zile;
+  răspunderea, cel mult cât s-a plătit în ultimele 12 luni; găzduire Railway; emailuri prin Brevo; „nu avem un responsabil cu protecția datelor
+  desemnat". Adăugate: notificările pe telefon (Google Firebase), citirea pozelor de acte prin Anthropic, datele din formularul de contact. De
+  întrebat juristul: ne trebuie un responsabil cu protecția datelor (DPO)? Urmărirea mașinilor poate fi socotită „monitorizare sistematică".
 - [ ] **Voi: cât vă costă fiecare aparat, în „Prețurile noastre" → coloana „ne costă". Adăugat pe 25.09.**
   Din cifrele astea se propune singură chiria (cost ÷ 24 de luni + 50%). Fără ele, oferta cu închiriere
   spune cu roșu „lipsește chiria" și nu se salvează până nu o scrieți de mână.
@@ -610,6 +614,54 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-17
+
+### AMÂNDOI · Site-ul: „tu” peste tot, greșelile sigure corectate, Termenii și Confidențialitatea completate
+*Alin, 17.11, la inventarul greșelilor de pe site: „1. Da 2. da 3. da 4. Tu 5. da … 7. Hai să rezolvăm acum”.*
+
+**Ce am schimbat:**
+- **„Tu” pe toate paginile**, ca prima pagină și ca aplicația: Monitorizare combustibil, Alerte ITP, Agenți AI, Pachetele RA Insight și
+  Întrebări frecvente vorbeau cu „dumneavoastră” („Setați un prag…”, „Vreți să vedeți…”, „Cereți o ofertă…”). Acum: „Setezi un prag…”,
+  „Vrei să vezi…”, „Cere o ofertă…”, și în întrebările pentru Google. Termenii rămân la persoana a treia („Clientul”).
+- **Greșelile sigure:** „separat de cel al actelor”, „Ca să nu rămână uitate, actele…”, „Loganul” (fără cratimă), „Cinci domenii” în loc de
+  „Cinci pagini” (și în aplicație, la „Vezi pachetele”), „Maria, dispecera” în telefonul de pe prima pagină, „a rovinietei” în datele pentru
+  Google, ghilimelele românești („Accept”, „ca atare”, „+” din caseta RA Insight — și în aplicație), „denumită … Furnizorul”, „și unui acord”;
+  „o minciună care ne-ar folosi nouă și te-ar păgubi pe tine” (scria „o minciună utilă nouă”).
+- **Programul de lucru, cum e:** Întrebări frecvente promitea că în afara programului poziția „nu se înregistrează sau nu se afișează”. Acum:
+  „poți pune un program de lucru: aplicația te anunță când mașina se mișcă în afara lui. Pozițiile se înregistrează și atunci, așa că folosirea
+  personală se stabilește în scris cu angajatul.”
+- **Termeni și Confidențialitate, fără goluri din șablon:** facturare lunară, în avans; preaviz 30 de zile; răspunderea, cel mult cât s-a plătit
+  în ultimele 12 luni; contact@ratrack.ro fără paranteze; „nu avem un responsabil cu protecția datelor desemnat”; găzduire Railway; emailuri prin
+  Brevo. **Adăugate:** notificările pe telefon (Google Firebase), citirea pozelor de acte prin furnizorul de AI (separat de funcțiile AI: se
+  face și fără ele), datele din formularul de contact (rând în tabel + scopul lor). „Ultima actualizare”: 17.11.2026.
+- **Cuvinte englezești de pe prima pagină:** „Roluri & acces pe mașini” (era „multi-client”, cu eticheta „RBAC”), „programele tale — de
+  gestiune, de facturare sau de transport — … anunțuri automate” (era „ERP, TMS, webhooks”), „notificări pe telefon” (era „push”); pe agenți,
+  „după câte minute de tăcere o mașină e socotită „fără semnal””; la cookie-uri, „funcțiile Google de publicitate și de personalizare sunt oprite”.
+
+**Ce vede fondatorul:** paginile publice de mai sus; în aplicație, „Cinci domenii” la pachete și ghilimeaua din caseta RA Insight.
+
+**Ce vede clientul:** la fel, pe ratrack.ro; pe telefon, caseta RA Insight la APK-ul următor (Robert).
+
+Rămase la Alin: cele 55 de puncte „de discutat” din inventar (promisiuni, contradicții), cât păstrăm cererile din formularul de contact.
+Reper: paginile din `public/`, `pachete.js` (DESCRIERE.basic), `public/js/ra-insight-demo.js`, `mobile/src/lib/insight.ts`, amprentele din
+`PAGINI_PUBLICE` (server.js); probe: `verify_site_public.js` (LEGATE „ai 30 de zile să ne ceri datele”), `verify_telefon_insight.js`.
+
+### AMÂNDOI · Agenții: numărul mașinii în titlu, „fără semnal” în loc de „offline”, „3 h 10 min”
+*Alin, 17.11: „7. Hai să rezolvăm acum” (numărul mașinii) și „5. da” (cuvintele englezești la agenți).*
+
+**Ce am schimbat:**
+- **Titlul fiecărei constatări are și numărul mașinii**, ca omul să știe care din cele zece Caddy e: „VW Caddy (B 204 RAT): scădere combustibil
+  ~42 L” (scria doar „VW Caddy”). Unde numele e chiar numărul, rămâne numărul o dată.
+- **Pe românește:** „fără semnal de 3 h 10 min” (era „offline de 3h 10m”), „Cu semnal și pe loc: …” (era „Online și staționate”), rolul lui RA
+  Optimize „Condus economic” (era „Eco-driving”), „acum 30 min” (era „acum 30m”), „Sub 1 km parcurs azi” (era „parcurși”). Descrierea lui RA
+  Watch: „Mașini fără semnal, scăderi bruște de combustibil, ralanti prelungit, camioane fără date de tahograf.” Setările: „Fără semnal”.
+- Telefonul cu agenți de pe prima pagină arată aceleași texte (le scriu agenții adevărați pe flota de probă).
+
+**Ce vede fondatorul:** pagina „Agenți AI” din aplicație și prima pagină a site-ului.
+
+**Ce vede clientul:** la fel; pe telefon, la APK-ul următor (Robert).
+
+Reper: `agents.js` (`labelOf`, `hmH`), `public/index.html` (pagina agenților), `mobile/src/screens/AiAgents.tsx`, `Settings.tsx`,
+`public/js/agenti-demo.js`; probe: `test_agents.js`, `verify_agenti_demo.js`.
 
 ### AMÂNDOI · Prima pagină: cei 6 agenți AI, într-un telefon (varianta B, de testat)
 *Alin, 17.11, la cele trei machete animate: „hai să facem varianta B să o testez să văd cum se vede".*

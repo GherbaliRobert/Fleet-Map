@@ -42,7 +42,7 @@ function cate(n, unu, multe) {
 function hmH(hours) {
   const s = Math.max(0, Math.round((hours || 0) * 3600));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  return h > 0 ? (m > 0 ? h + 'h ' + m + 'm' : h + 'h') : m + 'm';
+  return h > 0 ? (m > 0 ? h + ' h ' + m + ' min' : h + ' h') : m + ' min'; // „3 h 10 min" (17.11, Alin: „5. da"), nu „3h 10m\"
 }
 const SERVICE_SOON_KM = 1500;  // prag „revizie în curând"
 const TACHO_GRACE_MIN = 10;    // minute cu contact ON dar zero semnal tahograf = neconfigurat
@@ -70,7 +70,6 @@ function fuelReading(p) {
   return null;
 }
 function odoKm(p) { const i = io(p); return num(i.can_total_mileage) != null ? num(i.can_total_mileage) : (num(i.can_total_mileage_counted) != null ? num(i.can_total_mileage_counted) : (num(i.total_odometer) != null ? i.total_odometer / 1000 : null)); }
-function nameOf(live, imei) { return (live && (live.name || live.plate)) || imei; }
 // Etichetă completă pentru dispecerizare: „Nume (Nr. înmatriculare)" — arată și numărul de înmatriculare.
 function labelOf(live, imei) {
   const name = live && live.name ? String(live.name).trim() : '';
@@ -159,7 +158,7 @@ async function raWatch(ctx) {
 
   for (const imei of imeis) {
     const live = livePositions.get(imei);
-    const name = nameOf(live, imei);
+    const name = labelOf(live, imei); // numele + numărul (17.11, Alin: „7. hai să rezolvăm acum")
     // (1) Offline. ATENȚIE la sursa de date: `livePositions` e purjat la 24h (LIVE_PURGE_MS), deci garda de
     // 7 zile de mai jos era teoretică — un vehicul dispărut de 3 zile ieșea complet din Map și NU mai producea
     // nicio constatare, exact cazul care contează cel mai mult (tracker furat, deconectat, fără alimentare).
@@ -169,9 +168,9 @@ async function raWatch(ctx) {
       const ageMin = (now - lastTs) / 60000;
       if (esteFaraSemnal(ageMin, offlineMin)) {
         const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
-        const ageStr = hours > 0 ? (hours + 'h ' + mins + 'm') : (nrRo(ageMin) + ' min');
+        const ageStr = hours > 0 ? (hours + ' h' + (mins ? ' ' + mins + ' min' : '')) : (nrRo(ageMin) + ' min');
         // Fapt + ce poate face clientul; NU „verifică dispozitivul / alimentarea / SIM-ul": echipamentul e treaba noastră (Alin, 19.10).
-        findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': offline de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + nrRo(offlineMin) + ' min. Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal.' });
+        findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': fără semnal de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + nrRo(offlineMin) + ' min. Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal.' });
       }
     }
     // (4) Tahograf neconfigurat — pentru camioane cu contact pornit dar zero semnal tahograf
@@ -307,7 +306,7 @@ async function raCare(ctx) {
     for (const d of (docs || [])) { if (!d.imei) continue; if (!docsByImei.has(d.imei)) docsByImei.set(d.imei, []); docsByImei.get(d.imei).push(d); }
   } catch (e) {}
   for (const imei of imeis) {
-    const live = livePositions.get(imei); const name = nameOf(live, imei);
+    const live = livePositions.get(imei); const name = labelOf(live, imei);
     // Vechimea odometrului: CAN „sticky" (carry-forward) sau poziție mai veche de 48h → etichetăm estimările pe km.
     const posMs = live && live.timestamp ? new Date(live.timestamp).getTime() : null;
     const odoStale = !!(live && (live.can_stale || (posMs && (now - posMs) > 48 * 3600 * 1000)));
@@ -363,7 +362,7 @@ async function raOptimize(ctx) {
   const thresholds = (ctx && ctx.alertThresholds) || {};
   const ecoScoreMin = Number.isFinite(thresholds.ecoScoreMin) && thresholds.ecoScoreMin >= 0 && thresholds.ecoScoreMin <= 100 ? thresholds.ecoScoreMin : 60;
   for (const imei of imeis) {
-    const live = livePositions.get(imei); const name = nameOf(live, imei);
+    const live = livePositions.get(imei); const name = labelOf(live, imei);
     const pts = await ctx.hist(imei); if (pts.length < 5) continue;
     const limit = await _vehLimit(ctx, imei);
     let km = 0, accel = 0, brake = 0, hardTurn = 0, speedOverSec = 0, idleSec = 0, driveSec = 0;
@@ -431,7 +430,7 @@ async function raCompliance(ctx) {
     // Reg. 561 + tahograf se aplică vehiculelor de peste 3,5 t (camioane/autocare), NU turismelor — aceeași regulă ca raportul
     // Condus & repaus (tacho.supusReg561): tipul din fișă SAU datele de tahograf pe care le trimite mașina.
     // Pe un autoturism „4h30 continuu" nu e o obligație legală → nu inventăm încălcări care nu există.
-    const live = livePositions.get(imei); const name = nameOf(live, imei);
+    const live = livePositions.get(imei); const name = labelOf(live, imei);
     if (!tacho.supusReg561(await _isTruck(ctx, imei), !!(live && _hasAnyTachoSignal(live)))) { skipped++; continue; }
     const pts = await ctx.hist(imei); if (pts.length < 5) continue;
     const { trips } = segmentTrack(pts, 45 * 60); // o oprire ≥45 min = pauză legală (separă cursele)
@@ -459,17 +458,17 @@ async function raCompliance(ctx) {
     // (2) Conducere zilnică — 9h, extensibil la 10h de cel mult 2 ori/săptămână.
     if (dailyH > 10) {
       findings.push({ imei, severity: 'critical', agent: 'compliance', fkey: 'comp_daily_' + imei,
-        title: name + ': conducere zilnică ~' + hmH(dailyH) + ' — peste maximul de 10h',
-        body: 'Maximul zilnic (10h) a fost depășit. Ce faci acum: încheie ziua de lucru și asigură odihna zilnică de 11h.' + est });
+        title: name + ': conducere zilnică ~' + hmH(dailyH) + ' — peste maximul de 10 ore',
+        body: 'Maximul zilnic (10 ore) a fost depășit. Ce faci acum: încheie ziua de lucru și asigură odihna zilnică de 11 ore.' + est });
     } else if (dailyMin > DAILY_LIMIT_MIN) {
       findings.push({ imei, severity: 'warning', agent: 'compliance', fkey: 'comp_daily_' + imei,
-        title: name + ': conducere zilnică ~' + hmH(dailyH) + ' — peste 9h',
-        body: 'Peste 9h e permis doar de cel mult 2 ori pe săptămână (max. 10h). Ce faci acum: verifică de câte ori s-a întâmplat săptămâna asta și planifică odihna de 11h.' + est });
+        title: name + ': conducere zilnică ~' + hmH(dailyH) + ' — peste 9 ore',
+        body: 'Peste 9 ore e permis doar de cel mult 2 ori pe săptămână (cel mult 10 ore). Ce faci acum: verifică de câte ori s-a întâmplat săptămâna asta și planifică odihna de 11 ore.' + est });
     } else if (dailyMin >= dailyWarnMin) {
       const left = Math.max(1, Math.round(DAILY_LIMIT_MIN - dailyMin));
       findings.push({ imei, severity: 'warning', agent: 'compliance', fkey: 'comp_daily_' + imei,
         title: name + ': conducere zilnică ~' + hmH(dailyH) + ' — se apropie limita',
-        body: 'Mai are ~' + left + ' min până la 9h. Ce faci acum: planifică încheierea zilei sau schimbul de șofer.' + est });
+        body: 'Mai are ~' + left + ' min până la 9 ore. Ce faci acum: planifică încheierea zilei sau schimbul de șofer.' + est });
     }
   }
   return { findings, monitored, skipped }; // monitored = vehicule cu tahograf urmărite; skipped = turisme (nu intră sub Reg. 561)
@@ -540,7 +539,7 @@ async function raDispatch(ctx) {
   if (available.length) {
     const n = available.length;
     const names = available.slice(0, 8).map(a => a.name).join(', ') + (n > 8 ? ' …' : '');
-    findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: cate(n, 'vehicul disponibil', 'vehicule disponibile') + ' acum pentru curse', body: 'Online și staționate: ' + names + '.' });
+    findings.push({ imei: null, severity: 'info', agent: 'dispatch', fkey: 'disp_available', title: cate(n, 'vehicul disponibil', 'vehicule disponibile') + ' acum pentru curse', body: 'Cu semnal și pe loc: ' + names + '.' });
   }
   // Subutilizate (după-amiaza, pe ora României): disponibile dar fără rulaj azi → candidate pentru o cursă nouă
   if ((ctx.oraRO != null ? ctx.oraRO : insight.oraRO(now)) >= IDLE_HOUR) {
@@ -548,7 +547,7 @@ async function raDispatch(ctx) {
       const pts = await ctx.hist(a.imei);
       let km = 0;
       for (let i = 1; i < pts.length; i++) { const d = haversineKm(pts[i - 1].latitude, pts[i - 1].longitude, pts[i].latitude, pts[i].longitude); if (d < 10) km += d; }
-      if (km < IDLE_KM) findings.push({ imei: a.imei, severity: 'info', agent: 'dispatch', fkey: 'disp_idle_' + a.imei, title: a.name + ': nefolosit azi — disponibil', body: 'Sub ' + IDLE_KM + ' km parcurși azi și staționat acum. Candidat bun pentru o cursă nouă.' });
+      if (km < IDLE_KM) findings.push({ imei: a.imei, severity: 'info', agent: 'dispatch', fkey: 'disp_idle_' + a.imei, title: a.name + ': nefolosit azi — disponibil', body: 'Sub ' + nrRo(IDLE_KM) + ' km ' + (IDLE_KM === 1 ? 'parcurs' : 'parcurși') + ' azi și staționat acum. Candidat bun pentru o cursă nouă.' });
     }
   }
   return { findings };
@@ -557,10 +556,10 @@ async function raDispatch(ctx) {
 // SURSĂ UNICĂ pentru numele și descrierea agenților: de aici pleacă spre /api/agents → web ȘI APK.
 // Textele sunt cele afișate clientului; nu ține liste paralele în interfețe (așa apăruseră descrieri vechi).
 const AGENTS = {
-  watch: { name: 'RA Watch', role: 'Supraveghere', desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.', run: raWatch },
+  watch: { name: 'RA Watch', role: 'Supraveghere', desc: 'Mașini fără semnal, scăderi bruște de combustibil, ralanti prelungit, camioane fără date de tahograf.', run: raWatch },
   dispatch: { name: 'RA Dispatch', role: 'Dispecerat', desc: 'Vehicule disponibile acum și cele subutilizate în ziua curentă.', run: raDispatch },
   care: { name: 'RA Care', role: 'Mentenanță', desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.', run: raCare },
-  optimize: { name: 'RA Optimize', role: 'Eco-driving', desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', run: raOptimize },
+  optimize: { name: 'RA Optimize', role: 'Condus economic', desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', run: raOptimize },
   compliance: { name: 'RA Compliance', role: 'Ore de condus', desc: 'Condus continuu și zilnic (Reg. 561) — doar vehicule cu tahograf, nu turisme.', run: raCompliance },
   client: { name: 'RA Client', role: 'Sinteza zilei', desc: 'Ziua într-un rând: km, active, comparație cu ieri + ce au găsit ceilalți agenți.', run: raClient }
 };

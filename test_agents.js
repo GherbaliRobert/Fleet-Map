@@ -123,6 +123,26 @@ function has(r, prefix) { return (r.findings || []).some(f => f.fkey && f.fkey.s
     ok(agents.AGENTS.watch.role === 'Supraveghere', 'rolul lui RA Watch: „Supraveghere"', agents.AGENTS.watch.role);
   }
 
+  console.log('\n— Numărul mașinii în titlu și cuvintele pe românește (17.11: „7. hai să rezolvăm acum", „5. da") —');
+  {
+    const zi = 86400000;
+    // RA Care: o mașină numită „VW Caddy" → titlul spune și numărul (într-o flotă cu 10 Caddy știi care e)
+    const live = new Map([['CAD1', { name: 'VW Caddy', plate: 'B 204 RAT', timestamp: new Date(NOW).toISOString(), io: {} }]]);
+    const docs = [{ imei: 'CAD1', doc_type: 'itp', expiry_date: new Date(NOW + 12 * zi - 3600000).toISOString(), id: 9 }];
+    const r = await care({ imeis: ['CAD1'], livePositions: live, companyId: 1, db: { getVehicleDocuments: async () => docs, getDeviceHistory: async () => [], getDeviceFull: async () => ({ vehicle_type: 'Dubă' }) } });
+    const t = (r.findings || []).map((f) => f.title);
+    ok(t.includes('VW Caddy (B 204 RAT): ITP expiră în 12 zile'), 'RA Care: „VW Caddy (B 204 RAT): ITP expiră în 12 zile"', t.join(' | '));
+    // RA Watch: fără semnal de 3 h 10 min (nu „offline de 3h 10m")
+    const vechi = new Map([['CAD2', { name: 'Iveco Stralis', plate: 'B 77 TIR', timestamp: new Date(NOW - 190 * 60000).toISOString(), io: {} }]]);
+    const w = await agents.AGENTS.watch.run({ imeis: ['CAD2'], livePositions: vechi, companyId: 1, db: {}, alertThresholds: {} });
+    const tw = (w.findings || []).map((f) => f.title);
+    ok(tw.includes('Iveco Stralis (B 77 TIR): fără semnal de 3 h 10 min'), 'RA Watch: „Iveco Stralis (B 77 TIR): fără semnal de 3 h 10 min"', tw.join(' | '));
+    const SRC = require('fs').readFileSync(require('path').join(__dirname, 'agents.js'), 'utf8').replace(/\/\/[^\n]*/g, '');
+    ok(!/'h ' \+ m \+ 'm'|\+ 'h ' \+ mins \+ 'm'|\boffline de\b|Online și staționate|'Eco-driving'|Offline, furt/.test(SRC), 'fără „3h 10m", „offline", „Online", „Eco-driving" în textele agenților');
+    ok(!/nameOf\(/.test(SRC), 'titlurile trec prin labelOf (numele + numărul), nu doar numele');
+    ok(agents.AGENTS.optimize.role === 'Condus economic', 'rolul lui RA Optimize: „Condus economic"', agents.AGENTS.optimize.role);
+  }
+
   Date.now = realNow;
   console.log('\nRESULT: ' + pass + ' pass / ' + fail + ' fail');
   process.exit(fail ? 1 : 0);

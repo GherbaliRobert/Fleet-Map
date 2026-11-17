@@ -252,7 +252,7 @@ const LEGATE = [
   ['/', 'RA Watch verifică flota în fiecare oră', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră', 'primaPagina'],
   ['/', '<span class="agd-b-n">RA Watch</span><span class="agd-b-d">Verifică flota în fiecare oră:', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră', 'primaPagina'],
   ['/intrebari-frecvente', 'Istoricul pozițiilor se păstrează <b>12 luni</b>', C.LUNI_ISTORIC_INCLUSE === 12, 'LUNI_ISTORIC_INCLUSE din contracts.js e ' + C.LUNI_ISTORIC_INCLUSE, 'faqPastrare'],
-  ['/intrebari-frecvente', 'aveți <b>30 de zile</b> să ne cereți datele', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE, 'faqPastrare'],
+  ['/intrebari-frecvente', 'ai <b>30 de zile</b> să ne ceri datele', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE, 'faqPastrare'],
   // Termeni (11.11, Alin: „2. Da"): aceeași cifră ca în contract și în Confidențialitate, nu „un termen rezonabil".
   ['/termeni', 'Clientul are <b>30 de zile</b> să ceară datele înapoi', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE],
   ['/alerte-itp-rca-rovinieta', 'implicit cu <b>30 de zile</b> înainte de expirare', num(PREAVIZ, /const ACTE_ZILE = (\d+);/) === 30, 'ACTE_ZILE din preaviz.js'],
@@ -372,6 +372,29 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
   for (const p of PAGINI) {
     const m = (HTML[p.cale] || '').match(IN_ROMANA);
     check(!m, p.cale + ': nu scriem că RA Insight răspunde / e întrebat „în română": „' + (m ? m[0] : '') + '"');
+  }
+}
+
+// ── 3f. Site-ul vorbește cu „tu”, cu ghilimele românești (17.11, Alin: „4. Tu", „1. Da") ───────────────────────────
+// Prima pagină și aplicația vorbeau cu „tu”, cinci pagini cu „dumneavoastră” — uneori în aceeași frază („Scrieți orice întrebare…” lângă
+// „Întreabă orice despre flota ta”). Acum „tu” peste tot, și în descrierile și întrebările pentru Google; Termenii rămân la persoana a treia
+// („Clientul”). Ghilimeaua de închidere e cea românească (”), nu semnul drept ("). Granițele de cuvânt sunt scrise cu litere: `\b` din
+// JavaScript nu vede „ă" ca literă.
+{
+  const L = 'A-Za-zĂÂÎȘȚăâîșț';
+  const DUMNEAVOASTRA = new RegExp('(?<![' + L + '])(dumneavoastr[' + L + ']*|vă|vi|v-(?:am|ați|o|i|a|au)|sunteți|aveți|puteți|primiți|vreți|vedeți|cereți|alegeți|setați|' +
+    'încărcați|faceți|marcați|deschideți|găsiți|scrieți|spuneți|aflați|întrebați|folosiți|stabiliți|tastați|verificați|confirmați|n-ați)(?![' + L + '])', 'i');
+  for (const p of PAGINI) {
+    if (p.cale === '/termeni') continue;
+    const html = (HTML[p.cale] || '').replace(/<!--[\s\S]*?-->/g, ' ');
+    const m = html.match(DUMNEAVOASTRA);
+    check(!m, p.cale + ': site-ul vorbește cu „tu" — am găsit „' + (m ? m[0] : '') + '" (…' + (m ? html.slice(Math.max(0, m.index - 50), m.index + 30).replace(/\s+/g, ' ') : '') + '…)');
+  }
+  for (const p of PAGINI) {
+    const html = HTML[p.cale] || '';
+    const ld = (html.match(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g) || []).join(' ');
+    const m = faraMarcaj(html).match(/„[^”"„]{1,80}"/) || ld.match(/„[^”"„\\]{1,80}\\"/);
+    check(!m, p.cale + ': ghilimeaua de închidere e ” (cea românească), nu " — „' + (m ? m[0] : '') + '"');
   }
 }
 

@@ -20,8 +20,8 @@ const FEED_HEAD: Record<string, string> = { dispatch: 'Disponibile acum', care: 
 // Explicația lungă de pe pagina agentului — aceleași texte ca pe web (AGP_TUT[k].face în public/index.html).
 // Serverul trimite doar descrierea scurtă (folosită pe card); dacă lipsește o cheie, rămâne descrierea scurtă.
 const TUT_FACE: Record<string, string> = {
-  watch: 'Verifică flota din oră în oră și te anunță la: vehicul offline (fără semnal), posibil furt de combustibil, scădere bruscă de combustibil, ralanti prelungit și tahograf neconfigurat pe camioane.',
-  dispatch: 'Îți arată ce vehicule sunt libere ACUM (online și oprite) și, după-amiaza, care au rulat foarte puțin (subutilizate).',
+  watch: 'Verifică flota din oră în oră și te anunță la: vehicul fără semnal, posibil furt de combustibil, scădere bruscă de combustibil, ralanti prelungit și tahograf neconfigurat pe camioane.',
+  dispatch: 'Îți arată ce vehicule sunt libere ACUM (cu semnal și oprite) și, după-amiaza, care au rulat foarte puțin (subutilizate).',
   care: 'Urmărește ITP, RCA/asigurare, reviziile și intervalul de service (pe dată sau pe km din bord) și te avertizează înainte de scadență.',
   optimize: 'Dă un scor eco /100 per vehicul (penalizează accelerările/frânările bruște, virajele dure, depășirile și ralanti-ul) și estimează risipa de combustibil la ralanti, în lei.',
   compliance: 'Se aplică DOAR vehiculelor cu tahograf (peste 3,5 t — camioane, autocare). Turismele nu intră sub Reg. CE 561/2006 și sunt ignorate. Estimează din GPS orele de condus (continuu și zilnic) și te avertizează ÎNAINTE de depășire, nu după.',
@@ -29,7 +29,7 @@ const TUT_FACE: Record<string, string> = {
 };
 // Ce a verificat agentul — pentru mesajul „Totul e în regulă" (AGP_META[k].checks pe web).
 const CHECKS: Record<string, string> = {
-  watch: 'fiecare vehicul pentru semnal (offline), ralanti prelungit, scădere și furt de combustibil și tahograf neconfigurat',
+  watch: 'fiecare vehicul pentru semnal (fără semnal), ralanti prelungit, scădere și furt de combustibil și tahograf neconfigurat',
   dispatch: 'ce vehicule sunt disponibile acum și care sunt subutilizate',
   care: 'scadențele de ITP, RCA, revizii și intervalele de service',
   optimize: 'scorul eco, frânările/accelerările bruște, viteza și risipa la ralanti',
@@ -80,7 +80,7 @@ const maintIdOf = (f: AgentFinding) => { const m = /^care_(?:due|km)_(\d+)$/.exe
 
 // Mesajele „cinstite" când agentul live n-a găsit nimic (aceleași texte ca pe web).
 function okMsg(k: string, st: LiveState): { t: string; b: string } {
-  if (k === 'dispatch') return { t: 'Niciun vehicul disponibil acum', b: 'Momentan niciun vehicul online și oprit, gata de o cursă. Apasă „Dispecerizare” ca să cauți cel mai apropiat vehicul de o destinație.' };
+  if (k === 'dispatch') return { t: 'Niciun vehicul disponibil acum', b: 'Momentan niciun vehicul cu semnal și oprit, gata de o cursă. Apasă „Dispecerizare” ca să cauți cel mai apropiat vehicul de o destinație.' };
   if (k === 'care') return { t: 'Nicio scadență acum — totul e în regulă', b: 'N-am găsit revizii, ITP/RCA sau service aproape de scadență. Poți sta liniștit.' };
   if (k === 'optimize') {
     const ev = num(st.evaluated);

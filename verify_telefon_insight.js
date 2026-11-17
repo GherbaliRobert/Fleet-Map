@@ -543,7 +543,7 @@ function parteaTextelor() {
     'Mulțumim! Ne ajută să știm ce merge.', 'Mulțumim — ne uităm la ce n-a mers.', 'Nimic nu se potrivește.', 'Lista e goală.', 'Caută…', 'Răspuns bun', 'Răspuns slab', 'Copiază răspunsul', 'Editează întrebarea', 'Copiază întrebarea',
     'Adaugă mașina, perioada sau un raport', 'La ultimul mesaj', 'Cifrele le-am luat din rapoarte.', 'Cifrele le-am luat din aplicație și din sursele de mai sus.', 'Din raportul ', 'Din rapoartele ', 'Am copiat răspunsul.', 'Eroare de rețea: ', 'Nu s-a putut face.', 'Nu s-a putut anula.'];
   ET.forEach((t) => T('„' + t.slice(0, 60) + '": același cuvânt pe web și pe telefon', (INSP + COMUNE).indexOf(t) >= 0 && (S.lib + S.ecran + S.bula + S.prop).indexOf(t) >= 0, ((INSP + COMUNE).indexOf(t) >= 0 ? 'lipsește pe telefon' : 'lipsește pe web')));
-  T('placeholder-ele casetei, aceleași', ['Scrie o întrebare sau cere un raport…', 'Scrie o întrebare…', 'Apasă „+" sau scrie o întrebare…', 'Apasă „+" ca să alegi…'].every((t) => INSP.indexOf(t) >= 0 && S.lib.indexOf(t) >= 0));
+  T('placeholder-ele casetei, aceleași', ['Scrie o întrebare sau cere un raport…', 'Scrie o întrebare…', 'Apasă „+” sau scrie o întrebare…', 'Apasă „+” ca să alegi…'].every((t) => INSP.indexOf(t) >= 0 && S.lib.indexOf(t) >= 0));
   T('fondatorul: același cuvânt pe web și pe telefon', INSP.indexOf('Fondator · fără limită') >= 0 && S.lib.indexOf('Fondator · fără limită') >= 0);
   // Regula veche, „pe cont", a fost scoasă pe 11.11 (Alin: „Scoate"): cuvintele contorului ei nu mai sunt nici pe web, nici pe telefon.
   T('regula veche, scoasă: contorul ei nu mai e nici pe web, nici pe telefon',

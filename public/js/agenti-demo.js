@@ -16,7 +16,7 @@
   var TZ = 'Europe/Bucharest', ZI = 864e5;
   // Ora din telefon = ora la care rulează agenții pe flota de probă (agenti_demo_flota.js → ORA_TELEFON): RA Dispatch caută
   // mașinile nefolosite abia după-amiaza. RA Watch a rulat ultima oară la ora fixă de dinainte („verifică din oră în oră").
-  var ORA = '14:30', RULARE = '14:00', ACUM_RULARE = 'acum 30m';
+  var ORA = '14:30', RULARE = '14:00', ACUM_RULARE = 'acum 30 min';
   var ZILE_ITP = 12, ZILE_RCA = 19;
   var DUR = 8500;
   var _fd = null;
@@ -30,7 +30,7 @@
   var APP = {
     bara: 'Agenți AI', inapoi: 'Toți agenții', activ: 'activ', ruleaza: 'Rulează', cum: 'Cum funcționează', scan: 'Se verifică flota…',
     toateVazute: 'Toate văzute', ultimaRulare: 'Ultima rulare: ', automat: ' · verifică automat din oră în oră', verificat: 'Verificat: ',
-    seActualizeaza: ' · se actualizează când deschizi pagina sau apeși „Rulează".',
+    seActualizeaza: ' · se actualizează când deschizi pagina sau apeși „Rulează”.',
     client: { km: 'Parcurși azi', active: 'Vehicule active', nefolosite: 'Nefolosite azi', ieri: 'Față de ieri', top: 'Cel mai activ: ',
       ydKm: 'Ieri, până la aceeași oră: ', deVerificat: 'DE VERIFICAT' }
   };
@@ -38,11 +38,11 @@
   // Cei șase, în ordinea butoanelor din pagină. `live` = agenții care se verifică la deschiderea paginii (LIVE_AGENT_KEYS din pagină).
   function date(acum) {
     return [
-      { k: 'watch', nume: 'RA Watch', rol: 'Supraveghere', desc: 'Offline, furt combustibil, ralanti prelungit, tahograf neconfigurat.', ic: 'fa-shield-halved',
+      { k: 'watch', nume: 'RA Watch', rol: 'Supraveghere', desc: 'Mașini fără semnal, scăderi bruște de combustibil, ralanti prelungit, camioane fără date de tahograf.', ic: 'fa-shield-halved',
         live: false, fh: 'Verificări & alerte',
         f: [
           { s: 'critical', t: 'B 204 RAT: scădere combustibil ~42 L', b: 'Posibil furt sau scurgere (prag 15 L). Verifică traseul și opririle.' },
-          { s: 'warning', t: 'B 77 TIR: offline de 3h 10m', b: 'Vehiculul nu mai trimite poziții de peste 60 min. Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal.' },
+          { s: 'warning', t: 'B 77 TIR: fără semnal de 3 h 10 min', b: 'Vehiculul nu mai trimite poziții de peste 60 min. Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal.' },
           { s: 'info', t: 'B 18 VAN: ralanti ~135 min azi', b: 'Motor pornit, staționat îndelung (peste 120 min). Combustibil irosit.' }
         ] },
       { k: 'care', nume: 'RA Care', rol: 'Mentenanță', desc: 'ITP, RCA, revizii și intervale de service — pe dată sau pe km.', ic: 'fa-wrench',
@@ -51,16 +51,16 @@
           { s: 'warning', t: 'B 31 LOG: ITP expiră în ' + ZILE_ITP + ' zile', b: 'ITP expiră la ' + zi(acum, ZILE_ITP) + '.' },
           { s: 'warning', t: 'B 90 CTR: RCA expiră în ' + ZILE_RCA + ' zile', b: 'RCA expiră la ' + zi(acum, ZILE_RCA) + '.' }
         ] },
-      { k: 'optimize', nume: 'RA Optimize', rol: 'Eco-driving', desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', ic: 'fa-leaf',
+      { k: 'optimize', nume: 'RA Optimize', rol: 'Condus economic', desc: 'Scor eco, frânări/accelerări bruște, viteză, risipă la ralanti.', ic: 'fa-leaf',
         live: true, fh: 'Scor eco — azi',
         f: [
           { s: 'warning', t: 'B 204 RAT: scor eco 54/100', b: 'Scor eco 54/100 (prag: sub 60). Ce a tras scorul jos azi: 6 frânări bruște, 4 accelerări bruște. Sugestii pentru șofer: anticipează traficul și frânează lin, din timp — ține distanță față de mașina din față; demarează lin, fără apăsări bruște pe accelerație.' },
-          { s: 'info', t: 'Flotă: 2h 45m ralanti azi', b: 'Risipă estimată ~4,1 L (~31 lei). Reducerea ralantiului scade direct costurile.' }
+          { s: 'info', t: 'Flotă: 2 h 45 min ralanti azi', b: 'Risipă estimată ~4,1 L (~31 lei). Reducerea ralantiului scade direct costurile.' }
         ] },
       { k: 'compliance', nume: 'RA Compliance', rol: 'Ore de condus', desc: 'Condus continuu și zilnic (Reg. 561) — doar vehicule cu tahograf, nu turisme.', ic: 'fa-clipboard-check',
         live: true, fh: 'Ore de condus — azi',
         f: [
-          { s: 'warning', t: 'B 90 CTR: conducere continuă ~4h 40m — limită depășită', b: 'Limita legală e 4h30 fără pauză de 45 min (Reg. CE 561/2006). Ce faci acum: oprește vehiculul pentru pauza obligatorie de 45 min. Estimare din GPS — pentru control oficial rămâne valabil tahograful.' }
+          { s: 'warning', t: 'B 90 CTR: conducere continuă ~4 h 40 min — limită depășită', b: 'Limita legală e 4h30 fără pauză de 45 min (Reg. CE 561/2006). Ce faci acum: oprește vehiculul pentru pauza obligatorie de 45 min. Estimare din GPS — pentru control oficial rămâne valabil tahograful.' }
         ] },
       { k: 'client', nume: 'RA Client', rol: 'Sinteza zilei', desc: 'Ziua într-un rând: km, active, comparație cu ieri + ce au găsit ceilalți agenți.', ic: 'fa-file-lines',
         live: true, fh: 'Sinteza zilei',
@@ -74,8 +74,8 @@
       { k: 'dispatch', nume: 'RA Dispatch', rol: 'Dispecerat', desc: 'Vehicule disponibile acum și cele subutilizate în ziua curentă.', ic: 'fa-compass',
         live: true, fh: 'Disponibile acum',
         f: [
-          { s: 'info', t: '3 vehicule disponibile acum pentru curse', b: 'Online și staționate: B 204 RAT, B 18 VAN, B 31 LOG.' },
-          { s: 'info', t: 'B 31 LOG: nefolosit azi — disponibil', b: 'Sub 1 km parcurși azi și staționat acum. Candidat bun pentru o cursă nouă.' }
+          { s: 'info', t: '3 vehicule disponibile acum pentru curse', b: 'Cu semnal și pe loc: B 204 RAT, B 18 VAN, B 31 LOG.' },
+          { s: 'info', t: 'B 31 LOG: nefolosit azi — disponibil', b: 'Sub 1 km parcurs azi și staționat acum. Candidat bun pentru o cursă nouă.' }
         ] }
     ];
   }

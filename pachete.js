@@ -607,7 +607,7 @@ const DESCRIERE = {
     include: ['Întrebi în cuvintele tale: „De ce a crescut consumul la Caddy?”', '„De ce?”, „compară”, „ce să fac”: face rapoartele și ți le explică',
       'Sursă externă: caută și pe internet ce nu e în aplicație, cu site-ul lângă fiecare cifră (' + _sursaRand('basic') + ')',
       'Face, cu „Da”-ul tău: șoferul pe mașină, alerta de viteză, revizia, actul, raportul programat',
-      'Cinci pagini: RA Drive, Combustibil, Ore de condus, Mentenanță & acte, Șoferi pe mașini',
+      'Cinci domenii: RA Drive, Combustibil, Ore de condus, Mentenanță & acte, Șoferi pe mașini',
       'Împarți întrebările pe oameni: fiecare coleg are câte îi dai tu'] },
   // Pro (13.11): împărțirea pe oameni e de la Basic, deci titlul nu mai spune „tu împarți întrebările”.
   pro: { titlu: 'Toată echipa întreabă: până la 5 oameni.', pentru: 'Pentru firme cu dispecerat.', plus: 'În plus față de Basic',

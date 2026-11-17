@@ -16,7 +16,7 @@ export type ThrOpt = [number | '', string];
 export type Prag = { k: string; label: string; unit: string; min: number; max: number; def: number | ''; hint: string; options: ThrOpt[] };
 export const PRAGURI: { agent: string; nume: string; campuri: Prag[] }[] = [
   { agent: 'watch', nume: 'RA Watch', campuri: [
-    { k: 'offlineMin', label: 'Offline (fără semnal)', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de atâta timp.',
+    { k: 'offlineMin', label: 'Fără semnal', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de atâta timp.',
       options: [[15, '15 minute'], [30, '30 minute'], [60, '1 oră (recomandat)'], [120, '2 ore'], [360, '6 ore'], [720, '12 ore']] },
     { k: 'idleMaxMin', label: 'Ralanti prelungit', unit: 'min', min: 5, max: 1440, def: 120, hint: 'Alertă când motorul merge staționat (pe loc) de atâta timp.',
       options: [[15, '15 minute'], [30, '30 minute'], [60, '1 oră'], [120, '2 ore (recomandat)'], [180, '3 ore']] },

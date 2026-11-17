@@ -84,7 +84,7 @@ T('cartonașul lui RA Client: aceleași etichete ca _agpClientCard', ['km', 'act
   CL.includes(APP.client.top + '<b>') && CL.includes(APP.client.ydKm + '<b>') && CL.includes('>' + APP.client.deVerificat + '</div>'));
 T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch a rulat la ora fixă de dinainte („acum 30m", ca _agpAgo)',
   DEMO.ORA === String(FL.ORA_TELEFON.h).padStart(2, '0') + ':' + String(FL.ORA_TELEFON.m).padStart(2, '0') && DEMO.RULARE === String(FL.ORA_TELEFON.h).padStart(2, '0') + ':00' &&
-  DEMO.ACUM_RULARE === 'acum ' + FL.ORA_TELEFON.m + 'm' && /if \(s < 3600\) return 'acum ' \+ Math\.round\(s \/ 60\) \+ 'm';/.test(IX) && DEMO.ZILE_ITP === FL.ZILE_ITP && DEMO.ZILE_RCA === FL.ZILE_RCA);
+  DEMO.ACUM_RULARE === 'acum ' + FL.ORA_TELEFON.m + ' min' && /if \(s < 3600\) return 'acum ' \+ Math\.round\(s \/ 60\) \+ ' min';/.test(IX) && DEMO.ZILE_ITP === FL.ZILE_ITP && DEMO.ZILE_RCA === FL.ZILE_RCA);
 
 (async () => {
   console.log('\n3. Constatările = ce scriu agenții adevărați pe flota de probă');

@@ -432,6 +432,17 @@ Confidențialitate.
   corectate, lista e goală.
 - **Termeni / Confidențialitate:** „Ultima actualizare" e data FIXĂ = `modificat` (`<time datetime>`), nu ziua de
   azi din browser — cum era până pe 03.10, o dată falsă pe un document legal. Schimbi textul → schimbi amândouă.
+  **Fără goluri din șablon (17.11, Alin: „2. da"):** facturare lunară, în avans; preaviz 30 de zile; răspunderea, cel mult ultimele 12 luni;
+  „nu avem un responsabil cu protecția datelor desemnat". Cine primește date stă în secțiunea 5 a Confidențialității: Railway, Cloudflare,
+  Google Firebase (notificările pe telefon), Anthropic (funcțiile AI ȘI pozele actelor — `/api/documents/scan` merge și fără modulul AI), Brevo.
+  Un furnizor NOU care primește date = un rând acolo. Datele din formularul de contact au rândul lor în tabel (temeiul: bifa din formular).
+- **Site-ul vorbește cu „tu”, cu ghilimele românești (17.11, Alin: „4. Tu", „1. Da"):** toate paginile, și descrierile și întrebările pentru
+  Google; Termenii rămân la persoana a treia („Clientul”). Fără „dumneavoastră”, „vă”, „Vreți / Vedeți / Cereți…”; ghilimeaua de închidere e
+  ”, nu ". Textele luate din aplicație (telefoanele animate, caseta RA Insight, pachetele) se schimbă și în aplicație. Păzit de
+  `verify_site_public.js` (3f, pe tot HTML-ul, fără Termeni).
+- **Programul de lucru NU ascunde poziții** (P48 din inventar, 17.11): aplicația anunță „Mișcare în afara programului”
+  (`checkAfterHoursMovement`) și înregistrează pozițiile și atunci. Întrebările frecvente spun exact asta; NU promite pe site un „mod privat”
+  care nu există.
 - **Suportul din „Despre" (17.11, Alin: „1. da"):** „Ne anunți din aplicație sau pe email; te sunăm în cel mult o zi lucrătoare" + „Cererea din
   aplicație o urmărești pas cu pas: preluată, programată, rezolvată" — termenul și pașii LEGATE de `cereri_echipa.js` (`TERMEN`, `ETICHETE`).
   Pașii sunt doar ai cererilor din aplicație (un email n-are pași): NU le pune în aceeași frază cu emailul. Fără „în limba română".
@@ -3460,6 +3471,10 @@ caută forma în tot panoul.
   `nrDe` (lib/numar.ts); jetoanele: „1 constatare nouă / critică / avertisment / informativă". Cartonașul RA Client scrie km-ii cu `_roNum` / `nrRo`.
 - **RA Watch verifică din oră în oră — NU „24/7", „non-stop", „Paznic"** (rolul: „Supraveghere", în agents.js; explicația: „Verifică flota din oră
   în oră și te anunță la…", web `AGP_TUT` + telefon `TUT_FACE`; „Acasă": „Ce urmăresc pe N vehicule").
+- **Titlul unei constatări = `labelOf(live, imei)`**: numele + numărul („VW Caddy (B 204 RAT): …”; Alin, 17.11: „o flotă poate avea 10 Caddy”);
+  unde numele e chiar numărul, o dată. NU pune înapoi doar numele (`nameOf` a ieșit).
+- **Pe românește (17.11, Alin: „5. da"):** „fără semnal” (nu „offline”), „Cu semnal și pe loc” (nu „Online și staționate”), „Condus economic”
+  (nu „Eco-driving”), duratele „3 h 10 min” / „acum 30 min” (`hmH`, `_agpAgo`), „Sub 1 km parcurs”.
 - Păzit de `test_agents.js` (pasul „Unit" al porții): `nrRo`, `cate`, „service DEPĂȘIT cu 1.240 km", „ITP expiră în 25 de zile", nicio cifră lipită
   direct în text, nimic „24/7" / „non-stop"; plus `verify_statistici_flota.js` („Ce urmăresc pe").
 
