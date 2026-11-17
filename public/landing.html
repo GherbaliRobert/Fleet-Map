@@ -362,11 +362,7 @@
       padding:4px 10px;border-radius:999px;
     }
 
-    /* ---------- AGENTI AI ---------- */
-    .section-ai{
-      background:radial-gradient(120% 60% at 50% 0%, rgba(63,224,125,.045), transparent 62%);
-      border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft);
-    }
+    /* ---------- AGENTI AI: cartonașele celor șase (din 17.11 în capitolul „Inteligență artificială", partea 2) ---------- */
     .agents-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
     .agent{
       position:relative;overflow:hidden;
@@ -419,9 +415,9 @@
       .agent:hover .ic > i{animation:none!important}
     }
 
-    /* ---------- RA INSIGHT (16.11, Alin: „vedeta aplicației"): secțiunea lui, sub primul ecran ----------
+    /* ---------- INTELIGENȚĂ ARTIFICIALĂ (17.11, Alin: „1A"): RA Insight + cei 6 agenți, un capitol sub primul ecran ----------
        Telefonul și bucățile de ecran au foaia lor (/css/ra-insight-demo.css), aceeași în aplicație. Până pe 16.11 RA Insight era
-       o casetă sub cei șase agenți (.ra-insight), scoasă. */
+       o casetă sub cei șase agenți (.ra-insight), scoasă; până pe 17.11 agenții aveau secțiunea lor (.section-ai), după „Funcții". */
     .section-ri{background:radial-gradient(120% 55% at 50% 0%, rgba(63,224,125,.06), transparent 62%);border-top:1px solid var(--border-soft)}
     .ri-fct{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
     .ri-fc{background:linear-gradient(180deg,var(--surface) 0%,#121519 100%);border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -429,6 +425,20 @@
     .ri-de{font-size:11px;font-weight:800;color:var(--accent);background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.25);padding:2px 8px;border-radius:999px;letter-spacing:.2px;white-space:nowrap}
     .ri-fc > p{color:var(--muted);font-size:14px;line-height:1.55;margin-bottom:8px}
     .ri-fc .ri-ecran{margin-top:auto}
+    /* Părțile capitolului: 1. RA Insight, 2. cei 6 agenți, pachetele — cifra în cerc, titlul și o frază. */
+    .ai-parte{display:flex;gap:14px;align-items:flex-start;margin:0 0 20px;max-width:860px}
+    .ai-nr{flex:0 0 auto;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#06210F;background:var(--accent);font-size:16px;margin-top:2px}
+    .ai-nr-pk{background:rgba(63,224,125,.12);color:var(--accent);border:1px solid rgba(63,224,125,.35);font-size:14px}
+    .ai-parte h3{font-size:clamp(19px,2vw,23px);font-weight:800;letter-spacing:-.3px;line-height:1.25}
+    .ai-parte h3 span{color:var(--muted);font-weight:600;font-size:.8em}
+    .ai-parte p{color:var(--muted);font-size:15px;line-height:1.55;margin-top:4px}
+    .ai-parte-pk{margin-top:40px}
+    #agenti-ai{scroll-margin-top:90px}
+    /* Puntea dintre RA Insight și agenți: ce găsesc agenții apare și la „Azi la tine". */
+    .ai-punte{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:34px auto 30px;padding:14px 20px;border:1px dashed rgba(63,224,125,.4);border-radius:18px;max-width:780px;background:rgba(63,224,125,.05);text-align:center}
+    .ai-punte-ic{display:flex;gap:6px}
+    .ai-punte-ic i{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--accent);background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.25);font-size:13px}
+    .ai-punte p{color:#d9f7e5;font-size:15px;line-height:1.5}
     .ri-inc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:22px}
     .ri-inc > div{border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;background:rgba(14,18,23,.7);min-width:0}
     .ri-inc b{display:flex;align-items:center;gap:8px;font-size:15px;margin-bottom:4px}
@@ -454,9 +464,6 @@
     .ri-pk dt{color:var(--muted)}
     .ri-pk dd{margin:0;font-weight:700;color:var(--text);text-align:right}
     .ri-pk dd.nu{color:var(--muted);font-weight:600}
-    .agents-foot{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 32px;margin-top:34px}
-    .agents-foot a{display:inline-flex;align-items:center;justify-content:center;text-align:center;gap:9px;color:var(--accent);font-weight:600;font-size:15px;transition:gap .2s var(--ease)}
-    .agents-foot a:hover{gap:14px}
 
     /* ---------- ABOUT ---------- */
     .about{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center}
@@ -636,8 +643,8 @@
 
         <div class="nav-links">
           <a href="#ra-insight">RA Insight</a>
-          <a href="#functii">Funcții</a>
           <a href="#agenti-ai">Agenți AI</a>
+          <a href="#functii">Funcții</a>
           <a href="#despre">Despre</a>
           <a href="#contact">Contact</a>
         </div>
@@ -657,8 +664,8 @@
         <span class="ralogo" aria-label="RA Track"><img src="/logo-mark.png" style="height:32px" alt="RA"><span class="raw" style="font-size:25px">Track</span></span>
       </div>
       <a href="#ra-insight">RA Insight</a>
-      <a href="#functii">Funcții</a>
       <a href="#agenti-ai">Agenți AI</a>
+      <a href="#functii">Funcții</a>
       <a href="#despre">Despre</a>
       <a href="#contact">Contact</a>
       <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intră în aplicație</a>
@@ -716,17 +723,23 @@
     </div>
   </section>
 
-  <!-- ===== RA INSIGHT (16.11, Alin: „vedeta aplicației… să-l scoatem în evidență"): ce face, de ce te poți baza pe el, pachetele.
-       Bucățile de ecran le desenează /js/ra-insight-demo.js (aceleași ca în telefonul de sus). Până pe 16.11 RA Insight era o
-       casetă sub cei șase agenți. ===== -->
+  <!-- ===== INTELIGENȚĂ ARTIFICIALĂ (17.11, Alin: „1A"): un singur capitol, în două părți — 1. RA Insight (ce face, de ce te poți
+       baza pe el), puntea „Azi la tine", 2. cei 6 agenți AI (ancora #agenti-ai, pentru meniu) —, apoi pachetele RA Insight. Bucățile de
+       ecran le desenează /js/ra-insight-demo.js (aceleași ca în telefonul de sus). Până pe 17.11 agenții aveau secțiunea lor, după
+       „Funcții"; până pe 16.11 RA Insight era o casetă sub ei. ===== -->
   <section class="section section-ri" id="ra-insight">
     <div class="wrap">
       <div class="section-head reveal">
-        <span class="eyebrow">RA Insight</span>
+        <span class="eyebrow">Inteligență artificială</span>
         <h2>Inteligența artificială intră în conexiune directă cu flota ta. <span class="accent">Răspunde, explică, recomandă.</span></h2>
-        <p class="lead">RA Insight e asistentul cu inteligență artificială din RA Track. Citește datele flotei tale (poziții, curse, consum, acte) și îți răspunde cu cifrele din rapoartele aplicației.</p>
+        <p class="lead">Două unelte, pe aceleași date ale flotei: <b>RA Insight</b>, asistentul pe care îl întrebi, și <b>șase agenți AI</b> care urmăresc flota pe domenii.</p>
       </div>
 
+      <div class="ai-parte reveal">
+        <span class="ai-nr">1</span>
+        <div><h3>RA Insight <span>· asistentul pe care îl întrebi</span></h3>
+        <p>Citește datele flotei tale (poziții, curse, consum, acte) și îți răspunde cu cifrele din rapoartele aplicației.</p></div>
+      </div>
       <div class="ri-fct">
         <div class="ri-fc reveal">
           <h3>Răspunde pe loc</h3>
@@ -757,9 +770,82 @@
         <div><b><i class="fa-solid fa-hand-pointer"></i> Nimic fără „Da”-ul tău</b><span>O alertă sau o schimbare pornește doar după ce apeși „Da” și se poate anula 10 minute.</span></div>
       </div>
 
+      <!-- Puntea dintre cele două părți: „Azi la tine" din RA Insight arată și ce au găsit agenții azi. Iconițele = ale celor
+           șase agenți, în ordinea cartonașelor. -->
+      <div class="ai-punte reveal"><div class="ai-punte-ic" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i><i class="fa-solid fa-screwdriver-wrench"></i><i class="fa-solid fa-leaf"></i><i class="fa-solid fa-scale-balanced"></i><i class="fa-solid fa-envelope-open-text"></i><i class="fa-solid fa-route"></i></div><p>Ce găsesc agenții azi îți apare și în RA Insight, la <b>„Azi la tine”</b>.</p></div>
+
+      <div class="ai-parte reveal" id="agenti-ai">
+        <span class="ai-nr">2</span>
+        <div><h3>Cei 6 agenți AI <span>· urmăresc flota pe domenii</span></h3>
+        <p>Incluși în orice contract. RA Watch verifică flota în fiecare oră, iar ceilalți cinci fac analiza pe loc, când le deschizi pagina.</p></div>
+      </div>
+      <div class="agents-grid">
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-shield-halved"></i></div>
+            <span class="live"><span class="dot"></span> La fiecare oră</span>
+          </div>
+          <div class="role">Supraveghere</div>
+          <h3>RA Watch</h3>
+          <p>Verifică flota în fiecare oră: vehicule care nu mai transmit, scăderi bruște de combustibil, ralanti prelungit și camioane fără date de tahograf.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            <span class="live"><span class="dot"></span> Scadențe</span>
+          </div>
+          <div class="role">Mentenanță</div>
+          <h3>RA Care</h3>
+          <p>Adună într-un loc reviziile (pe km sau pe dată), ITP-ul, RCA-ul și asigurările care se apropie de termen. Fără surprize, fără penalizări.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-leaf"></i></div>
+            <span class="live"><span class="dot"></span> Scor eco</span>
+          </div>
+          <div class="role">Eco-driving</div>
+          <h3>RA Optimize</h3>
+          <p>Calculează un scor eco pentru fiecare vehicul, din accelerări și frânări bruște, viteză și ralanti — vezi unde se pierde combustibil. Clasamentul șoferilor e în raportul EcoDrive.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-scale-balanced"></i></div>
+            <span class="live"><span class="dot"></span> CE 561/2006</span>
+          </div>
+          <div class="role">Conformitate</div>
+          <h3>RA Compliance</h3>
+          <p>Estimează din GPS orele de condus de azi la camioane și autobuze — 4h30 fără pauză, 9 ore pe zi (Reg. CE 561/2006) — și semnalează depășirile. Pentru controlul oficial rămâne tahograful.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-envelope-open-text"></i></div>
+            <span class="live"><span class="dot"></span> Azi față de ieri</span>
+          </div>
+          <div class="role">Sinteza zilei</div>
+          <h3>RA Client</h3>
+          <p>Ziua flotei într-un rând: kilometri parcurși, vehicule active și nefolosite, comparația cu ieri la aceeași oră și ce au găsit ceilalți agenți.</p>
+        </div>
+
+        <div class="agent reveal">
+          <div class="agent-top">
+            <div class="ic"><i class="fa-solid fa-route"></i></div>
+            <span class="live"><span class="dot"></span> Timp real</span>
+          </div>
+          <div class="role">Alocare curse</div>
+          <h3>RA Dispatch</h3>
+          <p>Îți arată ce vehicule sunt libere acum și care au stat nefolosite azi. Pentru o cursă, alegi locul pe hartă și vezi cele mai apropiate mașini.</p>
+        </div>
+      </div>
+
       <!-- Pachetele RA Insight (27.10, Alin: „fără preț în pagina publică, pe home page"): copia lui pachete.publice({ cuPret: false }),
            comparată de verify_site_public.js (3d). Comparația întreagă stă pe /pachete-ra-insight. Mutate aici pe 16.11, din caseta
            RA Insight de sub agenți. -->
+      <div class="ai-parte ai-parte-pk reveal"><span class="ai-nr ai-nr-pk" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span><div><h3>Pachetele RA Insight</h3>
+        <p>Start e inclus în orice contract; de la Basic întrebi orice, cu inteligență artificială.</p></div></div>
       <div class="ri-pachete" aria-label="Pachetele RA Insight">
         <div class="ri-pk">
           <div class="ri-pk-n">Start</div>
@@ -807,6 +893,7 @@
       <div class="ri-cta">
         <button type="button" class="btn btn-primary" onclick="raxDemoAsk()"><i class="fa-solid fa-envelope-open-text"></i> Cere cont demo</button>
         <a href="/pachete-ra-insight" class="btn btn-ghost">Compară pachetele RA Insight <i class="fa-solid fa-arrow-right"></i></a>
+        <a href="/agenti-ai" class="btn btn-ghost">Ce face fiecare agent, pe larg <i class="fa-solid fa-arrow-right"></i></a>
       </div>
     </div>
   </section>
@@ -896,84 +983,6 @@
           <p>Reia orice cursă, lipită pe drum, cu opriri și viteze. Harta de căldură îți arată unde stau cel mai des vehiculele.</p>
           <span class="tag">Traseu pe drum</span>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== AGENTI AI ===== -->
-  <section class="section section-ai" id="agenti-ai">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow">Inteligență artificială</span>
-        <h2>6 agenți AI care îți <span class="accent">urmăresc flota</span></h2>
-        <p class="lead">Fiecare agent are o misiune clară. RA Watch verifică flota în fiecare oră, iar ceilalți cinci fac analiza pe loc, când le deschizi pagina. Tu vezi doar concluziile care contează — nu sute de notificări. Iar când vrei să afli ceva anume, îl întrebi direct pe <a href="#ra-insight">asistentul RA Insight</a>.</p>
-      </div>
-
-      <div class="agents-grid">
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-shield-halved"></i></div>
-            <span class="live"><span class="dot"></span> La fiecare oră</span>
-          </div>
-          <div class="role">Supraveghere</div>
-          <h3>RA Watch</h3>
-          <p>Verifică flota în fiecare oră: vehicule care nu mai transmit, scăderi bruște de combustibil, ralanti prelungit și camioane fără date de tahograf.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-screwdriver-wrench"></i></div>
-            <span class="live"><span class="dot"></span> Scadențe</span>
-          </div>
-          <div class="role">Mentenanță</div>
-          <h3>RA Care</h3>
-          <p>Adună într-un loc reviziile (pe km sau pe dată), ITP-ul, RCA-ul și asigurările care se apropie de termen. Fără surprize, fără penalizări.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-leaf"></i></div>
-            <span class="live"><span class="dot"></span> Scor eco</span>
-          </div>
-          <div class="role">Eco-driving</div>
-          <h3>RA Optimize</h3>
-          <p>Calculează un scor eco pentru fiecare vehicul, din accelerări și frânări bruște, viteză și ralanti — vezi unde se pierde combustibil. Clasamentul șoferilor e în raportul EcoDrive.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-scale-balanced"></i></div>
-            <span class="live"><span class="dot"></span> CE 561/2006</span>
-          </div>
-          <div class="role">Conformitate</div>
-          <h3>RA Compliance</h3>
-          <p>Estimează din GPS orele de condus de azi la camioane și autobuze — 4h30 fără pauză, 9 ore pe zi (Reg. CE 561/2006) — și semnalează depășirile. Pentru controlul oficial rămâne tahograful.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-envelope-open-text"></i></div>
-            <span class="live"><span class="dot"></span> Azi față de ieri</span>
-          </div>
-          <div class="role">Sinteza zilei</div>
-          <h3>RA Client</h3>
-          <p>Ziua flotei într-un rând: kilometri parcurși, vehicule active și nefolosite, comparația cu ieri la aceeași oră și ce au găsit ceilalți agenți.</p>
-        </div>
-
-        <div class="agent reveal">
-          <div class="agent-top">
-            <div class="ic"><i class="fa-solid fa-route"></i></div>
-            <span class="live"><span class="dot"></span> Timp real</span>
-          </div>
-          <div class="role">Alocare curse</div>
-          <h3>RA Dispatch</h3>
-          <p>Îți arată ce vehicule sunt libere acum și care au stat nefolosite azi. Pentru o cursă, alegi locul pe hartă și vezi cele mai apropiate mașini.</p>
-        </div>
-      </div>
-
-      <div class="agents-foot reveal">
-        <a href="/agenti-ai">Ce face fiecare agent, pe larg <i class="fa-solid fa-arrow-right"></i></a>
-        <a href="#contact">Vrei agenții AI și RA Insight pe flota ta? Cere o ofertă personalizată <i class="fa-solid fa-arrow-right"></i></a>
       </div>
     </div>
   </section>

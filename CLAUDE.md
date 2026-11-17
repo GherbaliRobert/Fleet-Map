@@ -496,6 +496,12 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
   Titlul secțiunii: „Inteligența artificială intră în conexiune directă cu flota ta. Răspunde, explică, recomandă." Fără imperativ în titluri.
   „Cere cont demo" NU stă în primul ecran: la capătul secțiunii RA Insight și în banda de la final (`.cta-band`, cu „Ai deja cont? Intră în
   aplicație"). Pe site RA Insight e „asistentul", nu „agentul" („Agenți AI" sunt cei șase). Păzit de `verify_ra_insight_demo.js` (secțiunea 1).
+- **Capitolul „Inteligență artificială" (17.11; Alin: „1A", meniul „RA Insight · Agenți AI · Funcții · Despre · Contact"):** RA Insight și cei
+  6 agenți stau ÎNTR-O secțiune (`#ra-insight`, imediat sub primul ecran, eticheta „Inteligență artificială"): partea 1 (`.ai-parte` cu `1`,
+  RA Insight: `.ri-fct` + `.ri-inc`) → puntea „Azi la tine" (`.ai-punte`; adevărat: `_aziLaTine` citește și ce au scris agenții azi) → partea 2
+  (`.ai-parte#agenti-ai` cu `2` + `.agents-grid`, cele 6 cartonașe) → pachetele (`.ai-parte-pk` + `.ri-pachete`) → butoanele (`.ri-cta`, și „Ce
+  face fiecare agent, pe larg"). Secțiunea separată a agenților (`.section-ai`, după „Funcții") a ieșit — NU o pune la loc. `#agenti-ai` are
+  `scroll-margin-top` (bara de sus e lipită, 70 px). Textele `LEGATE` („RA Watch verifică flota în fiecare oră", „La fiecare oră") stau în partea 2.
 - Păzit de **`verify_ra_insight_demo.js`** (în `npm test`; partea din browser se sare fără Chromium) și `verify_site_public.js`.
 
 ## Compania DEMO (acces la CERERE, aprobat de super-admin)

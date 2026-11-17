@@ -85,7 +85,22 @@ T('…„de la Basic" pe cele două lucruri care cer AI (analiza, propunerile cu
 T('…pachetele (cartonașele scurte) stau în ea, cu legătura spre comparație', sec.includes('class="ri-pachete"') && sec.includes('href="/pachete-ra-insight"'));
 T('caseta veche de sub agenți a plecat (.ra-insight)', !/class="ra-insight/.test(L) && !/^\s*\.ra-insight[\s{.:,]/m.test(L));
 T('meniul de sus: „RA Insight" primul, spre secțiune', /<div class="nav-links">\s*<a href="#ra-insight">RA Insight<\/a>/.test(L));
-T('…și în meniul de pe telefon', /<\/div>\s*<a href="#ra-insight">RA Insight<\/a>\s*<a href="#functii">/.test(L));
+T('…apoi „Agenți AI" (partea 2 a capitolului) și „Funcții" (17.11)', /<div class="nav-links">\s*<a href="#ra-insight">RA Insight<\/a>\s*<a href="#agenti-ai">Agenți AI<\/a>\s*<a href="#functii">Funcții<\/a>/.test(L));
+T('…și în meniul de pe telefon', /<\/div>\s*<a href="#ra-insight">RA Insight<\/a>\s*<a href="#agenti-ai">Agenți AI<\/a>\s*<a href="#functii">Funcții<\/a>/.test(L));
+// Capitolul „Inteligență artificială" (17.11, Alin: „1A"): RA Insight și cei 6 agenți, o singură secțiune, în două părți, cu puntea
+// „Azi la tine" între ele; meniul „RA Insight · Agenți AI · Funcții" (ancora #agenti-ai = titlul părții 2).
+const faraCom = (h) => String(h).replace(/<!--[\s\S]*?-->/g, '');
+const S = faraCom(sec), LF = faraCom(L);
+T('capitolul „Inteligență artificială": eticheta, partea 1 (RA Insight) și partea 2 (cei 6 agenți), în aceeași secțiune',
+  S.includes('<span class="eyebrow">Inteligență artificială</span>') && /<span class="ai-nr">1<\/span>\s*<div><h3>RA Insight /.test(S) &&
+  /id="agenti-ai">\s*<span class="ai-nr">2<\/span>\s*<div><h3>Cei 6 agenți AI /.test(S));
+const ordAi = ['<span class="ai-nr">1</span>', 'class="ri-fct"', 'class="ri-inc"', 'class="ai-punte', 'id="agenti-ai"', 'class="agents-grid"', 'class="ai-parte ai-parte-pk', 'class="ri-pachete"', 'class="ri-cta"'].map((x) => S.indexOf(x));
+T('…în ordinea din machetă: RA Insight, ce face, de ce te poți baza pe el, puntea, agenții, pachetele, butoanele', ordAi.every((x, i) => x > 0 && (i === 0 || x > ordAi[i - 1])), ordAi);
+T('…cele 6 cartonașe ale agenților stau în capitol, iar secțiunea lor de dinainte (după „Funcții") a plecat',
+  (S.match(/<div class="agent reveal">/g) || []).length === 6 && (LF.match(/<div class="agent reveal">/g) || []).length === 6 &&
+  !/class="section section-ai"|class="agents-foot/.test(LF) && (LF.match(/id="agenti-ai"/g) || []).length === 1);
+T('…puntea: ce găsesc agenții azi apare și la „Azi la tine"', /class="ai-punte[^"]*"[\s\S]*?Ce găsesc agenții azi îți apare și în RA Insight, la <b>„Azi la tine”<\/b>/.test(S));
+T('…„Ce face fiecare agent, pe larg" stă cu butoanele de la capăt (spre /agenti-ai)', /<a href="\/agenti-ai" class="btn btn-ghost">Ce face fiecare agent, pe larg /.test(intre(sec, '<div class="ri-cta">', '</div>')));
 T('pagina pachetelor: telefonul Start și cel al pachetelor plătite, sub textul de început', /data-ri-demo="start"/.test(P) && /data-ri-demo="platit"/.test(P) &&
   P.indexOf('class="tel-doi"') > P.indexOf('class="intro"') && P.indexOf('class="tel-doi"') < P.indexOf('class="pachete"'));
 const PKF = intre(IX, 'window.insightPachete = async function', 'window.insightTrecere = async function');
@@ -312,8 +327,11 @@ void DARK;
     p = await pagina(1366, 860, true);
     await p.goto(B + '/landing.html', { waitUntil: 'load' }); await p.waitForTimeout(400);
     T('„mai puțină mișcare": răspunsul e gata scris pe loc, fără cuvinte stinse', await p.evaluate(() => !!document.querySelector('[data-ri-demo="erou"] .ri-pa') && !document.querySelector('[data-ri-demo="erou"] .ri-w')));
+    T('„Agenți AI" din meniu (17.11): titlul părții 2 se vede sub bara de sus, nu acoperit de ea', await p.evaluate(() => {
+      const t = document.getElementById('agenti-ai'); t.scrollIntoView(); const e = t.getBoundingClientRect(), h = document.getElementById('siteHeader').getBoundingClientRect();
+      return e.top >= h.bottom && e.top < h.bottom + 60; }), await p.evaluate(() => Math.round(document.getElementById('agenti-ai').getBoundingClientRect().top)));
     await p.goto(B + '/pachete-ra-insight.html', { waitUntil: 'load' }); await p.waitForTimeout(400);
-    T('…și pe pagina pachetelor (amândouă telefoanele)', await p.evaluate(() => !!document.querySelector('[data-ri-demo="start"] .ri-pa') && !!document.querySelector('[data-ri-demo="platit"] .ri-pa')));
+    T('„mai puțină mișcare" și pe pagina pachetelor (amândouă telefoanele)', await p.evaluate(() => !!document.querySelector('[data-ri-demo="start"] .ri-pa') && !!document.querySelector('[data-ri-demo="platit"] .ri-pa')));
     await p.context().close();
   } catch (e) { rele++; console.log('  ✗ partea din browser a crăpat: ' + (e && e.stack || e)); }
   try { await br.close(); } catch (e) {}

@@ -611,6 +611,37 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-17
 
+### AMÂNDOI · Prima pagină: RA Insight și cei 6 agenți AI, un singur capitol, „Inteligență artificială"
+*Alin, 17.11: „trebuie îmbinată și partea de pe pagina principală cu cei 6 agenți… tot capitolul inteligență artificială se numește și
+asta… gândește cum să o facem frumos împachetată"; din cele două variante cu poze: „1A"; „2. Meniul de sus rămâne «RA Insight · Agenți AI ·
+Funcții · Despre · Contact»".*
+
+**Ce am schimbat:**
+- Pe prima pagină, „Inteligență artificială" apărea de două ori, despărțită de „Funcții": întâi RA Insight, apoi, mai jos, cei 6 agenți.
+  Acum e **un singur capitol**, imediat sub primul ecran, cu eticheta „Inteligență artificială" și același titlu („Inteligența artificială
+  intră în conexiune directă cu flota ta. Răspunde, explică, recomandă."). Sub titlu: „Două unelte, pe aceleași date ale flotei: RA
+  Insight, asistentul pe care îl întrebi, și șase agenți AI care urmăresc flota pe domenii."
+- Capitolul are două părți, numerotate:
+  1. **RA Insight · asistentul pe care îl întrebi** — cele patru cartonașe cu ecranele lui și cele patru „de ce te poți baza pe el", ca
+     până acum.
+  2. **Cei 6 agenți AI · urmăresc flota pe domenii** — „Incluși în orice contract. RA Watch verifică flota în fiecare oră, iar ceilalți
+     cinci fac analiza pe loc, când le deschizi pagina.", apoi cele șase cartonașe ale agenților, neschimbate.
+- Între ele, o **punte**: iconițele celor șase agenți și „Ce găsesc agenții azi îți apare și în RA Insight, la „Azi la tine”." (adevărat:
+  „Azi la tine" arată și ce au scris agenții azi).
+- La capăt, **Pachetele RA Insight**, cu titlul lor („Start e inclus în orice contract; de la Basic întrebi orice, cu inteligență
+  artificială."), și trei butoane: „Cere cont demo", „Compară pachetele RA Insight", „Ce face fiecare agent, pe larg" (pagina agenților).
+- **Meniul de sus** (și cel de pe telefon): „RA Insight · Agenți AI · Funcții · Despre · Contact". „Agenți AI" duce la partea a doua a
+  capitolului; titlul ei se vede sub bara de sus, nu acoperit de ea.
+- Secțiunea separată a agenților, de după „Funcții", a ieșit; odată cu ea și rândul „Vrei agenții AI și RA Insight pe flota ta? Cere o
+  ofertă personalizată" (oferta se cere, ca până acum, din cartonașele pachetelor și din formularul de la final).
+
+**Ce vede fondatorul:** prima pagină de mai sus. Aplicația nu se schimbă.
+
+**Ce vede clientul:** la fel, pe ratrack.ro.
+
+Reper: `public/landing.html` (capitolul = secțiunea `#ra-insight`; ancora `#agenti-ai` = titlul părții 2), amprenta în `PAGINI_PUBLICE`;
+proba în `verify_ra_insight_demo.js` (secțiunea 1, plus clicul din meniu, în browser).
+
 ### AMÂNDOI · Site-ul nu mai spune că RA Insight „răspunde în română”
 *Alin, 17.11: „îți răspunde în română… scoate textele de genul… ce-i asta?”*
 
