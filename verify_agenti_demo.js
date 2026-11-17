@@ -100,6 +100,11 @@ T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch 
     const ag = f.map((x) => [x.severity, x.title, x.body]), tel = a.f.map((x) => [x.s, x.t, x.b]);
     T(a.nume + ': ' + a.f.length + (a.f.length === 1 ? ' constatare' : ' constatări') + ', aceleași texte, culori și ordine', JSON.stringify(ag) === JSON.stringify(tel), { agent: ag, telefon: tel });
   }
+  // 17.11 (găsit la inventarul site-ului): cele două telefoane de pe prima pagină nu arată aceleași cifre (ar părea copiate).
+  const RIJS = rd('public/js/ra-insight-demo.js');
+  const ieri = (RIJS.match(/Ieri: <b>([\d.]+) km<\/b>/) || [])[1], cl = D.find((a) => a.k === 'client').sumar;
+  const nrRo = (x) => String(x).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  T('cifrele zilei diferă de cele din telefonul RA Insight de pe aceeași pagină (km, cel mai activ)', !!ieri && ieri !== nrRo(cl.totalKm) && !RIJS.includes(nrRo(cl.top.km) + ' km'), { ieri, azi: cl.totalKm, top: cl.top.km });
   T('…și nimic în plus: ce scriu agenții e tot în telefon', R.findings.filter((x) => x.agent !== 'client').length === D.reduce((n, a) => n + (a.f ? a.f.length : 0), 0));
 
   console.log('\n4. Textele telefonului');
@@ -145,7 +150,7 @@ T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch 
     T('…trece singur la agentul următor (RA Care)', await astepta(p, () => (document.querySelector('.agd-b[aria-pressed="true"]') || {}).getAttribute && document.querySelector('.agd-b[aria-pressed="true"]').getAttribute('data-k') === 'care', null, 12000));
     await p.click('.agd-b[data-k="client"]');
     T('un clic alege agentul: RA Client, cu cartonașul zilei', await astepta(p, () => /RA Client/.test(document.querySelector('.agd-head b').textContent) && !!document.querySelector('.agd-tiles') && !document.querySelector('.agd-scan'), null, 4000));
-    T('…care arată „1.240 km" și „7/8", ca aplicația', await p.evaluate(() => [...document.querySelectorAll('.agd-tile b')].map((b) => b.textContent).slice(0, 2).join('|')) === '1.240 km|7/8');
+    T('…care arată „1.185 km" și „7/8", ca aplicația (punctul miilor, „7/8" lipit)', await p.evaluate(() => [...document.querySelectorAll('.agd-tile b')].map((b) => b.textContent).slice(0, 2).join('|')) === '1.185 km|7/8');
     await p.click('.agd-dv button:nth-of-type(2)');
     T('…iar „2 scadențe · RA Care" din „De verificat" deschide RA Care (ca în aplicație)', await astepta(p, () => /RA Care/.test(document.querySelector('.agd-head b').textContent), null, 3000));
     await p.hover('.agd-tel');

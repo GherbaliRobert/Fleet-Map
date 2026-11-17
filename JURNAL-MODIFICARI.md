@@ -618,7 +618,7 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 - în stânga, **șase butoane** (RA Watch, RA Care, RA Optimize, RA Compliance, RA Client, RA Dispatch), fiecare cu textul lui de pe site;
 - în dreapta, **un telefon cu pagina agentului din aplicație**: „Toți agenții", numele și rolul, „Rulează", apoi „Se verifică flota…" și ce a
   găsit agentul, rând cu rând (roșu, portocaliu, verde). Trece singur la agentul următor la ~8 secunde; un clic pe un buton alege agentul;
-  cu mouse-ul pe el se oprește. La RA Client se vede cartonașul zilei (1.240 km, 7/8 active, +12% față de ieri) și „De verificat"; un clic
+  cu mouse-ul pe el se oprește. La RA Client se vede cartonașul zilei (1.185 km, 7/8 active, +12% față de ieri) și „De verificat"; un clic
   acolo deschide agentul respectiv, ca în aplicație.
 - **Ce scrie în telefon e ce scrie aplicația:** textele nu sunt scrise de mână — sunt ce scriu agenții adevărați pe o flotă de probă de 8 mașini
   (B 204 RAT, B 77 TIR, B 18 VAN, B 31 LOG, B 90 CTR…), la 14:30. O probă îi rulează și compară rând cu rând; dacă se schimbă un text la

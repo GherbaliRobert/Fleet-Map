@@ -55,7 +55,7 @@
         live: true, fh: 'Scor eco — azi',
         f: [
           { s: 'warning', t: 'B 204 RAT: scor eco 54/100', b: 'Scor eco 54/100 (prag: sub 60). Ce a tras scorul jos azi: 6 frânări bruște, 4 accelerări bruște. Sugestii pentru șofer: anticipează traficul și frânează lin, din timp — ține distanță față de mașina din față; demarează lin, fără apăsări bruște pe accelerație.' },
-          { s: 'info', t: 'Flotă: 3h 10m ralanti azi', b: 'Risipă estimată ~4,8 L (~36 lei). Reducerea ralantiului scade direct costurile.' }
+          { s: 'info', t: 'Flotă: 2h 45m ralanti azi', b: 'Risipă estimată ~4,1 L (~31 lei). Reducerea ralantiului scade direct costurile.' }
         ] },
       { k: 'compliance', nume: 'RA Compliance', rol: 'Ore de condus', desc: 'Condus continuu și zilnic (Reg. 561) — doar vehicule cu tahograf, nu turisme.', ic: 'fa-clipboard-check',
         live: true, fh: 'Ore de condus — azi',
@@ -64,7 +64,7 @@
         ] },
       { k: 'client', nume: 'RA Client', rol: 'Sinteza zilei', desc: 'Ziua într-un rând: km, active, comparație cu ieri + ce au găsit ceilalți agenți.', ic: 'fa-file-lines',
         live: true, fh: 'Sinteza zilei',
-        sumar: { fleetSize: 8, active: 7, unused: 1, totalKm: 1240, ydKm: 1107, pct: 12, top: { name: 'B 90 CTR', km: 412 },
+        sumar: { fleetSize: 8, active: 7, unused: 1, totalKm: 1185, ydKm: 1058, pct: 12, top: { name: 'B 90 CTR', km: 386 },
           issues: [
             { key: 'watch', agent: 'RA Watch', text: '3 alerte de monitorizare' },
             { key: 'care', agent: 'RA Care', text: '2 scadențe' },

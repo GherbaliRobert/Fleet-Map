@@ -19,8 +19,9 @@ const MASINI = [
   { imei: 'DEMO-AG-8', nr: 'B 88 AUT', tip: 'Auto' }
 ];
 // Km de azi și de ieri, până la aceeași oră (RA Client citește cursele, nu pozițiile).
-const KM_AZI = { 'DEMO-AG-1': 61, 'DEMO-AG-2': 95, 'DEMO-AG-3': 30, 'DEMO-AG-4': 0, 'DEMO-AG-5': 412, 'DEMO-AG-6': 210, 'DEMO-AG-7': 250, 'DEMO-AG-8': 182 };
-const KM_IERI = { 'DEMO-AG-1': 140, 'DEMO-AG-2': 310, 'DEMO-AG-3': 85, 'DEMO-AG-4': 22, 'DEMO-AG-5': 0, 'DEMO-AG-6': 190, 'DEMO-AG-7': 205, 'DEMO-AG-8': 155 };
+// Alte cifre decât telefonul RA Insight de pe aceeași pagină (acolo: ieri 1.240 km, B 77 TIR 412 km), ca să nu pară copiate.
+const KM_AZI = { 'DEMO-AG-1': 61, 'DEMO-AG-2': 95, 'DEMO-AG-3': 30, 'DEMO-AG-4': 0, 'DEMO-AG-5': 386, 'DEMO-AG-6': 205, 'DEMO-AG-7': 236, 'DEMO-AG-8': 172 };
+const KM_IERI = { 'DEMO-AG-1': 140, 'DEMO-AG-2': 310, 'DEMO-AG-3': 85, 'DEMO-AG-4': 22, 'DEMO-AG-5': 0, 'DEMO-AG-6': 181, 'DEMO-AG-7': 175, 'DEMO-AG-8': 145 };
 // Ora la care „deschizi" pagina agenților în telefon: 14:30, pe ora României (RA Dispatch caută mașinile nefolosite de la 12:00).
 const ORA_TELEFON = { h: 14, m: 30 };
 const ZILE_ITP = 12, ZILE_RCA = 19;
@@ -73,10 +74,10 @@ function flota(acum) {
   ist['DEMO-AG-4'] = [7, 10, 14].map((h) => ({ imei: 'DEMO-AG-4', timestamp: new Date(la(h, 0)).toISOString(), latitude: 44.45, longitude: 26.08, speed: 0, angle: 0, io_data: { ignition: 0 } }));
   // B 90 CTR: pe drum fără pauză de la 09:50 până acum (4h 40m), cu cardul în tahograf.
   ist['DEMO-AG-5'] = drum('DEMO-AG-5', la(9, 50), [{ dt: 0, v: 60, card: 'RO-DEMO' }, ...rep(280, { dt: 60, v: 60, card: 'RO-DEMO' })], [45.0, 25.0]);
-  // B 52 DUB, B 63 FRG, B 88 AUT: pe drum acum; primele două au stat cu motorul pornit 30 și 25 de minute.
+  // B 52 DUB, B 63 FRG, B 88 AUT: pe drum acum; B 52 DUB a stat 30 de minute cu motorul pornit (cu B 18 VAN: 2h 45m de ralanti pe flotă).
   ist['DEMO-AG-6'] = drum('DEMO-AG-6', la(7, 0), [{ dt: 0, v: 70 }, ...rep(150, { dt: 60, v: 70 }), ...rep(10, { dt: 180, v: 0 }), ...rep(180, { dt: 60, v: 50 })], [46.0, 24.0]);
   { const p = ist['DEMO-AG-6']; const dupa = now - Date.parse(p[p.length - 1].timestamp); p.forEach((x) => { x.timestamp = new Date(Date.parse(x.timestamp) + dupa).toISOString(); }); }
-  ist['DEMO-AG-7'] = drum('DEMO-AG-7', la(8, 0), [{ dt: 0, v: 62 }, ...rep(240, { dt: 60, v: 62 }), ...rep(5, { dt: 300, v: 0 }), ...rep(5, { dt: 300, v: 0, ign: 0 }), ...rep(130, { dt: 60, v: 62 })], [46.5, 23.5]);
+  ist['DEMO-AG-7'] = drum('DEMO-AG-7', la(8, 0), [{ dt: 0, v: 62 }, ...rep(240, { dt: 60, v: 62 }), ...rep(10, { dt: 300, v: 0, ign: 0 }), ...rep(130, { dt: 60, v: 62 })], [46.5, 23.5]);
   { const p = ist['DEMO-AG-7']; const dupa = now - Date.parse(p[p.length - 1].timestamp); p.forEach((x) => { x.timestamp = new Date(Date.parse(x.timestamp) + dupa).toISOString(); }); }
   ist['DEMO-AG-8'] = drum('DEMO-AG-8', la(10, 0), [{ dt: 0, v: 40 }, ...rep(270, { dt: 60, v: 40 })], [47.0, 23.0]);
 
