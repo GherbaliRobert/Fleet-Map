@@ -487,6 +487,12 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
 - **Pe site:** „RA Insight" primul în meniu (sus, pe telefon, subsol); caseta veche de sub agenți (`.ra-insight`) a ieșit; cartonașele pachetelor
   stau în `#ra-insight` (3d le caută acolo); „de la Basic" pe analiză și pe propunerile cu „Da"; cifrele de lângă telefoane sunt în `LEGATE` („se
   poate anula 10 minute" = `ANULARE_MIN`, „50 de răspunsuri" = Start). Chenarul Basic și coloana lui din comparație sunt VERZI (mov până pe 16.11).
+- **Primul ecran, textele din 17.11 (Alin, după patru variante: „Monitorizează-ți flota mi se pare autoritar"; „Vezi ce poate RA Insight,
+  exclus"):** eticheta „RA Insight · asistentul AI al flotei tale", titlul „Monitorizare GPS și analiză cu inteligență artificială"
+  (`.grad-ai`), sloganul „De la poziția mașinii la decizia potrivită" (`.hero-tag`), textul, UN buton „Descoperă RA Insight ↓" (`#ra-insight`).
+  Titlul secțiunii: „Inteligența artificială intră în conexiune directă cu flota ta. Răspunde, explică, recomandă." Fără imperativ în titluri.
+  „Cere cont demo" NU stă în primul ecran: la capătul secțiunii RA Insight și în banda de la final (`.cta-band`, cu „Ai deja cont? Intră în
+  aplicație"). Pe site RA Insight e „asistentul", nu „agentul" („Agenți AI" sunt cei șase). Păzit de `verify_ra_insight_demo.js` (secțiunea 1).
 - Păzit de **`verify_ra_insight_demo.js`** (în `npm test`; partea din browser se sare fără Chromium) și `verify_site_public.js`.
 
 ## Compania DEMO (acces la CERERE, aprobat de super-admin)

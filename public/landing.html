@@ -254,15 +254,6 @@
     }
     .hero-glow.two{top:auto;bottom:-12%;width:560px;height:380px;background:radial-gradient(50% 50% at 50% 50%, rgba(63,224,125,.14) 0%, transparent 70%)}
     .hero-inner{position:relative;z-index:2;max-width:880px;margin:0 auto}
-    .badge{
-      display:inline-flex;align-items:center;gap:10px;
-      padding:8px 16px;border-radius:999px;
-      background:rgba(63,224,125,.06);
-      border:1px solid rgba(63,224,125,.28);
-      color:#cffadf;font-size:13px;font-weight:500;letter-spacing:.2px;
-      margin-bottom:30px;
-    }
-    .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(63,224,125,.18);animation:pulse 2.2s infinite}
     @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(63,224,125,.4)}50%{box-shadow:0 0 0 6px rgba(63,224,125,0)}}
     .hero h1{
       font-size:clamp(40px,6.2vw,72px);
@@ -298,9 +289,12 @@
     .hero{padding:40px 0 64px}
     .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:40px;align-items:center}
     .hero-grid .hero-inner{max-width:none;margin:0;text-align:left}
-    .hero-grid .badge{margin-bottom:0}
-    .hero-grid .badge i{color:var(--accent)}
-    .hero-grid h1{font-size:clamp(36px,4.6vw,58px);max-width:none;margin:22px 0 18px}
+    .hero-grid h1{font-size:clamp(34px,4.3vw,54px);max-width:none;margin:0 0 18px}
+    /* Primul ecran, textele din 17.11 (Alin): eticheta mică deasupra titlului, „inteligență artificială" în verde, sloganul cu bara
+       verde în stânga. Fără imperativ în titluri. */
+    .h-eyebrow{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+    .grad-ai{background:linear-gradient(95deg,#a6f7c6 0%,#3FE07D 55%,#2fd06c 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .hero-tag{font-size:clamp(18px,1.9vw,22px);font-weight:700;color:#eafff2;line-height:1.35;margin:0 0 14px;padding-left:14px;border-left:3px solid var(--accent)}
     .hero-grid p.sub{font-size:clamp(16px,1.6vw,18.5px);margin:0 0 30px;max-width:56ch}
     .hero-grid .hero-ctas{justify-content:flex-start;margin-bottom:34px}
     .hero-grid .hero-stats{margin:0;max-width:600px}
@@ -538,6 +532,7 @@
     .cta-inner h2{position:relative;font-size:clamp(26px,4vw,40px);font-weight:800;letter-spacing:-1px;margin-bottom:14px}
     .cta-inner p{position:relative;color:#bfe9cf;font-size:17px;max-width:54ch;margin:0 auto 28px}
     .cta-inner .btn{position:relative}
+    .cta-btns{position:relative;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
     .cta-grid-lines{position:absolute;inset:0;background-image:linear-gradient(to right,rgba(63,224,125,.06) 1px,transparent 1px);background-size:40px 100%;opacity:.5}
 
     /* ---------- CONTACT ---------- */
@@ -624,7 +619,6 @@
     @media (prefers-reduced-motion: reduce){
       html{scroll-behavior:auto}
       .reveal{opacity:1 !important;transform:none !important;transition:none !important}
-      .badge .dot{animation:none !important}
       .mobile-menu.open .mm-inner{animation:none !important}
       *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important;animation-iteration-count:1 !important}
     }
@@ -673,7 +667,8 @@
 
   <span id="top"></span>
 
-  <!-- ===== HERO: textul în stânga, telefonul cu RA Insight în dreapta (16.11, Alin: „1. A") — pe telefon, unul sub altul ===== -->
+  <!-- ===== HERO: textul în stânga, telefonul cu RA Insight în dreapta (16.11, Alin: „1. A") — pe telefon, unul sub altul.
+       Textele din 17.11 (Alin): eticheta, titlul cu „inteligență artificială", sloganul, textul, butonul spre RA Insight. ===== -->
   <section class="hero">
     <div class="hero-bgimg" aria-hidden="true"></div>
     <div class="hero-glow" aria-hidden="true"></div>
@@ -682,12 +677,14 @@
     <div class="wrap">
       <div class="hero-grid">
         <div class="hero-inner">
-          <span class="badge"><i class="fa-solid fa-wand-magic-sparkles"></i> RA Insight: întrebi flota în cuvintele tale</span>
-          <h1>Monitorizează-ți <span class="grad">flota în timp real</span></h1>
-          <p class="sub">RA Track îți aduce localizare GPS live, rapoarte detaliate, consum de combustibil și alerte instant — totul într-un singur ecran, rapid, clar și construit pentru operațiuni reale de transport.</p>
+          <span class="h-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> RA Insight · asistentul AI al flotei tale</span>
+          <h1>Monitorizare GPS și analiză cu <span class="grad-ai">inteligență artificială</span></h1>
+          <p class="hero-tag">De la poziția mașinii la decizia potrivită</p>
+          <p class="sub">Urmărești în timp real poziția, consumul și alertele fiecărei mașini, iar RA Insight transformă aceste date în răspunsuri clare și recomandări, direct în chat.</p>
+          <!-- Un singur buton: coboară la secțiunea RA Insight (17.11, Alin). „Intră în aplicație" stă în bara de sus (pe telefon,
+               în meniul ☰); „Cere cont demo" vine după ce omul a citit: la capătul secțiunii RA Insight și în banda de la final. -->
           <div class="hero-ctas">
-            <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intră în aplicație</a>
-            <button type="button" class="btn btn-ghost" onclick="raxDemoAsk()"><i class="fa-solid fa-envelope-open-text"></i> Cere cont demo</button>
+            <a href="#ra-insight" class="btn btn-primary">Descoperă RA Insight <i class="fa-solid fa-arrow-down"></i></a>
           </div>
           <div class="hero-stats">
             <div class="stat">
@@ -726,7 +723,7 @@
     <div class="wrap">
       <div class="section-head reveal">
         <span class="eyebrow">RA Insight</span>
-        <h2>Întreabă-ți flota. <span class="accent">Îți răspunde în câteva secunde.</span></h2>
+        <h2>Inteligența artificială intră în conexiune directă cu flota ta. <span class="accent">Răspunde, explică, recomandă.</span></h2>
         <p class="lead">RA Insight e asistentul cu inteligență artificială din RA Track. Citește datele flotei tale (poziții, curse, consum, acte) și îți răspunde în română, cu cifrele din rapoartele aplicației.</p>
       </div>
 
@@ -1014,9 +1011,12 @@
     <div class="wrap">
       <div class="cta-inner">
         <div class="cta-grid-lines" aria-hidden="true"></div>
-        <h2>Vezi-ți flota chiar acum</h2>
-        <p>Intră în aplicație și descoperă în câteva secunde cum arată monitorizarea modernă a flotei tale.</p>
-        <a href="/app" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Intră în aplicație</a>
+        <h2>Vezi RA Track pe o flotă de probă</h2>
+        <p>Cere un cont demo: după ce îl aprobăm, primești pe email linkul în care îți pui parola și intri în aplicație, cu mașini și trasee de probă.</p>
+        <div class="cta-btns">
+          <button type="button" class="btn btn-primary" onclick="raxDemoAsk()"><i class="fa-solid fa-envelope-open-text"></i> Cere cont demo</button>
+          <a href="/app" class="btn btn-ghost"><i class="fa-solid fa-arrow-right-to-bracket"></i> Ai deja cont? Intră în aplicație</a>
+        </div>
       </div>
     </div>
   </section>

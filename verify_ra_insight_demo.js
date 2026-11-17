@@ -63,7 +63,21 @@ T('primul ecran: telefonul (data-ri-demo="erou") stă lângă titlu, în aceeaș
 const taburi = [...erou.matchAll(/data-sc="([a-z]+)"/g)].map((m) => m[1]);
 T('…cu cele patru butoane, în ordinea din telefon', JSON.stringify(taburi) === JSON.stringify(DEMO._ORDINE.slice()), taburi);
 T('…și „Exemplu cu o flotă de probă" sub el', /Exemplu cu o flotă de probă/.test(erou));
+// Textele primului ecran (17.11, Alin): eticheta cu „asistentul AI" (nu „agentul": „Agenți AI" sunt cei șase), titlul cu
+// „inteligență artificială", sloganul, un singur buton care coboară la secțiunea RA Insight; „Cere cont demo" vine mai jos.
+T('primul ecran (17.11): eticheta „RA Insight · asistentul AI al flotei tale", titlul cu „inteligență artificială", sloganul',
+  erou.includes('RA Insight · asistentul AI al flotei tale') && /<h1>Monitorizare GPS și analiză cu <span class="grad-ai">inteligență artificială<\/span><\/h1>/.test(erou) &&
+  erou.includes('<p class="hero-tag">De la poziția mașinii la decizia potrivită</p>'));
+const ctaErou = intre(erou, '<div class="hero-ctas">', '</div>');
+T('…un singur buton, „Descoperă RA Insight", care coboară la secțiunea RA Insight (fără „Cere cont demo" sus)',
+  (ctaErou.match(/<a |<button /g) || []).length === 1 && /<a href="#ra-insight" class="btn btn-primary">Descoperă RA Insight /.test(ctaErou) &&
+  !/raxDemoAsk|Cere cont demo/.test(erou.replace(/<!--[\s\S]*?-->/g, '')));
+const banda = intre(L, '<section class="cta-band">', '</section>');
+T('banda de la final: „Cere cont demo", cu „Ai deja cont? Intră în aplicație" alături', /onclick="raxDemoAsk\(\)"[^>]*>.*Cere cont demo<\/button>/.test(banda) && /href="\/app"[^>]*>.*Ai deja cont\? Intră în aplicație<\/a>/.test(banda));
+T('pe site, RA Insight e „asistentul", niciodată „agentul" (agenții AI sunt cei șase)', !/agentul AI/i.test(L) && !/agentul AI/i.test(P));
 const iS = L.indexOf('id="ra-insight"'), sec = iS > 0 ? L.slice(iS, L.indexOf('</section>', iS)) : '';
+T('secțiunea RA Insight: titlul din 17.11 și „Cere cont demo" la capătul ei', sec.includes('<h2>Inteligența artificială intră în conexiune directă cu flota ta. <span class="accent">Răspunde, explică, recomandă.</span></h2>') &&
+  /raxDemoAsk\(\)/.test(intre(sec, '<div class="ri-cta">', '</div>')));
 T('secțiunea RA Insight stă imediat după primul ecran (înaintea „Funcții")', iS > iH && iS < L.indexOf('id="functii"'));
 const bucati = [...sec.matchAll(/data-ri-demo="bucata" data-sc="([a-z]+)"/g)].map((m) => m[1]);
 T('…cu cele patru bucăți de ecran (aceleași patru întrebări)', JSON.stringify(bucati) === JSON.stringify(DEMO._ORDINE.slice()), bucati);

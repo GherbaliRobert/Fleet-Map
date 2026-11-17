@@ -516,6 +516,12 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (`confirmare`) și `DELETE /api/insight/fisa` (răspunsul are `mesaj`). Doar pentru cine are cont RA Insight (`aiCont`) și doar cu
   `activ: true` (pe Start blocul lipsește — Alin, 11.11). Tot cu APK-ul ăsta pleacă și textele corectate pe 11.11: actul citit fără
   „gratuit" / „citire AI", exemplul din notițele firmei, mesajul de la capătul lunii pe regula veche.
+- [ ] **Alin: contul demo și RA Insight — de discutat ce presupune. Adăugat pe 17.11** (Alin: „hai să-l lăsăm după ce facem astea
+  două… trebuie să-l discutăm ce presupune, ce face"). Azi, cine cere cont demo de pe site (butonul stă acum chiar după secțiunea RA
+  Insight și în banda de la final) primește un cont doar de vizualizare, în firma demo, care e pe Start. Deschide RA Insight și primește:
+  „Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei ți-l poate da…" — numai că el nu are niciun
+  administrator. De hotărât: dacă și cum îl lăsăm să încerce RA Insight (de exemplu câte întrebări, pe ce pachet stă firma demo, cât ne
+  costă; o întrebare ~0,5 bani).
 - [x] **HOTĂRÂT (27.10): aplicația de telefon (APK) o face Robert** (Alin: „telefonul apk îl face Robert"). Punctele lui de telefon
   rămân pe listă, cu ce are de pus din web.
 - [x] **HOTĂRÂT (27.10): asistentul AI al fondatorilor se face la FINALUL capitolului „Inteligența artificială", atent** (Alin: „trebuie
@@ -602,6 +608,35 @@ diacritice, „creează una în Zone", „Vine în runda următoare", prețul me
 cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: rezolvată pe 26.10, la „toate mărimile de ecran".)
 
 ---
+
+## 2026-11-17
+
+### AMÂNDOI · Prima pagină: primul ecran cu inteligența artificială în titlu, „Cere cont demo" după ce omul a citit
+*Alin, 16–17.11, după patru variante și machete: „Monitorizează-ți flota mi se pare autoritar… nu e profesional"; „Vezi ce poate RA
+Insight, exclus"; apoi textele lui, cosmetizate împreună: „asistentul AI al flotei tale"; la titlul secțiunii: „Inteligența artificială
+intră în conexiune directă cu flota ta. Răspunde, explică, recomandă."; „2. da" (publicăm tot).*
+
+**Ce am schimbat:**
+- **Primul ecran (ratrack.ro), de sus în jos:** eticheta mică, verde: „RA Insight · asistentul AI al flotei tale"; titlul: „Monitorizare GPS
+  și analiză cu inteligență artificială" („inteligență artificială" în verde); sloganul, cu o bară verde în stânga: „De la poziția mașinii
+  la decizia potrivită"; textul: „Urmărești în timp real poziția, consumul și alertele fiecărei mașini, iar RA Insight transformă aceste
+  date în răspunsuri clare și recomandări, direct în chat."; un singur buton, „Descoperă RA Insight ↓", care coboară lin la secțiunea RA
+  Insight. Telefonul animat din dreapta și cele trei cifre (4G, 30+, 100%) rămân.
+- **„Intră în aplicație"** a ieșit din primul ecran: stă în bara de sus (pe telefon, în meniul ☰) și în banda de la final.
+- **„Cere cont demo"** a ieșit din primul ecran, ca omul să-l vadă după ce a citit: la capătul secțiunii RA Insight (era deja acolo) și în
+  banda verde de la finalul paginii. Banda spunea „Vezi-ți flota chiar acum — Intră în aplicație și descoperă…", dar fără cont omul
+  ajungea doar la autentificare. Acum: „Vezi RA Track pe o flotă de probă" — „Cere un cont demo: după ce îl aprobăm, primești pe email
+  linkul în care îți pui parola și intri în aplicație, cu mașini și trasee de probă." — „Cere cont demo" + „Ai deja cont? Intră în aplicație".
+- **Titlul secțiunii RA Insight:** „Inteligența artificială intră în conexiune directă cu flota ta. Răspunde, explică, recomandă." (era
+  „Întreabă-ți flota. Îți răspunde în câteva secunde.").
+- „RA Insight" se cheamă pe site „asistentul", nu „agentul": „Agenți AI" rămân cei șase agenți.
+
+**Ce vede fondatorul:** prima pagină nouă pe ratrack.ro, ca orice vizitator.
+
+**Ce vede clientul:** la fel; cine are cont intră din bara de sus („Intră în aplicație"), pe telefon din meniul ☰.
+
+Reper: `public/landing.html`; data și amprenta primei pagini în `PAGINI_PUBLICE` (server.js); probele în `verify_ra_insight_demo.js`
+(textele primului ecran, butonul unic, banda de la final, „asistentul").
 
 ## 2026-11-16
 
