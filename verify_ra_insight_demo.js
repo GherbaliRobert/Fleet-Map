@@ -56,7 +56,7 @@ for (const d of [0, -3600000, 3600000]) if (fo.format(new Date(LA + d)) === '10:
 console.log('\n1. Un fișier, trei locuri');
 T('fișierele telefonului există (JS + CSS) și scriptul se încarcă', !!DEMO && typeof DEMO.porneste === 'function' && typeof DEMO.opreste === 'function' && CSS.length > 2000);
 T('prima pagină încarcă telefonul (foaia de stil + scriptul)', L.includes('<link rel="stylesheet" href="/css/ra-insight-demo.css">') && L.includes('<script src="/js/ra-insight-demo.js" defer></script>'));
-T('pagina pachetelor îl încarcă (și Font Awesome, pentru iconițele lui)', P.includes('<link rel="stylesheet" href="/css/ra-insight-demo.css">') && P.includes('<script src="/js/ra-insight-demo.js" defer></script>') && P.includes('font-awesome/6.5.1/css/all.min.css'));
+T('pagina pachetelor NU mai are telefoane (18.11, Alin: „lasă doar comparațiile”): fără foaia și scriptul lor, fără data-ri-demo; cartonașele și tabelul rămân', !P.includes('ra-insight-demo') && !/data-ri-demo/.test(P) && !/class="tel-doi"/.test(P) && /class="pachete"/.test(P) && /<table>/.test(P));
 T('aplicația îl încarcă', IX.includes('<link rel="stylesheet" href="/css/ra-insight-demo.css">') && IX.includes('<script src="/js/ra-insight-demo.js"></script>'));
 const iH = L.indexOf('<section class="hero">'), erou = iH > 0 ? L.slice(iH, L.indexOf('</section>', iH)) : '';
 T('primul ecran: telefonul (data-ri-demo="erou") stă lângă titlu, în aceeași secțiune cu <h1>', /data-ri-demo="erou"/.test(erou) && /<h1>/.test(erou));
@@ -103,8 +103,6 @@ T('…cei 6 agenți (butoanele, cu telefonul lor) stau în capitol, iar secțiun
   !/class="section section-ai"|class="agents-foot/.test(LF) && (LF.match(/id="agenti-ai"/g) || []).length === 1);
 T('…puntea: ce găsesc agenții azi apare și la „Azi la tine"', /class="ai-punte[^"]*"[\s\S]*?Ce găsesc agenții azi îți apare și în RA Insight, la <b>„Azi la tine”<\/b>/.test(S));
 T('…„Ce face fiecare agent, pe larg" stă cu butoanele de la capăt (spre /agenti-ai)', /<a href="\/agenti-ai" class="btn btn-ghost">Ce face fiecare agent, pe larg /.test(intre(sec, '<div class="ri-cta">', '</div>')));
-T('pagina pachetelor: telefonul Start și cel al pachetelor plătite, sub textul de început', /data-ri-demo="start"/.test(P) && /data-ri-demo="platit"/.test(P) &&
-  P.indexOf('class="tel-doi"') > P.indexOf('class="intro"') && P.indexOf('class="tel-doi"') < P.indexOf('class="pachete"'));
 const PKF = intre(IX, 'window.insightPachete = async function', 'window.insightTrecere = async function');
 T('aplicația, „Vezi pachetele": telefonul pachetelor plătite doar la firmele de pe Start', /if \(j\.actual === 'start' && window\.RaInsightDemo\)/.test(PKF) && /setAttribute\('data-ri-demo', 'platit'\)/.test(PKF));
 T('…pornit după ce fereastra e pe ecran și oprit la închidere (×, clic pe fundal, fereastră nouă)', /document\.body\.appendChild\(ov\);\s*if \(window\.RaInsightDemo\) window\.RaInsightDemo\.porneste\(ov\);/.test(PKF) &&
@@ -209,8 +207,8 @@ for (const k of DEMO._PLANURI) {
 }
 T('textScurt scrie „N din M" (fără împărțire) și „îți rămân N" (cu cifra omului)', PKJS.includes("return 'îți rămân ' + _nrRo(st.motiv === 'plasa' ? 0 : st.ramaseOm);") && PKJS.includes("return _nrRo(ramaseAfisate(st)) + ' din ' + _nrRo(st.intrebari);"));
 const st0 = PUB.find((x) => x.cod === 'start');
-T('Start: telefonul numără din ' + PK.dupaCod('start').intrebari + ' și coloana lui (pagina pachetelor și prima pagină) are textele din pachete.js',
-  DEMO._START.contor.every((c) => new RegExp(' din ' + PK.dupaCod('start').intrebari + '$').test(c)) && [P, L].every((H) => H.includes('<b>' + st0.titlu + '</b> ' + st0.pentru) &&
+T('Start: telefonul numără din ' + PK.dupaCod('start').intrebari + ' și coloana lui de pe prima pagină are textele din pachete.js',
+  DEMO._START.contor.every((c) => new RegExp(' din ' + PK.dupaCod('start').intrebari + '$').test(c)) && [L].every((H) => H.includes('<b>' + st0.titlu + '</b> ' + st0.pentru) &&
   H.includes('Conturi: ' + st0.cifre[0].val + ' · Răspunsuri pe loc: ' + st0.cifre[2].val) && H.includes(PK.dupaCod('start').intrebari + ' de răspunsuri pe lună')));
 
 console.log('\n4. Întrebările din telefoane trec prin regulile aplicației și ies cum le arată telefonul');
@@ -244,7 +242,7 @@ const g = SIR.match(FARA);
 T('cu diacritice (niciun cuvânt scris fără ele)', !g, g ? SIR.slice(Math.max(0, g.index - 40), g.index + 40) : '');
 T('ș și ț cu virgulă, nu cu sedilă', !/[şţŞŢ]/.test(JS + CSS + L + P));
 T('fără numele furnizorului de AI, fără prețuri, fără „gratuit" / „tokeni" / „nu se numără" / „24/7"', !/Anthropic|Claude|model de limbaj|gratuit|tokeni|nu se num[aă]r|24\/7|\blei\b|€/i.test(SIR), (SIR.match(/Anthropic|Claude|model de limbaj|gratuit|tokeni|nu se num[aă]r|24\/7|\blei\b|€/i) || [''])[0]);
-T('mașinile și oamenii sunt de probă, iar sub telefoane scrie „Exemplu cu o flotă de probă"', /Exemplu cu o flotă de probă/.test(JS) && /Exemplu cu o flotă de probă/.test(L) && /Exemplu cu o flotă de probă/.test(P));
+T('mașinile și oamenii sunt de probă, iar sub telefoane scrie „Exemplu cu o flotă de probă"', /Exemplu cu o flotă de probă/.test(JS) && /Exemplu cu o flotă de probă/.test(L));
 T('zilele se socotesc față de azi, pe ora României (fără date scrise de mână)', !/\b\d{2}\.\d{2}\.20\d\d\b/.test(JS) && /timeZone: TZ/.test(JS) && TX.sc.dece.tit.includes(INS.LUNI ? INS.LUNI[new Date(Date.parse(INS.perioada({ period: 'today' }, ACUM).from) + 12 * 3600000).getUTCMonth()] : 'x'), TX.sc.dece.tit);
 
 console.log('\n6. Culorile ecranului = chatul RA Insight pe tema închisă (app.css)');
@@ -310,8 +308,9 @@ void DARK;
     await p.click('[data-ri-taburi] [data-sc="alerta"]');
     T('„Alertă": scrie, propune, apasă „Da" și ajunge la „Gata"', await astepta(p, () => !!document.querySelector('[data-ri-demo="erou"] .ri-gata') && !!document.querySelector('[data-ri-demo="erou"] .ri-prop.ri-inchis'), null, 16000));
     T('…fără erori în pagină și nimic ieșit din ecran', p._erori.length === 0 && await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), p._erori);
-    await p.goto(B + '/pachete-ra-insight.html', { waitUntil: 'load' });
-    T('pagina pachetelor: telefonul Start și comutatorul Basic / Pro / Business', await astepta(p, () => !!document.querySelector('[data-ri-demo="start"] .ri-scr') && document.querySelectorAll('[data-ri-demo="platit"] .ri-pk-b').length === 3, null, 4000));
+    await p.goto(B + '/landing.html', { waitUntil: 'load' });
+    await p.evaluate(() => document.querySelector('#ra-insight [data-ri-demo="platit"]').scrollIntoView());
+    T('prima pagină, pachetele: comutatorul Basic / Pro / Business (pagina pachetelor nu mai are telefoane din 18.11)', await astepta(p, () => document.querySelectorAll('#ra-insight [data-ri-demo="platit"] .ri-pk-b').length === 3, null, 4000));
     await p.click('[data-ri-demo="platit"] [data-pk="pro"]');
     T('…„Pro": rândul pachetului, Maria în telefon și contorul ei', await astepta(p, (o) => {
       const z = document.querySelector('[data-ri-demo="platit"]');
@@ -334,8 +333,7 @@ void DARK;
     T('„Agenți AI" din meniu (17.11): titlul părții 2 se vede sub bara de sus, nu acoperit de ea', await p.evaluate(() => {
       const t = document.getElementById('agenti-ai'); t.scrollIntoView(); const e = t.getBoundingClientRect(), h = document.getElementById('siteHeader').getBoundingClientRect();
       return e.top >= h.bottom && e.top < h.bottom + 60; }), await p.evaluate(() => Math.round(document.getElementById('agenti-ai').getBoundingClientRect().top)));
-    await p.goto(B + '/pachete-ra-insight.html', { waitUntil: 'load' }); await p.waitForTimeout(400);
-    T('„mai puțină mișcare" și pe pagina pachetelor (amândouă telefoanele)', await p.evaluate(() => !!document.querySelector('[data-ri-demo="start"] .ri-pa') && !!document.querySelector('[data-ri-demo="platit"] .ri-pa')));
+    T('„mai puțină mișcare" și la telefoanele pachetelor de pe prima pagină (amândouă)', await p.evaluate(() => !!document.querySelector('#ra-insight [data-ri-demo="start"] .ri-pa') && !!document.querySelector('#ra-insight [data-ri-demo="platit"] .ri-pa')));
     await p.context().close();
   } catch (e) { rele++; console.log('  ✗ partea din browser a crăpat: ' + (e && e.stack || e)); }
   try { await br.close(); } catch (e) {}

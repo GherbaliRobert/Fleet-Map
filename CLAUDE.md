@@ -487,11 +487,13 @@ Confidențialitate.
 
 ### RA Insight în prim-plan: telefonul animat (16.11; Alin: „1. A, 2. închis, 3. DA, cu comutator Basic / Pro / Business, 4. DA, 5. DA")
 Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: „exact așa animat ca în machetă".
-- **UN fișier: `public/js/ra-insight-demo.js` + `public/css/ra-insight-demo.css`**, folosit în trei locuri: prima pagină (primul ecran =
+- **UN fișier: `public/js/ra-insight-demo.js` + `public/css/ra-insight-demo.css`**, folosit în două locuri: prima pagină (primul ecran =
   `data-ri-demo="erou"` lângă titlu, cu butoanele `[data-ri-taburi] [data-sc]`; secțiunea `#ra-insight` imediat sub primul ecran, cu
-  bucățile `data-ri-demo="bucata"`), `/pachete-ra-insight` (`start` + `platit`, cu comutatorul Basic / Pro / Business, care trece și singur)
+  bucățile `data-ri-demo="bucata"`; pachetele = `start` + `platit`, cu comutatorul Basic / Pro / Business, care trece și singur)
   și aplicația („Vezi pachetele", `insightPachete`, doar `j.actual === 'start'`; `RaInsightDemo.porneste(ov)` după ce fereastra e pe ecran,
   `inchidePachete` → `opreste`). NU scrie a doua variantă: un `<div data-ri-demo="…">` și, dacă vine după încărcare, `porneste`.
+  **`/pachete-ra-insight` NU are telefoane** (18.11, Alin: „scoate telefoanele și lasă doar comparațiile, ca deja telefoanele sunt pe pagina
+  principală"): acolo stau doar cartonașele și tabelul, din pachete.js. NU le pune la loc — proba pică.
 - **Animația = macheta, întocmai** (scrie literă cu literă, „Mă gândesc…" cu inelul, cuvintele aprinse treptat, ce urmează după, atingerea pe
   „Da", „Gata" cu „Anulează · mai ai 9:59" care scade; timpii din machetă). Se mișcă doar cât e pe ecran; „mai puțină mișcare" = răspunsurile
   gata scrise (`static`). Ecranul telefonului e ÎNCHIS peste tot, și în aplicație pe tema deschisă (Alin: „2. închis").
@@ -1652,8 +1654,9 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   Start, „Cere ofertă" la celelalte. Textele sunt COPIA lui `pachete.publice({ cuPret: false })`, `comparatie({ cuPret: false })`
   (în ordinea din cod) și `IN_TOATE` — `verify_site_public.js` (3c) le compară cuvânt cu cuvânt și pică la orice preț pe pagină.
   **Pe prima pagină** (28.10, Alin: „fără preț în pagina publică, pe home page, și cu prețuri când clientul are cont și face
-  upgrade"; 17.11: „2. da"): în capitolul „Inteligență artificială", cele DOUĂ TELEFOANE de pe `/pachete-ra-insight` (`.tel-doi`: Start cu
-  textele lui din pachete.js + Basic / Pro / Business cu comutatorul, `data-ri-demo="start"` / `"platit"`) — NU cartonașe cu text (cele patru
+  upgrade"; 17.11: „2. da"): în capitolul „Inteligență artificială", cele DOUĂ TELEFOANE (`.tel-doi`: Start cu
+  textele lui din pachete.js + Basic / Pro / Business cu comutatorul, `data-ri-demo="start"` / `"platit"`; din 18.11 DOAR aici, nu și pe
+  `/pachete-ra-insight`, care are doar cartonașele și tabelul) — NU cartonașe cu text (cele patru
   `.ri-pachete` au ieșit pe 17.11); comparația scrisă stă DOAR pe `/pachete-ra-insight`, la butonul „Compară pachetele RA Insight". Păzit de 3d
   și de `verify_ra_insight_demo.js`, fără prețuri. Schimbi `DESCRIERE` în pachete.js → schimbi și pagina pachetelor (și `amprenta` /
   `modificat`). Nicio pagină nu mai spune „RA Insight pe cont" (păzit).

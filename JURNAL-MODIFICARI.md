@@ -615,6 +615,19 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-18
 
+### AMÂNDOI · Pagina „Pachetele RA Insight” fără telefoane: doar comparațiile
+*Alin, 18.11: „în compară pachetele RA Insight scoate telefoanele și lasă doar comparațiile, ca deja telefoanele sunt pe pagina principală.”*
+
+**Ce am schimbat:** pe `/pachete-ra-insight` au ieșit cele două telefoane animate (Start și Basic / Pro / Business). Rămân cartonașele celor
+patru pachete și tabelul de comparație, neschimbate. Pe prima pagină, telefoanele de la pachete rămân cum sunt.
+
+**Ce vede fondatorul:** pagina pachetelor de pe ratrack.ro, mai scurtă: cartonașele și tabelul, fără telefoane.
+
+**Ce vede clientul:** la fel, pe ratrack.ro. În aplicație nu se schimbă nimic.
+
+Reper: `public/pachete-ra-insight.html`, amprenta din `PAGINI_PUBLICE`; probe: `verify_ra_insight_demo.js` (pagina pachetelor fără telefoane;
+comutatorul Basic / Pro / Business se verifică pe prima pagină), `verify_site_public.js` (cifra de 50 de răspunsuri rămâne legată pe prima pagină).
+
 ### AMÂNDOI · Site-ul: cele 55 de texte „de discutat” din inventar; cartela SIM nu mai apare nicăieri
 *Alin, 18.11: „6 da la toate cu excepția lui P52, unde clientul nu are treabă cu cartela SIM. Nu o spunem nicăieri.”*
 

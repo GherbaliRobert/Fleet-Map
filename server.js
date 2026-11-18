@@ -1397,7 +1397,7 @@ const PAGINI_PUBLICE = [
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-11-18', amprenta: 'ec90b221a78e', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-11-18', amprenta: 'a4ba61409c87', prio: '0.8', freq: 'monthly' },
   { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-18', amprenta: '55a7f837b46d', prio: '0.8', freq: 'monthly' },
-  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-18', amprenta: '6a4aff69ab70', prio: '0.8', freq: 'monthly' },
+  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-18', amprenta: 'a894272e9db2', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-11-18', amprenta: '61224572cb62', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-18', amprenta: '051224d9e52a', prio: '0.3', freq: 'yearly' },
   { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-18', amprenta: '90adc2304111', prio: '0.3', freq: 'yearly' },

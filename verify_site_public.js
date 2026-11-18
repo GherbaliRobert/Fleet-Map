@@ -277,7 +277,6 @@ const LEGATE = [
   ['/pachete-ra-insight', 'confirmarea vine pe email, în PDF', /_trimiteConfirmarePachet\(rand, r\.co, u\)/.test(SRV), 'emailul confirmării (server.js)'],
   // RA Insight în prim-plan (16.11, Alin: „1. A … 3. da"): cifrele scrise lângă telefoane.
   ['/', 'și se poate anula în următoarele 10 minute', require('./soferi_masini.js').ANULARE_MIN === 10, 'ANULARE_MIN din soferi_masini.js (cât ține „Anulează" după „Da")'],
-  ['/pachete-ra-insight', 'răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
   // Pachetele pe prima pagină = telefoanele de pe /pachete-ra-insight (17.11, Alin: „2. da").
   ['/', 'răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
   // Suportul, în „Despre" (17.11, Alin: „1. da"): promisiunea și pașii lui „Anunță echipa RA Track" (cereri_echipa.js).
