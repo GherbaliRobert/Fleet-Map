@@ -108,6 +108,22 @@ T('…și funcțiile se pot rula singure (proba le are)', !!(APPF && APPF._agpIn
 T('fila „Acces” a firmei: agenții din AGP_META, în ordinea AGP_ORDER — fără a doua listă cu texte vechi',
   /function _raxAgs\(\) \{\s+var M = window\.AGP_META \|\| \{\}, ord = window\.AGP_ORDER/.test(IX) && /_raxAgs\(\)\.map\(function \(a\)/.test(IX) && /window\.AGP_ORDER = AGP_ORDER;/.test(IX) &&
   !/_RAX_AGS|Vehicule offline \+|Eco-driving — scor șofer|Raport zilnic automat/.test(IX.replace(/^\s*\/\/[^\n]*$/gm, '')));
+// 18.11 (găsit pe drum 4; Alin: „Rezolvă acum 4, 5 și 6”): rândul celor 6 agenți din Ofertare Live (web + telefon) spune numele și
+// rolul din aplicație — era „RA Watch (offline, furt combustibil, ralanti) · … RA Optimize (eco-driving) · … RA Client (raport zilnic)”.
+{
+  const META_BLOC = intre(IX, 'var AGP_META = {', '\n    };');
+  const c = { window: {} };
+  vm.runInNewContext('window.AGP_META = {' + META_BLOC.slice('var AGP_META = {'.length) + '\n};\nwindow.AGP_ORDER = ' + ((IX.match(/var AGP_ORDER = (\[[^\]]+\]);/) || [])[1] || '[]') + ';\n' +
+    intre(IX, 'function _ofAgentiText() {', '\n    }') + '\n    }\nthis.t = _ofAgentiText();', c);
+  const ASTEPT = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'].map((k) => AG.AGENTS[k].name + ' (' + AG.AGENTS[k].role.toLowerCase() + ')').join(' · ');
+  T('AGP_META: rolul fiecărui agent = cel din agents.js (sursa paginii „Agenți AI”, a filei „Acces” și a rândului din Ofertare)',
+    ORDINE.every((k) => c.window.AGP_META[k] && c.window.AGP_META[k].role === AG.AGENTS[k].role), ORDINE.map((k) => c.window.AGP_META[k] && c.window.AGP_META[k].role));
+  T('Ofertare (web): rândul agenților iese din AGP_META, cu rolurile din aplicație', c.t === ASTEPT && /\(_ofAgentiText\(\) \? _ofAgentiText\(\) \+ '\. ' : ''\) \+ 'Merg pe reguli fixe/.test(IX), c.t);
+  const OF_TEL = rd('mobile/src/screens/OfferCalc.tsx');
+  T('Ofertare (telefon): același rând, cuvânt cu cuvânt', OF_TEL.includes('<small>' + ASTEPT + '. Merg pe reguli fixe, nu ne costă nimic'), ASTEPT);
+  T('…și fără cuvintele de dinainte („offline”, „eco-driving”, „raport zilnic”) în rândul agenților',
+    !/RA Watch \(offline|RA Optimize \(eco-driving\)|RA Client \(raport zilnic\)/.test(IX + OF_TEL));
+}
 T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch a rulat la ora fixă de dinainte („acum 30 min”, ca _agpAgo)',
   DEMO.ORA === String(FL.ORA_TELEFON.h).padStart(2, '0') + ':' + String(FL.ORA_TELEFON.m).padStart(2, '0') && DEMO.RULARE === String(FL.ORA_TELEFON.h).padStart(2, '0') + ':00' &&
   DEMO.ACUM_RULARE === 'acum ' + FL.ORA_TELEFON.m + ' min' && /if \(s < 3600\) return 'acum ' \+ Math\.round\(s \/ 60\) \+ ' min';/.test(IX) && DEMO.ZILE_ITP === FL.ZILE_ITP && DEMO.ZILE_RCA === FL.ZILE_RCA);

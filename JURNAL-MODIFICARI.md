@@ -615,6 +615,32 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-18
 
+### AMÂNDOI · Găsite pe drum (4, 5, 6), rezolvate: agenții din Ofertare, „Fără semnal”, telefonul de la pachete la 320 px
+*Alin, 18.11: „Rezolvă acum 4, 5 și 6”.*
+
+**Ce am schimbat:**
+- **4. Ofertare Live → cartea 3, rândul celor 6 agenți (doar la noi, web și telefon):** numele și rolul fiecăruia, ca în aplicație —
+  „RA Watch (supraveghere) · RA Dispatch (dispecerat) · RA Care (mentenanță) · RA Optimize (condus economic) · RA Compliance (ore de
+  condus) · RA Client (sinteza zilei)”. Scria „offline”, „eco-driving” și „raport zilnic” (RA Client nu trimite niciun raport). Pe web
+  rândul se ia din lista agenților din aplicație, nu mai e scris de mână.
+- **5. „Fără semnal”, nu „Offline”, peste tot în aplicație:** „Statistici flotă” (bara de stare, pastila din lista flotei și rândul de sub
+  „Total vehicule”: „12 cu semnal · 2 fără semnal”), dispecerizarea („fără semnal” lângă mașină), fișa mașinii („Camion cu semnal și cu
+  contactul pornit…”), iar la noi „Dashboard platformă” („Cu semnal (5 min)”, „Fără semnal > 1 h”) și „Prag fără semnal (min)”. Web și
+  telefon.
+- **6. Telefonul de la pachete, pe telefoanele foarte mici:** la 320 px lățime (iPhone SE vechi) ieșea cu 11 px din ecran; la 340 px stătea
+  strâmb în coloană. Acum se strânge cu coloana (258 px la 320), stă centrat, iar butoanele Start · Basic · Pro · Business încap. De la 375 px
+  în sus rămâne cum era (300 px).
+
+**Ce vede fondatorul:** rândul nou al agenților în Ofertare; „fără semnal” / „cu semnal” în „Statistici flotă”, în dispecerizare și în
+„Dashboard platformă”; pe ratrack.ro, telefonul de la pachete întreg pe ecranele mici.
+
+**Ce vede clientul:** „Fără semnal” în „Statistici flotă” și în dispecerizare (web acum; pe telefon, cu APK-ul următor); telefonul de la
+pachete întreg pe ratrack.ro, pe telefoanele mici.
+
+Reper: `public/index.html` (`_ofAgentiText`, „Statistici flotă”, dispecerizarea, `_raxHealthCell`, „Dashboard platformă”),
+`mobile/src/screens/OfferCalc.tsx`, `Stats.tsx`, `PlatformDashboard.tsx`, `public/css/ra-insight-demo.css`; probe: `verify_agenti_demo.js`
+(rândul din Ofertare, web + telefon), `verify_montaj.js`, `verify_statistici_flota.js` (9), `verify_ra_insight_demo.js` (320 / 340 / 360 px).
+
 ### AMÂNDOI · Ghilimelele din aplicație: „…”, nu „…" (punctul 7 găsit pe drum)
 *Alin, 18.11: „cele găsite pe drum, toate, fă-le cum le-ai propus” — la 7: într-un lot separat.*
 

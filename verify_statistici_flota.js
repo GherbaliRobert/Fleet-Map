@@ -129,6 +129,26 @@ T('iar fondatorului îi arată și de unde-i pornește',
   /role === 'superadmin'[\s\S]{0,200}Administrare → Companii → Configurează/.test(ag));
 T('are stil propriu, nu inventat pe loc', css.indexOf('.fd-veghe') > 0 && /class="fd-veghe"/.test(ag));
 
+console.log('\n9. „Fără semnal”, nu „Offline” (18.11, găsit pe drum 5; Alin: „Rezolvă acum 4, 5 și 6”)');
+// Bara de stare scria „În mișcare · Staționat · Oprit · Offline”, iar cartonașul de alături „Fără semnal” — două nume pentru
+// aceleași mașini. Acum peste tot în aplicație „fără semnal” / „cu semnal”: tabloul flotei, dispecerizarea, panoul nostru.
+const tel = (f) => fs.readFileSync(P('mobile/src/screens/' + f), 'utf8');
+const STATS = tel('Stats.tsx'), PLAT = tel('PlatformDashboard.tsx');
+T('web: bara de stare și lista flotei spun „Fără semnal”',
+  /\{ n: _offline, c: 'var\(--text-muted\)', tc: '#fff', lbl: 'Fără semnal' \}/.test(html) && /_pill\('rgba\(138,147,163,\.16\)', 'var\(--text-muted\)', 'Fără semnal'\)/.test(html));
+T('web: sub „Total vehicule” — „N cu semnal · M fără semnal”', /d\.onlineCount \+ ' cu semnal · ' \+ d\.offlineCount \+ ' fără semnal'/.test(html));
+T('web: dispecerizarea — „disponibil / în mișcare / fără semnal”', /var badge = v\.available \? 'disponibil' : \(v\.online \? 'în mișcare' : 'fără semnal'\);/.test(html));
+T('web: panoul platformei (fondatori) — „Cu semnal (5 min)”, „Fără semnal > 1 h”, „Prag fără semnal (min)”',
+  /_raxCard\('Cu semnal \(5 min\)'/.test(html) && /_raxCard\('Fără semnal > 1 h'/.test(html) && /Prag fără semnal \(min\):/.test(html) && /title="Cu semnal în ultimele 5 min"/.test(html) && /title="Fără semnal de peste o oră"/.test(html));
+T('telefonul: bara de stare, lista flotei și „cu semnal · fără semnal”, ca pe web',
+  /lbl: 'Fără semnal', go: onOffline/.test(STATS) && /'var\(--text-muted\)', 'Fără semnal'\];/.test(STATS) && /\{d\.onlineCount \|\| 0\} cu semnal · \{d\.offlineCount \|\| 0\} fără semnal/.test(STATS));
+T('telefonul: panoul platformei — „Cu semnal acum”, „Fără semnal > 1 oră”', />Cu semnal acum</.test(PLAT) && /'Fără semnal > 1 oră'/.test(PLAT));
+const VECHI = [/' online · '/, /\} online · \{/, /lbl: 'Offline'/, /'var\(--text-muted\)', 'Offline'/, /'Offline >1h'|"Offline >1h"/, /'Online \(5m\)'/, /title="Online /,
+  /Prag offline/, /Camion online/, /'în mișcare' : 'offline'/, />Online acum</, /'Offline > 1 oră'/];
+const FARA_COM = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\{\/\*)/.test(l)).join('\n');
+T('formele vechi („Offline”, „online”) nu mai sunt nicăieri — pagină și telefon', VECHI.every((re) => !re.test(FARA_COM(html)) && !re.test(FARA_COM(STATS)) && !re.test(FARA_COM(PLAT))),
+  VECHI.filter((re) => re.test(FARA_COM(html)) || re.test(FARA_COM(STATS)) || re.test(FARA_COM(PLAT))).map(String).join(', '));
+
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');
 process.exit(rele ? 1 : 0);

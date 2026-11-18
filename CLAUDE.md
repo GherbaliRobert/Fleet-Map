@@ -516,6 +516,9 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
   telefon, cu titlul celeilalte coloane) și pune „Start” primul în comutator (`.ri-pk-start`, ascuns pe calculator). Textele Start le ia din
   coloana Start a paginii (clonate) — NU le scrie în script. Fără coloană Start (aplicația) nu se schimbă nimic. Păzit de
   `verify_ra_insight_demo.js` (402 px).
+- **Sub 360 px telefonul se strânge cu coloana** (18.11, găsit pe drum 6): `[data-ri-demo="platit"]` are `grid-template-columns: minmax(0, 1fr)`
+  — fără ea, pista grilei rămânea cât telefonul (300 px) și ieșea din ecran cu 11 px la 320 px; comutatorul are mai puțin loc pe lângă text
+  sub 360 px. NU scoate pista. Păzit de `verify_ra_insight_demo.js` (320 / 340 / 360 px: încape, centrat).
 - **Clasele telefonului încep cu „ri-"**; `ri-w` = cuvintele care se aprind (opacity 0) — NU-l da altui element (punctul portocaliu din „Azi la
   tine" a fost `ri-w` și nu se vedea; acum `ri-st-w`). Culorile comenzilor din jur (`--ri-c-fg / mut / line`) au în foaia telefonului doar valori
   de rezervă (site-ul, închis); aplicația le dă din tema ei (`.insp-pk-demo`, app.css) — NU le defini pe elementele telefonului.
@@ -2055,6 +2058,9 @@ pe un șir. JavaScript nu se plânge; scrie „NaN" și merge mai departe.
   Panoul Administrare le citește de acolo; fila „Acces” a firmei prin `_raxAgs()` (18.11: până atunci avea a doua listă, `_RAX_AGS`, cu
   „Vehicule offline”, „Eco-driving — scor șofer”, „Raport zilnic automat”). NU rescrie liste paralele de `labels`/`descs` — exact așa
   apăruseră descrieri vechi, nesincronizate. Rolurile de pe pagina publică `/agenti-ai` = `AGENTS[k].role` (păzit de `verify_agenti_demo.js`).
+  **Rândul celor 6 agenți din Ofertare (cartea 3) = `_ofAgentiText()`** („RA Watch (supraveghere) · …”, din AGP_META; 18.11, Alin: „Rezolvă
+  acum 4, 5 și 6” — scria „offline”, „eco-driving”, „raport zilnic”). Funcția stă în bucata tăiată pentru telefon (`_ofDecupeaza`): acolo
+  AGP_META lipsește și rândul iese fără nume, nevăzut. Telefonul (OfferCalc.tsx) are rândul lui, legat cuvânt cu cuvânt de `verify_agenti_demo.js`.
 - Câmpurile numerice din ofertă sunt generate cu `fNum(id, val, ph, w, step)`; pentru valori zecimale
   (ex. €/apel) **trebuie dat `step`** — altfel browserul respinge valoarea (step implicit = 1).
 - **RA Insight se vinde pe PACHETE pe firmă (din 14.10)** — `settings.ai_pachet = { cod, pretRON, de_la }` (+ `ai_pachet_urmator`,
@@ -3443,7 +3449,13 @@ Nimic nu crapă vizibil: pagina merge mai departe. **Regula:** un atribut CHEAM�
 (`raxDevCauta(this.value)`, `raxGiNota(this.value)`), nu scrie într-o variabilă. Păzit de `verify_aparate_noi.js`, care
 caută forma în tot panoul.
 
-## Harta: „când a transmis" — o singură regulă (Alin, 08.10: „rezolvă acum")
+## „Fără semnal”, nu „Offline” (18.11; Alin: „Rezolvă acum 4, 5 și 6”)
+Pe ecrane — web și telefon, la client și la noi — o mașină care nu transmite e „fără semnal”, una care transmite „cu semnal”: bara de stare,
+lista flotei și rândul de sub „Total vehicule” din „Statistici flotă”, dispecerizarea, fișa mașinii, „Dashboard platformă” („Cu semnal
+(5 min)”, „Fără semnal > 1 h”), „Prag fără semnal (min)”. Numele tehnice rămân (`offlineCount`, `offline30`, `offline_minutes`, starea
+`offline`). Un text nou despre o mașină care nu transmite scrie „fără semnal”. Păzit de `verify_statistici_flota.js` (9).
+
+## Harta: „când a transmis” — o singură regulă (Alin, 08.10: „rezolvă acum”)
 - `candATransmis(ts)` / `ziuaTransmisiei(ts)` (lângă `timeAgoPhrase`): fără oră → „fără transmisie" / „—". Lista din
   stânga a hărții, fișa mașinii (starea + „Ultima interogare") și fereastra grupei trec prin ele. O mașină fără nicio
   poziție (aparatul pus, montajul încă nefăcut) scria „acum 20734 zile" și „01.01.1970": `new Date(null)` e 1970.

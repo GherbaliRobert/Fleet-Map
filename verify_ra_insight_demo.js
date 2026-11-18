@@ -361,6 +361,24 @@ void DARK;
       T('390 px, ' + f + ': nimic nu iese din ecran', await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), await p.evaluate(() => document.documentElement.scrollWidth));
       await p.context().close();
     }
+    // 18.11 (găsit pe drum 6; Alin: „Rezolvă acum 4, 5 și 6”): la 320 px (iPhone SE vechi) telefonul de la pachete ieșea cu 11 px din
+    // ecran — blocul rămânea de 300 px într-o coloană de 260. Acum se strânge cu coloana, centrat, iar comutatorul încape.
+    for (const w of [320, 340, 360]) {
+      p = await pagina(w, 740, true);
+      await p.goto(B + '/landing.html', { waitUntil: 'load' });
+      await p.evaluate(() => document.querySelector('#ra-insight [data-ri-demo="platit"]').scrollIntoView());
+      await p.waitForTimeout(300);
+      const m = await p.evaluate(() => {
+        const z = document.querySelector('#ra-insight [data-ri-demo="platit"]'), col = z.closest('.tel-col'), cs = getComputedStyle(col), cb = col.getBoundingClientRect();
+        const st = cb.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft), dr = cb.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
+        const r = (e) => e.getBoundingClientRect(), tel = r(z.querySelector('.ri-tel')), sel = r([...z.querySelectorAll('.ri-pk-sel')].find((e) => e.offsetParent !== null));
+        const inauntru = (b) => b.left >= st - 0.5 && b.right <= dr + 0.5;
+        return { pagina: document.documentElement.scrollWidth <= innerWidth, tel: inauntru(tel), centrat: Math.abs((tel.left - st) - (dr - tel.right)) <= 1, sel: inauntru(sel), lat: Math.round(tel.width) };
+      });
+      T(w + ' px: telefonul de la pachete și comutatorul Start · Basic · Pro · Business încap în coloană, centrate; nimic nu iese din ecran',
+        m.pagina && m.tel && m.centrat && m.sel && p._erori.length === 0, m);
+      await p.context().close();
+    }
     p = await pagina(1366, 860, true);
     await p.goto(B + '/landing.html', { waitUntil: 'load' }); await p.waitForTimeout(400);
     T('„mai puțină mișcare”: răspunsul e gata scris pe loc, fără cuvinte stinse', await p.evaluate(() => !!document.querySelector('[data-ri-demo="erou"] .ri-pa') && !document.querySelector('[data-ri-demo="erou"] .ri-w')));

@@ -155,10 +155,15 @@
 .ri-taburi [data-sc][aria-pressed="true"] i { color: #3FE07D; }
 .ri-taburi [data-sc]:focus-visible, .ri-pk-b:focus-visible { outline: 2px solid #3FE07D; outline-offset: 2px; }
 .ri-exemplu { font-size: 12px; color: var(--ri-c-mut, #9AA4B2); text-align: center; }
-[data-ri-demo="platit"] { display: grid; justify-items: center; gap: 12px; }
+/* Pista grilei = lățimea coloanei (minmax(0, 1fr)), nu lățimea telefonului: pe ecranele sub ~360 px coloana e mai îngustă decât
+   telefonul (300 px), iar fără asta blocul rămânea de 300 px și ieșea din ecran (11 px la 320 px; 18.11, găsit pe drum 6). Acum
+   telefonul se strânge cu coloana (max-width: 100%). */
+[data-ri-demo="platit"] { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; }
 .ri-pk-sel { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.03); border: 1px solid var(--ri-c-line, #313842); }
 .ri-pk-b { font: inherit; font-size: 13px; font-weight: 800; color: var(--ri-c-mut, #C2CAD6); background: transparent; border: 0; border-radius: 999px; padding: 6px 16px; cursor: pointer; line-height: 1.3; }
 .ri-pk-b[aria-pressed="true"] { background: #3FE07D; color: #06210F; }
+/* Sub 360 px cele patru butoane (Start · Basic · Pro · Business, 276 px) nu încap în coloană: mai puțin loc pe lângă text (18.11). */
+@media (max-width: 359px) { .ri-pk-b { padding: 6px 11px; } }
 /* „Start” în comutator: doar pe telefon (≤ 720 px), unde coloana Start de alături se ascunde (18.11; ra-insight-demo.js → platit). */
 .ri-pk-sel .ri-pk-start { display: none; }
 @media (max-width: 720px) { .ri-pk-sel .ri-pk-start { display: inline-block; } }

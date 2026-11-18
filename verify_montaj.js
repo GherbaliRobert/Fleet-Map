@@ -201,7 +201,9 @@ T('și scrie pe ecran cum funcționează', /se completează singure din numerele
 
 // LIPSĂ: dădeam șase agenți gratis fără ca omul să afle, iar două module reale nu erau în ofertă.
 T('cei 6 agenți apar în ofertă, cu 0 lei', /Agenți automați \(6\) — incluși/.test(html));
-T('și li se spun numele, ca să se vadă ce primește', /RA Watch[\s\S]{0,200}RA Client/.test(html));
+// Din 18.11 numele și rolurile vin din AGP_META (lista aplicației), nu scrise de mână — verify_agenti_demo.js rulează rândul.
+T('și li se spun numele, ca să se vadă ce primește (din AGP_META, ca pagina „Agenți AI”)',
+  /\(_ofAgentiText\(\) \? _ofAgentiText\(\) \+ '\. ' : ''\) \+ 'Merg pe reguli fixe/.test(html) && /function _ofAgentiText\(\) \{\s+var M = window\.AGP_META \|\| \{\}, ord = window\.AGP_ORDER/.test(html));
 T('Tahograf are bifă și preț lunar', /id="of-tahograf"/.test(html) && /pTahograf/.test(html));
 T('e-Transport la fel', /id="of-etransport"/.test(html) && /pEtransport/.test(html));
 // Din 10.09 NU mai sunt linii separate: tariful lor intră în abonamentul fiecărei mașini

@@ -14937,7 +14937,7 @@ const pozitii = await r.json();</code></pre>
         var avail = vs.filter(function (v) { return v.available; }).length;
         box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + avail + ' disponibile · ' + vs.length + ' total · <span title="ETA = timp estimat de sosire. Calculat în linie dreaptă (nu pe drumuri reale) — orientativ." style="cursor:help;border-bottom:1px dotted var(--text-muted);">ETA orientativ <i class="fas fa-circle-info" style="opacity:.7;"></i></span></div>' + vs.map(function (v, i) {
           var col = v.available ? 'var(--green)' : 'var(--text-muted)';
-          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'offline');
+          var badge = v.available ? 'disponibil' : (v.online ? 'în mișcare' : 'fără semnal');
           return '<div style="border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-bottom:6px;background:var(--bg-dark);">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
             + '<span style="font-weight:600;font-size:12px;">' + (i + 1) + '. ' + x(v.name) + ((v.plate && String(v.plate).toLowerCase() !== String(v.name).toLowerCase()) ? ' <span style="color:var(--text-muted);font-weight:500;">(' + x(v.plate) + ')</span>' : '') + '</span>'
@@ -18807,7 +18807,7 @@ const pozitii = await r.json();</code></pre>
       if (findings['tacho_missing_' + imei]) {
         pillHtml += '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;font-size:12px;cursor:pointer;" onclick="toggleNotifications()" title="Click pentru detalii alertă">' +
           '<i class="fas fa-triangle-exclamation"></i>' +
-          '<div style="flex:1;"><strong>Tahograf neconfigurat</strong><div style="font-size:10px;opacity:.85;">Camion online cu contactul pornit, dar fără date de tahograf. Verifică cablajul / cardul de companie / RDD.</div></div>' +
+          '<div style="flex:1;"><strong>Tahograf neconfigurat</strong><div style="font-size:10px;opacity:.85;">Camion cu semnal și cu contactul pornit, dar fără date de tahograf. Verifică cablajul / cardul de companie / RDD.</div></div>' +
         '</div>';
       }
       // Alte findings care merită evidențiate în fișă (combustibil, ralanti, service depășit).
@@ -22210,7 +22210,7 @@ const pozitii = await r.json();</code></pre>
           : 'toate transmit';
         // ─── sfârșit „Cine tace” ──
         document.getElementById('dash-hero').innerHTML =
-          heroCard('fa-car', 'var(--green)', 'var(--green)', 'Total vehicule', d.totalDevices, '', d.onlineCount + ' online · ' + d.offlineCount + ' offline') +
+          heroCard('fa-car', 'var(--green)', 'var(--green)', 'Total vehicule', d.totalDevices, '', d.onlineCount + ' cu semnal · ' + d.offlineCount + ' fără semnal') +
           heroCard('fa-tower-broadcast', (d.offlineCount > 0 ? 'var(--red)' : 'var(--green)'), (d.offlineCount > 0 ? 'var(--red)' : 'var(--green)'), 'Fără semnal', (d.offlineCount || 0), '', _subOffline) +
           heroCard('fa-road', 'var(--green)', 'var(--green)', 'Km azi', d.totalKm, ' km', 'total flotă azi') +
           // Orele de motor existau, dar scrise mic și gri sub bara de stare — adică nu le vedea nimeni.
@@ -22218,7 +22218,8 @@ const pozitii = await r.json();</code></pre>
           heroCard('fa-gas-pump', 'var(--orange)', 'var(--orange)', 'Consum azi', d.totalFuel, ' L', _consPer100) +
           heroCard('fa-bell', (_alertOn ? 'var(--red)' : 'var(--green)'), (_alertOn ? 'var(--red)' : 'var(--green)'), 'Alerte', d.totalAlerts, '', (_alertOn ? d.totalAlerts + ' necitite' : 'nicio alertă'));
 
-        // ─── Bară status (În mișcare / Staționat / Oprit / Offline) — CSS flex, nu Chart.js ───
+        // ─── Bară status (În mișcare / Staționat / Oprit / Fără semnal) — CSS flex, nu Chart.js ───
+        // „Fără semnal”, nu „Offline” (18.11, găsit pe drum 5; Alin: „Rezolvă acum 4, 5 și 6”), ca în tot restul aplicației.
         var _moving = d.movingCount || 0, _stat = d.stationatCount || 0;
         var _oprit = Math.max(0, (d.onlineCount || 0) - _moving - _stat), _offline = d.offlineCount || 0;
         var _tot = d.totalDevices || 0;
@@ -22226,7 +22227,7 @@ const pozitii = await r.json();</code></pre>
           { n: _moving, c: 'var(--green)', tc: '#0f3d22', lbl: 'În mișcare' },
           { n: _stat, c: 'var(--yellow)', tc: '#3a2e05', lbl: 'Staționat' },
           { n: _oprit, c: 'var(--red)', tc: '#fff', lbl: 'Oprit' },
-          { n: _offline, c: 'var(--text-muted)', tc: '#fff', lbl: 'Offline' }
+          { n: _offline, c: 'var(--text-muted)', tc: '#fff', lbl: 'Fără semnal' }
         ];
         var barHtml = '', legHtml = '';
         if (_tot > 0) {
@@ -22263,7 +22264,7 @@ const pozitii = await r.json();</code></pre>
           var pill = v.isMoving ? _pill('rgba(63,224,125,.14)', 'var(--green)', 'În mișcare')
             : v.isStationat ? _pill('rgba(234,179,8,.14)', 'var(--yellow)', 'Staționat')
               : v.isOnline ? _pill('rgba(239,68,68,.14)', 'var(--red)', 'Oprit')
-                : _pill('rgba(138,147,163,.16)', 'var(--text-muted)', 'Offline');
+                : _pill('rgba(138,147,163,.16)', 'var(--text-muted)', 'Fără semnal');
           var speedColor = v.maxSpeed > 120 ? 'color:var(--red);font-weight:700;' : '';
           var dash = '<span style="color:var(--text-muted);">–</span>';
           return '<tr>' +
@@ -23855,10 +23856,10 @@ const pozitii = await r.json();</code></pre>
       var gsmColor = h.avg_gsm == null ? 'var(--text-muted)' : (h.avg_gsm >= 3 ? 'var(--accent)' : (h.avg_gsm >= 2 ? '#f59e0b' : '#ef4444'));
       var fixTxt = h.healthy_fix_pct == null ? '—' : h.healthy_fix_pct + '%';
       var fixColor = h.healthy_fix_pct == null ? 'var(--text-muted)' : (h.healthy_fix_pct >= 90 ? 'var(--accent)' : (h.healthy_fix_pct >= 60 ? '#f59e0b' : '#ef4444'));
-      return '<span style="color:' + onlineColor + ';font-weight:600;" title="Online ultimele 5 min">' + h.online + '/' + h.live + '</span>' +
+      return '<span style="color:' + onlineColor + ';font-weight:600;" title="Cu semnal în ultimele 5 min">' + h.online + '/' + h.live + '</span>' +
         ' · <span style="color:' + gsmColor + ';" title="Semnal GSM mediu (0-5)">📶 ' + gsmTxt + '</span>' +
         ' · <span style="color:' + fixColor + ';" title="Procent fix GPS bun (≥4 sat.)">🛰 ' + fixTxt + '</span>' +
-        (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Offline >1h">⚠ ' + h.offline30 + '</span>' : '') +
+        (h.offline30 > 0 ? ' · <span style="color:#ef4444;" title="Fără semnal de peste o oră">⚠ ' + h.offline30 + '</span>' : '') +
         (h.roaming > 0 ? ' · <span style="color:#38BDF8;" title="SIM-uri în roaming">📡 ' + h.roaming + '</span>' : '');
     }
     // Lista de verificări a producției: răspunde la „ce e setat pe serverul care rulează ACUM” — până acum
@@ -23940,8 +23941,8 @@ const pozitii = await r.json();</code></pre>
         // ─── Health flotă (GPS + SIM) ───
         html += '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 6px;"><i class="fas fa-satellite-dish"></i> Stare flotă (live)</div>';
         html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">' +
-          _raxCard('Online (5m)', (th.online || 0) + '/' + (th.live || 0)) +
-          _raxCard('Offline >1h', th.offline30 || 0) +
+          _raxCard('Cu semnal (5 min)', (th.online || 0) + '/' + (th.live || 0)) +
+          _raxCard('Fără semnal > 1 h', th.offline30 || 0) +
           _raxCard('Semnal slab', th.weak_signal || 0) +
           _raxCard('Semnal GSM mediu', th.avg_gsm == null ? '—' : (th.avg_gsm + '/5')) +
           _raxCard('Sateliți medii', th.avg_sats == null ? '—' : th.avg_sats) +
@@ -24057,7 +24058,7 @@ const pozitii = await r.json();</code></pre>
           '<textarea id="rax-sys-ann" rows="2" style="width:100%;box-sizing:border-box;padding:8px;font-size:13px;" placeholder="ex: Mentenanță programată duminică 02:00–03:00…">' + esc(s.announcement || '') + '</textarea></div>' +
           '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' +
             '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="rax-sys-agents" ' + (s.agents_auto ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:var(--accent);"> Agenți AI automat (din oră în oră)</label>' +
-            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Prag offline (min): <input type="number" id="rax-sys-off" value="' + (s.offline_minutes || 65) + '" min="5" max="1440" style="width:72px;padding:4px 6px;"></label>' +
+            '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Prag fără semnal (min): <input type="number" id="rax-sys-off" value="' + (s.offline_minutes || 65) + '" min="5" max="1440" style="width:72px;padding:4px 6px;"></label>' +
             '<label style="display:flex;align-items:center;gap:6px;font-size:12px;">Viteză implicită (km/h): <input type="number" id="rax-sys-spd" value="' + (s.default_speed_limit || 90) + '" min="10" max="200" style="width:72px;padding:4px 6px;"></label>' +
           '</div>' +
           '<button class="rax-btn primary" onclick="raxSysSave()"><i class="fas fa-save"></i> Salvează setările</button> <span id="rax-sys-msg" style="font-size:11px;color:var(--text-muted);margin-left:8px;"></span>';
@@ -31729,7 +31730,7 @@ const pozitii = await r.json();</code></pre>
         '<div id="of-mod-hint-etransport" style="font-size:10.5px;color:var(--text-muted);margin:0 0 8px 22px;line-height:1.45;"></div>' +
         // Cei șase agenți: incluși, fără bani, dar SCRIȘI în ofertă. Altfel dăm valoare pe degeaba.
         '<label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;cursor:pointer;margin-bottom:10px;padding:9px 11px;background:var(--bg-panel);border-radius:9px;"><input type="checkbox" id="of-agenti" checked onchange="raxOfRecalc()" style="margin-top:2px;">' +
-          '<span><b>Cei 6 agenți automați — incluși, 0 lei</b><br><span style="font-size:11px;color:var(--text-muted);">RA Watch (offline, furt combustibil, ralanti) · RA Dispatch (vehicule disponibile) · RA Care (ITP, RCA, revizii) · RA Optimize (eco-driving) · RA Compliance (ore de condus) · RA Client (raport zilnic). Merg pe reguli fixe, nu ne costă nimic — dar clientul trebuie să știe că le primește.</span></span></label>' +
+          '<span><b>Cei 6 agenți automați — incluși, 0 lei</b><br><span style="font-size:11px;color:var(--text-muted);">' + (_ofAgentiText() ? _ofAgentiText() + '. ' : '') + 'Merg pe reguli fixe, nu ne costă nimic — dar clientul trebuie să știe că le primește.</span></span></label>' +
         row('Păstrare date', '<select id="of-ret" class="rax-field" style="width:auto;margin:0;" onchange="raxOfRecalc()"><option value="12">12 luni (incluse)</option><option value="24">24 de luni</option><option value="36">36 de luni</option><option value="custom">Alt număr de luni…</option></select> <span id="of-retcustom-wrap" style="display:none;align-items:center;gap:5px;">' + fNum('of-retcustom-m', 18, 'luni', 65) + '<span style="font-size:11px;color:var(--text-muted);">luni</span></span>') +
         row('Durată contract', fNum('of-contract', 12, '', 65) + '<span class="um">luni</span>')
         // Prețul păstrării datelor stă lângă alegerea ei, nu într-un panou pliat la coada paginii.
@@ -31851,6 +31852,14 @@ const pozitii = await r.json();</code></pre>
       // Costurile noastre se aduc o dată, apoi rezumatul se redesenează cu profitul în el.
       _ofIncarcaCosturi().then(function () { try { raxOfRecalc(); } catch (e) {} });
     };
+    // Rândul celor 6 agenți din cartea 3 (găsit pe drum, 18.11; Alin: „Rezolvă acum 4, 5 și 6”): numele și rolul fiecăruia, din
+    // AGP_META — aceleași cuvinte ca pagina „Agenți AI” și site-ul. Era scris de mână, cu „offline”, „eco-driving” și „raport zilnic”
+    // (RA Client nu trimite niciun raport). Pe server (pagina rulată pentru telefon) AGP_META lipsește și rândul iese fără nume: acolo
+    // nu se vede, telefonul își scrie rândul lui, legat de verify_agenti_demo.js.
+    function _ofAgentiText() {
+      var M = window.AGP_META || {}, ord = window.AGP_ORDER || Object.keys(M);
+      return ord.filter(function (k) { return M[k]; }).map(function (k) { return M[k].name + ' (' + String(M[k].role || '').toLowerCase() + ')'; }).join(' · ');
+    }
     // Aparate închiriate fără chirie = aparate date pe gratis. Nu se salvează și nu pleacă pe hârtie.
     function _ofChirieOk(r) {
       if (!r.chirieLipsa || !r.chirieLipsa.length) return true;

@@ -96,10 +96,11 @@ export function PlatformDashboard() {
 
             <div class="pf-card">
               <h3>Sănătate flotă</h3>
-              <div class="adm-kv"><span class="k">Online acum</span><span style="color:var(--fd-ok)">{n(health.online)}</span></div>
+              <div class="adm-kv"><span class="k">Cu semnal acum</span><span style="color:var(--fd-ok)">{n(health.online)}</span></div>
               {/* `offline30` e un nume vechi: serverul numără aparatele fără date de peste O ORĂ (ageMin > 60), iar web-ul
-                  scrie „Offline >1h”. „30+ zile” făcea dintr-o flotă parcată peste noapte zeci de aparate „mute de o lună”. */}
-              <div class="adm-kv"><span class="k">{'Offline > 1 oră'}</span><span style="color:var(--fd-bad)">{n(health.offline30)}</span></div>
+                  scrie „Fără semnal > 1 h” (18.11: „Fără semnal”, nu „Offline”). „30+ zile” făcea dintr-o flotă parcată peste
+                  noapte zeci de aparate „mute de o lună”. */}
+              <div class="adm-kv"><span class="k">{'Fără semnal > 1 oră'}</span><span style="color:var(--fd-bad)">{n(health.offline30)}</span></div>
               <div class="adm-kv"><span class="k">Semnal slab</span><span>{n(health.weak_signal)}</span></div>
               <div class="adm-kv"><span class="k">GSM mediu</span><span>{n(health.avg_gsm)}</span></div>
               <div class="adm-kv"><span class="k">Sateliți medii</span><span>{n(health.avg_sats)}</span></div>

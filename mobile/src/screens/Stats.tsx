@@ -133,7 +133,7 @@ function Cartonase({ d, onFaraSemnal }: { d: any; onFaraSemnal: () => void }) {
       <div class="sf-kpi">
         <div class="l"><Icon name="car" size={14} color="var(--accent)" /> Total vehicule</div>
         <div class="n">{d.totalDevices || 0}</div>
-        <div class="s">{d.onlineCount || 0} online · {d.offlineCount || 0} offline</div>
+        <div class="s">{d.onlineCount || 0} cu semnal · {d.offlineCount || 0} fără semnal</div>
       </div>
       <button class="sf-kpi" style={off ? 'border-left-color:var(--red)' : undefined} onClick={onFaraSemnal}>
         <div class="l"><Icon name="wifiOff" size={14} color={off ? 'var(--red)' : 'var(--accent)'} /> Fără semnal</div>
@@ -161,13 +161,14 @@ function Cartonase({ d, onFaraSemnal }: { d: any; onFaraSemnal: () => void }) {
 
 // ── Starea flotei acum: bara + rândurile care deschid lista ─────────────────────────────────────────
 // Cifrele sunt EXACT cele de pe web: le numără serverul (GET /api/dashboard), în clipa încărcării —
-// În mișcare = movingCount, Staționat = stationatCount, Oprit = online − cele două, Offline = offlineCount.
+// În mișcare = movingCount, Staționat = stationatCount, Oprit = online − cele două, Fără semnal = offlineCount
+// („Fără semnal”, nu „Offline” — 18.11, ca pe web și în tot restul aplicației).
 // Unde duce fiecare rând (ecranul Vehicule are doar filtrele Pornit / În mișcare / Staționat / Oprit):
 //  • „În mișcare” și „Staționat” → lista din Vehicule pe aceeași stare. Acolo cifra e live și fără „ține minte
 //    mișcarea" — poate diferi cu o mașină care tocmai a plecat sau a oprit, la fel ca pe web între Statistici și hartă.
 //  • „Oprit” → lista „Oprit” din Vehicule, care (ca pe harta de pe web) cuprinde și mașinile fără semnal.
 //    Rândul o spune, ca „Oprit 2” să nu pară greșit când lista are 5.
-//  • „Offline” → lista pe nume a celor fără semnal, din aceleași date ca cifra (ca cartonașul „Fără semnal”).
+//  • „Fără semnal” → lista pe nume a celor fără semnal, din aceleași date ca cifra (ca cartonașul „Fără semnal”).
 function BaraStare({ d, onRoute, onOffline }: { d: any; onRoute: (s: string) => void; onOffline: () => void }) {
   const moving = d.movingCount || 0, stat = d.stationatCount || 0;
   const oprit = Math.max(0, (d.onlineCount || 0) - moving - stat), offline = d.offlineCount || 0;
@@ -175,7 +176,7 @@ function BaraStare({ d, onRoute, onOffline }: { d: any; onRoute: (s: string) => 
     { n: moving, col: 'var(--green)', tc: '#0f3d22', lbl: 'În mișcare', go: () => onRoute('moving') },
     { n: stat, col: 'var(--yellow)', tc: '#3a2e05', lbl: 'Staționat', go: () => onRoute('stationat') },
     { n: oprit, col: 'var(--red)', tc: '#fff', lbl: 'Oprit', sub: 'lista are și cele fără semnal', go: () => onRoute('oprit') },
-    { n: offline, col: 'var(--text-muted)', tc: '#fff', lbl: 'Offline', go: onOffline },
+    { n: offline, col: 'var(--text-muted)', tc: '#fff', lbl: 'Fără semnal', go: onOffline },
   ];
   const tot = d.totalDevices || 0;
   return (
@@ -331,7 +332,7 @@ function RandVehicul({ v, onClick }: { v: any; onClick: () => void }) {
   const [bg, col, lbl] = v.isMoving ? ['rgba(63,224,125,.14)', 'var(--green)', 'În mișcare']
     : v.isStationat ? ['rgba(234,179,8,.14)', 'var(--yellow)', 'Staționat']
       : v.isOnline ? ['rgba(239,68,68,.14)', 'var(--red)', 'Oprit']
-        : ['rgba(138,147,163,.16)', 'var(--text-muted)', 'Offline'];
+        : ['rgba(138,147,163,.16)', 'var(--text-muted)', 'Fără semnal'];
   const cel = (et: string, val: any, extra?: any, stil?: string) => (
     <span><em>{et}</em>{val == null ? <b class="gol">–</b> : <b style={stil}>{val}{extra}</b>}</span>
   );

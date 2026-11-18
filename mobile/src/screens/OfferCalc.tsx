@@ -467,7 +467,8 @@ export function OfferCalc() {
                   <span class={'sw' + (bif('agenti') ? ' on' : '')} />
                 </button>
                 <span><b>Cei 6 agenți automați — incluși, 0 lei</b>
-                  <small>RA Watch (offline, furt combustibil, ralanti) · RA Dispatch (vehicule disponibile) · RA Care (ITP, RCA, revizii) · RA Optimize (eco-driving) · RA Compliance (ore de condus) · RA Client (raport zilnic). Merg pe reguli fixe, nu ne costă nimic — dar clientul trebuie să știe că le primește.</small>
+                  {/* Numele și rolurile = cele din aplicație (AGP_META pe web, agents.js pe server); legate de verify_agenti_demo.js. */}
+                  <small>RA Watch (supraveghere) · RA Dispatch (dispecerat) · RA Care (mentenanță) · RA Optimize (condus economic) · RA Compliance (ore de condus) · RA Client (sinteza zilei). Merg pe reguli fixe, nu ne costă nimic — dar clientul trebuie să știe că le primește.</small>
                 </span>
               </div>
               {rand('Păstrare date', <>{sel('ret', 'Păstrare date', 'lat')}</>)}
