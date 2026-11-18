@@ -1,12 +1,12 @@
-// verify_alerte_motor.js — Alertele de pornire / oprire a motorului și marja alertelor de viteză (26.10; Alin: „2. da", „1. da").
+// verify_alerte_motor.js — Alertele de pornire / oprire a motorului și marja alertelor de viteză (26.10; Alin: „2. da”, „1. da”).
 // Ce apără:
 //   1. regula frazei (propuneri.js): când sună de fapt o alertă de viteză (pragul + marja, cel puțin baza + marja) — aceeași frază
 //      în cartonașul din RA Insight și pe ecranul Alerte;
-//   2. serverul (cod): „Pornire motor" / „Oprire motor" = SCHIMBAREA contactului față de poziția de DINAINTE (citită înainte ca
+//   2. serverul (cod): „Pornire motor” / „Oprire motor” = SCHIMBAREA contactului față de poziția de DINAINTE (citită înainte ca
 //      poziția nouă să intre în harta live), record cu record în pachet; răcirea, o singură cifră;
-//   3. pagina: nota de sub „Viteză max" (de la server), „sună peste …" pe rândul regulii;
-//   4. pe server pornit, cu poziții trimise pe TCP ca de la un aparat adevărat (codec 8): „Pornire motor" sună O DATĂ pe pornire
-//      (nu la fiecare răcire cât contactul stă pornit), „Oprire motor" SUNĂ, un pachet cu pornire + oprire le dă pe amândouă,
+//   3. pagina: nota de sub „Viteză max” (de la server), „sună peste …” pe rândul regulii;
+//   4. pe server pornit, cu poziții trimise pe TCP ca de la un aparat adevărat (codec 8): „Pornire motor” sună O DATĂ pe pornire
+//      (nu la fiecare răcire cât contactul stă pornit), „Oprire motor” SUNĂ, un pachet cu pornire + oprire le dă pe amândouă,
 //      viteza sună abia peste pragul + marja. Răcirea e coborâtă la 1,2 s (ALERTE_RACIRE_MS), ca să se vadă ce sună după ea.
 //
 //   node verify_alerte_motor.js
@@ -23,13 +23,13 @@ const SRV = citeste('server.js'), PAG = citeste('public/index.html');
 // ─── 1. Fraza ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n1. Când sună o alertă de viteză (propuneri.js, fără server)');
 const marja = { baza: 50, marja: 10 };
-T('prag 130 → „sună cu 10 km/h peste prag: când trece de 140 km/h" (aceeași frază ca pe cartonașul din RA Insight)',
+T('prag 130 → „sună cu 10 km/h peste prag: când trece de 140 km/h” (aceeași frază ca pe cartonașul din RA Insight)',
   propuneri.textMarjaViteza(130, marja) === 'Ca toate alertele de viteză din aplicație, sună cu 10 km/h peste prag: când trece de 140 km/h.', propuneri.textMarjaViteza(130, marja));
-T('prag 30 (sub baza motorului) → „sună când trece de 60 km/h", cu motivul spus pe față (30 + 10 ar fi mințit)',
+T('prag 30 (sub baza motorului) → „sună când trece de 60 km/h”, cu motivul spus pe față (30 + 10 ar fi mințit)',
   propuneri.textMarjaViteza(30, marja) === 'Sună când trece de 60 km/h: pragul cel mai mic al alertelor de viteză e 50 km/h, iar toate sună cu 10 km/h peste prag.', propuneri.textMarjaViteza(30, marja));
 T('fără prag (regula de bază a motorului) → tot 60 km/h; fără marjă → nimic de spus peste prag',
   /trece de 60 km\/h/.test(propuneri.textMarjaViteza(null, marja)) && propuneri.textMarjaViteza(90, { baza: 50, marja: 0 }) === '');
-T('răcirea, în cuvinte: „cel mult o dată la 5 minute"', propuneri.textRacireViteza() === 'Cât timp mașina merge peste, sună cel mult o dată la 5 minute.', propuneri.textRacireViteza());
+T('răcirea, în cuvinte: „cel mult o dată la 5 minute”', propuneri.textRacireViteza() === 'Cât timp mașina merge peste, sună cel mult o dată la 5 minute.', propuneri.textRacireViteza());
 const card = propuneri.cardAlerta({ prag: 30, imei: '', optiuni: [], sim: { ori: 0, masini: 0 }, marja, poate: true, acum: Date.now() });
 T('cartonașul din RA Insight folosește ACEEAȘI frază (la un prag de 30 spune 60, nu 40)', card.dovezi.some((d) => d.text === propuneri.textMarjaViteza(30, marja)) && !card.dovezi.some((d) => /trece de 40 km/.test(d.text)), JSON.stringify(card.dovezi));
 
@@ -44,7 +44,7 @@ T('la primire, schimbarea se socotește din poziția de DINAINTE (`existing`, ci
   /const existing = livePositions\.get\(imei\) \|\| \{\};/.test(ING) && ING.indexOf('const existing = livePositions.get(imei)') < ING.indexOf('livePositions.set(imei, liveData)') &&
   /const _contact = _schimbariContact\(existing, parsed\.records\);/.test(ING) && /evaluateAlerts\(imei, liveData, _contact\)/.test(ING));
 T('O singură chemare a motorului de alerte', (SRV.match(/evaluateAlerts\(/g) || []).length === 2);
-T('răcirea: O cifră (ALERTE_RACIRE_MS = propuneri.RACIRE_MS, aceeași cu care cartonașul socotește „din ultimele 30 de zile")',
+T('răcirea: O cifră (ALERTE_RACIRE_MS = propuneri.RACIRE_MS, aceeași cu care cartonașul socotește „din ultimele 30 de zile”)',
   /const ALERTE_RACIRE_MS = Number\(process\.env\.ALERTE_RACIRE_MS\) > 0 \? Number\(process\.env\.ALERTE_RACIRE_MS\) : propuneri\.RACIRE_MS;/.test(SRV) &&
   (EVAL.match(/< ALERTE_RACIRE_MS/g) || []).length === 2 && !/< 300000/.test(EVAL));
 // _schimbariContact, rulată: decupată din server, cu propriii ei ajutori.
@@ -57,15 +57,15 @@ T('contactul stă pornit → nicio pornire; prima poziție după o repornire (f�
 T('true/false și "1"/"0" se citesc la fel; un record fără contact nu strică nimic; un record mai vechi decât harta live nu contează',
   JSON.stringify(sc({ timestamp: 5, io: { ignition: false } }, [rec(10, null), rec(12, true)])) === '{"pornit":true,"oprit":false}' &&
   JSON.stringify(sc({ timestamp: 50, io: { ignition: '1' } }, [rec(10, 0), rec(60, '1')])) === '{"pornit":false,"oprit":false}');
-T('GET /api/alerts pune pe regula de viteză „suna_peste" (propuneri.pragEfectiv, cu baza și marja motorului)',
+T('GET /api/alerts pune pe regula de viteză „suna_peste” (propuneri.pragEfectiv, cu baza și marja motorului)',
   /res\.json\(alerts\.map\(_sunaPeste\)\)/.test(SRV) && /suna_peste: propuneri\.pragEfectiv\(c\.maxSpeed, _MARJA_VITEZA\)/.test(SRV) && /const _MARJA_VITEZA = \{ baza: SPEED_ALERT_BASE, marja: SPEED_ALERT_MARGIN \};/.test(SRV));
 
 // ─── 3. Pagina ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n3. Pagina (ecranul Alerte)');
-T('sub „Viteză max": nota, cu fraza de la server (/api/alerts/viteza), refăcută la fiecare cifră și la deschiderea unei reguli',
+T('sub „Viteză max”: nota, cu fraza de la server (/api/alerts/viteza), refăcută la fiecare cifră și la deschiderea unei reguli',
   /\{k:'maxSpeed',label:'Viteză max \(km\/h\)',def:90,nota:true\}/.test(PAG) && /id="alert-cf-nota" class="alr-cf-nota"/.test(PAG) && /fetch\('\/api\/alerts\/viteza\?prag=' \+ encodeURIComponent\(val \|\| ''\)\)/.test(PAG) &&
   /el\.textContent = r\.ok \? \(j\.text \|\| ''\) : ''/.test(PAG) && /alertCfNota\(\);\s+\/\/ nota de sub prag/.test(PAG));
-T('pe rândul regulii: „sună peste … km/h", din cifra serverului (pagina nu socotește marja)',
+T('pe rândul regulii: „sună peste … km/h”, din cifra serverului (pagina nu socotește marja)',
   /typeof a\.suna_peste === 'number' \? '<span class="alr-suna">sună peste ' \+ a\.suna_peste \+ ' km\/h<\/span>'/.test(PAG) && !/SPEED_ALERT|\+ 10\b/.test(PAG.slice(PAG.indexOf('function alertCfNota'), PAG.indexOf('function alertZonesCount'))));
 T('culorile notei: textul secundar al temei (pereche pe ambele teme)', /\.alr-suna \{[^}]*color: var\(--text-secondary\)/.test(PAG) && /\.alr-cf-nota \{[^}]*color: var\(--text-secondary\)/.test(PAG));
 
@@ -144,7 +144,7 @@ function trimite(lista) {   // lista = [[contact, viteză], …] — un pachet c
 
   const lst = (await json('GET', '/api/alerts', S)).j;
   const sp = (id) => ((Array.isArray(lst) ? lst : []).find((a) => a.id === id) || {}).suna_peste;
-  T('lista regulilor: „sună peste" 100 (prag 90), 60 (prag 30), 60 (fără prag); pe pornire nimic', sp(rV90.id) === 100 && sp(rV30.id) === 60 && sp(rV0.id) === 60 && sp(rOn.id) === undefined, JSON.stringify([sp(rV90.id), sp(rV30.id), sp(rV0.id), sp(rOn.id)]));
+  T('lista regulilor: „sună peste” 100 (prag 90), 60 (prag 30), 60 (fără prag); pe pornire nimic', sp(rV90.id) === 100 && sp(rV30.id) === 60 && sp(rV0.id) === 60 && sp(rOn.id) === undefined, JSON.stringify([sp(rV90.id), sp(rV30.id), sp(rV0.id), sp(rOn.id)]));
   const n130 = await json('GET', '/api/alerts/viteza?prag=130', S), n0 = await json('GET', '/api/alerts/viteza?prag=', S), nx = await json('GET', '/api/alerts/viteza?prag=abc', S);
   T('nota de sub prag (130): sună peste 140, cu marja și răcirea spuse', n130.status === 200 && n130.j.sunaPeste === 140 && n130.j.text === propuneri.textMarjaViteza(130, marja) + ' ' + propuneri.textRacireViteza(), n130.text);
   T('…fără prag: 60; un prag stricat: 400', n0.j.sunaPeste === 60 && nx.status === 400, n0.text + ' ' + nx.status);
@@ -163,13 +163,13 @@ function trimite(lista) {   // lista = [[contact, viteză], …] — un pachet c
   T('contact oprit de la început → nicio alertă', c.on === 0 && c.off === 0, JSON.stringify(c));
   await pas([[1, 0]]);
   c = await cate();
-  T('PORNIRE (oprit → pornit) → „Pornire motor" o dată', c.on === 1 && c.off === 0, JSON.stringify(c));
+  T('PORNIRE (oprit → pornit) → „Pornire motor” o dată', c.on === 1 && c.off === 0, JSON.stringify(c));
   await pas([[1, 20]]); await pas([[1, 40]]); await pas([[1, 30]]);
   c = await cate();
   T('contactul stă pornit, după trei răciri → tot o dată (înainte: încă trei)', c.on === 1, JSON.stringify(c));
   await pas([[0, 0]]);
   c = await cate();
-  T('OPRIRE (pornit → oprit) → „Oprire motor" sună (înainte nu suna niciodată)', c.off === 1 && c.on === 1, JSON.stringify(c));
+  T('OPRIRE (pornit → oprit) → „Oprire motor” sună (înainte nu suna niciodată)', c.off === 1 && c.on === 1, JSON.stringify(c));
   await pas([[0, 0]]);
   c = await cate();
   T('stă oprit → nimic în plus', c.off === 1 && c.on === 1, JSON.stringify(c));

@@ -1,4 +1,4 @@
-// „RA Insight · control" — cifrele și textele ecranului de pe telefon (AiUsage.tsx), ca pagina web (raxLoadAiUsage).
+// „RA Insight · control” — cifrele și textele ecranului de pe telefon (AiUsage.tsx), ca pagina web (raxLoadAiUsage).
 //
 // Regula: telefonul NU socotește bani. Tot ce vine gata de la server (/api/admin/ai-usage) se ia de acolo: venitul, costul, plasa,
 // ce ne rămâne pe o firmă (`ramanLei`), soldul Anthropic (`pachete.sold`, din _soldAnthropic). Puținul pe care îl socotește pagina web
@@ -14,7 +14,7 @@
 const n = (v: any) => Number(v) || 0;
 const are = (v: any) => v != null && v !== '' && isFinite(Number(v));
 
-// Sumele: „0,35 lei", „45 lei" — fără zerouri de umplutură (ca _aiuNr).
+// Sumele: „0,35 lei”, „45 lei” — fără zerouri de umplutură (ca _aiuNr).
 export function nr(v: any): string {
   const x = n(v);
   let s = Math.abs(x) < 10 ? x.toFixed(2) : x.toFixed(0);
@@ -23,9 +23,9 @@ export function nr(v: any): string {
   const p = s.split('.'), i = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return p.length > 1 ? i + ',' + p[1] : i;
 }
-// „45 lei (9 €)", ca _aiuLei, la cursul din răspuns (`fxEur`).
+// „45 lei (9 €)”, ca _aiuLei, la cursul din răspuns (`fxEur`).
 export function lei(v: any, fx: number): string { return nr(v) + ' lei (' + nr(n(v) / fx) + ' €)'; }
-// „12 întrebări", „20 de întrebări", „1 întrebare" (ca window._raxNrI).
+// „12 întrebări”, „20 de întrebări”, „1 întrebare” (ca window._raxNrI).
 export function intrebari(v: any): string {
   const x = n(v); const r = Math.abs(x) % 100;
   return x === 1 ? '1 întrebare' : x + ((r === 0 && x) || r >= 20 ? ' de ' : ' ') + 'întrebări';
@@ -39,7 +39,7 @@ function dataScurta(t: any): string { return t ? new Date(t).toLocaleDateString(
 
 // ── Cele patru cifre de sus (web: _aiuPachete) ──
 const NUME_PK: Record<string, string> = { start: 'Start', basic: 'Basic', pro: 'Pro', business: 'Business' };
-// Din 04.11 rândul vine gata de la server (`sold.sub`, sold_ai.cartonas — aceeași socoteală ca pe web și pe „Acasă"); socoteala de mai jos
+// Din 04.11 rândul vine gata de la server (`sold.sub`, sold_ai.cartonas — aceeași socoteală ca pe web și pe „Acasă”); socoteala de mai jos
 // rămâne doar pentru un server de dinainte.
 export function textSold(sold: any): string {
   if (!sold) return 'nescris';
@@ -64,7 +64,7 @@ export function tilePachete(p: any, fx: number): Tila[] {
 
 // ── Ce cere atenție (web: _aiuAvertismente, _aiuAtentie). Fiecare rând, cu firma lui dacă are una de deschis. ──
 // O firmă plătește prețul pachetului (Start e inclus, fără AI — nu e o gaură); un pachet cu AI la 0 lei întreabă pe banii noștri.
-// Prețul se pune din fila „Acces" a firmei (`spreAcces`: firmele de deschis). Regula veche, „pe cont", a ieșit pe 11.11.
+// Prețul se pune din fila „Acces” a firmei (`spreAcces`: firmele de deschis). Regula veche, „pe cont”, a ieșit pe 11.11.
 const cuPretFirma = (x: any) => !x.pachet || !x.pachet.ai || x.venitLei > 0;
 export function costLunaLei(s: any, fx: number): number { return n(s.totalCostEur) * fx; }
 export type Atentie = { ton: 'bad' | 'warn' | 'info' | 'ok'; t: string; firma?: any; spreAcces?: any[] };
@@ -176,9 +176,9 @@ export function textFaraInsight(rows: any[]): string {
   return fara.length + (fara.length === 1 ? ' firmă fără RA Insight: ' : ' firme fără RA Insight: ') + fara.slice(0, 8).map((x) => x.name).join(', ') + (fara.length > 8 ? '…' : '');
 }
 export const NICIO_FIRMA = 'Nicio firmă cu RA Insight.';
-export const NOTA_CONTROL = 'Cifrele sunt ale lunii curente și se reînnoiesc pe 1. „Instant" = răspunsuri date de aplicație din rapoarte, fără model. Conversațiile clienților nu le vedem — aici sunt doar numere. Cei 6 agenți AI merg pe reguli fixe și nu costă nimic.';
+export const NOTA_CONTROL = 'Cifrele sunt ale lunii curente și se reînnoiesc pe 1. „Instant” = răspunsuri date de aplicație din rapoarte, fără model. Conversațiile clienților nu le vedem — aici sunt doar numere. Cei 6 agenți AI merg pe reguli fixe și nu costă nimic.';
 
-// ── „Sursă externă" pe toată platforma (web: _aiuSursa). Textele le dă serverul. ──
+// ── „Sursă externă” pe toată platforma (web: _aiuSursa). Textele le dă serverul. ──
 export function planSursa(se: any, fx: number) {
   if (!se) return null;
   const de = (x: any) => { const r = Math.abs(n(x)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; };

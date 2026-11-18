@@ -1,4 +1,4 @@
-// Fila „Încărcare" din fișa vehiculului, pe telefon (web: #edit-tab-incarcare). Regulile — ce câmpuri are sens felul
+// Fila „Încărcare” din fișa vehiculului, pe telefon (web: #edit-tab-incarcare). Regulile — ce câmpuri are sens felul
 // ales, cifrele obișnuite, ce pleacă la salvare — stau în lib/incarcare.ts, oglinda paginii. Aici doar se desenează.
 import { Icon } from './Icon';
 import { incVizibile, incObisnuite, remorcaText, type IncMeta, type Remorca } from '../lib/incarcare';

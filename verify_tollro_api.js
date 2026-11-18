@@ -1,6 +1,6 @@
 // verify_tollro_api.js — TollRo prin rutele reale, pe server pornit.
 //
-// Cerința lui Robert (20.08): „atenție la vehicule, poți selecta doar vehiculele din flotă".
+// Cerința lui Robert (20.08): „atenție la vehicule, poți selecta doar vehiculele din flotă”.
 // Aici se verifică exact asta — plus că profilul de taxare vine din fișă, nu de la client (altfel
 // oricine ar putea trimite `masaKg: 40000` și ar afla tarife pentru un camion inexistent).
 //
@@ -62,7 +62,7 @@ async function login(u, p) {
   r = await J('/api/tollro/profil/' + STRAIN);
   t('și profilul lui e refuzat', r.status === 403 || r.status === 404, String(r.status));
   r = await POST('/api/tollro/estimate', { km: { autostrada: 100 } });
-  t('fără vehicul → refuzat (nu există „calcul generic")', r.status === 403, String(r.status));
+  t('fără vehicul → refuzat (nu există „calcul generic”)', r.status === 403, String(r.status));
   r = await POST('/api/tollro/din-istoric', { imei: STRAIN, from: '2026-08-01T00:00:00', to: '2026-08-02T00:00:00' });
   t('istoricul unui vehicul străin → refuzat', r.status === 403 || r.status === 404, String(r.status));
 
@@ -97,8 +97,8 @@ async function login(u, p) {
   r = await J('/api/tollro/profil/' + FARA);
   t('completarea nu s-a scris singură în fișă', r.body.vehicul.masaKg == null, String(r.body.vehicul.masaKg));
 
-  console.log('\n══ Fișa NU se poate „negocia" din browser ══\n');
-  // Camionul ARE 30 t în fișă. O „completare" de 5 t trebuie ignorată — altfel taxa ar deveni
+  console.log('\n══ Fișa NU se poate „negocia” din browser ══\n');
+  // Camionul ARE 30 t în fișă. O „completare” de 5 t trebuie ignorată — altfel taxa ar deveni
   // negociabilă din browser, iar cifra din ofertă n-ar mai avea legătură cu vehiculul.
   r = await POST('/api/tollro/estimate', { imei: CAMION, manual: { masaKg: 5000, axe: 2 }, km: { autostrada: 100 } });
   t('masa din fișă (30 t) învinge completarea (5 t)', r.body.vehicul.masaKg === 30000, String(r.body.vehicul.masaKg));

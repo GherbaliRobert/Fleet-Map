@@ -1,6 +1,6 @@
 'use strict';
-// ─── „Anunță echipa RA Track" (capitolul 4 al machetei din 21.10; Alin, 22.10: „da" la flux, termenul „te sunăm în cel mult
-// o zi lucrătoare", cererile le preiau amândoi, cu „Preiau") ─────────────────────────────────────────────────────────────
+// ─── „Anunță echipa RA Track” (capitolul 4 al machetei din 21.10; Alin, 22.10: „da” la flux, termenul „te sunăm în cel mult
+// o zi lucrătoare", cererile le preiau amândoi, cu „Preiau”) ─────────────────────────────────────────────────────────────
 // Aparatul e treaba NOASTRĂ (19.10): clientul nu e trimis să verifice nimic. Butonul îi dă un singur lucru de făcut — „ne
 // anunță" — iar aplicația pune singură în cerere mașina, problema și datele aparatului. Regulile și TEXTELE stau aici; serverul
 // doar adună datele, iar ecranele (web, telefon) doar arată ce primesc. Fără bază, fără rețea.
@@ -32,10 +32,10 @@ const PROBLEME = {
 // De unde a plecat cererea — o vedem noi, ca să știm ce a văzut omul când a apăsat.
 const SURSE = { insight: 'din RA Insight', azi: 'din „Azi la tine”', fisa: 'din fișa mașinii', suport: 'din iconița cu căști', telefon: 'de pe telefon' };
 const CAND = [['oricand', 'Oricând'], ['dimineata', 'Dimineața'], ['dupa_amiaza', 'După-amiaza'], ['weekend', 'În weekend'], ['suna_intai', 'Sunați-mă întâi']];
-// Intervalele din „Programez" (la noi): ce scriem clientului.
+// Intervalele din „Programez” (la noi): ce scriem clientului.
 const INTERVALE = [['9-12', '9:00 – 12:00', 'între 9 și 12'], ['12-15', '12:00 – 15:00', 'între 12 și 15'],
   ['15-18', '15:00 – 18:00', 'între 15 și 18'], ['zi', 'în cursul zilei', 'în cursul zilei']];
-// Ce pleacă singur odată cu cererea. Promisiune: doar ce chiar trimitem (fără „pe ultimele 30 de zile": luăm nivelul de acum).
+// Ce pleacă singur odată cu cererea. Promisiune: doar ce chiar trimitem (fără „pe ultimele 30 de zile”: luăm nivelul de acum).
 const DATE_TRIMISE = 'Trimitem singuri și datele aparatului, ca să nu te mai întrebăm nimic: modelul și seria, ultima poziție și ora ei, semnalul și alimentarea, nivelul din rezervor. Discuția ta cu RA Insight nu se trimite.';
 const DATE_TRIMISE_FARA_MASINA = 'Trimitem mesajul tău și cum te găsim. Discuția ta cu RA Insight nu se trimite.';
 
@@ -43,7 +43,7 @@ const DATE_TRIMISE_FARA_MASINA = 'Trimitem mesajul tău și cum te găsim. Discu
 const _fmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 function _parti(ms) { const p = {}; _fmt.formatToParts(new Date(Number(ms))).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; }); return p; }
 function ziua(ms) { const p = _parti(ms); return p.year + '-' + p.month + '-' + p.day; }
-// „azi, 10:42" / „ieri, 16:20" / „14.10, 09:15" — ca în restul aplicației.
+// „azi, 10:42” / „ieri, 16:20” / „14.10, 09:15” — ca în restul aplicației.
 function cand(ms, acum) {
   if (!ms || !Number(ms)) return '';
   const p = _parti(ms), a = acum != null ? Number(acum) : Date.now();
@@ -55,21 +55,21 @@ function cand(ms, acum) {
 function dataScurta(ms) { if (!ms || !Number(ms)) return ''; const p = _parti(ms); return p.day + '.' + p.month; }
 function dataLunga(ms) { if (!ms || !Number(ms)) return ''; const p = _parti(ms); return p.day + '.' + p.month + '.' + p.year; }
 const ZILE = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
-// „2026-10-23" → „joi, 23.10" (o zi din calendar: fără fus orar).
+// „2026-10-23” → „joi, 23.10” (o zi din calendar: fără fus orar).
 function ziScrisa(z) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(z || ''));
   if (!m) return '';
   return ZILE[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()] + ', ' + m[3] + '.' + m[2];
 }
 function ziPlus(z, n) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(z || '')); if (!m) return ''; return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + n)).toISOString().slice(0, 10); }
-// Ziua propusă la „Programez": următoarea zi lucrătoare (vineri → luni). Sărbătorile legale nu le știe — omul alege altă zi.
+// Ziua propusă la „Programez”: următoarea zi lucrătoare (vineri → luni). Sărbătorile legale nu le știe — omul alege altă zi.
 function ziLucratoareDupa(z) {
   let d = ziPlus(z, 1);
   for (let i = 0; i < 3 && d; i++) { const w = new Date(d + 'T00:00:00Z').getUTCDay(); if (w !== 0 && w !== 6) break; d = ziPlus(d, 1); }
   return d;
 }
 const _sus = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-// „3 zile", „21 de ore", „45 de minute" (cu „de" de la 20 în sus).
+// „3 zile”, „21 de ore”, „45 de minute” (cu „de” de la 20 în sus).
 function _de(n) { const r = Math.abs(n) % 100; return (n === 0 || r >= 20 || r === 0) ? ' de ' : ' '; }
 function _cate(n, unu, multe) { return n === 1 ? (unu === 'oră' || unu === 'zi' ? 'o ' + unu : 'un ' + unu) : n + _de(n) + multe; }
 function durata(min) {
@@ -82,7 +82,7 @@ const prenume = (s) => String(s || '').trim().split(/\s+/)[0] || '';
 
 // ─── Cererea ──────────────────────────────────────────────────────────────────────────────────────
 // Ce primește serverul de la ecran, curățat. `ce` (ce a văzut omul în caseta problemei) se păstrează doar la consum: atunci e
-// chiar textul scris de aplicație în casetă. La „nu transmite" textul îl scrie serverul, din ultima poziție.
+// chiar textul scris de aplicație în casetă. La „nu transmite” textul îl scrie serverul, din ultima poziție.
 function curata(b) {
   b = b || {};
   const are = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -101,18 +101,18 @@ function curata(b) {
     ce: problema === 'consum' ? linie(b.ce, 600) : ''
   };
 }
-// Ce lipsește ca cererea să plece (null = nimic). Mașina e obligatorie la problemele unei mașini; la „o întrebare", mesajul.
+// Ce lipsește ca cererea să plece (null = nimic). Mașina e obligatorie la problemele unei mașini; la „o întrebare”, mesajul.
 function lipsa(c) {
   if (c.problema !== 'alta' && !c.imei) return 'Alege mașina.';
   if (c.problema === 'alta' && !c.mesaj) return 'Scrie pe scurt ce s-a întâmplat sau ce vrei să ne întrebi.';
   return null;
 }
-// Titlul cererii: „Consumul nu se poate măsura", „Nu transmite de 3 zile".
+// Titlul cererii: „Consumul nu se poate măsura”, „Nu transmite de 3 zile”.
 function titlu(problema, o) {
   if (problema === 'semnal' && o && o.tacutMin != null) return 'Nu transmite de ' + durata(o.tacutMin);
   return PROBLEME[problema] || PROBLEME.alta;
 }
-// „Ce s-a întâmplat · scris de aplicație" la o mașină care nu transmite (din ultima poziție, fără vină pe aparat).
+// „Ce s-a întâmplat · scris de aplicație” la o mașină care nu transmite (din ultima poziție, fără vină pe aparat).
 function ceSemnal(o) {
   o = o || {};
   if (!o.ultima) return 'Mașina n-a transmis încă nicio poziție.';
@@ -135,7 +135,7 @@ function sursaText(c) {
   return SURSE[c.sursa] || SURSE.suport;
 }
 function deTrimisText(cuMasina) { return cuMasina ? DATE_TRIMISE : DATE_TRIMISE_FARA_MASINA; }
-// „Am trimis cererea nr. 142." + „B 154 UIP · Consumul nu se poate măsura · azi, 10:42" (macheta E3).
+// „Am trimis cererea nr. 142.” + „B 154 UIP · Consumul nu se poate măsura · azi, 10:42” (macheta E3).
 function confirmare(c, acum) {
   return { titlu: 'Am trimis cererea nr. ' + c.id + '.', sub: [vehicul(c), c.titlu, cand(c.creat_la, acum)].filter(Boolean).join(' · ') };
 }
@@ -147,7 +147,7 @@ function seOcupa(c, acum) {
   return 'Echipa RA Track se ocupă · cererea nr. ' + c.id + ' · ' + cum;
 }
 const _noi = (n) => n ? n + ', RA Track' : 'echipa RA Track';
-// Pașii cererii (macheta E3): trimisă → preluată → programată → rezolvată. „Programată" poate rămâne sărită (n-a fost nevoie).
+// Pașii cererii (macheta E3): trimisă → preluată → programată → rezolvată. „Programată” poate rămâne sărită (n-a fost nevoie).
 function pasi(c, acum) {
   const i = STARI.indexOf(c.stare);
   const prog = c.programare || null;
@@ -159,7 +159,7 @@ function pasi(c, acum) {
     { cheie: 'rezolvata', eticheta: ETICHETE.rezolvata, gata: i === 3, detaliu: i === 3 ? cand(c.rezolvata_la, acum) + (c.raspuns ? ': „' + c.raspuns + '”' : '') : PASI.rezolvata }
   ];
 }
-// Un rând din „Cererile tale" (macheta E3b).
+// Un rând din „Cererile tale” (macheta E3b).
 function pentruClient(c, acum, o) {
   o = o || {};
   let detaliu;
@@ -189,12 +189,12 @@ function dateAparat(a, acum) {
   if (a.instalator) out.push({ l: 'Instalator', v: String(a.instalator) });
   return out;
 }
-// „Pare rezolvată singură" (macheta E4): o mașină care nu transmitea a transmis din nou după cerere.
+// „Pare rezolvată singură” (macheta E4): o mașină care nu transmitea a transmis din nou după cerere.
 function pareRezolvata(c, ultima, acum) {
   if (!c || c.problema !== 'semnal' || c.stare === 'rezolvata' || !ultima || !(Number(ultima) > Number(c.creat_la))) return null;
   return 'Pare rezolvată singură: transmite din nou de ' + cand(ultima, acum) + '.';
 }
-// Un rând din „Cereri de la clienți" (la noi, macheta E4). Butoanele după stare.
+// Un rând din „Cereri de la clienți” (la noi, macheta E4). Butoanele după stare.
 function pentruNoi(c, acum, o) {
   o = o || {};
   const pr = prenume(c.preluata_de_nume);
@@ -216,7 +216,7 @@ function pentruNoi(c, acum, o) {
     raspuns: c.raspuns || null, butoane: butoane
   };
 }
-// Ce scriem clientului la „Programez", dacă omul nostru n-a scris altceva: „Joi, 23.10, între 9 și 12, vine instalatorul la …".
+// Ce scriem clientului la „Programez”, dacă omul nostru n-a scris altceva: „Joi, 23.10, între 9 și 12, vine instalatorul la …”.
 function mesajProgramare(o) {
   o = o || {};
   const iv = INTERVALE.filter(function (x) { return x[0] === o.interval; })[0] || INTERVALE[0];
@@ -231,7 +231,7 @@ function anuntNoi(c) {
     corp: [vehicul(c), c.titlu || titlu(c.problema), (c.contact || {}).nume || c.trimisa_de_nume].filter(Boolean).join(' · ') };
 }
 const _esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-// Emailul care ne vine la contact@ (macheta E5): tot ce trebuie, fără să deschidem aplicația. „Răspuns la" = clientul.
+// Emailul care ne vine la contact@ (macheta E5): tot ce trebuie, fără să deschidem aplicația. „Răspuns la” = clientul.
 function emailNoi(c, o) {
   o = o || {};
   const k = c.contact || {};

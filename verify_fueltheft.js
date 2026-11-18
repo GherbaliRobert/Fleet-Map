@@ -6,8 +6,8 @@ const t0 = Date.parse('2026-06-12T08:00:00Z');
 const pt = (min, ign, fuelPct, speed) => ({ timestamp: new Date(t0 + min * 60000).toISOString(), latitude: 44, longitude: 26, speed: speed || 0, io_data: { ignition: ign, can_fuel_level_pct: fuelPct } });
 
 // Pragul companiei TREBUIE trimis: din 26.07 („onestitate: trei locuri în care interfața spunea
-// altceva decât făcea codul"), `fuelTheftL` nesetat înseamnă „utilizatorul a ales Dezactivat", nu
-// „prag 0" — și oprește detecția cu totul, inclusiv pe procente. Testul rula cu praguri goale, deci
+// altceva decât făcea codul"), `fuelTheftL` nesetat înseamnă „utilizatorul a ales Dezactivat”, nu
+// „prag 0” — și oprește detecția cu totul, inclusiv pe procente. Testul rula cu praguri goale, deci
 // verifica o cale moartă și pica din 26.07 încoace, în CI, fără ca nimeni să se uite.
 // Ultimul caz de mai jos apără chiar regula asta, ca să nu se piardă în cealaltă direcție.
 async function run(hist, thresholds) {

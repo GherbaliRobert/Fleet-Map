@@ -191,7 +191,7 @@
     .nav-links a:hover::after{transform:scaleX(1)}
     .nav-right{display:flex;align-items:center;gap:16px}
 
-    /* logo: monograma „RA |" (imaginea logo-mark.png) + cuvântul „Track" scris cu Nunito ExtraBold, ca în aplicație */
+    /* logo: monograma „RA |" (imaginea logo-mark.png) + cuvântul „Track” scris cu Nunito ExtraBold, ca în aplicație */
     .logo{display:inline-flex;align-items:center;gap:0;height:34px}
     .ralogo{display:inline-flex;align-items:center;gap:8px}
     .ralogo img{display:block}
@@ -286,13 +286,13 @@
     .stat .num{font-size:30px;font-weight:800;color:#fff;letter-spacing:-.5px;display:flex;align-items:baseline;justify-content:center;gap:4px}
     .stat .num span{color:var(--accent)}
     .stat .lbl{font-size:13.5px;color:var(--muted);margin-top:6px}
-    /* Primul ecran pe două coloane (16.11, Alin: „1. A"): textul în stânga, telefonul cu RA Insight în dreapta; sub 980 px, unul
+    /* Primul ecran pe două coloane (16.11, Alin: „1. A”): textul în stânga, telefonul cu RA Insight în dreapta; sub 980 px, unul
        sub altul. Textul stă aliniat la stânga, ca în macheta aprobată. Telefonul: /css/ra-insight-demo.css. */
     .hero{padding:40px 0 64px}
     .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:40px;align-items:center}
     .hero-grid .hero-inner{max-width:none;margin:0;text-align:left}
     .hero-grid h1{font-size:clamp(34px,4.3vw,54px);max-width:none;margin:0 0 18px}
-    /* Primul ecran, textele din 17.11 (Alin): eticheta mică deasupra titlului, „inteligență artificială" în verde, sloganul cu bara
+    /* Primul ecran, textele din 17.11 (Alin): eticheta mică deasupra titlului, „inteligență artificială” în verde, sloganul cu bara
        verde în stânga. Fără imperativ în titluri. */
     .h-eyebrow{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
     .grad-ai{background:linear-gradient(95deg,#a6f7c6 0%,#3FE07D 55%,#2fd06c 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -364,12 +364,12 @@
       padding:4px 10px;border-radius:999px;
     }
 
-    /* ---------- AGENȚII AI (17.11, Alin: „varianta B"): butoanele celor șase și telefonul cu pagina agentului, în
+    /* ---------- AGENȚII AI (17.11, Alin: „varianta B”): butoanele celor șase și telefonul cu pagina agentului, în
        /css/agenti-demo.css (cu /js/agenti-demo.js). Până pe 17.11: șase cartonașe cu text (.agents-grid / .agent), scoase. */
 
-    /* ---------- INTELIGENȚĂ ARTIFICIALĂ (17.11, Alin: „1A"): RA Insight + cei 6 agenți, un capitol sub primul ecran ----------
+    /* ---------- INTELIGENȚĂ ARTIFICIALĂ (17.11, Alin: „1A”): RA Insight + cei 6 agenți, un capitol sub primul ecran ----------
        Telefonul și bucățile de ecran au foaia lor (/css/ra-insight-demo.css), aceeași în aplicație. Până pe 16.11 RA Insight era
-       o casetă sub cei șase agenți (.ra-insight), scoasă; până pe 17.11 agenții aveau secțiunea lor (.section-ai), după „Funcții". */
+       o casetă sub cei șase agenți (.ra-insight), scoasă; până pe 17.11 agenții aveau secțiunea lor (.section-ai), după „Funcții”. */
     .section-ri{background:radial-gradient(120% 55% at 50% 0%, rgba(63,224,125,.06), transparent 62%);border-top:1px solid var(--border-soft)}
     .ri-fct{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
     .ri-fc{background:linear-gradient(180deg,var(--surface) 0%,#121519 100%);border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -386,7 +386,7 @@
     .ai-parte p{color:var(--muted);font-size:15px;line-height:1.55;margin-top:4px}
     .ai-parte-pk{margin-top:40px}
     #agenti-ai{scroll-margin-top:90px}
-    /* Puntea dintre RA Insight și agenți: ce găsesc agenții apare și la „Azi la tine". */
+    /* Puntea dintre RA Insight și agenți: ce găsesc agenții apare și la „Azi la tine”. */
     .ai-punte{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:34px auto 30px;padding:14px 20px;border:1px dashed rgba(63,224,125,.4);border-radius:18px;max-width:780px;background:rgba(63,224,125,.05);text-align:center}
     .ai-punte-ic{display:flex;gap:6px}
     .ai-punte-ic i{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--accent);background:rgba(63,224,125,.08);border:1px solid rgba(63,224,125,.25);font-size:13px}
@@ -408,7 +408,7 @@
     .tel-col .tel-p{margin:0;text-align:center;color:var(--muted);font-size:14px;line-height:1.55;max-width:40ch;min-height:3.1em}
     .tel-col [data-ri-demo="platit"]{width:100%}
     @media (max-width:720px){.tel-doi{grid-template-columns:minmax(0,1fr)}.tel-col .tel-p{min-height:0}}
-    /* Pe telefon, UN telefon cu Start · Basic · Pro · Business (18.11, Alin: „3. da"): ra-insight-demo.js pune „Start" în comutatorul
+    /* Pe telefon, UN telefon cu Start · Basic · Pro · Business (18.11, Alin: „3. da”): ra-insight-demo.js pune „Start” în comutatorul
        pachetelor plătite și marchează coloanele; coloana Start și titlul celeilalte se ascund (titlul secțiunii le spune pe amândouă). */
     @media (max-width:720px){.ri-unul .ri-col-start{display:none}.ri-unul .tel-col:not(.ri-col-start)>h3,.ri-unul .tel-col:not(.ri-col-start)>.tel-p{display:none}}
 
@@ -621,8 +621,8 @@
 
   <span id="top"></span>
 
-  <!-- ===== HERO: textul în stânga, telefonul cu RA Insight în dreapta (16.11, Alin: „1. A") — pe telefon, unul sub altul.
-       Textele din 17.11 (Alin): eticheta, titlul cu „inteligență artificială", sloganul, textul, butonul spre RA Insight. ===== -->
+  <!-- ===== HERO: textul în stânga, telefonul cu RA Insight în dreapta (16.11, Alin: „1. A”) — pe telefon, unul sub altul.
+       Textele din 17.11 (Alin): eticheta, titlul cu „inteligență artificială”, sloganul, textul, butonul spre RA Insight. ===== -->
   <section class="hero">
     <div class="hero-bgimg" aria-hidden="true"></div>
     <div class="hero-glow" aria-hidden="true"></div>
@@ -635,8 +635,8 @@
           <h1>Monitorizare GPS și analiză cu <span class="grad-ai">inteligență artificială</span></h1>
           <p class="hero-tag">De la poziția mașinii la decizia potrivită</p>
           <p class="sub">Urmărești în timp real poziția, consumul și alertele fiecărei mașini, iar RA Insight transformă aceste date în răspunsuri clare și recomandări, direct în chat.</p>
-          <!-- Un singur buton: coboară la secțiunea RA Insight (17.11, Alin). „Intră în aplicație" stă în bara de sus (pe telefon,
-               în meniul ☰); „Cere cont demo" vine după ce omul a citit: la capătul secțiunii RA Insight și în banda de la final. -->
+          <!-- Un singur buton: coboară la secțiunea RA Insight (17.11, Alin). „Intră în aplicație” stă în bara de sus (pe telefon,
+               în meniul ☰); „Cere cont demo” vine după ce omul a citit: la capătul secțiunii RA Insight și în banda de la final. -->
           <div class="hero-ctas">
             <a href="#ra-insight" class="btn btn-primary">Descoperă RA Insight <i class="fa-solid fa-arrow-down"></i></a>
           </div>
@@ -670,10 +670,10 @@
     </div>
   </section>
 
-  <!-- ===== INTELIGENȚĂ ARTIFICIALĂ (17.11, Alin: „1A"): un singur capitol, în două părți — 1. RA Insight (ce face, de ce te poți
-       baza pe el), puntea „Azi la tine", 2. cei 6 agenți AI (ancora #agenti-ai, pentru meniu) —, apoi pachetele RA Insight. Bucățile de
+  <!-- ===== INTELIGENȚĂ ARTIFICIALĂ (17.11, Alin: „1A”): un singur capitol, în două părți — 1. RA Insight (ce face, de ce te poți
+       baza pe el), puntea „Azi la tine”, 2. cei 6 agenți AI (ancora #agenti-ai, pentru meniu) —, apoi pachetele RA Insight. Bucățile de
        ecran le desenează /js/ra-insight-demo.js (aceleași ca în telefonul de sus). Până pe 17.11 agenții aveau secțiunea lor, după
-       „Funcții"; până pe 16.11 RA Insight era o casetă sub ei. ===== -->
+       „Funcții”; până pe 16.11 RA Insight era o casetă sub ei. ===== -->
   <section class="section section-ri" id="ra-insight">
     <div class="wrap">
       <div class="section-head reveal">
@@ -717,7 +717,7 @@
         <div><b><i class="fa-solid fa-hand-pointer"></i> Nimic fără „Da”-ul tău</b><span>O alertă sau o schimbare pornește doar după ce apeși „Da” și se poate anula în următoarele 10 minute.</span></div>
       </div>
 
-      <!-- Puntea dintre cele două părți: „Azi la tine" din RA Insight arată și ce au găsit agenții azi. Iconițele = ale celor
+      <!-- Puntea dintre cele două părți: „Azi la tine” din RA Insight arată și ce au găsit agenții azi. Iconițele = ale celor
            șase agenți din aplicație (AGP_META), în ordinea butoanelor de mai jos. -->
       <div class="ai-punte reveal"><div class="ai-punte-ic" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i><i class="fa-solid fa-wrench"></i><i class="fa-solid fa-leaf"></i><i class="fa-solid fa-clipboard-check"></i><i class="fa-solid fa-file-lines"></i><i class="fa-solid fa-compass"></i></div><p>Ce găsesc agenții azi îți apare și în RA Insight, la <b>„Azi la tine”</b>.</p></div>
 
@@ -726,7 +726,7 @@
         <div><h3>Cei 6 agenți AI <span>· verifică flota pe domenii</span></h3>
         <p>Incluși în orice contract. RA Watch verifică flota în fiecare oră, iar ceilalți cinci fac analiza pe loc, când le deschizi pagina.</p></div>
       </div>
-      <!-- Cei 6 agenți (17.11, Alin, la cele trei machete: „hai să facem varianta B să o testez"): în stânga butoanele, în dreapta un
+      <!-- Cei 6 agenți (17.11, Alin, la cele trei machete: „hai să facem varianta B să o testez”): în stânga butoanele, în dreapta un
            telefon cu pagina agentului din aplicație, care trece singur de la unul la altul (un clic alege agentul). Telefonul îl desenează
            /js/agenti-demo.js, cu ce scriu AGENȚII ADEVĂRAȚI pe flota de probă (agenti_demo_flota.js; verify_agenti_demo.js compară).
            Iconițele = cele din aplicație (AGP_META). Până pe 17.11: șase cartonașe cu text. -->
@@ -748,7 +748,7 @@
       <!-- Pachetele RA Insight (17.11, Alin: „mock-up-urile din compară pachetele să apară pe home… compararea scriptică să fie când dai
            pe butonul Compară pachetele"): cele două telefoane de pe /pachete-ra-insight — Start și Basic / Pro / Business, cu comutatorul.
            Le desenează /js/ra-insight-demo.js; textele pachetelor sunt cele din pachete.js (verify_ra_insight_demo.js, verify_site_public.js
-           3d). Comparația scrisă stă pe /pachete-ra-insight, la butonul „Compară pachetele RA Insight". Până pe 17.11: patru cartonașe cu text. -->
+           3d). Comparația scrisă stă pe /pachete-ra-insight, la butonul „Compară pachetele RA Insight”. Până pe 17.11: patru cartonașe cu text. -->
       <div class="ai-parte ai-parte-pk reveal"><span class="ai-nr ai-nr-pk" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span><div><h3>Pachetele RA Insight</h3>
         <p>Start e inclus în orice contract; de la Basic întrebi orice, cu inteligență artificială.</p></div></div>
       <div class="tel-doi">
@@ -1125,7 +1125,7 @@
   </script>
 
   <!-- Bannerul de cookie-uri e construit de /js/consent.js, pe toate paginile publice.
-       Cel vechi de aici avea un singur buton („Am înțeles"), fără posibilitate de refuz, și apărea DUPĂ ce
+       Cel vechi de aici avea un singur buton („Am înțeles”), fără posibilitate de refuz, și apărea DUPĂ ce
        Google Analytics pornise deja — adică nu era un consimțământ, ci o notificare. -->
 </body>
 </html>

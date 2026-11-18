@@ -8,11 +8,11 @@
 //
 // De ce e nevoie de proba asta: tabelul de planuri n-a fost niciodată vândut, dar HOTĂRA lucruri
 // reale în spate — ce module are o firmă și ce agenți îi rulează. Așa s-a ajuns ca fiecare client
-// deschis să rămână fără agenți (pica pe „standard" → „start", unde scria `agents: false`), iar
+// deschis să rămână fără agenți (pica pe „standard” → „start”, unde scria `agents: false`), iar
 // registrul de clienți să arate venituri lunare inventate pentru firme care n-aveau nicio ofertă.
 //
 // Ce prinde: un tabel de planuri reapărut, o valoare implicită luată din plan, coloana `plan`
-// recitită de cod, Stripe întors în aplicație, sau cuvântul „plan" reapărut pe ecran.
+// recitită de cod, Stripe întors în aplicație, sau cuvântul „plan” reapărut pe ecran.
 const fs = require('fs');
 const P = (f) => require('path').join(__dirname, f);
 const html = fs.readFileSync(P('public/index.html'), 'utf8');
@@ -42,10 +42,10 @@ T('`ofertaFirmei` întoarce null fără ofertă', preturi.ofertaFirmei({ plan: '
 console.log('\n3. Modulele și agenții nu mai depind de plan');
 ['standard', 'start', 'pro', 'premium', 'enterprise', undefined].forEach(function (pl) {
   const f = preturi.featuresFor({ plan: pl });
-  T('agenții porniți pe „' + (pl || 'fără plan') + '"', f.agents === true);
+  T('agenții porniți pe „' + (pl || 'fără plan') + '”', f.agents === true);
   // Din 14.10 RA Insight e pornit la orice firmă: pachetul Start e inclus în contract (ce primește stă în pachete.js).
-  T('RA Insight pornit pe „' + (pl || 'fără plan') + '" (pachetul Start, inclus)', f.ai_assistant === true);
-  T('și modulele cu plată oprite pe „' + (pl || 'fără plan') + '"',
+  T('RA Insight pornit pe „' + (pl || 'fără plan') + '” (pachetul Start, inclus)', f.ai_assistant === true);
+  T('și modulele cu plată oprite pe „' + (pl || 'fără plan') + '”',
     f.tahograf === false && f.etransport === false && f.etoll === false);
 });
 T('oferta aprinde modulul, nu planul',
@@ -71,21 +71,21 @@ T('nicio cheie Stripe citită din mediu', !/STRIPE_[A-Z_]+/.test(server) && !/ST
 T('pagina nu mai are buton de plată cu cardul',
   !/raxInvoicePayLink|raxPayNow|raxCheckout|raxBillingPortal/.test(html));
 
-console.log('\n6. Cuvântul „plan" nu mai apare pe niciun ecran');
+console.log('\n6. Cuvântul „plan” nu mai apare pe niciun ecran');
 // Ne uităm doar la ce AJUNGE la om: etichete, titluri, texte — nu la comentariile din cod.
 const vizibil = html
   .split('\n').filter(function (r) { return !/^\s*(\/\/|\*|<!--)/.test(r); }).join('\n')
   .replace(/\/\*[\s\S]*?\*\//g, '');
 const gasite = [];
-// „Plan service / mentenanță" e cu totul altceva (planul de revizii al unui vehicul) — nu-l vânăm.
+// „Plan service / mentenanță” e cu totul altceva (planul de revizii al unui vehicul) — nu-l vânăm.
 const fara = vizibil.replace(/Plan service[^<]*/g, '');
-// „în plan" / „planul firmei" au scăpat pe 24.09 în „Utilizare RA Insight" (web ȘI telefon) — de-aia sunt aici.
+// „în plan” / „planul firmei” au scăpat pe 24.09 în „Utilizare RA Insight” (web ȘI telefon) — de-aia sunt aici.
 const TIPARE = [/>\s*Plan\b/g, /'Plan'/g, /"Plan"/g, /Plan curent/g, /Plan \/ abonament/g, /planul t[ăa]u/gi,
   /alege[a-z]* un plan/gi, /în plan\b/gi, /planul (companiei|firmei)/gi];
 TIPARE.forEach(function (re) { const m = fara.match(re); if (m) gasite.push.apply(gasite, m); });
-T('nicio etichetă „Plan" rămasă în interfață', gasite.length === 0, gasite.join(' | '));
+T('nicio etichetă „Plan” rămasă în interfață', gasite.length === 0, gasite.join(' | '));
 
-// Aplicația de telefon: aceleași tipare, pe fiecare ecran. Comentariile se scot; „Plan service / mentenanță"
+// Aplicația de telefon: aceleași tipare, pe fiecare ecran. Comentariile se scot; „Plan service / mentenanță”
 // rămâne (e planul de revizii al unui vehicul, altă noțiune).
 const gasiteTel = [];
 (function citeste(dir) {
@@ -102,7 +102,7 @@ const gasiteTel = [];
 T('nici pe telefon', gasiteTel.length === 0, gasiteTel.join(' | '));
 T('ecranul clientului vorbește despre contract, nu despre plan',
   /Abonamentul t[ăa]u e cel din contract/.test(html));
-T('fișa firmei arată „Oferta firmei", nu „Plan / abonament"',
+T('fișa firmei arată „Oferta firmei”, nu „Plan / abonament”',
   /">Oferta firmei<\/div>/.test(html) && !/Plan \/ abonament/.test(html));
 T('nu mai există butoane de presetare (Start / Pro / Premium)',
   !/_RAX_PRESETS|raxAboPlanChange/.test(html));

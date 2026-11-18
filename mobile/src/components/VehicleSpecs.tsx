@@ -27,7 +27,7 @@ export const SPEC_SECTIONS: SpecSection[] = [
       { k: 'name', l: 'Denumire' },
       { k: 'plate', l: 'Număr de înmatriculare' },
       // Valorile sunt cele DEJA stocate în bază (etichete în română, ca pe web). Toate cele 23 de categorii de
-      // pe web — cu doar 8, la un „Autotractor" sau „TIR" trecut pe web lista arăta gol.
+      // pe web — cu doar 8, la un „Autotractor” sau „TIR” trecut pe web lista arăta gol.
       { k: 'vehicle_type', l: 'Categorie', t: 'select', opts: [{ v: '', l: '— alege —' }, ...CATEGORII] },
       // Desenul de pe hartă și din listă. Se leagă singur de categorie (ca pe web), dar se poate schimba.
       { k: 'icon', l: 'Pictogramă', t: 'icon' },
@@ -42,7 +42,7 @@ export const SPEC_SECTIONS: SpecSection[] = [
   {
     titlu: 'Motor & combustibil', icon: 'droplet', campuri: [
       // Aceleași valori ca în fișa de pe web (public/index.html) — altfel prețul carburantului și
-      // statisticile de consum, care se uită după „Motorina"/„Benzina", n-ar mai găsi nimic.
+      // statisticile de consum, care se uită după „Motorina”/„Benzina”, n-ar mai găsi nimic.
       { k: 'fuel_type', l: 'Combustibil', t: 'select', opts: [
         { v: '', l: '—' }, { v: 'Motorina', l: 'Motorină' }, { v: 'Benzina', l: 'Benzină' }, { v: 'GPL', l: 'GPL' },
         { v: 'Electric', l: 'Electric' }, { v: 'Hibrid', l: 'Hibrid' }, { v: 'Altul', l: 'Altul' }] },
@@ -82,7 +82,7 @@ export const SPEC_SECTIONS: SpecSection[] = [
     ],
   },
   {
-    // Echipamentul GPS, nu vehiculul: ca pe web („Administrativ & afișare"), cine administrează flota le vede,
+    // Echipamentul GPS, nu vehiculul: ca pe web („Administrativ & afișare”), cine administrează flota le vede,
     // nu le scrie. Restul rolurilor nu le văd deloc (vezi `admin` în VehicleSpecsView).
     titlu: 'Echipament GPS', icon: 'cpu', campuri: [
       { k: 'gps_model', l: 'Model dispozitiv GPS', ro: true, hint: 'Se completează la instalare, de RA Track.' },
@@ -91,7 +91,7 @@ export const SPEC_SECTIONS: SpecSection[] = [
   },
 ];
 
-// Câmpurile din „Greutăți" care, la categoriile cu axe, stau în „Config Camion" (ca pe web) — un singur
+// Câmpurile din „Greutăți” care, la categoriile cu axe, stau în „Config Camion” (ca pe web) — un singur
 // loc pe ecran pentru fiecare câmp. Valoarea e aceeași (același formular), deci cele două salvări nu se bat.
 export const CHEI_GREUTATI_CAMION = ['tare_weight', 'max_weight_legal', 'max_weight_construct'];
 
@@ -107,10 +107,10 @@ const gol = (v: any) => v === null || v === undefined || v === '';
 const numar = (v: any) => (v !== '' && v !== null && v !== undefined && !isNaN(Number(v)) ? Number(v) : null);
 
 // ─── Afișare (read-only) — arată DOAR ce e completat, ca fișa să nu fie un perete de liniuțe ───
-// `camion` = la vehiculul ăsta se vede „Config Camion" (categorie cu axe + fila lăsată pornită de firmă).
-// `admin` = omul are „modifică flota" (manageFleet). Pe web, echipamentul (model GPS, cartela SIM — canalul de
-// comenzi prin SMS al aparatului) și „Config Camion" (preț combustibil, cost pe tonă-km, limite pe axe) apar
-// DOAR în formularul de editare și în „Aparate GPS", ambele păzite pe server cu requireFleet. Un vizualizator,
+// `camion` = la vehiculul ăsta se vede „Config Camion” (categorie cu axe + fila lăsată pornită de firmă).
+// `admin` = omul are „modifică flota” (manageFleet). Pe web, echipamentul (model GPS, cartela SIM — canalul de
+// comenzi prin SMS al aparatului) și „Config Camion” (preț combustibil, cost pe tonă-km, limite pe axe) apar
+// DOAR în formularul de editare și în „Aparate GPS”, ambele păzite pe server cu requireFleet. Un vizualizator,
 // un dispecer sau un client nu le vede acolo — deci nici în fișa de pe telefon.
 export function VehicleSpecsView({ full, camion, admin }: { full: any; camion?: boolean; admin?: boolean }) {
   if (!full) return null;
@@ -125,7 +125,7 @@ export function VehicleSpecsView({ full, camion, admin }: { full: any; camion?: 
   const afiseaza = (f: SpecField, v: any) => {
     if (f.t === 'icon') { const o = PICTOGRAME.find((x) => x.v === v); return o ? o.l : String(v); }
     if (f.opts) { const o = f.opts.find((x) => String(x.v) === String(v)); return o ? o.l : String(v); }
-    // Coloanele NUMERIC vin din PostgreSQL ca șir cu zecimale („412000.0", „34.50") → normalizăm,
+    // Coloanele NUMERIC vin din PostgreSQL ca șir cu zecimale („412000.0”, „34.50”) → normalizăm,
     // altfel kilometrajul arată ca o măsurătoare de laborator.
     let s = String(v);
     if (f.t === 'number' && !isNaN(Number(v))) s = String(Number(v));
@@ -189,7 +189,7 @@ function AlegePictograma({ val, tip, set }: { val: string; tip: string; set: (v:
 }
 
 // ─── Editare — aceleași câmpuri, aceeași ordine ───
-// `ascunde`: chei afișate în altă parte a formularului (ex. tara și masele maxime, în „Config Camion").
+// `ascunde`: chei afișate în altă parte a formularului (ex. tara și masele maxime, în „Config Camion”).
 export function VehicleSpecsForm({ val, set, isSuper, ascunde }: { val: Record<string, any>; set: (k: string, v: any) => void; isSuper?: boolean; ascunde?: string[] }) {
   // Categoria nouă își aduce pictograma (ca pe web, onVehicleTypeChange); o poți schimba apoi de mână.
   const pune = (k: string, v: any) => {
@@ -275,7 +275,7 @@ export function specsFromFull(full: any): Record<string, any> {
   const out: Record<string, any> = {};
   const ia = (f: SpecField) => {
     const v = full?.[f.k] ?? '';
-    // „412000.0" din NUMERIC → „412000" în câmpul de editare (valoarea salvată e oricum numerică).
+    // „412000.0” din NUMERIC → „412000” în câmpul de editare (valoarea salvată e oricum numerică).
     if (f.t === 'number' && v !== '' && v !== null && !isNaN(Number(v))) return String(Number(v));
     return v === null ? '' : v;
   };
@@ -290,7 +290,7 @@ export function specsDeTrimis(ef: any): Record<string, any> {
   return out;
 }
 
-// ─── „Config Camion" (web: #edit-tab-truck) ───
+// ─── „Config Camion” (web: #edit-tab-truck) ───
 // PUT /truck-config SUPRASCRIE toate cele șase coloane deodată (db.updateTruckConfig): ce lipsește devine gol.
 // De aceea valorile se citesc din /full, iar la salvare pleacă MEREU obiectul întreg. Tara și masele maxime
 // vin din ACELAȘI formular care se trimite și pe /details — cele două salvări spun același lucru.

@@ -1,4 +1,4 @@
-// mail_primit.js — emailurile PRIMITE din panoul Mail, etapa 2 (Robert, 12.10: „hai cu etapa 2").
+// mail_primit.js — emailurile PRIMITE din panoul Mail, etapa 2 (Robert, 12.10: „hai cu etapa 2”).
 // Drumul: cineva scrie pe contact@ratrack.ro (sau pe adresa unui fondator) → Cloudflare Email Routing → un Email Worker
 // mic (tools/mail-worker.js) → POST /api/mail/primeste, cu emailul ÎNTREG (MIME) și parola comună → aici se citește.
 // Curat: fără bază și fără rețea — serverul îl cheamă, proba îl rulează pe aceleași cazuri. Regulile stau O DATĂ aici:
@@ -21,13 +21,13 @@ function textDinHtml(h) {
 }
 
 const EMAIL_MAX = 30 * 1024 * 1024;        // Cloudflare primește cel mult 25 MiB; restul e rezervă pentru antete
-const TEXT_MAX = 200000;                   // ca la „Trimise"
+const TEXT_MAX = 200000;                   // ca la „Trimise”
 const HTML_MAX = 500000;                   // un buletin lung tot încape; peste, se păstrează doar textul (nu un HTML tăiat)
 const ATAS_PASTRAT_MAX = 10 * 1024 * 1024; // atașamentele păstrate pe un email, adunate; peste, rămâne doar numele
 // O imagine din corp (cid:) se arată până la cât se păstrează pe un email (14.10, Robert: „nu pot să văd imaginile din
-// mailuri"): era 2 MB, iar o poză de telefon are 3–5 MB — rămânea „cid:", adică o imagine ruptă.
+// mailuri"): era 2 MB, iar o poză de telefon are 3–5 MB — rămânea „cid:”, adică o imagine ruptă.
 const IMAGINE_IN_CORP_MAX = ATAS_PASTRAT_MAX;
-// Pozele care se pot arăta în pagină: doar imagini „de pixeli". SVG NU (poate purta scripturi).
+// Pozele care se pot arăta în pagină: doar imagini „de pixeli”. SVG NU (poate purta scripturi).
 const IMAGINE_ARATATA = /^image\/(png|jpe?g|gif|webp|bmp)$/i;
 const CITAT_MAX = 4000;                    // cât din mesajul primit se citează în răspuns
 
@@ -37,7 +37,7 @@ function _email(s) { return String(s || '').trim().toLowerCase(); }
 // Ce spune serverul care a primit emailul despre expeditor (antetul pus deasupra de Cloudflare — de aceea se citește
 // PRIMUL găsit, cel mai de sus). 'picat' = expeditorul nu s-a putut dovedi (DMARC picat, sau SPF picat fără semnătură
 // bună): adresa poate fi falsă. 'trecut' = dovedit. null = nu știm (antetul lipsește) — atunci nu se scrie nimic pe ecran.
-// Un antet „trecut" scris de mâna expeditorului nu câștigă nimic: fără antet, tot nimic nu se scria.
+// Un antet „trecut” scris de mâna expeditorului nu câștigă nimic: fără antet, tot nimic nu se scria.
 function verificare(headerLines) {
   const l = (headerLines || []).filter(function (h) { return h && (h.key === 'arc-authentication-results' || h.key === 'authentication-results'); })[0];
   if (!l) return null;
@@ -95,7 +95,7 @@ async function citeste(raw) {
 }
 
 // ─── Răspunsul ───
-// „Re: " o singură dată (și „Răspuns:"/„RE:" puse de alții rămân cum sunt).
+// „Re: ” o singură dată (și „Răspuns:”/„RE:” puse de alții rămân cum sunt).
 function subiectRaspuns(s) {
   const t = String(s || '').trim() || '(fără subiect)';
   return (/^(re|răspuns|raspuns|rasp|răsp|aw|fw|fwd)\s*:/i.test(t) ? t : 'Re: ' + t).slice(0, 200);
@@ -115,15 +115,15 @@ function citat(m) {
   if (t.length > CITAT_MAX) t = t.slice(0, CITAT_MAX).replace(/\s+\S*$/, '') + ' […]';
   return '\n\n' + (cand ? 'Pe ' + cand + ', ' : '') + cine + ' a scris:\n' + t.split('\n').map(function (r) { return '> ' + r; }).join('\n');
 }
-// Ce se pune în fereastra „Răspunde" (le scrie serverul, ecranele doar le pun în casete).
+// Ce se pune în fereastra „Răspunde” (le scrie serverul, ecranele doar le pun în casete).
 function pentruRaspuns(m) {
   return { de_la: m.catre, catre: m.raspuns_catre || m.de_la || '', subiect: subiectRaspuns(m.subiect), text: citat(m) };
 }
 
-// ─── „Răspunde tuturor" și „Redirecționează" (Robert, 13.10: „4. da") ───
+// ─── „Răspunde tuturor” și „Redirecționează” (Robert, 13.10: „4. da”) ───
 // Adresele dintr-un antet („Ion <ion@x.ro>, b@y.ro") → ['ion@x.ro', 'b@y.ro'].
 function adreseDin(s) { return (String(s || '').match(/[^\s<>,;"'()]+@[^\s<>,;"'()]+\.[^\s<>,;"'()]+/g) || []).map(_email); }
-// La cine merge răspunsul (expeditorul / adresa lui de răspuns) + în Cc toți cei din „Către" și „Cc", fără adresele NOASTRE
+// La cine merge răspunsul (expeditorul / adresa lui de răspuns) + în Cc toți cei din „Către” și „Cc”, fără adresele NOASTRE
 // (`ale` = toate: comuna și ale fondatorilor) și fără dubluri. `cc` gol = nu e nimeni în plus (ecranul nu arată butonul).
 function pentruRaspunsTuturor(m, ale) {
   const noi = (ale || []).map(_email);
@@ -136,7 +136,7 @@ function pentruRaspunsTuturor(m, ale) {
   });
   return Object.assign({}, r, { cc: cc.join(', ') });
 }
-// „Fwd: " o singură dată.
+// „Fwd: ” o singură dată.
 function subiectRedirectionare(s) {
   const t = String(s || '').trim() || '(fără subiect)';
   return (/^(fwd|fw|tr|redirecționat|redirectionat)\s*:/i.test(t) ? t : 'Fwd: ' + t).slice(0, 200);
@@ -156,7 +156,7 @@ function pentruRedirectionare(m) {
     text: blocRedirectionat({ de: m.de_nume ? m.de_nume + ' <' + m.de_la + '>' : m.de_la, cand: m.trimis_la || m.primit_la, subiect: m.subiect,
       catre: m.antet_catre || m.catre, cc: m.antet_cc, text: m.text || textDinHtml(m.html) }) };
 }
-// Un email TRIMIS de noi: doar textul (la „Trimise" atașamentele nu se păstrează, doar numele lor).
+// Un email TRIMIS de noi: doar textul (la „Trimise” atașamentele nu se păstrează, doar numele lor).
 function pentruRedirectionareTrimis(t) {
   return { de_la: t.de_la, catre: '', subiect: subiectRedirectionare(t.subiect),
     text: blocRedirectionat({ de: t.de_la, cand: t.creat_la, subiect: t.subiect, catre: t.catre, cc: t.cc, text: t.text || textDinHtml(t.html) }) };
@@ -175,8 +175,8 @@ function cuImagini(html, atasamente) {
 }
 
 // Pozele atașate care NU sunt deja în corp (iPhone-ul trimite poza ca atașament lângă un text simplu; unele programe pun
-// o poză „inline" fără s-o lege de text): se arată sub email, ca imagini — tot din ce s-a păstrat, ca date în pagină.
-// `html` = corpul ORIGINAL (cu „cid:"), ca să se știe ce e deja în el.
+// o poză „inline” fără s-o lege de text): se arată sub email, ca imagini — tot din ce s-a păstrat, ca date în pagină.
+// `html` = corpul ORIGINAL (cu „cid:”), ca să se știe ce e deja în el.
 function imaginiAtasate(html, atasamente) {
   const h = String(html || '');
   return (atasamente || []).filter(function (a) {
@@ -187,7 +187,7 @@ function imaginiAtasate(html, atasamente) {
 // Anunțul din aplicație: fără nume, fără subiect (ca la cererile demo: datele omului stau doar în panou, nu și în
 // telefoanele noastre, prin serverele de notificări).
 function anunt(adresa, n) {
-  const de = (n % 100 >= 1 && n % 100 <= 19) ? ' ' : ' de ';   // „3 emailuri", „20 de emailuri"
+  const de = (n % 100 >= 1 && n % 100 <= 19) ? ' ' : ' de ';   // „3 emailuri”, „20 de emailuri”
   return { titlu: (n > 1 ? n + de + 'emailuri noi' : 'Email nou') + ' pe ' + adresa,
     corp: n > 1 ? 'Deschide panoul Mail ca să le citești.' : 'Deschide panoul Mail ca să-l citești.' };
 }

@@ -10,7 +10,7 @@
 // Proba lucrează pe două baze separate (PGlite, fără servicii externe):
 //   A — o umple cu date care au legături între ele și cu poziții pe două zile; face backup CRIPTAT, unul
 //       NECRIPTAT și unul în FORMATUL VECHI; verifică că un backup tăiat e refuzat; arhivează pozițiile pe ore
-//       la un „S3" fals pornit în același proces;
+//       la un „S3” fals pornit în același proces;
 //   B — bază goală: rulează scriptul real restore-backup.js, apoi numără și verifică legăturile; îl rulează din
 //       nou cu --wipe, pe copia în formatul vechi; apoi pune la loc pozițiile cu restore-positions.js (de două
 //       ori, ca să vadă că nu dublează nimic).
@@ -22,7 +22,7 @@ const os = require('os');
 const faza = (process.argv.find((a) => a.startsWith('--faza=')) || '').slice(7);
 const TABELE = ['companies', 'device_groups', 'drivers', 'devices', 'users', 'user_group_access', 'user_device_access', 'alerts', 'alert_history', 'invoices', 'invoice_counters'];
 
-// ════════════ Faza „seed": umple baza A și scrie backup-urile ════════════
+// ════════════ Faza „seed”: umple baza A și scrie backup-urile ════════════
 if (faza === 'seed') {
   (async () => {
     const [dirFisiere] = process.argv.slice(3);
@@ -92,7 +92,7 @@ if (faza === 'seed') {
     // O poziție de IERI seara: NU se arhivează încă. Aparatele care își descarcă memoria după miezul nopții scriu pe ieri.
     await q("INSERT INTO positions (imei, timestamp, latitude, longitude, speed, angle, satellites, priority) VALUES ('350000000000002', $1, 45, 21, 0, 0, 10, 0)", [new Date(Date.now() - 86400000).toISOString().slice(0, 10) + ' 22:30:00']);
     await q("INSERT INTO positions (imei, timestamp, latitude, longitude, speed, angle, satellites, priority) VALUES ('350000000000001', NOW(), 45, 21, 0, 0, 10, 0)");
-    // „S3" fals, în același proces: primește fișierele și le scrie pe disc, cu cheia drept cale.
+    // „S3” fals, în același proces: primește fișierele și le scrie pe disc, cu cheia drept cale.
     const http = require('http');
     const dirS3 = path.join(dirFisiere, 's3');
     const s3 = http.createServer((rq, rs) => {
@@ -123,7 +123,7 @@ if (faza === 'seed') {
   return;
 }
 
-// ════════════ Faza „strain": un rând în B care NU e în backup ════════════
+// ════════════ Faza „strain”: un rând în B care NU e în backup ════════════
 if (faza === 'strain') {
   (async () => {
     const db = require('./db');
@@ -135,7 +135,7 @@ if (faza === 'strain') {
   return;
 }
 
-// ════════════ Faza „numara": ce e acum în baza B ════════════
+// ════════════ Faza „numara”: ce e acum în baza B ════════════
 if (faza === 'numara') {
   (async () => {
     const db = require('./db');
@@ -157,7 +157,7 @@ if (faza === 'numara') {
   return;
 }
 
-// ════════════ Faza „pozitii": câte poziții sunt în baza B și dacă o valoare CAN a ajuns întreagă ════════════
+// ════════════ Faza „pozitii”: câte poziții sunt în baza B și dacă o valoare CAN a ajuns întreagă ════════════
 if (faza === 'pozitii') {
   (async () => {
     const db = require('./db');
@@ -212,7 +212,7 @@ function gata(code) {
   const B1 = await ruleaza([__filename, '--faza=numara'], DIR_B);
   T('baza B se poate citi după restaurare', B1.code === 0 && !!B1.rez, B1.out.slice(-300));
   if (!B1.rez) return gata(1);
-  for (const t of TABELE) T('„' + t + '": ' + A.rez.numar[t] + ' rânduri, câte erau', B1.rez.numar[t] === A.rez.numar[t], 'în B: ' + B1.rez.numar[t]);
+  for (const t of TABELE) T('„' + t + '”: ' + A.rez.numar[t] + ' rânduri, câte erau', B1.rez.numar[t] === A.rez.numar[t], 'în B: ' + B1.rez.numar[t]);
   T('vehiculul își păstrează grupul și șoferul', B1.rez.man && B1.rez.man.grup === 'Camioane' && B1.rez.man.sofer === 'Ion Popescu', JSON.stringify(B1.rez.man));
   T('dispecerul își păstrează dreptul pe grup', B1.rez.acces.length === 1 && B1.rez.acces[0] === 'Dube', JSON.stringify(B1.rez.acces));
   T('contorul de facturi continuă de la 42 (nu repornește seria fiscală)', B1.rez.contor === 42, B1.rez.contor);
@@ -222,9 +222,9 @@ function gata(code) {
   // Un rând care NU e în backup: după --wipe trebuie să dispară. Altfel proba trecea și dacă golirea nu se făcea deloc.
   await ruleaza([__filename, '--faza=strain'], DIR_B);
   const R2 = await ruleaza(['restore-backup.js', path.join(FIS, A.rez.vechi), '--wipe'], DIR_B);
-  T('restaurarea „curată" se termină fără erori', R2.code === 0, 'cod ' + R2.code + ' · ' + R2.out.split('\n').filter((l) => /erori|eșuat|EȘUAT/.test(l)).slice(-4).join(' | '));
+  T('restaurarea „curată” se termină fără erori', R2.code === 0, 'cod ' + R2.code + ' · ' + R2.out.split('\n').filter((l) => /erori|eșuat|EȘUAT/.test(l)).slice(-4).join(' | '));
   // Numărătoarea de mai jos poate ieși bine și din noroc: datele erau deja în B din pasul 2, deci o golire
-  // care pică pe o cheie străină lasă rândurile vechi pe loc și totul „se potrivește". Cerem explicit ca
+  // care pică pe o cheie străină lasă rândurile vechi pe loc și totul „se potrivește”. Cerem explicit ca
   // golirea să nu fi eșuat NICIUNDE.
   const golireRatata = R2.out.split('\n').filter((l) => /wipe eșuat|golire eșuată/.test(l));
   T('golirea nu pică pe nicio legătură între tabele', golireRatata.length === 0, golireRatata.slice(0, 3).join(' | '));
@@ -235,7 +235,7 @@ function gata(code) {
   T('și legăturile sunt tot la locul lor', B2.rez.man && B2.rez.man.grup === 'Camioane' && B2.rez.acces[0] === 'Dube');
   T('golirea chiar a scos ce nu era în backup', B2.rez.strain === 0, B2.rez.strain);
 
-  console.log('\n3b. Un backup cu un tabel INCOMPLET nu golește tabelul și nu iese „reușit"');
+  console.log('\n3b. Un backup cu un tabel INCOMPLET nu golește tabelul și nu iese „reușit”');
   await ruleaza([__filename, '--faza=strain'], DIR_B);
   const R3 = await ruleaza(['restore-backup.js', path.join(FIS, A.rez.partial), '--wipe'], DIR_B);
   T('restaurarea raportează eroare (cod 2), nu succes', R3.code === 2, 'cod ' + R3.code);

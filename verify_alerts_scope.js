@@ -1,7 +1,7 @@
 // verify_alerts_scope.js — alertele create de super-admin aparțin unei COMPANII anume.
 //
 // Situația reală care a declanșat asta: platformă cu mai multe companii, câte un vehicul în fiecare.
-// Super-adminul crea o regulă „Toate vehiculele" și, pentru că el n-are companie, regula se salva cu
+// Super-adminul crea o regulă „Toate vehiculele” și, pentru că el n-are companie, regula se salva cu
 // company_id NULL. Efectul, în motorul de alerte (server.js, evaluateAlerts):
 //     if (alert.imei) { ... } else if (alert.company_id != null && ...) continue;
 // o regulă fără vehicul ȘI fără companie nu intră pe nicio ramură de excludere → se declanșează pentru
@@ -103,7 +103,7 @@ function kill(p) { return new Promise((r) => { if (!p) return r(); p.once('exit'
     const bad = await req(S, 'POST', '/api/alerts', { name: 'Gresit', type: 'speed', imei: IMEI_A, condition: { speed: 90 }, enabled: true, company_id: coB.id });
     t('vehicul care nu e al companiei alese → refuzat', bad.status === 400, 'status ' + bad.status + ' ' + JSON.stringify(bad.body));
 
-    // ── „Toată platforma" rămâne posibilă, dar EXPLICIT ──
+    // ── „Toată platforma” rămâne posibilă, dar EXPLICIT ──
     const glob = await req(S, 'POST', '/api/alerts', { name: 'Global', type: 'speed', imei: null, condition: { speed: 130 }, enabled: true, company_id: null });
     t('regula pe toată platforma rămâne posibilă, cerută explicit', glob.status === 200 && glob.body.company_id == null, JSON.stringify(glob.body));
     const seen3 = (await req(U, 'GET', '/api/alerts')).body || [];
@@ -131,7 +131,7 @@ function kill(p) { return new Promise((r) => { if (!p) return r(); p.once('exit'
     t('regula veche PE UN VEHICUL a primit compania vehiculului',
       fixed && Number(fixed.company_id) === Number(coB.id), JSON.stringify(fixed && fixed.company_id));
     // Regresia care a dat peste cap testul întâi: ensureTenancy rula la FIECARE pornire și, dacă exista
-    // măcar un vehicul fără companie, muta în „Compania mea" toate rândurile fără companie din șapte
+    // măcar un vehicul fără companie, muta în „Compania mea” toate rândurile fără companie din șapte
     // tabele — inclusiv alertele pe toată platforma. Un vehicul nou adoptat rescria tăcut reguli
     // care n-aveau nicio legătură cu el.
     t('regula veche FĂRĂ vehicul rămâne neatinsă (nu se ghicește compania)',

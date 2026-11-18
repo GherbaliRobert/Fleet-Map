@@ -1,10 +1,10 @@
-// azi_la_noi.js — „Azi la noi": primul mesaj al asistentului fondatorilor (macheta „tot un chat", Alin, 29–30.10: „1. da, 2. da,
+// azi_la_noi.js — „Azi la noi”: primul mesaj al asistentului fondatorilor (macheta „tot un chat”, Alin, 29–30.10: „1. da, 2. da,
 // 3. da"). Ce cere o mână de om AZI la firmă, cel mult 5 rânduri, în ordinea hotărâtă: bani în pericol, clienți care așteaptă,
 // contracte, montaj, de facturat, aparate, firma noastră. Pe REGULI, fără model: nu costă nimic.
 //
 // Curat: primește datele deja adunate de server (cu regulile care există: neplata, contractele, montajul, stocul, emailul) și
 // întoarce rândurile cu textele gata scrise și unde duce fiecare clic (`tinta`). Pagina doar desenează (textContent).
-// Un fel cu mai multe lucruri = UN rând strâns, spre lista lui (ca „Azi la tine" al clienților).
+// Un fel cu mai multe lucruri = UN rând strâns, spre lista lui (ca „Azi la tine” al clienților).
 'use strict';
 const { numar } = require('./contracts');
 
@@ -21,14 +21,14 @@ function ziua(acum) { const s = _fmtZi.format(new Date(acum)); return s.charAt(0
 function ora(acum) { return _fmtOra.format(new Date(acum)); }
 function oraRo(acum) { return Number(ora(acum).slice(0, 2)) || 0; }
 
-// „1.240 lei" / „4,10 $": fără formatatoare de numere (nu ne trebuie unul la fiecare apel).
+// „1.240 lei” / „4,10 $": fără formatatoare de numere (nu ne trebuie unul la fiecare apel).
 function _mii(n) { return String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 function lei(n) { return (Number(n) < 0 ? '−' : '') + _mii(Number(n) || 0) + ' lei'; }
 function dolari(n) {
   const c = Math.round(Math.abs(Number(n) || 0) * 100);
   return _mii(Math.floor(c / 100)) + ',' + String(c % 100).padStart(2, '0') + ' $';
 }
-// „de 5 ore" / „de 2 zile" / „de 40 de minute": cât așteaptă ceva.
+// „de 5 ore” / „de 2 zile” / „de 40 de minute”: cât așteaptă ceva.
 function deCand(la, acum) {
   const min = Math.max(0, Math.floor((acum - la) / 60000));
   if (min < 60) return numar(Math.max(1, min), 'minut', 'minute');
@@ -38,8 +38,8 @@ function deCand(la, acum) {
 }
 function zz(ms) { const s = _fmtZi.formatToParts(new Date(ms)); const d = s.find((p) => p.type === 'day'), m = s.find((p) => p.type === 'month'); return (d ? d.value : '') + ' ' + (m ? m.value : ''); }
 
-// Prenumele (05.11): O regulă, în prenume.js — cuvântul din nume care e un prenume („Tilvar Alin" → „Alin"), altfel primul cuvânt,
-// fără nume din adresa de email („alin.tilvar@…" → „Alin"). Aceeași ca la „Salut, Alin!" din RA Insight (/api/me → prenume).
+// Prenumele (05.11): O regulă, în prenume.js — cuvântul din nume care e un prenume („Tilvar Alin” → „Alin”), altfel primul cuvânt,
+// fără nume din adresa de email („alin.tilvar@…” → „Alin”). Aceeași ca la „Salut, Alin!” din RA Insight (/api/me → prenume).
 function prenume(nume, email) { return require('./prenume').prenumeDin(nume, email); }
 function salut(nume, acum, email) {
   const h = oraRo(acum), p = prenume(nume, email);
@@ -154,7 +154,7 @@ function stoc(l) {
 function firmaNoastra(f) {
   f = f || {};
   const r = [];
-  // Motivul vine din `mailer.motiv(...).scurt` (o propoziție întreagă) — aceeași ca în „Stare producție".
+  // Motivul vine din `mailer.motiv(...).scurt` (o propoziție întreagă) — aceeași ca în „Stare producție”.
   if (f.emailEroare) r.push({ fel: 'firma', nivel: 'r', text: 'Emailurile nu pleacă. ' + String(f.emailEroare).trim().replace(/([^.!?])$/, '$1.'), buton: 'Stare producție', tinta: { fel: 'sectiune', tab: 'dashboard' } });
   if ((f.emitentLipsa || []).length) {
     const l = f.emitentLipsa, ult = l.length > 1 ? l.slice(0, -1).join(', ') + ' și ' + l[l.length - 1] : l[0];
@@ -180,7 +180,7 @@ function randuri(d) {
   toate.sort((a, b) => ORDINEA.indexOf(a.fel) - ORDINEA.indexOf(b.fel));   // stabil: în interiorul unui fel rămâne ordinea de sus
   const arata = toate.slice(0, MAX_RANDURI);
   // Banda banilor pentru AI (04.11, sold_ai.js → `d.ai`): stă deasupra, mereu la vedere, deci nu intră în cele 5 rânduri; când e roșie
-  // sau portocalie, se numără la „de văzut", ca titlul să nu spună „totul e în regulă" lângă un sold pe terminate.
+  // sau portocalie, se numără la „de văzut”, ca titlul să nu spună „totul e în regulă” lângă un sold pe terminate.
   const extra = d.ai && (d.ai.nivel === 'r' || d.ai.nivel === 'w') ? 1 : 0, n = toate.length + extra;
   return {
     zi: ziua(acum), ora: ora(acum), salut: salut(d.nume, acum, d.email),

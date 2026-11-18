@@ -12,27 +12,27 @@ import './detail.css';
 import './firma.css';
 import './companii.css';
 
-// Fișa firmei → „Abonament & plăți" (fondatori), ca pe web (_raxCodAbonament / _raxAboHtml):
+// Fișa firmei → „Abonament & plăți” (fondatori), ca pe web (_raxCodAbonament / _raxAboHtml):
 //   • starea accesului + suspendarea manuală (motiv obligatoriu) / reactivarea;
-//   • oferta firmei: preț / vehicul fără CAN și cu CAN, bifele „cu CAN" pe vehicul, notă (suma fixă pentru agenții AI a ieșit pe
+//   • oferta firmei: preț / vehicul fără CAN și cu CAN, bifele „cu CAN” pe vehicul, notă (suma fixă pentru agenții AI a ieșit pe
 //     13.11 — agenții sunt incluși, fără cost);
-//   • modulele AI; RA Insight: drumul spre fila „Acces" (pachetul firmei);
+//   • modulele AI; RA Insight: drumul spre fila „Acces” (pachetul firmei);
 //   • prețul lunar — SOCOTIT DE SERVER (overview.price, după oferta salvată). Web-ul are aici o
 //     previzualizare socotită în pagină (_raxClientPrice); pe telefon NU se copiază regula prețului:
-//     după „Salvează oferta" se recitește fișa, iar prețul arătat e cel al serverului.
-//     ⚠ NU e suma facturii: fișa numără mașinile după bifele „cu CAN" (FMS-urile intră la CAN sau fără
+//     după „Salvează oferta” se recitește fișa, iar prețul arătat e cel al serverului.
+//     ⚠ NU e suma facturii: fișa numără mașinile după bifele „cu CAN” (FMS-urile intră la CAN sau fără
 //     CAN), pe când factura (_companyBillCounts) pune FMS-urile separat, la prețul FMS, oricum ar fi
 //     bifate. La o firmă cu FMS cele două pot ieși diferit — se spune pe ecran. (Cerere către server:
 //     overview.price din numărătoarea facturii.)
 //   • păstrarea istoricului (24.09): 12 luni incluse, mai mult se plătește; coborârea ȘTERGE date, deci
 //     cere confirmare pe față. Cifrele regulii (incluse / cel mult) vin de la server (`pastrare_regula`);
 //   • aparatele închiriate (25.09): doar de citit — se schimbă prin act adițional, nu dintr-o casetă;
-//   • (înregistrarea unei plăți cu „luni de acces" a plecat pe 29.09: plata se trece pe factură.)
+//   • (înregistrarea unei plăți cu „luni de acces” a plecat pe 29.09: plata se trece pe factură.)
 
 const s = (v: any) => (v != null ? String(v) : '');
 function lei2(v: any) { return (Number(v) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' lei'; }
 // Ce se plătește lunar, din cifrele trimise de server, adunate EXACT ca pe web (raxAboRecalc): mașinile (overview.price, după
-// oferta salvată) + pachetul RA Insight („+ RA Insight Pro", 13.11 — pe orice ofertă, și fără ofertă) + păstrarea istoricului,
+// oferta salvată) + pachetul RA Insight („+ RA Insight Pro”, 13.11 — pe orice ofertă, și fără ofertă) + păstrarea istoricului,
 // când e plătită + chiria aparatelor închiriate. Fiecare e rând separat pe factură (buildInvoiceLines).
 // Telefonul nu socotește niciun preț: doar adună patru sume pe care i le-a dat serverul.
 function lunar(ov: any) {
@@ -44,15 +44,15 @@ function lunar(ov: any) {
   const chirie = ov && ov.chirie ? Number(ov.chirie.totalRON) || 0 : 0;
   return { baza, pachet, eticheta: String(bd.aiPachetEticheta || 'RA Insight'), past, chirie, total: Math.round((baza + pachet + past + chirie) * 100) / 100 };
 }
-// „; pachetul RA Insight și chiria aparatelor sunt pe rânduri separate pe factură" / „; pachetul RA Insight e pe un rând separat
+// „; pachetul RA Insight și chiria aparatelor sunt pe rânduri separate pe factură” / „; pachetul RA Insight e pe un rând separat
 // pe factură" — doar ce e chiar pe factură, cu acordul cerut.
 function notaRanduri(b: { pachet: number; past: number; chirie: number }) {
   const l = [b.pachet ? 'pachetul RA Insight' : '', b.past ? 'păstrarea istoricului' : '', b.chirie ? 'chiria aparatelor' : ''].filter(Boolean);
   if (!l.length) return '';
   return '; ' + (l.length > 1 ? l.slice(0, -1).join(', ') + ' și ' + l[l.length - 1] + ' sunt pe rânduri separate' : l[0] + ' e pe un rând separat') + ' pe factură';
 }
-// Selecția „Cât se păstrează", pornită din ce scrie pe firmă (ca _raxPastrareHtml): plătită → lunile ei
-// (24 / 36, altfel „alt"); neplătită → cele incluse. Fără regulă sau fără păstrare → secțiunea nu apare.
+// Selecția „Cât se păstrează”, pornită din ce scrie pe firmă (ca _raxPastrareHtml): plătită → lunile ei
+// (24 / 36, altfel „alt”); neplătită → cele incluse. Fără regulă sau fără păstrare → secțiunea nu apare.
 function formaPastrarii(ov: any) {
   const R = ov && ov.pastrare_regula, P = ov && ov.pastrare;
   if (!R || !P) return { sel: '', alt: '', pret: '' };
@@ -69,7 +69,7 @@ function bifeCan(ov: any): Record<string, boolean> {
   return m;
 }
 
-// `onFacturi` — „Deschide fila Facturi" (web: raxCodTab('facturi')): fișa schimbă fila; plata se trece acolo.
+// `onFacturi` — „Deschide fila Facturi” (web: raxCodTab('facturi')): fișa schimbă fila; plata se trece acolo.
 export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReload: () => void; onFacturi?: () => void }) {
   const loc = useLocation();
   const co = ov.company || {};
@@ -86,14 +86,14 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
   const [pastCob, setPastCob] = useState<{ de: number; la: number; pret: number } | null>(null);
 
   // Fișa s-a recitit → formularul pornește din ce a scris serverul. DAR nu peste ce scrii acum: o fișă
-  // recitită (de exemplu după o schimbare din fila „Acces") nu are voie să-ți șteargă prețurile tastate și încă nesalvate.
+  // recitită (de exemplu după o schimbare din fila „Acces”) nu are voie să-ți șteargă prețurile tastate și încă nesalvate.
   const ofAtins = useRef(false), pastAtins = useRef(false);
   useEffect(() => {
     if (!ofAtins.current) { setOf(formaOfertei(ov)); setCan(bifeCan(ov)); setModificat(false); }
     if (!pastAtins.current) setPast(formaPastrarii(ov));
   }, [ov]);
 
-  // Butonul „înapoi" de pe Android închide foaia de confirmare deschisă, nu fișa firmei de sub ea.
+  // Butonul „înapoi” de pe Android închide foaia de confirmare deschisă, nu fișa firmei de sub ea.
   // (Cele două foi nu se deschid niciodată deodată.)
   useInapoiInchide(reactivez, () => { if (busy === 'susp') return false; setReactivez(false); return true; });
   useInapoiInchide(!!pastCob, () => { if (busy === 'past') return false; setPastCob(null); return true; });
@@ -108,7 +108,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
   if (a.status === 'expired') {
     fel = 'bad';
     titlu = manual ? 'Acces oprit de noi' : 'Acces suspendat pentru neplată';
-    if (manual && co.suspend_reason) text = 'Motivul scris: „' + co.suspend_reason + '".';
+    if (manual && co.suspend_reason) text = 'Motivul scris: „' + co.suspend_reason + '”.';
     else if (np && np.factura) text = 'Factura ' + (np.factura.numar || '') + ' e neachitată de ' + np.zile + (Number(np.zile) === 1 ? ' zi.' : de(np.zile) + 'zile.');
     text += (text ? ' ' : '') + 'Clientul nu poate intra deloc. Aparatele transmit mai departe, datele nu se pierd.';
   } else if (np && np.faza === 'avertisment') {
@@ -116,7 +116,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
     titlu = 'Factură restantă — ' + np.zilePanaLaSuspendare + de(np.zilePanaLaSuspendare) + 'zile până la suspendare';
     text = 'Factura ' + ((np.factura || {}).numar || '') + ' a fost scadentă acum ' + np.zile + de(np.zile) + 'zile. Suspendarea vine singură dacă nu se plătește.';
   } else {
-    // Fără „nelimitat" și fără „abonament în grație": ceasul pe perioade plătite a plecat pe 29.09.
+    // Fără „nelimitat” și fără „abonament în grație”: ceasul pe perioade plătite a plecat pe 29.09.
     fel = a.status === 'active' ? 'ok' : '';
     titlu = 'Acces în regulă';
     text = 'Nicio factură restantă.';
@@ -139,12 +139,12 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
 
   // ── Oferta ──
   async function salveazaOferta() {
-    if (of.priceNoneRON === '') { showToast('Pune cel puțin „Preț / vehicul fără CAN".', true); return; }
+    if (of.priceNoneRON === '') { showToast('Pune cel puțin „Preț / vehicul fără CAN”.', true); return; }
     const vechi = ov.offer || {};
     const canImeis = Object.keys(can).filter((k) => can[k]);
     // Serverul ÎNLOCUIEȘTE oferta întreagă: ce nu e pe ecran (prețul FMS, limita de vehicule) se trimite
     // înapoi neschimbat. Cheile modelelor vechi (fix / pe vehicul / trepte) se golesc, ca pe web — altfel
-    // „otrăvesc" oferta pe vehicul.
+    // „otrăvesc” oferta pe vehicul.
     const oferta = {
       name: of.name, priceNoneRON: of.priceNoneRON, priceCanRON: of.priceCanRON,
       priceFmsRON: vechi.priceFmsRON != null ? vechi.priceFmsRON : null,
@@ -207,7 +207,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
   const nFms = vehicles.filter((v) => v.can_type === 'fms').length;
   // Nota despre FMS și trimiterea la ea din nota plății ies din ACEEAȘI condiție. Diferența FMS există doar cu
   // o ofertă salvată: fără ofertă, factura nu pune niciun rând pe mașini (0 lei), deci suma propusă (păstrare,
-  // chirie) e chiar suma facturii — un „nu suma facturii" ar fi fals, iar nota la care trimite nici nu e pe ecran.
+  // chirie) e chiar suma facturii — un „nu suma facturii” ar fi fals, iar nota la care trimite nici nu e pe ecran.
   const notaFms = arePret && nFms > 0;
   const camp = (label: string, k: keyof ReturnType<typeof formaOfertei>, ph: string, hint?: string, numar = true) => (
     <div class="fld"><label>{label}</label>
@@ -257,8 +257,8 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
       </div>
 
       <div class="fm-card pad">
-        <h3 style="margin-top:0">Vehicule „cu CAN" (bifează)</h3>
-        <div class="co-note" style="margin:0 0 6px">Bifat = preț „cu CAN"; nebifat = „fără CAN". Bifa pornește din detecția automată (insigna), dar o poți schimba pe fiecare vehicul.</div>
+        <h3 style="margin-top:0">Vehicule „cu CAN” (bifează)</h3>
+        <div class="co-note" style="margin:0 0 6px">Bifat = preț „cu CAN”; nebifat = „fără CAN”. Bifa pornește din detecția automată (insigna), dar o poți schimba pe fiecare vehicul.</div>
         {vehicles.length === 0 && <div class="co-note">Niciun vehicul în companie.</div>}
         {vehicles.map((v) => {
           const on = !!can[v.imei];
@@ -274,7 +274,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         })}
       </div>
 
-      {/* (Aici stătea „Add-on AI" — o sumă fixă pe lună pentru agenții AI. A ieșit pe 13.11, Alin: „2. DA": agenții sunt incluși.) */}
+      {/* (Aici stătea „Add-on AI” — o sumă fixă pe lună pentru agenții AI. A ieșit pe 13.11, Alin: „2. DA”: agenții sunt incluși.) */}
       <div class="fm-card pad">
         <div class="frm">
           {camp('Notă (intern)', 'note', 'detalii ofertă / contract', undefined, false)}
@@ -283,8 +283,8 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         </div>
       </div>
 
-      {/* Modulele AI se pornesc DOAR din fila „Acces" (13.11, Alin: „1 da"), ca pe web: aici stăteau încă o dată, ca
-          comutatoare („Asistent AI", „Agenți AI"). Prețul lunar le citește tot de la server. */}
+      {/* Modulele AI se pornesc DOAR din fila „Acces” (13.11, Alin: „1 da”), ca pe web: aici stăteau încă o dată, ca
+          comutatoare („Asistent AI”, „Agenți AI”). Prețul lunar le citește tot de la server. */}
       <div class="fm-card pad">
         <h3 style="margin-top:0">Module AI</h3>
         <div class="co-note">RA Insight (pe pachete) și cei 6 agenți AI se pornesc și se opresc din fila „Acces”; tot acolo se alege pachetul RA Insight. Agenții AI sunt incluși, fără cost.</div>
@@ -341,7 +341,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
       {/* Prețul lunar, de la server */}
       <div class="fm-card pad">
         <h3 style="margin-top:0">Preț lunar</h3>
-        {!arePret && <div class="co-note" style="margin:0">{bani.pachet || bani.past || bani.chirie ? 'Fără ofertă — vehiculele nu se taxează (0 lei).' : 'Fără ofertă — 0 lei.'} Pune prețul mai sus și apasă „Salvează oferta".</div>}
+        {!arePret && <div class="co-note" style="margin:0">{bani.pachet || bani.past || bani.chirie ? 'Fără ofertă — vehiculele nu se taxează (0 lei).' : 'Fără ofertă — 0 lei.'} Pune prețul mai sus și apasă „Salvează oferta”.</div>}
         {arePret && (
           <>
             {pr.model === 'fix' && <div class="co-ln"><span>Tarif fix lunar</span><span>{lei2(bd.base)}</span></div>}
@@ -362,7 +362,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
             {(pr.model === 'pe-vehicul' || pr.model === 'fara-oferta') && <div class="co-ln"><span>Preț pe vehicul · {(Number(bc.none) || 0) + (Number(bc.can) || 0)} vehicule</span><span>{lei2(bd.base)}</span></div>}
           </>
         )}
-        {/* Aceleași rânduri ca pe web și ca pe factură: pachetul RA Insight (13.11; numele, ca „RA Insight Pro", vine de la server),
+        {/* Aceleași rânduri ca pe web și ca pe factură: pachetul RA Insight (13.11; numele, ca „RA Insight Pro”, vine de la server),
             păstrarea plătită și chiria aparatelor. */}
         {bani.pachet ? <div class="co-ln"><span>+ {bani.eticheta}</span><span>{lei2(bani.pachet)}</span></div> : null}
         {bani.past ? <div class="co-ln"><span>+ Păstrarea istoricului · {PA.luni}{de(PA.luni)}luni</span><span>{lei2(bani.past)}</span></div> : null}
@@ -375,17 +375,17 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
         ) : null}
         {notaFms && (
           <div class="co-msg" style="color:var(--co-warn);font-weight:700">
-            Firma are {nFms}{de(nFms)}{nFms === 1 ? 'vehicul FMS' : 'vehicule FMS'}. Pe factură, FMS-urile se socotesc separat, la prețul FMS (sau „cu CAN", dacă lipsește), oricum ar fi bifate aici — factura poate ieși altfel decât totalul ăsta.
+            Firma are {nFms}{de(nFms)}{nFms === 1 ? 'vehicul FMS' : 'vehicule FMS'}. Pe factură, FMS-urile se socotesc separat, la prețul FMS (sau „cu CAN”, dacă lipsește), oricum ar fi bifate aici — factura poate ieși altfel decât totalul ăsta.
           </div>
         )}
-        {modificat && <div class="co-msg" style="color:var(--co-warn);font-weight:700">Ai schimbat oferta — apasă „Salvează oferta" ca să vezi prețul nou.</div>}
+        {modificat && <div class="co-msg" style="color:var(--co-warn);font-weight:700">Ai schimbat oferta — apasă „Salvează oferta” ca să vezi prețul nou.</div>}
       </div>
 
-      {/* Plățile (29.09): se trec PE FACTURĂ. Formularul „Înregistrează plata + extinde accesul" (luni × preț)
-          a plecat odată cu ceasul vechi „acces până la", care bloca clienți care plătiseră tot. */}
+      {/* Plățile (29.09): se trec PE FACTURĂ. Formularul „Înregistrează plata + extinde accesul” (luni × preț)
+          a plecat odată cu ceasul vechi „acces până la”, care bloca clienți care plătiseră tot. */}
       <div class="fm-card pad">
         <h3 style="margin-top:0">Plăți</h3>
-        <div class="co-note" style="margin:0">Plata se trece pe factură, din fila „Facturi" (butonul „Marchează plătită" de pe rând; la proformă, „Încasată"). Accesul clientului se oprește doar pentru o factură neplătită la 15 zile după scadență — nu mai există „acces până la".</div>
+        <div class="co-note" style="margin:0">Plata se trece pe factură, din fila „Facturi” (butonul „Marchează plătită” de pe rând; la proformă, „Încasată”). Accesul clientului se oprește doar pentru o factură neplătită la 15 zile după scadență — nu mai există „acces până la”.</div>
         {onFacturi && (
           <div class="fm-btns" style="margin-top:10px">
             <button class="fm-btn" onClick={onFacturi}><Icon name="report" size={15} /> Deschide fila Facturi</button>

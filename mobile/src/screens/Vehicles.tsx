@@ -29,7 +29,7 @@ export function Vehicles() {
   // Venind din Statistici (ex: ?status=moving) deschidem direct HARTA, filtrată pe acea stare
   const [showMap, setShowMap] = useState(!!dinAdresa);
   const [follow, setFollow] = useState(true); // urmărire: reîncadrează harta pe toate mașinile (toggle off = pan liber)
-  // „Arată pe hartă" din lista cu bife: `n` crește la fiecare atingere, ca harta să se recentreze și a doua oară.
+  // „Arată pe hartă” din lista cu bife: `n` crește la fiecare atingere, ca harta să se recentreze și a doua oară.
   const [focus, setFocus] = useState<{ imei: string; n: number } | null>(null);
   const [alegere, setAlegere] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -49,7 +49,7 @@ export function Vehicles() {
   const alese = sel ? list.filter((v) => sel.has(v.imei)) : list;
   const ascunse = list.length - alese.length;
 
-  // Ordinea: alegerea (bifele) → căutarea → cadranul. „Dintre cele alese, cele în mișcare".
+  // Ordinea: alegerea (bifele) → căutarea → cadranul. „Dintre cele alese, cele în mișcare”.
   // Pe telefon cadranul și căutarea filtrează și harta — dar amândouă rămân mereu la vedere, deasupra ei.
   const cautate = alese.filter((v) => raCauta(q, v.name, v.plate, v.imei));
   // Felurile se numără din ce vezi (alegere + căutare); un fel cu zero nu apare, iar cu un singur fel filtrul tace.
@@ -63,7 +63,7 @@ export function Vehicles() {
   const cuRemorci = modulIncarcare(me.value);
 
   // Exportul listei de vehicule: ca pe web (Management → Vehicule), doar pentru cine poate modifica flota
-  // și n-are ecranul „Vehicule" tăiat din rol.
+  // și n-are ecranul „Vehicule” tăiat din rol.
   const poateExporta = !!me.value?.permissions?.manageFleet && !ecranAscuns('vehicule');
 
   function deschideAlegerea() {
@@ -88,7 +88,7 @@ export function Vehicles() {
     if (exporting) return;
     setExporting(fmt);
     try {
-      // Numele îl dă serverul („RA-Track - Raport Situația flotei - 24.09.2026.xlsx", din sendReport);
+      // Numele îl dă serverul („RA-Track - Raport Situația flotei - 24.09.2026.xlsx”, din sendReport);
       // cel de aici e doar rezerva pentru cazul rar în care antetul lipsește.
       const azi = new Date().toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' });
       if (fmt === 'csv') await salveazaDeLaServer('/api/devices/export.csv', 'vehicule.csv');
@@ -118,7 +118,7 @@ export function Vehicles() {
       </header>
 
       {/* O singură căutare, mereu la vedere (și pe hartă), cu X de golire — ca să nu rămână niciodată un
-          filtru ascuns. Lângă ea, pastila „câte vehicule vezi din total", care deschide lista cu bife. */}
+          filtru ascuns. Lângă ea, pastila „câte vehicule vezi din total”, care deschide lista cu bife. */}
       <div class="loc-bar">
         <div class="loc-search">
           <Icon name="search" size={18} />
@@ -187,7 +187,7 @@ export function Vehicles() {
           ) : filtered.length === 0 ? (
             <div class="center-msg">
               {list.length === 0 ? 'Niciun vehicul disponibil.'
-                : (sel && alese.length === 0) ? 'Niciun vehicul ales. Apasă „Arată tot" ca să vezi toată flota.'
+                : (sel && alese.length === 0) ? 'Niciun vehicul ales. Apasă „Arată tot” ca să vezi toată flota.'
                 : 'Niciun rezultat.'}
             </div>
           ) : (
@@ -235,7 +235,7 @@ export function Vehicles() {
   );
 }
 
-// ─── Foaia „Vehicule pe hartă": Toate / Niciuna, grupele cu bifă pe grupă, „Fără grup" ───
+// ─── Foaia „Vehicule pe hartă”: Toate / Niciuna, grupele cu bifă pe grupă, „Fără grup” ───
 // Când cauți, lista devine plată (ca pe web). Bifele țin doar cât e deschisă aplicația.
 function AlegeVehicule({ list, q, setQ, onClose, onArata }: {
   list: Position[]; q: string; setQ: (s: string) => void; onClose: () => void; onArata: (imei: string) => void;

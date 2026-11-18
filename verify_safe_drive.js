@@ -1,4 +1,4 @@
-// verify_safe_drive.js — Safe Drive & costuri (pasul 3 din RA Insight; Alin, 02.10: „SAFE DRIVE, CU COSTURI").
+// verify_safe_drive.js — Safe Drive & costuri (pasul 3 din RA Insight; Alin, 02.10: „SAFE DRIVE, CU COSTURI”).
 //
 //   node verify_safe_drive.js
 //
@@ -6,12 +6,12 @@
 //   1. regulile (condus.js): o lună de date pe două mașini, trecută prin socoteala pe zile, dă EXACT cifrele raportului
 //      EcoDrive (manevre, km, scor pe mașină și pe flotă), ale clasamentului pe șoferi (și cu un schimb de șofer la mijlocul
 //      lunii) și ale raportului Ralanti (opriri, litri); litrii și leii pe un exemplu socotit de mână; viteza (o treime din
-//      consum pe aer, peste 90 km/h); prețurile pe eveniment curățate; „înainte / după" o discuție; unde și când; zilele pe
+//      consum pe aer, peste 90 km/h); prețurile pe eveniment curățate; „înainte / după” o discuție; unde și când; zilele pe
 //      ora României; recomandările;
-//   2. zilele (safe_drive.js): ce se reface (zi socotită înainte să se termine, „azi" la 15 minute, viitorul nu), șirurile,
+//   2. zilele (safe_drive.js): ce se reface (zi socotită înainte să se termine, „azi” la 15 minute, viitorul nu), șirurile,
 //      citirea cu 10 minute înainte (drumul de peste miezul nopții) fără să scrie ziua de dinainte, luna pentru pagină;
 //   3. pe server pornit: firma cu RA Insight, poziții ieri și luna dinainte — pagina dă cifrele raportului EcoDrive pe
-//      aceeași lună; fără loc RA Insight → 403; altă firmă nu vede nimic; „Am vorbit cu el" și prețurile doar pentru cine
+//      aceeași lună; fără loc RA Insight → 403; altă firmă nu vede nimic; „Am vorbit cu el” și prețurile doar pentru cine
 //      conduce flota și doar pe firma lui; schimbul de șofer nu mută zilele trecute (nici în raport); tura de noapte; aparatul
 //      arhivat de peste 30 de zile își pierde și zilele.
 'use strict';
@@ -130,7 +130,7 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
       JSON.stringify({ sd: [m.scor, m.nota, m.accel, m.frana, m.viraj, m.km], eco: pv.summary }));
   }
   T('datele de probă chiar au de toate (frânări, accelerări, viraje, peste 90)', L.masini.every((m) => m.frana >= 60 && m.accel >= 60 && m.viraj >= 60 && m.pesteMin > 0), JSON.stringify(L.masini.map((m) => [m.frana, m.accel, m.viraj, m.pesteMin])));
-  T('scorul flotei = „Scor flotă" din raport (' + L.flota.scor + ')', L.flota.scor === eco.summary['Scor flotă (0-100)'], L.flota.scor + ' / ' + eco.summary['Scor flotă (0-100)']);
+  T('scorul flotei = „Scor flotă” din raport (' + L.flota.scor + ')', L.flota.scor === eco.summary['Scor flotă (0-100)'], L.flota.scor + ' / ' + eco.summary['Scor flotă (0-100)']);
 
   const sof = await reports.runReport(B, 'ecodrive_drivers', ['M1', 'M2'], FROM, TO, OPTS, null);
   const rand = {}; sof.rows.forEach((r) => { rand[r[1]] = r; });
@@ -159,7 +159,7 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   const ex = C.costuri({ ralantiLMasurat: 2, ralantiOreEst: 1, pesteF: 50, frana: 10, accel: 5, viraj: 2 }, { l100: 9, lph: 0.8, pretL: 7.5 }, C.PRETURI_IMPLICITE.autoturism);
   T('lei, de mână: ralanti (2 L + 1 h × 0,8) × 7,5 = 21; viteza 50 × 9/100 × ⅓ × 7,5 = 11,25; manevre 10×0,20 + 5×0,15 + 2×0,10 = 2,95',
     ex.ralanti === 21 && ex.viteza === 11.25 && ex.manevre === 2.95 && ex.total === 35.2 && ex.litri.ralanti === 2.8 && ex.litri.viteza === 1.5, JSON.stringify(ex));
-  T('…împărțit ca pe pagină: „Combustibil" = accelerările (0,75), „Frâne și anvelope" = frânările + virajele (2,20)', ex.accel === 0.75 && ex.frane === 2.2 && ex.accel + ex.frane === ex.manevre);
+  T('…împărțit ca pe pagină: „Combustibil” = accelerările (0,75), „Frâne și anvelope” = frânările + virajele (2,20)', ex.accel === 0.75 && ex.frane === 2.2 && ex.accel + ex.frane === ex.manevre);
   T('viteza: la 130 km/h, cam +36% combustibil față de 90 (o treime din consum pe aer × pătratul vitezei)', Math.abs(C.PARTE_AER * (Math.pow(130 / 90, 2) - 1) - 0.362) < 0.001 && C.PRAGURI.limita === 90);
   // Socotit de mână din poziții: fiecare bucată de drum peste 90 km/h, km × ((v / 90)² − 1) — 125 și 130 km/h în date.
   const tm1 = C.insumeaza(B._zile.M1), H = reports._ajutor.haversineKm;
@@ -168,8 +168,8 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
     const a = DATE.M1[i - 1], b = DATE.M1[i], dt = (Date.parse(b.timestamp) - Date.parse(a.timestamp)) / 1000, d = H(a.latitude, a.longitude, b.latitude, b.longitude);
     if (dt > 0 && dt <= 300 && b.speed > 90 && d < 10) { deMana += d * (Math.pow(b.speed / 90, 2) - 1); kmPeste += d; }
   }
-  T('pe datele lunii: „cât de repede peste 90" = Σ km × ((v / 90)² − 1), socotit de mână din poziții', Math.abs(tm1.pesteF - deMana) < 1e-6 && Math.abs(tm1.pesteKm - kmPeste) < 1e-6 && deMana > 0, tm1.pesteF + ' / ' + deMana);
-  T('prețurile mașinii vin din fișă: consumul „pe drum", L/h la ralanti, prețul ei, clasa', MAS[0].l100 === 7 && MAS[0].lph === 0.8 && MAS[0].pretL === 7.5 && MAS[0].clasa === 'autoturism' && MAS[1].pretL === 7.2 && MAS[1].clasa === 'duba');
+  T('pe datele lunii: „cât de repede peste 90” = Σ km × ((v / 90)² − 1), socotit de mână din poziții', Math.abs(tm1.pesteF - deMana) < 1e-6 && Math.abs(tm1.pesteKm - kmPeste) < 1e-6 && deMana > 0, tm1.pesteF + ' / ' + deMana);
+  T('prețurile mașinii vin din fișă: consumul „pe drum”, L/h la ralanti, prețul ei, clasa', MAS[0].l100 === 7 && MAS[0].lph === 0.8 && MAS[0].pretL === 7.5 && MAS[0].clasa === 'autoturism' && MAS[1].pretL === 7.2 && MAS[1].clasa === 'duba');
   const fs0 = SD.masina({ imei: 'X', vehicle_type: 'Camion' }, { motorina: 7.1 });
   T('…iar fără ele, aceleași rezerve ca rapoartele (consum pe tip, L/h pe tip, prețul firmei)', fs0.l100 === 30 && fs0.lph === 3 && fs0.pretL === 7.1 && fs0.clasa === 'camion', JSON.stringify(fs0));
   T('costul mașinii folosește prețul și clasa EI (Transitul: 7,2 lei, preț de dubă)', (() => { const m = L.masini.filter((x) => x.imei === 'M2')[0]; const t = C.insumeaza(B._zile.M2); const c = C.costuri(t, MAS[1], P.duba); return m.cost.total === c.total && c.manevre === Math.round((t.frana * 0.4 + t.accel * 0.3 + t.viraj * 0.2) * 100) / 100; })());
@@ -177,19 +177,19 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
 
   // Prețurile pe eveniment: doar numere între 0 și 100 de lei
   const pr = C.preturi({ autoturism: { frana: '0.5', accel: 'x', viraj: 200 }, camion: { frana: -1, accel: 2.345 } });
-  T('prețurile firmei se curăță: „0.5" → 0,5; text, 200 sau -1 → prețul de pornire; 2,345 → 2,35', pr.autoturism.frana === 0.5 && pr.autoturism.accel === 0.15 && pr.autoturism.viraj === 0.1 && pr.camion.frana === 1.5 && pr.camion.accel === 2.35 && pr.duba.frana === 0.4, JSON.stringify(pr));
+  T('prețurile firmei se curăță: „0.5” → 0,5; text, 200 sau -1 → prețul de pornire; 2,345 → 2,35', pr.autoturism.frana === 0.5 && pr.autoturism.accel === 0.15 && pr.autoturism.viraj === 0.1 && pr.camion.frana === 1.5 && pr.camion.accel === 2.35 && pr.duba.frana === 0.4, JSON.stringify(pr));
 
   // Înainte / după o discuție
   const cA = C.comparatie({ km: 1000, accel: 50, frana: 50, condusSec: 36000 }, { km: 500, accel: 10, frana: 15, condusSec: 18000 });
-  T('„Am vorbit cu el": 10 → 5 manevre la 100 km = „Mai bine", −50%', cA.fel === 'bun' && /^Mai bine: manevre bruște la 100 km 10 → 5 \(-50%\)/.test(cA.text), cA.text);
+  T('„Am vorbit cu el”: 10 → 5 manevre la 100 km = „Mai bine”, −50%', cA.fel === 'bun' && /^Mai bine: manevre bruște la 100 km 10 → 5 \(-50%\)/.test(cA.text), cA.text);
   const cB = C.comparatie({ km: 1000, accel: 50, frana: 50 }, { km: 12, accel: 1, frana: 0 });
   T('…iar cu prea puțin drum de atunci, spune să revii (nu trage concluzii)', cB.fel === 'info' && /Prea puțin drum/.test(cB.text), cB.text);
 
   // Unde și când
   const fe = C.ferestre([{ zi: '2026-09-04', date: { ore: Object.assign(new Array(24).fill(0), { 16: 3, 17: 4, 18: 2 }) } }, { zi: '2026-09-11', date: { ore: Object.assign(new Array(24).fill(0), { 17: 3 }) } }], 2, 5);
-  T('„când": fereastra de 3 ore cu cele mai multe manevre, pe ziua săptămânii („vineri, 16–19: 12")', fe[0] && fe[0].text === 'vineri, 16–19' && fe[0].n === 12, JSON.stringify(fe));
+  T('„când”: fereastra de 3 ore cu cele mai multe manevre, pe ziua săptămânii („vineri, 16–19: 12”)', fe[0] && fe[0].text === 'vineri, 16–19' && fe[0].n === 12, JSON.stringify(fe));
   const lo = C.locuri({ '44.400,26.100': 7, '44.410,26.100': 2, '45.000,21.000': 4 }, 3, 3);
-  T('„unde": zonele cu cel puțin 3 manevre, cele mai încărcate întâi', lo.length === 2 && lo[0].n === 7 && lo[0].lat === 44.4 && lo[1].n === 4, JSON.stringify(lo));
+  T('„unde”: zonele cu cel puțin 3 manevre, cele mai încărcate întâi', lo.length === 2 && lo[0].n === 7 && lo[0].lat === 44.4 && lo[1].n === 4, JSON.stringify(lo));
   T('zonele sunt de ~500 m (punctele de pe aceeași stradă se strâng)', C.celula(44.40123, 26.09981) === C.celula(44.40201, 26.10149) && C.celula(44.40123, 26.09981) !== C.celula(44.41, 26.1));
 
   // Zilele, pe ora României
@@ -206,8 +206,8 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
     { ferestre: [{ text: 'vineri, 16–19', n: 14 }], locuri: [{ lat: 44.4, lng: 26.1, n: 9, adresa: 'Bd. Iuliu Maniu, București' }] });
   const recT = rec.map((x) => x.text).join(' | ');
   T('recomandări: ralantiul scump, cu ore și lei', /B 1 AAA · Logan a stat cu motorul pornit, pe loc, 5 ore — cam 64 de lei/.test(recT), recT);
-  T('…viteza, spusă „peste 90 km/h" (pragul raportului, nu limita drumului)', /a mers 67 de minute peste 90 km\/h \(cel mai repede 152 km\/h\) — cam 35 de lei/.test(recT), recT);
-  T('…șoferul cu de două ori mai multe manevre decât media, cu îndemnul „Am vorbit cu el"', /Vasile Ion are 20 manevre bruște la 100 km, față de 1,7 media flotei/.test(recT) && /„Am vorbit cu el"/.test(recT), recT);
+  T('…viteza, spusă „peste 90 km/h” (pragul raportului, nu limita drumului)', /a mers 67 de minute peste 90 km\/h \(cel mai repede 152 km\/h\) — cam 35 de lei/.test(recT), recT);
+  T('…șoferul cu de două ori mai multe manevre decât media, cu îndemnul „Am vorbit cu el”', /Vasile Ion are 20 manevre bruște la 100 km, față de 1,7 media flotei/.test(recT) && /„Am vorbit cu el”/.test(recT), recT);
   T('…când și unde se repetă (cu adresa), și discuția care a mers', /vineri, 16–19 \(14\)/.test(recT) && /Bd\. Iuliu Maniu, București \(9 manevre\)/.test(recT) && /După discuția cu Dan Pop: Mai bine/.test(recT), recT);
 
   // ─── 2. Zilele ────────────────────────────────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
     ['Y|2026-10-05', ACUM - 20 * 60000],                          // azi, acum 20 de minute → se reface
   ]);
   const lipsa = await SD.deSocotit({ zileCondusStare: async () => stare }, ['X', 'Y'], '2026-10-02', '2026-10-31', ACUM);
-  T('se refac: ziua nesocotită, ziua socotită înainte să se termine, „azi" mai vechi de 15 minute; viitorul nu',
+  T('se refac: ziua nesocotită, ziua socotită înainte să se termine, „azi” mai vechi de 15 minute; viitorul nu',
     JSON.stringify(lipsa.X) === JSON.stringify(['2026-10-02', '2026-10-04']) && JSON.stringify(lipsa.Y) === JSON.stringify(['2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05']), JSON.stringify(lipsa));
   T('zilele de socotit se strâng în șiruri fără goluri (o singură citire pe șir)', JSON.stringify(SD.siruri(['2026-10-05', '2026-10-02', '2026-10-03'])) === JSON.stringify([{ de: '2026-10-02', pana: '2026-10-03' }, { de: '2026-10-05', pana: '2026-10-05' }]));
   T('luna: prima și ultima zi (și în februarie), luna dinainte peste an', JSON.stringify(SD.luna('2027-02')) === JSON.stringify({ luna: '2027-02', de: '2027-02-01', pana: '2027-02-28' }) && SD.lunaDinainte('2027-01') === '2026-12' && SD.luna('2026-13') === null);
@@ -236,25 +236,25 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   const LO = SD.alcatuieste({ luna: '2026-10', acum: ACUM, masini: MAS, soferi: NUME, preturi: P, zile: zile.concat(zileOct.filter((r) => r.zi <= '2026-10-05')), inaintePregatita: true, discutii: [], adrese: {} });
   const zile5 = C.insumeaza(zile.filter((r) => r.zi <= '2026-09-05'));
   T('luna de acum (1–5 octombrie) se compară cu 1–5 septembrie, nu cu toată luna', LO.inainte && LO.inainte.eticheta === '1–5 septembrie' && LO.inainte.km === Math.round(zile5.km) && /^(cam la fel|[+−]\d)/.test(LO.fata.cost), JSON.stringify([LO.inainte && LO.inainte.eticheta, LO.inainte && LO.inainte.km, Math.round(zile5.km), LO.fata]));
-  T('…iar o lună întreagă, cu luna întreagă dinainte (fără „pe 1–N")', L.inainte && L.inainte.eticheta === 'august' && L.fata.cost === 'fără drum în august — nimic de comparat' && L.fata.fel === 'info', JSON.stringify(L.fata));
-  T('„Cum se socotește": cinci lămuriri scrise o dată, cu pragurile adevărate (7 / 9 / 25 de grade / 90 / 3 minute / +36%)', L.explicatii.length === 5 && /peste 7 km\/h/.test(L.explicatii[0].text) && /25 de grade/.test(L.explicatii[0].text) && /3 minute/.test(L.explicatii[1].text) && /Peste 90 km\/h/.test(L.explicatii[2].text) && /cam 36% în plus/.test(L.explicatii[2].text), JSON.stringify(L.explicatii.map((x) => x.titlu)));
+  T('…iar o lună întreagă, cu luna întreagă dinainte (fără „pe 1–N”)', L.inainte && L.inainte.eticheta === 'august' && L.fata.cost === 'fără drum în august — nimic de comparat' && L.fata.fel === 'info', JSON.stringify(L.fata));
+  T('„Cum se socotește”: cinci lămuriri scrise o dată, cu pragurile adevărate (7 / 9 / 25 de grade / 90 / 3 minute / +36%)', L.explicatii.length === 5 && /peste 7 km\/h/.test(L.explicatii[0].text) && /25 de grade/.test(L.explicatii[0].text) && /3 minute/.test(L.explicatii[1].text) && /Peste 90 km\/h/.test(L.explicatii[2].text) && /cam 36% în plus/.test(L.explicatii[2].text), JSON.stringify(L.explicatii.map((x) => x.titlu)));
   T('graficul pe ore primește manevrele pe fiecare oră (24)', Array.isArray(L.flota.ore) && L.flota.ore.length === 24 && L.flota.ore.reduce((a, b) => a + b, 0) === L.flota.manevre);
-  T('pagina primește eticheta lunii și dacă e „până azi"', L.eticheta === 'septembrie 2026' && SD.alcatuieste({ luna: '2026-10', acum: ACUM, masini: MAS, soferi: NUME, preturi: P, zile: [], discutii: [] }).eticheta === 'octombrie 2026 (până azi)');
-  T('mașinile, cele mai scumpe întâi; un rând „Fără șofer atribuit" doar dacă a mers cineva fără șofer', L.masini[0].cost.total >= L.masini[1].cost.total && !L.soferi.some((s) => !s.id));
+  T('pagina primește eticheta lunii și dacă e „până azi”', L.eticheta === 'septembrie 2026' && SD.alcatuieste({ luna: '2026-10', acum: ACUM, masini: MAS, soferi: NUME, preturi: P, zile: [], discutii: [] }).eticheta === 'octombrie 2026 (până azi)');
+  T('mașinile, cele mai scumpe întâi; un rând „Fără șofer atribuit” doar dacă a mers cineva fără șofer', L.masini[0].cost.total >= L.masini[1].cost.total && !L.soferi.some((s) => !s.id));
   // Discuția: ultima, cu înainte / după din zilele pe care le avem
   const zDisc = SD.inceput('2026-09-16') + 9 * 3600000;
   const LD = SD.alcatuieste({ luna: '2026-09', acum: ACUM, masini: MAS, soferi: NUME, preturi: P, zile: zile, inaintePregatita: true, adrese: {},
     discutii: [{ id: 5, driver_id: 2, la: zDisc, nota: 'despre frânări' }, { id: 4, driver_id: 2, la: zDisc - 86400000 * 3, nota: 'mai veche' }] });
   const andrei = LD.soferi.filter((s) => s.nume === 'Andrei Stan')[0] || {};
-  T('„Am vorbit cu el": ultima discuție a șoferului, cu ziua și nota', andrei.discutie && andrei.discutie.id === 5 && andrei.discutie.zi === '2026-09-16' && andrei.discutie.nota === 'despre frânări', JSON.stringify(andrei.discutie));
-  T('…și comparația înainte / după (la același fel de drum: „Cam la fel")', andrei.discutie && andrei.discutie.comparatie && andrei.discutie.comparatie.fel === 'info' && /^Cam la fel/.test(andrei.discutie.comparatie.text), JSON.stringify(andrei.discutie && andrei.discutie.comparatie));
+  T('„Am vorbit cu el”: ultima discuție a șoferului, cu ziua și nota', andrei.discutie && andrei.discutie.id === 5 && andrei.discutie.zi === '2026-09-16' && andrei.discutie.nota === 'despre frânări', JSON.stringify(andrei.discutie));
+  T('…și comparația înainte / după (la același fel de drum: „Cam la fel”)', andrei.discutie && andrei.discutie.comparatie && andrei.discutie.comparatie.fel === 'info' && /^Cam la fel/.test(andrei.discutie.comparatie.text), JSON.stringify(andrei.discutie && andrei.discutie.comparatie));
 
   // ─── 3. Pe server pornit ──────────────────────────────────────────────────────────────────────────────
   const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   const rut = (m, u) => (SRV.split("app." + m + "('" + u + "'")[1] || '').split('\n')[0];
   T('pagina: doar cu RA Insight pe firmă ȘI loc RA Insight pe om', /requireAuth, withScope, requireFeature\('ai_assistant'\), requireAiSeat/.test(rut('get', '/api/insight/safe-drive')));
-  T('prețurile și „Am vorbit cu el": doar cine conduce flota (requireFleet)', /requireFleet/.test(rut('put', '/api/insight/safe-drive/preturi')) && /requireFleet/.test(rut('post', '/api/insight/safe-drive/discutie')) && /requireFleet/.test(rut('delete', '/api/insight/safe-drive/discutie/:id')));
-  // Regula „ce mașini vede omul" stă în _ramFlota (07.10: una pentru toate ramurile RA Insight); Safe Drive o cheamă de acolo.
+  T('prețurile și „Am vorbit cu el”: doar cine conduce flota (requireFleet)', /requireFleet/.test(rut('put', '/api/insight/safe-drive/preturi')) && /requireFleet/.test(rut('post', '/api/insight/safe-drive/discutie')) && /requireFleet/.test(rut('delete', '/api/insight/safe-drive/discutie/:id')));
+  // Regula „ce mașini vede omul” stă în _ramFlota (07.10: una pentru toate ramurile RA Insight); Safe Drive o cheamă de acolo.
   const corpFn = (nume) => (SRV.split('async function ' + nume + '(')[1] || '').split(/\nasync function |\nfunction /)[0];
   T('mașinile: doar cele la care omul are acces, fără arhivate (demo-ul îl taie canAccessImei) — regula comună a ramurilor', /canAccessImei\(req, d\.imei\) && d\.status !== 'archived'/.test(corpFn('_ramFlota')) && /await _ramFlota\(req\)/.test(corpFn('_sdFlota')));
   T('tura de noapte: fără firma demo și fără mașinile demo', /co\.id !== demoCompanyId/.test(SRV.split('async function safeDriveNoaptea(')[1] || '') && /!DEMO_SET\.has\(d\.imei\)/.test(SRV.split('async function safeDriveNoaptea(')[1] || ''));
@@ -266,10 +266,10 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('copia de siguranță: istoricul șoferilor și discuțiile intră; zilele nu (se refac din poziții)', BK.BUSINESS_TABLES.includes('istoric_soferi') && BK.BUSINESS_TABLES.includes('safe_drive_discutii') && !!BK.BACKUP_EXCLUDED.zile_condus);
   // Pagina (secțiunea RA Insight): arată, nu socotește; textele serverului cu textContent
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  // Ramura se cheamă RA Drive din 15.10 (Alin: „2.da"), cu subtitlul „condus & costuri".
-  const bloc = (PAG.split('// ─── Ramura „RA Drive"')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
+  // Ramura se cheamă RA Drive din 15.10 (Alin: „2.da”), cu subtitlul „condus & costuri”.
+  const bloc = (PAG.split('// ─── Ramura „RA Drive”')[1] || '').split('// ── sfârșit „secțiunea RA Insight” ──')[0];
   T('pagina: ramura RA Drive (fosta Safe Drive) se arată (gata: true) și are pagina ei', /k: 'safedrive', et: 'RA Drive', sub: 'condus & costuri', ic: 'fa-shield-halved', gata: true/.test(PAG) && /if \(S\.ramura === 'safedrive'\) return deseneazaSafeDrive\(main, S\.sdLuna\);/.test(PAG) && bloc.length > 1000);
-  T('pagina nu socotește nimic: fără praguri, prețuri sau „o treime" scrise în ea', !/\b90\b|\b0\.15\b|\b0\.20?\b|\b1\.5\b|PARTE_AER|treime/.test(bloc), (bloc.match(/\b90\b|\b0\.15\b|\b0\.20?\b|\b1\.5\b|PARTE_AER|treime/) || [])[0]);
+  T('pagina nu socotește nimic: fără praguri, prețuri sau „o treime” scrise în ea', !/\b90\b|\b0\.15\b|\b0\.20?\b|\b1\.5\b|PARTE_AER|treime/.test(bloc), (bloc.match(/\b90\b|\b0\.15\b|\b0\.20?\b|\b1\.5\b|PARTE_AER|treime/) || [])[0]);
   T('pagina: o singură cerere pentru lună, una pentru discuție (+ scoaterea), una pentru prețuri', (bloc.match(/'\/api\/insight\/safe-drive'/g) || []).length === 1 && (bloc.match(/'\/api\/insight\/safe-drive\/discutie'/g) || []).length === 1 && (bloc.match(/'\/api\/insight\/safe-drive\/discutie\/'/g) || []).length === 1 && (bloc.match(/'\/api\/insight\/safe-drive\/preturi'/g) || []).length === 1);
   const ih = bloc.match(/innerHTML = [^;]*;/g) || [];
   T('pagina: textele serverului se pun cu textContent (innerHTML doar pentru iconițe, fără nume, texte sau adrese)', ih.length >= 5 && ih.every((x) => !/\.(text|nume|eticheta|nota|adresa|message|error|titlu|cost)\b/.test(x)), ih.filter((x) => /\.(text|nume|eticheta|nota|adresa|message|error|titlu|cost)\b/.test(x)).join(' | '));
@@ -277,16 +277,16 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('culorile de stare au pereche pe tema deschisă (portocaliu și verde închise)', /body:not\(\.dark\) \.sdp \.sdp-chip\.atentie[^{]*\{ color: #9a3412; \}/.test(CSS) && /body:not\(\.dark\) \.sdp \.sdp-chip\.bun[^{]*\{ color: #166534; \}/.test(CSS));
   T('tabelele se derulează în cutia lor (pagina nu iese din ecran pe telefon)', /\.sdp-scroll \{ overflow-x: auto; max-width: 100%; \}/.test(CSS) && /\.sdp \{ overflow-y: auto; min-height: 0; min-width: 0;/.test(CSS));
 
-  // Prețurile pe manevră (04.11; Alin: „să le spună oamenilor că și le pot schimba… să-i explicăm clientului"): de unde vin și unde se
+  // Prețurile pe manevră (04.11; Alin: „să le spună oamenilor că și le pot schimba… să-i explicăm clientului”): de unde vin și unde se
   // schimbă — un singur text (condus.textPreturi / UNDE_PRETURI), la vedere pe pagină (web + telefon), în ghid și în unealta lui RA Insight.
   const tp0 = C.textPreturi(false, true), tp1 = C.textPreturi(true, false);
   T('prețurile: textul spune dacă sunt de pornire (cu un exemplu) sau ale firmei și cum se schimbă (butonul „Editează prețurile”, 05.11) / cine le schimbă', /cele de pornire, o estimare RA Track \(de pildă 1,50 lei o frânare bruscă la un camion, 0,20 lei la un autoturism\)/.test(tp0) &&
     /apasă „Editează prețurile”/.test(tp0) && /„Salvează prețurile”/.test(tp0) && /^Prețurile pe manevră sunt ale firmei\. Le schimbă administratorul sau managerul firmei, din contul lui: „Editează prețurile”/.test(tp1) && C.BUTON_PRETURI === 'Editează prețurile', tp0 + ' | ' + tp1);
-  T('…„ale firmei" = măcar un preț diferit de cel de pornire', C.preturiProprii(null) === false && C.preturiProprii({ camion: { frana: 2 } }) === true && C.preturiProprii({ camion: { frana: 1.5 } }) === false);
+  T('…„ale firmei” = măcar un preț diferit de cel de pornire', C.preturiProprii(null) === false && C.preturiProprii({ camion: { frana: 2 } }) === true && C.preturiProprii({ camion: { frana: 1.5 } }) === false);
   const PG_TEL = fs.readFileSync(path.join(__dirname, 'mobile/src/lib/insightPagini.ts'), 'utf8'), CMP_TEL = fs.readFileSync(path.join(__dirname, 'mobile/src/components/InsightPagini.tsx'), 'utf8');
   T('…pagina îl pune la vedere, sub cifrele mari (textul serverului, ca text), iar telefonul la fel', /pag\.appendChild\(tl\);\s*\/\/ Prețurile pe manevră[\s\S]{0,600}if \(j\.preturi && j\.preturi\.nota\) \{\s*var pn = el\('div', 'sdp-nota sdp-nota-pret'\)[^\n]*document\.createTextNode\(j\.preturi\.nota\)/.test(bloc) &&
     /if \(j\.preturi && j\.preturi\.nota\) p\.blocuri\.push\(\{ b: 'nota', text: j\.preturi\.nota, buton: j\.preturi\.poateSchimba && j\.preturi\.buton \? String\(j\.preturi\.buton\) : undefined \}\);/.test(PG_TEL));
-  // „Editează prețurile” (05.11; Alin: „n-am niciun buton… să vadă clientul cum face"): doar la cine le poate schimba, eticheta de la server,
+  // „Editează prețurile” (05.11; Alin: „n-am niciun buton… să vadă clientul cum face”): doar la cine le poate schimba, eticheta de la server,
   // duce la SINGURUL loc al prețurilor („Cum se socotește”, deschis, cu cursorul în prima casetă) — pe web și pe telefon.
   T('„Editează prețurile”: butonul stă lângă rând doar cu poateSchimba, cu eticheta serverului, și deschide „Cum se socotește” la prețuri',
     /if \(j\.preturi\.poateSchimba && j\.preturi\.buton\) \{[\s\S]{0,300}bP\.onclick = function \(\) \{ window\.insightSdLaPreturi\(pag\); \};/.test(bloc) &&
@@ -296,8 +296,8 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('…butonul nu iese verde pe verde (iconița ia culoarea butonului) și rândul se rupe pe ecranul îngust', /\.sdp-nota-pret \.insp-btn i \{ color: inherit;/.test(CSS) && /\.sdp-nota-pret \{ display: flex; flex-wrap: wrap;/.test(CSS));
   T('…RA Insight o primește în unealta safe_drive (ale firmei sau de pornire, unde se schimbă, cine)', /preturi_pe_manevra: \{ ale_firmei: !!\(r\.preturi && r\.preturi\.proprii\), unde_se_schimba: condus\.UNDE_PRETURI/.test(SRV));
   const GH = require('./insight_ghid');
-  T('…iar ghidul are drumul (și RA Insight îl găsește la „unde schimb prețul frânării")', (GH.cauta('unde schimb pretul franarii in ra drive')[0] || {}).cheie === 'ra_drive_preturi' &&
-    /„Editează prețurile"/.test((GH.SECTIUNI.filter((x) => x.cheie === 'ra_drive_preturi')[0] || {}).unde || ''));
+  T('…iar ghidul are drumul (și RA Insight îl găsește la „unde schimb prețul frânării”)', (GH.cauta('unde schimb pretul franarii in ra drive')[0] || {}).cheie === 'ra_drive_preturi' &&
+    /„Editează prețurile”/.test((GH.SECTIUNI.filter((x) => x.cheie === 'ra_drive_preturi')[0] || {}).unde || ''));
 
   const PORT = 3297, TCP = 5297;
   const DIR = path.join(os.tmpdir(), 'rax_safedrive_' + Date.now());
@@ -384,11 +384,11 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('B 154 UIP pe luna asta: scorul, frânările, accelerările, virajele și km-ii = raportul EcoDrive (' + m0.scor + ', ' + m0.frana + '/' + m0.accel + '/' + m0.viraj + ', ' + m0.km + ' km)',
     eco2.status === 200 && m0.scor === sumar(pv0, 'Scor') && m0.frana === sumar(pv0, 'Frânări bruște') && m0.accel === sumar(pv0, 'Accel. bruște') && m0.viraj === sumar(pv0, 'Viraje bruște') && m0.km === sumar(pv0, 'Km') && m0.frana > 0 && m0.viraj > 0,
     JSON.stringify([m0.scor, m0.frana, m0.accel, m0.viraj, m0.km]) + ' / ' + JSON.stringify(pv0.summary));
-  T('scorul flotei = „Scor flotă" din raport', p1.j.flota && p1.j.flota.scor === eco2.j.summary['Scor flotă (0-100)'], JSON.stringify(p1.j.flota) + ' / ' + JSON.stringify(eco2.j.summary));
-  // Luna lui „ieri" e luna de acum (până azi) → se compară cu aceleași zile din luna dinainte; altfel cu toată luna dinainte.
+  T('scorul flotei = „Scor flotă” din raport', p1.j.flota && p1.j.flota.scor === eco2.j.summary['Scor flotă (0-100)'], JSON.stringify(p1.j.flota) + ' / ' + JSON.stringify(eco2.j.summary));
+  // Luna lui „ieri” e luna de acum (până azi) → se compară cu aceleași zile din luna dinainte; altfel cu toată luna dinainte.
   const acumL = C.zi(Date.now()), eLI = I.LUNI[Number(LI.slice(5, 7)) - 1];
   const eAsteptata = LUNA === acumL.slice(0, 7) ? '1–' + Number(acumL.slice(8, 10)) + ' ' + eLI : eLI;
-  T('luna dinainte e alături (' + eAsteptata + '), cu „față de" scris de server', p1.j.inainte && p1.j.inainte.luna === LI && p1.j.inainte.eticheta === eAsteptata && p1.j.fata && typeof p1.j.fata.cost === 'string', JSON.stringify([p1.j.inainte, p1.j.fata]));
+  T('luna dinainte e alături (' + eAsteptata + '), cu „față de” scris de server', p1.j.inainte && p1.j.inainte.luna === LI && p1.j.inainte.eticheta === eAsteptata && p1.j.fata && typeof p1.j.fata.cost === 'string', JSON.stringify([p1.j.inainte, p1.j.fata]));
   T('drumul din ziua 10 a lunii dinainte e citit (pe toată luna: ' + (await pagina(ckSef, LI)).j.flota.km + ' km)', ((await pagina(ckSef, LI)).j.flota || {}).km > 0);
   T('costul fiecărei mașini, pe feluri: combustibil + frâne și anvelope = manevre', (p1.j.masini || []).every((m) => Math.abs(m.cost.accel + m.cost.frane - m.cost.manevre) < 0.011));
   const ion1 = (p1.j.soferi || []).filter((s) => s.nume === 'Ion Popescu')[0] || {};
@@ -404,15 +404,15 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   const grB = (await json('POST', '/api/groups', ckAlt, { name: 'Alta' })).j;
   await json('PUT', '/api/devices/' + V[1] + '/assign', ckSef, { group_id: gr.id });
   const pG = await pagina(ckSef, LUNA + '&grupa=' + gr.id);
-  T('grupa „Distribuție": doar mașina ei, și lista grupelor („Toată flota · 2 mașini", „Distribuție · 1 mașină")', (pG.j.masini || []).length === 1 && pG.j.masini[0].imei === V[1] && pG.j.grupaAleasa === gr.id && JSON.stringify(pG.j.grupe.map((g) => g.eticheta)) === JSON.stringify(['Toată flota · 2 mașini', 'Distribuție · 1 mașină']), JSON.stringify([pG.j.grupe, (pG.j.masini || []).length]));
+  T('grupa „Distribuție”: doar mașina ei, și lista grupelor („Toată flota · 2 mașini”, „Distribuție · 1 mașină”)', (pG.j.masini || []).length === 1 && pG.j.masini[0].imei === V[1] && pG.j.grupaAleasa === gr.id && JSON.stringify(pG.j.grupe.map((g) => g.eticheta)) === JSON.stringify(['Toată flota · 2 mașini', 'Distribuție · 1 mașină']), JSON.stringify([pG.j.grupe, (pG.j.masini || []).length]));
   const pGB = await pagina(ckSef, LUNA + '&grupa=' + grB.id);
   T('…iar grupa altei firme e ignorată (toată flota, fără numele grupei străine)', (pGB.j.masini || []).length === 2 && pGB.j.grupaAleasa === null && pGB.text.indexOf('Alta') < 0, JSON.stringify([pGB.j.grupaAleasa, (pGB.j.masini || []).length]));
-  // „Am vorbit cu el"
+  // „Am vorbit cu el”
   const dA = await json('POST', '/api/insight/safe-drive/discutie', ckSef, { driverId: ion.id, nota: 'despre frânările de pe centură' });
   const dD = await json('POST', '/api/insight/safe-drive/discutie', ckDisp, { driverId: ion.id });
   const dX = await json('POST', '/api/insight/safe-drive/discutie', ckAlt, { driverId: ion.id });
   const dY = await json('POST', '/api/insight/safe-drive/discutie', ckSef, { driverId: dinB.id });
-  T('„Am vorbit cu el": șeful trece discuția (ziua o pune serverul)', dA.status === 200 && dA.j.id > 0 && Math.abs(dA.j.la - Date.now()) < 60000, dA.text);
+  T('„Am vorbit cu el”: șeful trece discuția (ziua o pune serverul)', dA.status === 200 && dA.j.id > 0 && Math.abs(dA.j.la - Date.now()) < 60000, dA.text);
   T('…dispecerul nu (403), altă firmă nu (404, ca un șofer care nu există), nici pe un șofer al altei firme (404)', dD.status === 403 && dX.status === 404 && dY.status === 404, [dD.status, dX.status, dY.status].join(' '));
   const p2 = await pagina(ckSef, LUNA);
   const ion2 = (p2.j.soferi || []).filter((s) => s.nume === 'Ion Popescu')[0] || {};
@@ -430,7 +430,7 @@ const sumar = (pv, k) => { const x = (pv.summary || []).filter((r) => r[0] === k
   T('…iar costul manevrelor se socotește cu ele (B 154 UIP: ' + m3.frana + ' × 0,5 + ' + m3.accel + ' × 0,15 + ' + m3.viraj + ' × 0,10)', m3.cost && m3.cost.manevre === Math.round((m3.frana * 0.5 + m3.accel * 0.15 + m3.viraj * 0.1) * 100) / 100 && p3.j.preturi.valori.autoturism.frana === 0.5, JSON.stringify(m3.cost));
   const pAlt2 = await pagina(ckAlt, LUNA);
   T('…doar în firma lui: cealaltă firmă are tot prețurile de pornire', pAlt2.j.preturi && pAlt2.j.preturi.valori.autoturism.frana === 0.2);
-  T('…și nota de sus spune „ale firmei" la șef și „de pornire" la cealaltă firmă', p3.j.preturi && p3.j.preturi.proprii === true && /^Prețurile pe manevră sunt ale firmei\. Le poți schimba după cum consideri: apasă „Editează prețurile”/.test(p3.j.preturi.nota || '') && p3.j.preturi.buton === 'Editează prețurile' &&
+  T('…și nota de sus spune „ale firmei” la șef și „de pornire” la cealaltă firmă', p3.j.preturi && p3.j.preturi.proprii === true && /^Prețurile pe manevră sunt ale firmei\. Le poți schimba după cum consideri: apasă „Editează prețurile”/.test(p3.j.preturi.nota || '') && p3.j.preturi.buton === 'Editează prețurile' &&
     pAlt2.j.preturi.proprii === false && /cele de pornire/.test(pAlt2.j.preturi.nota || ''), (p3.j.preturi || {}).nota + ' | ' + (pAlt2.j.preturi || {}).nota);
   const pDs = await pagina(ckDisp, LUNA);
   T('…dispecerul (fără drept de schimbare) află cine le schimbă', pDs.status !== 200 || /Le schimbă administratorul sau managerul firmei/.test((pDs.j.preturi || {}).nota || ''), pDs.status + ' ' + ((pDs.j.preturi || {}).nota || ''));

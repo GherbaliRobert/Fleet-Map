@@ -60,7 +60,7 @@ function T(nume, cond, detaliu) {
 }
 function sect(t) { console.log('\n' + t); }
 
-// ════════════ 1. Vehicul „curat": contact pornit, motor pornit, nimic aprins ════════════
+// ════════════ 1. Vehicul „curat”: contact pornit, motor pornit, nimic aprins ════════════
 sect('1. Mașină în regulă (contact + motor, uși închise, niciun martor)');
 {
   const b = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -72,7 +72,7 @@ sect('1. Mașină în regulă (contact + motor, uși închise, niciun martor)');
 
   T('desenează ceva', h.length > 500, 'lungime ' + h.length);
   T('nu apare bandă de martori', !h.includes('b-martori'));
-  T('nu apare bandă „deschis"', !h.includes('b-deschis'));
+  T('nu apare bandă „deschis”', !h.includes('b-deschis'));
   T('banda de stare există (frână, treaptă, încuietoare)', h.includes('b-stare'));
   T('Contact aprins', /Contact<\/span><span class="cfb-s">Pornit</.test(h));
   T('Motorul funcționează — Pornit', /Motorul funcționează<\/span><span class="cfb-s">Pornit</.test(h));
@@ -83,12 +83,12 @@ sect('1. Mașină în regulă (contact + motor, uși închise, niciun martor)');
   T('CHECK ENGINE stins NU mai apare', !h.includes('>CHECK ENGINE<'));
   T('faza scurtă stinsă NU mai apare', !h.includes('>Faza scurtă<'));
   T('spune omului de ce sunt puține', h.includes('se arată doar ce e activ acum'));
-  // Excepțiile: se văd tot timpul, chiar și „nu".
+  // Excepțiile: se văd tot timpul, chiar și „nu”.
   T('Frâna de mână se vede și eliberată', /Frână de mână<\/span><span class="cfb-s">Eliberată</.test(h));
   T('Mașina încuiată se vede și descuiată', /Mașina încuiată<\/span><span class="cfb-s">Nu</.test(h));
   // Acordul gramatical al textelor stinse rămâne verificat direct în catalog: se folosește în
   // balonul de pe telefon și la cele trei plăcuțe permanente, chiar dacă nu se mai vede aici.
-  T('acord: Ușă … Închisă (nu „Închis")', cat.stateText('_sf_door_front_left', false) === 'Închisă');
+  T('acord: Ușă … Închisă (nu „Închis”)', cat.stateText('_sf_door_front_left', false) === 'Închisă');
   T('acord: Portbagaj … Închis (masculin)', cat.stateText('_sf_trunk_open', false) === 'Închis');
   T('acord: Centură … Nepusă', cat.stateText('_cf_driver_seatbelt', false) === 'Nepusă');
   T('acord: Faza scurtă … Stinsă (feminin)', cat.stateText('_cf_dipped_headlights', false) === 'Stinsă');
@@ -114,12 +114,12 @@ sect('2. Mașină cu probleme (CHECK ENGINE + ABS + ușă + capotă)');
   T('martorii sunt numiți, fiecare cu plăcuța lui', h.includes('CHECK ENGINE') && h.includes('ABS') && h.includes('Presiune / nivel ulei'));
   T('banda de martori își spune numărul', /Martori aprinși <span class="cfb-n">3</.test(h));
   T('ce e deschis stă în banda lui', h.indexOf('b-deschis') > 0 && h.indexOf('b-deschis') < h.indexOf('Ușă față stânga') && h.indexOf('b-deschis') < h.indexOf('Capot'));
-  T('nu apare mesajul „totul e în regulă"', !h.includes('cfb-ok'));
+  T('nu apare mesajul „totul e în regulă”', !h.includes('cfb-ok'));
   T('CHECK ENGINE aprins (clasă lit + k-warn)', /class="cfb-t k-warn lit"/.test(h) && h.includes('CHECK ENGINE</span><span class="cfb-s">Aprins<'));
   T('ușa deschisă are clasa portocalie', /class="cfb-t k-open lit"[\s\S]{0,260}Ușă față stânga/.test(h));
   T('ușa dreapta (închisă) nu se mai desenează deloc', !h.includes('>Ușă față dreapta<'));
   // bulina grupei ia culoarea celui mai serios semnal aprins din ea
-  T('banda „Deschis acum" numără 2', /Deschis acum <span class="cfb-n">2</.test(h));
+  T('banda „Deschis acum” numără 2', /Deschis acum <span class="cfb-n">2</.test(h));
   T('martorii ies vizual din restul (bandă proprie)', /cfb-band b-martori/.test(h));
   T('contactul și motorul stau în banda de stare', h.indexOf('b-stare') > 0 && h.indexOf('b-stare') < h.indexOf('Motorul funcționează') && h.indexOf('Motorul funcționează') < h.indexOf('b-martori'));
   T('o bandă goală nu se desenează deloc', !h.includes('b-camion'));
@@ -142,10 +142,10 @@ sect('4. Steagurile pe care nu le citim încă');
   const h = canFlagsHtml(flat(mkSec([5, 0, 0, 3, 0, 0, 0, 0]), mkCtl([0, 0, 0, 0])), new Set());
   // NU număra `necitit<` peste tot: nota explicativă de jos conține și ea cuvântul. Doar plăcuțele.
   // 26.08: din cele 5 nedecodate a rămas UNA (închiderea centralizată). Ambreiajul și telecomanda
-  // au acum biți oficiali (P4) și se decodează — deci nu mai apar „necitite", ci ca plăcuțe vii.
-  // 27.08: sub regula „doar stările active", plăcuța „necitit" nu se mai desenează — era singura
+  // au acum biți oficiali (P4) și se decodează — deci nu mai apar „necitite”, ci ca plăcuțe vii.
+  // 27.08: sub regula „doar stările active”, plăcuța „necitit” nu se mai desenează — era singura
   // casetă stinsă rămasă pe ecran. Rămâne nota de jos, care spune limpede că lipsește ceva.
-  T('nu mai desenăm plăcuțe „necitit"', !/necitit</.test(h.replace(/cfb-note[\s\S]*$/, '')));
+  T('nu mai desenăm plăcuțe „necitit”', !/necitit</.test(h.replace(/cfb-note[\s\S]*$/, '')));
   T('dar nota explicativă rămâne', h.includes('nu apare aici'));
   T('nota spune și de ce lipsește', h.includes('preferăm să lipsească decât să arate greșit'));
   T('Închiderea centralizată nu apare ca plăcuță', !h.includes('>Închidere centralizată<'));
@@ -169,7 +169,7 @@ sect('6. Adaptor care dă doar martorii de bord');
   const h = canFlagsHtml(flat(undefined, mkCtl([0, 0x01, 0, 0])), new Set());
   T('desenează martorii', h.includes('CHECK ENGINE'));
   T('NU desenează uși (blocul lipsește)', !h.includes('Ușă față stânga'));
-  T('NU arată „necitit" pentru steaguri din blocul lipsă', !h.includes('necitit'));
+  T('NU arată „necitit” pentru steaguri din blocul lipsă', !h.includes('necitit'));
 }
 
 // ════════════ 7. Acoperire: fiecare steag decodat are fișă ════════════
@@ -210,9 +210,9 @@ sect('7. Acoperire față de codec8e.js');
   for (const [k, v] of Object.entries(ioTot._control_flags || {})) fTot['_cf_' + k] = v;
   const h = canFlagsHtml(fTot, new Set());
   // Regula de afișare stă într-un singur loc — `seVede` din can_flags.js. Verificăm că ecranul o
-  // respectă în amândouă sensurile, nu doar că „apare tot".
-  // (Cu toți biții pe 1, câteva stări ies logic STINSE — de pildă „Regim personal", care e inversat
-  // în protocol: bitul 1 înseamnă „serviciu". Testul vechi presupunea că 1 = aprins pentru toate.)
+  // respectă în amândouă sensurile, nu doar că „apare tot”.
+  // (Cu toți biții pe 1, câteva stări ies logic STINSE — de pildă „Regim personal”, care e inversat
+  // în protocol: bitul 1 înseamnă „serviciu”. Testul vechi presupunea că 1 = aprins pentru toate.)
   const meta = [...sf, ...cf].map(k => cat.flagMeta(k)).filter(Boolean);
   // Cu toți biții pe 1 și fără contactul aparatului, adaptorul spune că doarme și nimic nu-l contrazice
   // (secțiunea 16, 23.10): frâna de mână și pedalele sunt atunci cele de dinainte de oprire și NU se arată.
@@ -232,7 +232,7 @@ sect('7. Acoperire față de codec8e.js');
   T('pictogramele vin din can_icons.js, nu din Font Awesome', (h.match(/<svg class="cf-i"/g) || []).length > 20);
   T('regula de așezare vine de la server, nu e rescrisă în pagină',
     require('fs').readFileSync(require('path').join(__dirname, 'server.js'), 'utf8').includes('d.benzi=benzi'));
-  T('nu rămâne nimic în „avansate"', true);
+  T('nu rămâne nimic în „avansate”', true);
 }
 
 // ════════════ 8. IO_CATEGORIES nu mai conține steaguri ════════════
@@ -243,7 +243,7 @@ sect('8. Fără dublură cu lista de valori numerice');
   T('IO_CATEGORIES nu mai listează steaguri', steaguriRamase.length === 0, steaguriRamase.join(', '));
   const cust = grabTo('    const CUSTOMER_IO_CATEGORIES = new Set([', ']);');
   ['Motor / Vehicul', 'Identificare', 'Specific Camion', 'Diagnosticare'].forEach(c =>
-    T('clientul vede categoria „' + c + '"', cust.includes("'" + c + "'")));
+    T('clientul vede categoria „' + c + '”', cust.includes("'" + c + "'")));
 }
 
 // ════════════ 9. Parametrii generali de pe fișa adaptorului ════════════
@@ -257,14 +257,14 @@ sect('9. Cei 9 parametri generali din fișă sunt mapați și vizibili clientulu
   GEN.forEach(k => {
     const m = new RegExp("^\\s*'([^']+)':[^\\n]*'" + k + "'", 'm').exec(bloc);
     if (!m) { T('mapat: ' + k, false, 'lipsește din IO_CATEGORIES'); return; }
-    T('mapat + vizibil clientului: ' + k, cust.includes("'" + m[1] + "'"), 'e în „' + m[1] + '", ascunsă');
+    T('mapat + vizibil clientului: ' + k, cust.includes("'" + m[1] + "'"), 'e în „' + m[1] + '”, ascunsă');
   });
 }
 
 // ════════════ 10. Aplicația de telefon ════════════
 // Ăsta e cel mai important din listă. Prima oară am pus plăcuțele într-o ramură pe care N-O DESCHIDE
 // NIMIC (`sheet === 'can'` din VehicleDetail — nicăieri nu se cheamă `setSheet('can')`), iar butonul
-// „Date CAN" merge de fapt pe altă rută, către CanScreen. Codul se compila, testele treceau, iar pe
+// „Date CAN” merge de fapt pe altă rută, către CanScreen. Codul se compila, testele treceau, iar pe
 // telefon nu se vedea nimic. Deci nu verificăm doar că există componenta, ci că ecranul la care
 // AJUNGE omul o desenează.
 sect('10. Telefonul — plăcuțele sunt pe ecranul la care se ajunge');
@@ -280,10 +280,10 @@ sect('10. Telefonul — plăcuțele sunt pe ecranul la care se ajunge');
   T('componenta CanFlags există și e exportată', /export function CanFlags\(/.test(comp));
   T('CanScreen o desenează', /<CanFlags\b/.test(canScr));
   T('CanScreen o importă', /import \{ CanFlags \}/.test(canScr));
-  // ruta pe care o deschide butonul „Date CAN" trebuie să ducă exact la ecranul care le desenează
+  // ruta pe care o deschide butonul „Date CAN” trebuie să ducă exact la ecranul care le desenează
   const ruta = /path="([^"]*\/can)"\s+component=\{(\w+)\}/.exec(app);
   T('ruta /…/can duce la CanScreen', !!ruta && ruta[2] === 'CanScreen', ruta ? ruta[2] : 'rută negăsită');
-  T('butonul „Date CAN" merge pe acea rută', new RegExp('/can`\\)').test(vehDet) && /Date CAN/.test(vehDet));
+  T('butonul „Date CAN” merge pe acea rută', new RegExp('/can`\\)').test(vehDet) && /Date CAN/.test(vehDet));
 
   T('catalogul se ia de la server, nu e rescris local', /\/api\/can-flags/.test(rd('api/endpoints.ts')) && /Api\.canFlags\(\)/.test(lib));
   T('catalogul se ține offline (Preferences)', /Preferences\.(set|get)/.test(lib));
@@ -316,7 +316,7 @@ sect('11. Mașină cu CAN, dar care nu trimite steaguri');
   T('nu mai tace — spune de ce lipsesc', h.length > 0);
   T('scrie limpede că mașina NU trimite semnalele', /nu trimite<\/strong> semnalele de stare/.test(h));
   T('nu arată nicio plăcuță', !h.includes('class="cfb-t k-'));
-  T('nu arată mesajul verde „totul e în regulă"', !h.includes('cfb-ok'));
+  T('nu arată mesajul verde „totul e în regulă”', !h.includes('cfb-ok'));
   T('are titlu de secțiune', h.includes('Starea mașinii'));
 
   // vehicul FĂRĂ CAN deloc → tot tăcere, nu vrem mesajul pe fiecare mașină cu GPS simplu
@@ -329,7 +329,7 @@ sect('11. Mașină cu CAN, dar care nu trimite steaguri');
 
 // ════════════ 12. Catalogul IO se reîncarcă după autentificare ════════════
 // Ruta /api/io-catalog cere autentificare, dar `loadIoCatalog()` rula la încărcarea paginii, cu
-// ecranul de login încă pe ecran → 401 înghițit, catalog gol pe veci („Niciun IO găsit").
+// ecranul de login încă pe ecran → 401 înghițit, catalog gol pe veci („Niciun IO găsit”).
 sect('12. Catalogul IO nu mai rămâne gol după login');
 {
   T('se reîncearcă la deschiderea ferestrei', /if \(!\(window\.IO_CAT \|\| \[\]\)\.length\)[\s\S]{0,400}loadIoCatalog\(\)/.test(src));
@@ -390,14 +390,14 @@ sect('14. Catalogul salvat pe telefon (cauza pictogramelor lipsă)');
   // Apărarea durabilă: un catalog VECHI (fără `stateBand`) nu mai are voie să golească banda.
   T('exista o ordine de rezerva pentru banda de stare', /const STARE_IMPLICITA = \[/.test(lib));
   T('rezerva se foloseste doar cand serverul nu a trimis ordinea', /cat\.stateBand && cat\.stateBand\.length\) \? cat\.stateBand : STARE_IMPLICITA/.test(lib));
-  // …și trebuie să fie ACEEAȘI listă ca pe server, altfel „rezerva" minte.
+  // …și trebuie să fie ACEEAȘI listă ca pe server, altfel „rezerva” minte.
   const dinLib = (lib.match(/const STARE_IMPLICITA = \[([^\]]+)\]/) || [])[1] || '';
   const dinSrv = (flags.match(/const BANDA_STARE = \[([^\]]+)\]/) || [])[1] || '';
   const norm = (x) => (x.match(/'[^']+'/g) || []).join(',');
   T('ordinea de rezerva e identica cu cea de pe server', norm(dinLib) === norm(dinSrv) && !!norm(dinSrv), { lib: norm(dinLib), server: norm(dinSrv) });
 
   // Aceeași capcană, pe ruta de simulare: dacă nu desface stările, orice probă pe date simulate
-  // arată „mașina nu trimite semnale de stare" și trimite căutarea în direcția greșită.
+  // arată „mașina nu trimite semnale de stare” și trimite căutarea în direcția greșită.
   const srv = fs.readFileSync(require('path').join(__dirname, 'server.js'), 'utf8');
   T('ruta de simulare desface starile, ca ingestul real', /simulare: desfacem starile[\s\S]{0,400}expandCanFlags\(data\.io\)/.test(srv));
 }

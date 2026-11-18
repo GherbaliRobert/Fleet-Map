@@ -3,9 +3,9 @@
 //
 //   node verify_formular_site.js
 //
-// Până pe 02.11, cererea intra în „Cereri demo", dar emailul pleca doar cu SUPPORT_EMAIL / DEMO_REQUEST_EMAIL setate pe server, iar
-// „Răspunde" nu ajungea la cel care a scris. Proba pornește un server adevărat, FĂRĂ acele adrese, cu un Brevo fals, și verifică:
-//   1. mesajul și cererea de cont demo ajung la contact@, cu „Răspuns la" = omul, cu tot ce a scris;
+// Până pe 02.11, cererea intra în „Cereri demo”, dar emailul pleca doar cu SUPPORT_EMAIL / DEMO_REQUEST_EMAIL setate pe server, iar
+// „Răspunde” nu ajungea la cel care a scris. Proba pornește un server adevărat, FĂRĂ acele adrese, cu un Brevo fals, și verifică:
+//   1. mesajul și cererea de cont demo ajung la contact@, cu „Răspuns la” = omul, cu tot ce a scris;
 //   2. capcana pentru roboți nu trimite nimic; un email care nu pleacă nu pierde cererea;
 //   3. pe site nu e niciun telefon public.
 const http = require('http');

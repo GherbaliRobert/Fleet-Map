@@ -10,7 +10,7 @@
 //
 // ── Rutare de CAMION, nu de autoturism ───────────────────────────────────────────────────────────
 // Un TIR de 40 t nu merge pe unde merge un Logan: sunt poduri cu limită de tonaj, treceri joase,
-// străzi interzise. De-aia trimitem masa și axele vehiculului, iar profilul cerut e „heavy goods".
+// străzi interzise. De-aia trimitem masa și axele vehiculului, iar profilul cerut e „heavy goods”.
 // Fără asta am estima un traseu pe care camionul n-are voie — și un cost care nu i se aplică.
 //
 // ── Cele trei stări posibile, scrise ca să nu existe a patra ─────────────────────────────────────
@@ -19,7 +19,7 @@
 //   3. niciuna                       → dezactivat, iar ecranul o spune pe șleau
 //
 // Starea 2 există ca să putem încerca ecranul înainte să avem cheia. NU e pentru producție: e un
-// server public, ținut de o asociație, cu politică de „uz rezonabil". A ne muta clienții pe el ar
+// server public, ținut de o asociație, cu politică de „uz rezonabil”. A ne muta clienții pe el ar
 // însemna să sprijinim un produs comercial pe infrastructura gratuită a altcuiva.
 
 const ORS_KEY = process.env.ORS_API_KEY || null;
@@ -38,7 +38,7 @@ function stare() {
   const f = furnizor();
   return {
     pornit: !!f, furnizor: f,
-    // Textul ăsta ajunge pe ecran. Nu „eroare de configurare" — omul trebuie să știe CE lipsește.
+    // Textul ăsta ajunge pe ecran. Nu „eroare de configurare” — omul trebuie să știe CE lipsește.
     motiv: f ? null : 'Calculul unui traseu nou nu e pornit — lipsește cheia de la serviciul de hărți.',
     deProba: f === 'valhalla-public',
   };
@@ -97,7 +97,7 @@ async function _ors(start, end, v) {
 }
 
 // ── Valhalla (instanța publică FOSSGIS) — doar pentru probe ──
-// Geometria vine codată („polyline6"); o desfacem aici, ca să nu tragem o bibliotecă pentru 20 de rânduri.
+// Geometria vine codată („polyline6”); o desfacem aici, ca să nu tragem o bibliotecă pentru 20 de rânduri.
 function _decodePolyline6(str) {
   const out = []; let index = 0, lat = 0, lng = 0;
   while (index < str.length) {

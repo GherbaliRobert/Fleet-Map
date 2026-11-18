@@ -1,4 +1,4 @@
-// verify_telefon_echipa.js — „Anunță echipa RA Track", „Cereri de la clienți", intervențiile din calendar și ecranul Alerte pe telefon
+// verify_telefon_echipa.js — „Anunță echipa RA Track”, „Cereri de la clienți”, intervențiile din calendar și ecranul Alerte pe telefon
 // (lotul 4, 02.11) fac ce face pagina web, pe aceleași rute.
 //
 //   node verify_telefon_echipa.js
@@ -7,8 +7,8 @@
 //   1. ușile: butonul din casete (insightProblemaButon), fișa mașinii (echipaDinFisa), meniul (openSupport), RULATE lângă lib/cereriEchipa;
 //      foaia veche de suport a plecat; fondatorii n-au ușă; butonul `harta` duce la mașină;
 //   2. fereastra clientului (blocul paginii, RULAT pe un DOM de carton): filele, mașina, lista de mașini, etichetele, ce pleacă, confirmarea
-//      (și la 409), „Cererile tale", eroarea, `platforma`;
-//   3. „Cereri de la clienți" (_cereriRand, raxCerere, RULATE): filele, ce scrie pe o cerere, butoanele, formularele, corpul cererilor, mesajele;
+//      (și la 409), „Cererile tale”, eroarea, `platforma`;
+//   3. „Cereri de la clienți” (_cereriRand, raxCerere, RULATE): filele, ce scrie pe o cerere, butoanele, formularele, corpul cererilor, mesajele;
 //   4. anunțurile: adresaAnunt, o adresă pentru fiecare, citită înapoi de ecrane;
 //   5. calendarul: _mjcCalendarHtml și _mjcZiHtml, RULATE, lângă lib/calendarMontaj;
 //   6. Alerte: `suna_peste`, `cum_suna`, fraza de sub prag, ca pe web;
@@ -84,8 +84,8 @@ const LN = modul(F.numar);
 const L = modul(F.lib, { './numar': LN });
 const LP = modul(F.pagLib);
 const IL = modul(F.insightLib, { './insightPagini': LP, './cereriEchipa': L });
-const PB = taie(S.html, '// ── începe „Anunță echipa RA Track"', '// ── sfârșit „Anunță echipa RA Track"');
-const NB = taie(S.html, '// ── începe „Cereri de la clienți"', '// ── sfârșit „Cereri de la clienți"');
+const PB = taie(S.html, '// ── începe „Anunță echipa RA Track”', '// ── sfârșit „Anunță echipa RA Track”');
+const NB = taie(S.html, '// ── începe „Cereri de la clienți”', '// ── sfârșit „Cereri de la clienți”');
 const citita = (u) => { const x = new URL(u, 'http://x'); return { path: x.pathname, query: Object.fromEntries(x.searchParams) }; };
 // Textul unei bucăți: toate spațiile strânse, ca o propoziție (tăierea pe noduri diferă între DOM-ul de carton și HTML).
 const strange = (l) => (Array.isArray(l) ? l.join(' ') : String(l)).replace(/\s+/g, ' ').trim();
@@ -170,13 +170,13 @@ function parteaUsilor() {
   const fisaT = L.dinAdresa(citita(L.usaFisa('35')).query), meniuT = L.dinAdresa(citita(L.usaMeniu()).query);
   T('fișa mașinii: aceeași mașină, problemă și sursă ca pe web', fisaW && fisaW.imei === fisaT.imei && fisaW.problema === fisaT.problema && fisaW.sursa === fisaT.sursa, J([fisaW, fisaT]));
   T('meniul: fără mașină, ca iconița cu căști de pe web', meniuW && !meniuW.imei && !meniuW.problema && !meniuT.imei && !meniuT.problema, J([meniuW, meniuT]));
-  T('…dar sursa spune adevărul: telefonul n-are iconița, deci „de pe telefon", și cererea nouă la fel', meniuW.sursa === 'suport' && meniuT.sursa === 'telefon' && CE.sursaText({ sursa: 'telefon' }) === 'de pe telefon' && L.corpCerere({}, { imei: '', mesaj: 'x', cand: [], unde: '', telefon: '' }).sursa === 'telefon' && /sursa: 'telefon', fila: 'noua'/.test(S.ecran), J([meniuW, meniuT]));
-  T('adresa o citește fereastra: `fila=lista` = „Cererile tale"', L.dinAdresa({ fila: 'lista' }).fila === 'lista' && L.dinAdresa({}).fila === 'noua' && L.dinAdresa({ fila: 'x' }).fila === 'noua');
+  T('…dar sursa spune adevărul: telefonul n-are iconița, deci „de pe telefon”, și cererea nouă la fel', meniuW.sursa === 'suport' && meniuT.sursa === 'telefon' && CE.sursaText({ sursa: 'telefon' }) === 'de pe telefon' && L.corpCerere({}, { imei: '', mesaj: 'x', cand: [], unde: '', telefon: '' }).sursa === 'telefon' && /sursa: 'telefon', fila: 'noua'/.test(S.ecran), J([meniuW, meniuT]));
+  T('adresa o citește fereastra: `fila=lista` = „Cererile tale”', L.dinAdresa({ fila: 'lista' }).fila === 'lista' && L.dinAdresa({}).fila === 'noua' && L.dinAdresa({ fila: 'x' }).fila === 'noua');
 
   const meniu = faraComentarii(S.meniu), fisa = faraComentarii(S.fisa), bula = faraComentarii(S.bula);
-  T('meniul: rândul „Anunță echipa RA Track", doar la client; foaia veche a plecat', /!u\?\.isSuper && item\('headset', TITLU_FEREASTRA, \(\) => loc\.route\(usaMeniu\(\)\)\)/.test(meniu) &&
+  T('meniul: rândul „Anunță echipa RA Track”, doar la client; foaia veche a plecat', /!u\?\.isSuper && item\('headset', TITLU_FEREASTRA, \(\) => loc\.route\(usaMeniu\(\)\)\)/.test(meniu) &&
     !/Suport clienți|setSupport|sendSupport|Api\.support|tel:\+40|mailto:contact|sheet-ov|suport=1/.test(meniu), meniu.slice(0, 200));
-  T('meniul: „Cereri de la clienți" doar la fondator, după „Cereri demo" și înaintea lui „Mail", cu bulina cererilor noi', (() => {
+  T('meniul: „Cereri de la clienți” doar la fondator, după „Cereri demo” și înaintea lui „Mail”, cu bulina cererilor noi', (() => {
     const fond = taie(meniu, '{u?.isSuper && (', 'Sistem</div>');
     const a = fond.indexOf("'Cereri demo'"), b = fond.indexOf('TITLU_CERERI'), c = fond.indexOf("'Mail'");
     return a > 0 && a < b && b < c && /bulina\(cereriEchipaNoi\)/.test(fond) && /Api\.cereriNumar\(\)/.test(meniu);
@@ -188,7 +188,7 @@ function parteaUsilor() {
   T('rutele: fereastra pentru oricine, lista doar pentru noi', /<Route path="\/echipa" component=\{AnuntaEchipa\} \/>/.test(S.app) && /cereriClienti: doarSuper\(CereriClienti, 'Cereri de la clienți'\)/.test(S.app) && /<Route path="\/admin\/cereri" component=\{P\.cereriClienti\} \/>/.test(S.app));
   T('ruta veche rămâne pe server pentru telefoanele de dinainte, iar telefonul nu o mai cheamă', /app\.post\('\/api\/support'/.test(S.srv) && !/\/api\/support'/.test(S.endpoints));
   T('o singură cerere de trimitere pe telefon', (S.ecran.match(/Api\.trimiteCerere\(/g) || []).length === 1 && (S.endpoints.match(/\/api\/cereri-echipa', \{ method: 'POST'/g) || []).length === 1);
-  // Caseta: regula „se ocupă", ca _echipaSeOcupa.
+  // Caseta: regula „se ocupă”, ca _echipaSeOcupa.
   const des = [{ imei: '35', problema: 'semnal', seOcupa: 'Echipa se ocupă' }];
   T('…cererea se potrivește pe mașină ȘI pe problemă', L.seOcupaPeButon(des, { fel: 'echipa', imei: '35', problema: 'semnal' }) === des[0] && !L.seOcupaPeButon(des, { fel: 'echipa', imei: '35', problema: 'consum' }) && !L.seOcupaPeButon(des, { fel: 'echipa', imei: '36', problema: 'semnal' }) && !L.seOcupaPeButon(des, { fel: 'harta', imei: '35', problema: 'semnal' }));
   T('…mașinile cerute, fără dubluri, doar butoanele de echipă cu mașină', J(L.imeisEchipa([{ fel: 'echipa', imei: '1' }, { fel: 'echipa', imei: 1 }, { fel: 'harta', imei: '2' }, { fel: 'echipa' }, { fel: 'echipa', imei: '3' }])) === J(['1', '3']));
@@ -211,7 +211,7 @@ async function parteaFerestrei() {
   T('mașina din fereastră', w.dupaId('ce-b').indexOf('Mașina ' + ms.nr + ' · ' + ms.nume) === 0, w.dupaId('ce-b').slice(0, 80));
   const dmC = L.dupaMasina(META, false);
   T('cu mașină: etichetele și ce se trimite', w.dupaId('ce-b').indexOf(dmC.mesaj + ' · ' + dmC.mesajSub) > 0 && w.dupaId('ce-b').indexOf(dmC.date) > 0 && dmC.arataCand, w.dupaId('ce-b'));
-  T('subsolul: termenul + „la fiecare pas"', strange(vizibil(w, 'ce-f', 'n')) === L.notaFormular(META), strange(vizibil(w, 'ce-f', 'n')));
+  T('subsolul: termenul + „la fiecare pas”', strange(vizibil(w, 'ce-f', 'n')) === L.notaFormular(META), strange(vizibil(w, 'ce-f', 'n')));
   await w.buton('Trimite echipei').onclick();
   const post = w.trimise.filter((x) => x.o && x.o.method === 'POST').pop();
   const corpW = JSON.parse(post.o.body);
@@ -222,7 +222,7 @@ async function parteaFerestrei() {
   const pc = L.planTrimisa(META, R200);
   T('confirmarea: titlul, ce s-a întâmplat, pașii, unde o găsește', w.dupaId('ce-b') === strange([pc.titlu, pc.sub].concat(pc.pasi.reduce((t, x) => t.concat([x.eticheta, x.detaliu || '']), [])).concat([pc.nota])), JSON.stringify([w.dupaId('ce-b'), pc]));
   T('după 200 lista crește cu cererea', L.dupaTrimitere(200, R200).trimisa === true && /Cererile tale · 3/.test(w.doc.getElementById('ce-tabs').textContent));
-  // c) 409 „se ocupă deja"
+  // c) 409 „se ocupă deja”
   urm = { s: 409, j: R409 };
   await w.ctx.echipaDeschide(oCaseta);
   await w.buton('Trimite echipei').onclick();
@@ -242,19 +242,19 @@ async function parteaFerestrei() {
   texte.formFara = w.dupaId('ce-b') + ' ' + strange(vizibil(w, 'ce-f', 'n'));
   const sel = w.noduri.filter((n) => n.tagName === 'SELECT').pop();
   const opt = sel.children.map((c) => ({ v: c.value, t: c.textContent }));
-  T('lista de mașini: prima „Fără mașină", apoi în aceeași ordine, cu același text', opt[0].t === L.OPTIUNE_FARA_MASINA && opt[0].v === '' && J(opt.slice(1)) === J(L.optiuniMasini(MASINI)), J([opt, L.optiuniMasini(MASINI)]));
+  T('lista de mașini: prima „Fără mașină”, apoi în aceeași ordine, cu același text', opt[0].t === L.OPTIUNE_FARA_MASINA && opt[0].v === '' && J(opt.slice(1)) === J(L.optiuniMasini(MASINI)), J([opt, L.optiuniMasini(MASINI)]));
   const dmF = L.dupaMasina(META, true);
-  T('fără mașină: altă etichetă, fără „când", alt text despre ce se trimite', w.dupaId('ce-b').indexOf(dmF.mesaj) > 0 && w.dupaId('ce-b').indexOf('Când poate veni') < 0 && w.dupaId('ce-b').indexOf(dmF.date) > 0 && !dmF.arataCand && dmF.mesajSub === '', w.dupaId('ce-b'));
+  T('fără mașină: altă etichetă, fără „când”, alt text despre ce se trimite', w.dupaId('ce-b').indexOf(dmF.mesaj) > 0 && w.dupaId('ce-b').indexOf('Când poate veni') < 0 && w.dupaId('ce-b').indexOf(dmF.date) > 0 && !dmF.arataCand && dmF.mesajSub === '', w.dupaId('ce-b'));
   urm = trimis;
   await w.buton('Trimite echipei').onclick();
   const postF = w.trimise.filter((x) => x.o && x.o.method === 'POST').pop();
   const corpF = JSON.parse(postF.o.body);
-  T('ce pleacă, fără mașină: „alta", fără `cand` și `unde`, la fel ca pe web', J(sortat(corpF)) === J(sortat(L.corpCerere({ sursa: 'suport' }, { imei: '', mesaj: '', cand: ['dimineata'], unde: 'x', telefon: '0722 345 678' }))) && corpF.problema === 'alta' && corpF.imei === null, J(corpF));
-  // f) „Cererile tale"
+  T('ce pleacă, fără mașină: „alta”, fără `cand` și `unde`, la fel ca pe web', J(sortat(corpF)) === J(sortat(L.corpCerere({ sursa: 'suport' }, { imei: '', mesaj: '', cand: ['dimineata'], unde: 'x', telefon: '0722 345 678' }))) && corpF.problema === 'alta' && corpF.imei === null, J(corpF));
+  // f) „Cererile tale”
   await w.ctx.echipaDeschide({ fila: 'lista' });
   texte.lista = w.dupaId('ce-b') + ' ' + strange(vizibil(w, 'ce-f', 'n'));
   const pl = L.planLista(META);
-  T('„Cererile tale": fiecare rând, ca pe web, cu nota administratorului', texte.lista === strange(pl.randuri.reduce((t, c) => t.concat([c.cap, c.eticheta, c.titlu, c.detaliu, c.deAltcineva]), []).concat([pl.nota])), JSON.stringify([texte.lista, pl]));
+  T('„Cererile tale”: fiecare rând, ca pe web, cu nota administratorului', texte.lista === strange(pl.randuri.reduce((t, c) => t.concat([c.cap, c.eticheta, c.titlu, c.detaliu, c.deAltcineva]), []).concat([pl.nota])), JSON.stringify([texte.lista, pl]));
   T('…omul obișnuit nu vede nota; lista goală are textul paginii', !L.planLista(Object.assign({}, META, { admin: false })).nota && L.planLista({ cereri: [] }).gol === L.GOL_CERERILE_TALE && new RegExp(L.GOL_CERERILE_TALE).test(PB));
   // g) eroare și platformă
   const we = webFereastra(() => ({ s: 500, j: {} }));
@@ -273,7 +273,7 @@ function vizibil(w, id, cls) {
   return c ? c.textContent : '';
 }
 
-// ─── „Cereri de la clienți": blocul paginii, rulat ───
+// ─── „Cereri de la clienți”: blocul paginii, rulat ───
 function webCereri() {
   const box = { innerHTML: '' }, campuri = {}, cereri = [];
   const ctx = { console, String, Array, JSON, Number, encodeURIComponent, __toast: [], __confirm: [], __raspuns: () => ({ s: 200, j: {} }), __incarcat: 0 };
@@ -298,7 +298,7 @@ const CERERI_D = () => {
 };
 
 async function parteaCererilor() {
-  sect('3. „Cereri de la clienți" (pagina, rulată)');
+  sect('3. „Cereri de la clienți” (pagina, rulată)');
   const w = webCereri();
   const d = CERERI_D();
   w.ctx.__cer.d = d; w.ctx.__cer.fel = 'deschise';
@@ -309,7 +309,7 @@ async function parteaCererilor() {
     const dx = { cereri: Array.from({ length: n }, () => ({})), deschise: n };
     const wn = webCereri();
     const rand = /(\d+[^<]*)<\/span><\/div>/.exec(capDe(wn, dx));
-    T('„' + L.cateCereri(dx) + '" (' + n + ')', rand && unesc(rand[1]) === L.cateCereri(dx), rand && rand[1]);
+    T('„' + L.cateCereri(dx) + '” (' + n + ')', rand && unesc(rand[1]) === L.cateCereri(dx), rand && rand[1]);
   }
   T('lista goală: aceleași texte', /Nicio cerere deschisă\./.test(NB) && /'Nicio cerere\.'/.test(NB) && L.golCereri('deschise') === 'Nicio cerere deschisă.' && L.golCereri('toate') === 'Nicio cerere.');
   T('filele: fără cifră când n-are nimic deschis', L.fileCereri({ deschise: 0 })[0].t === 'Deschise' && L.fileCereri({ deschise: 4 })[0].t === 'Deschise · 4');
@@ -320,7 +320,7 @@ async function parteaCererilor() {
     const acts = rand.slice(rand.indexOf('cer-acts'));
     while ((m = re.exec(acts))) web.push({ k: m[2], t: m[3], prim: !!m[1] });
     T('cererea ' + c.id + ': butoanele, în aceeași ordine, același principal', J(web) === J(p.butoane.map((b) => ({ k: b.k, t: b.t, prim: b.prim }))), J([web, p.butoane]));
-    T('…„Sună" și „Deschide firma", în aceleași cazuri', /<i class="fas fa-phone"><\/i> Sună/.test(acts) === !!p.suna && /Deschide firma/.test(acts) === (p.firma != null) && (!p.suna || new RegExp('href="' + p.suna.replace(/\+/g, '\\+') + '"').test(acts)), acts.slice(0, 300));
+    T('…„Sună” și „Deschide firma”, în aceleași cazuri', /<i class="fas fa-phone"><\/i> Sună/.test(acts) === !!p.suna && /Deschide firma/.test(acts) === (p.firma != null) && (!p.suna || new RegExp('href="' + p.suna.replace(/\+/g, '\\+') + '"').test(acts)), acts.slice(0, 300));
     T('…clasa ei de culoare', new RegExp('class="dq-item cer-item ' + p.tag.cls + '"').test(rand), p.tag.cls);
     const textW = textHtml(rand.slice(0, rand.indexOf('dq-acts') > 0 ? rand.lastIndexOf('<div class="dq-acts') : rand.length));
     const planText = strange([p.cap, p.vehicul ? '· ' + p.vehicul : '', p.tag.text, [p.cine, p.telefon, p.email, p.cand, p.sursa].filter(Boolean).join(' · '), p.titlu]
@@ -328,18 +328,18 @@ async function parteaCererilor() {
       .concat(p.programare ? [L.TEXT_PROGRAMATA + ' ' + p.programare + (p.programareMesaj ? ' ' + L.TEXT_MESAJ_TRIMIS + '„' + p.programareMesaj + '”' : '')] : []).concat(p.raspuns ? [L.TEXT_I_AM_SCRIS + ' „' + p.raspuns + '”'] : []));
     T('…toate textele, în aceeași ordine', textW === planText, JSON.stringify([textW, planText]));
   }
-  T('„Pare rezolvată singură": Rezolvat devine principal', L.butoaneCerere({ butoane: ['preiau', 'rezolvat'], pareRezolvata: 'x' }).find((b) => b.prim).k === 'rezolvat' && L.butoaneCerere({ butoane: ['preiau', 'rezolvat'] }).find((b) => b.prim).k === 'preiau');
-  T('„Sună" scoate ce nu e cifră, ca pe web', L.telHref('0722 345-678') === 'tel:0722345678' && L.telHref('+40 722') === 'tel:+40722');
+  T('„Pare rezolvată singură”: Rezolvat devine principal', L.butoaneCerere({ butoane: ['preiau', 'rezolvat'], pareRezolvata: 'x' }).find((b) => b.prim).k === 'rezolvat' && L.butoaneCerere({ butoane: ['preiau', 'rezolvat'] }).find((b) => b.prim).k === 'preiau');
+  T('„Sună” scoate ce nu e cifră, ca pe web', L.telHref('0722 345-678') === 'tel:0722345678' && L.telHref('+40 722') === 'tel:+40722');
   // Formularele.
   const c0 = d.cereri[0];
   await w.ctx.raxCerere('programez', c0.id);
   const fp = taie(w.box.innerHTML, '<div class="cer-form">', '</div></div></div>');
   const fT = L.formProgramare(d);
-  T('„Programez": ziua propusă = mâine, de azi încolo, primul interval, fără instalator, în calendar', new RegExp('min="' + d.azi + '" value="' + d.maine + '"').test(fp) && fT.zi === d.maine && fT.interval === d.intervale[0].k && fT.partener === '' && fT.inCalendar === true && /checked>/.test(fp), fp.slice(0, 300));
+  T('„Programez”: ziua propusă = mâine, de azi încolo, primul interval, fără instalator, în calendar', new RegExp('min="' + d.azi + '" value="' + d.maine + '"').test(fp) && fT.zi === d.maine && fT.interval === d.intervale[0].k && fT.partener === '' && fT.inCalendar === true && /checked>/.test(fp), fp.slice(0, 300));
   T('…textele formularului', [L.TEXT_FORM.programez, L.TEXT_FORM.faraInstalator, L.TEXT_FORM.instalator, L.TEXT_FORM.mesaj, L.TEXT_FORM.mesajGol, L.TEXT_FORM.inCalendar, L.TEXT_FORM.renunta, L.TEXT_FORM.programeaza].every((t) => fp.indexOf(esc(t)) >= 0), fp);
   await w.ctx.raxCerere('rezolvat', c0.id);
   const fr = taie(w.box.innerHTML, '<div class="cer-form">', '</div></div></div>');
-  T('„Rezolvat": textele formularului', [L.TEXT_FORM.ceAmFacut, L.TEXT_FORM.raspunsGol, L.TEXT_FORM.renunta, L.TEXT_FORM.rezolva].every((t) => fr.indexOf(esc(t)) >= 0), fr);
+  T('„Rezolvat”: textele formularului', [L.TEXT_FORM.ceAmFacut, L.TEXT_FORM.raspunsGol, L.TEXT_FORM.renunta, L.TEXT_FORM.rezolva].every((t) => fr.indexOf(esc(t)) >= 0), fr);
   // Corpul cererilor.
   const id = c0.id;
   const pune = (k, v) => { w.campuri['cer-' + k + '-' + id] = v; };
@@ -348,20 +348,20 @@ async function parteaCererilor() {
   w.cereri.length = 0;
   await w.ctx.raxCerere('programeaza', id);
   const pW = JSON.parse(w.cereri[0].o.body);
-  T('„Programează": aceeași adresă, același corp', /\/api\/admin\/cereri-echipa\/142\/programeaza$/.test(w.cereri[0].u) && J(sortat(pW)) === J(sortat(L.corpProgramare({ zi: '2026-10-25', interval: 'dim', partener: '9', mesaj: 'Venim.', inCalendar: false }))), J([w.cereri[0].u, pW]));
+  T('„Programează”: aceeași adresă, același corp', /\/api\/admin\/cereri-echipa\/142\/programeaza$/.test(w.cereri[0].u) && J(sortat(pW)) === J(sortat(L.corpProgramare({ zi: '2026-10-25', interval: 'dim', partener: '9', mesaj: 'Venim.', inCalendar: false }))), J([w.cereri[0].u, pW]));
   T('…mesajul de după', w.ctx.__toast.pop().m === L.TEXT_DUPA.programeaza);
   pune('pt', { value: '' }); pune('cal', { checked: true }); w.cereri.length = 0;
   await w.ctx.raxCerere('programeaza', id);
   T('…fără instalator: `partener_id` null', J(sortat(JSON.parse(w.cereri[0].o.body))) === J(sortat(L.corpProgramare({ zi: '2026-10-25', interval: 'dim', partener: '', mesaj: 'Venim.', inCalendar: true }))));
   pune('rs', { value: 'Am schimbat cartela.' }); w.cereri.length = 0;
   await w.ctx.raxCerere('rezolva', id);
-  T('„Rezolvată": aceeași adresă, același corp, același mesaj', /\/142\/rezolvat$/.test(w.cereri[0].u) && J(JSON.parse(w.cereri[0].o.body)) === J(L.corpRezolvat('Am schimbat cartela.')) && w.ctx.__toast.pop().m === L.TEXT_DUPA.rezolva);
+  T('„Rezolvată”: aceeași adresă, același corp, același mesaj', /\/142\/rezolvat$/.test(w.cereri[0].u) && J(JSON.parse(w.cereri[0].o.body)) === J(L.corpRezolvat('Am schimbat cartela.')) && w.ctx.__toast.pop().m === L.TEXT_DUPA.rezolva);
   w.cereri.length = 0;
   await w.ctx.raxCerere('preiau', id);
-  T('„Preiau": aceeași adresă, același mesaj', /\/142\/preiau$/.test(w.cereri[0].u) && w.ctx.__toast.pop().m === L.TEXT_DUPA.preiau);
+  T('„Preiau”: aceeași adresă, același mesaj', /\/142\/preiau$/.test(w.cereri[0].u) && w.ctx.__toast.pop().m === L.TEXT_DUPA.preiau);
   w.cereri.length = 0;
   await w.ctx.raxCerere('redeschide', id);
-  T('„Redeschide": aceeași întrebare, același buton, același mesaj', w.ctx.__confirm[0].m === L.intrebareRedeschide(id) && w.ctx.__confirm[0].o.okLabel === 'Redeschide' && /\/142\/redeschide$/.test(w.cereri[0].u) && w.ctx.__toast.pop().m === L.TEXT_DUPA.redeschide, J(w.ctx.__confirm));
+  T('„Redeschide”: aceeași întrebare, același buton, același mesaj', w.ctx.__confirm[0].m === L.intrebareRedeschide(id) && w.ctx.__confirm[0].o.okLabel === 'Redeschide' && /\/142\/redeschide$/.test(w.cereri[0].u) && w.ctx.__toast.pop().m === L.TEXT_DUPA.redeschide, J(w.ctx.__confirm));
   // A doua apăsare: 409 = refuzul serverului, se închide formularul, lista se reîncarcă. Pe telefon la fel.
   w.ctx.__raspuns = (u) => (/preiau$/.test(u) ? { s: 409, j: { error: 'Cererea a fost deja preluată (Alin).' } } : { s: 200, j: { fel: 'deschise', cereri: [] } });
   w.cereri.length = 0;
@@ -370,9 +370,9 @@ async function parteaCererilor() {
   const lista = faraComentarii(S.lista);
   T('…pe telefon la fel', /showToast\(\(e && e\.message\) \|\| NU_S_A_PUTUT, true\)/.test(lista) && /if \(e && e\.status === 409\) \{ inchideForm\(id\); await incarca\(\); \}/.test(lista));
   T('același text la o eroare fără cuvinte', new RegExp("j\\.error \\|\\| '" + L.NU_S_A_PUTUT + "'").test(NB));
-  T('textele scrise în pagină: „Datele aparatului", „Programată:", „Mesajul trimis", „Ce i-am scris:", „Sună", „Deschide firma"', [L.TEXT_APARAT, L.TEXT_PROGRAMATA, L.TEXT_MESAJ_TRIMIS, L.TEXT_I_AM_SCRIS].every((t) => NB.indexOf(t) >= 0) && /> Sună</.test(NB) && /> Deschide firma</.test(NB) && /> Sună</.test(lista) && /> Deschide firma</.test(lista));
+  T('textele scrise în pagină: „Datele aparatului”, „Programată:”, „Mesajul trimis”, „Ce i-am scris:”, „Sună”, „Deschide firma”', [L.TEXT_APARAT, L.TEXT_PROGRAMATA, L.TEXT_MESAJ_TRIMIS, L.TEXT_I_AM_SCRIS].every((t) => NB.indexOf(t) >= 0) && /> Sună</.test(NB) && /> Deschide firma</.test(NB) && /> Sună</.test(lista) && /> Deschide firma</.test(lista));
   T('din calendar: cererea, la vedere', /document\.getElementById\('cer-' \+ id\)/.test(lista) && /el\.scrollIntoView\(\{ block: 'center' \}\)/.test(lista) && /cer-arat/.test(S.css));
-  T('„Deschide firma" = fișa firmei, ca pe web', /loc\.route\(adresaFirmei\(id\)\)/.test(lista));
+  T('„Deschide firma” = fișa firmei, ca pe web', /loc\.route\(adresaFirmei\(id\)\)/.test(lista));
   T('fără HTML de la server', !/dangerouslySetInnerHTML/.test(S.lista + S.ecran));
 }
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -392,9 +392,9 @@ function parteaAnunturilor() {
   // Felurile, de la server: `cerere_` + pasul pe care îl anunță la client (preluată / programată / rezolvată), `cerere_echipa` la noi.
   const pasi = ['preluata', 'programata', 'rezolvata'];
   T('pașii anunțați clientului sunt exact cei trei de pe telefon', pasi.every((x) => !!CE.anuntClient(Object.assign({}, CERERE, { programare: { zi: '2026-10-23', intervalText: 'x' } }), x)) && !CE.anuntClient(CERERE, 'redeschisa'), pasi.map((x) => !!CE.anuntClient(CERERE, x)).join());
-  T('`cerere_echipa` (la noi) → „Cereri de la clienți", aceeași adresă ca din meniu', P.adresaAnunt('cerere_echipa', { cerere: true, cerereId: 5, pentru: 'noi' }) === L.RUTA_CERERI_CLIENTI && /'cerere_echipa'/.test(S.srv));
-  for (const x of pasi) T('`cerere_' + x + '` (la client) → „Cererile tale"', P.adresaAnunt('cerere_' + x, { cerere: true, cerereId: 5, pentru: 'client' }) === L.RUTA_CERERILE_TALE && P.TIPURI_CU_LOC.indexOf('cerere_' + x) >= 0);
-  T('…fereastra citește adresa ca fila „Cererile tale"', L.dinAdresa(citita(L.RUTA_CERERILE_TALE).query).fila === 'lista');
+  T('`cerere_echipa` (la noi) → „Cereri de la clienți”, aceeași adresă ca din meniu', P.adresaAnunt('cerere_echipa', { cerere: true, cerereId: 5, pentru: 'noi' }) === L.RUTA_CERERI_CLIENTI && /'cerere_echipa'/.test(S.srv));
+  for (const x of pasi) T('`cerere_' + x + '` (la client) → „Cererile tale”', P.adresaAnunt('cerere_' + x, { cerere: true, cerereId: 5, pentru: 'client' }) === L.RUTA_CERERILE_TALE && P.TIPURI_CU_LOC.indexOf('cerere_' + x) >= 0);
+  T('…fereastra citește adresa ca fila „Cererile tale”', L.dinAdresa(citita(L.RUTA_CERERILE_TALE).query).fila === 'lista');
   T('push-ul lor (cu `notifId`) trece prin detaliu, care marchează citit și duce la adresa lui', P.adresaPush({ type: 'cerere_echipa', notifId: 7 }) === '/notif/7' && P.adresaPush({ type: 'cerere_preluata', notifId: 8 }) === '/notif/8');
   T('…serverul trimite `notifId` pe ambele drumuri', /async function _anuntaSuperadmini[\s\S]{0,500}notifId: n\.id/.test(S.srv) && /async function _incAnunta[\s\S]{0,500}notifId: n\.id/.test(S.srv));
   T('o singură scriere a acestor adrese în push.ts, fără un import nou (push.ts se încarcă în alte probe)', (S.push.match(/'\/admin\/cereri'/g) || []).length === 1 && (S.push.match(/'\/echipa\?fila=lista'/g) || []).length === 1 && !/cereriEchipa'/.test(S.push));
@@ -409,7 +409,7 @@ function parteaCalendarului() {
       { id: 'c7', cerere_id: 7, interventie: true, zi: '2026-10-23', partener_id: 9, partener_nume: 'Montaj Rapid', company_id: 5, company_name: 'Alfa SRL', status: 'programat', masini: 1, vehicul: 'B 154 UIP', titlu: 'Nu transmite', interval: '09:00–12:00', text: 'Intervenție · cererea nr. 7 · B 154 UIP · Nu transmite' },
       { id: 'c8', cerere_id: 8, interventie: true, zi: '2026-10-24', partener_id: null, partener_nume: null, company_id: 6, company_name: 'Beta SRL', status: 'executat', masini: 1, vehicul: '', titlu: 'O problemă', interval: '', text: 'Intervenție · cererea nr. 8 · O problemă' },
     ] };
-  const bloc = taie(S.html, '// ── începe „calendarul de montaj"', '// ── sfârșit „calendarul de montaj"');
+  const bloc = taie(S.html, '// ── începe „calendarul de montaj”', '// ── sfârșit „calendarul de montaj”');
   const cer = { fel: '', spre: null, form: null };
   const fac = (cal) => {
     const ctx = { console, String, Array, JSON, Date, Math, parseInt, Number, Object, _raxMj: { fila: 'calendar', contracte: [], faraContract: [], lucrari: [], stari: {}, trimite: false, editC: null, fStare: '', fPart: '', cal: Object.assign({ luna: '2026-10', data: CLOC, part: '', form: null, sel: null, pre: null }, cal) }, _raxPart: { lista: [], edit: null }, _cer: cer, companiesCache: [], goSistem: () => {}, raxToast: () => {}, raConfirm: async () => true };
@@ -425,7 +425,7 @@ function parteaCalendarului() {
     while ((m = re.exec(h))) web.push({ id: +m[3], gata: m[4] === 'true', cls: !!m[1], titlu: unesc(m[2]) });
     const pe = CAL.interventiiPeZi(CLOC.interventii, part);
     const tel = Object.keys(pe).sort().reduce((t, z) => t.concat(pe[z].map((i) => ({ id: i.cerere_id, gata: CAL.interventieGata(i), cls: CAL.interventieGata(i), titlu: CAL.titluInterventie(i) }))), []);
-    T('grila, instalator „' + (part || 'toți') + '": aceleași intervenții, aceleași titluri', J(web) === J(tel), J([web, tel]));
+    T('grila, instalator „' + (part || 'toți') + '”: aceleași intervenții, aceleași titluri', J(web) === J(tel), J([web, tel]));
     T('…legenda', /<span class="mjc-l mjc-int"><i class="fas fa-headset" aria-hidden="true"><\/i> intervenție<\/span>/.test(h));
   }
   T('pe telefon: în grilă, în legendă, în lista lunii, în foaia zilei', /interventiiPeZi\(d\.interventii, part\)/.test(S.calTsx) && /<span class="mjc-l mjc-int"><Icon name="headset" size=\{12\} \/> intervenție<\/span>/.test(S.calTsx) && /'mjc-l mjc-int' \+ \(iz\.every\(interventieGata\)/.test(S.calTsx) && /Intervenții în ziua asta/.test(S.calTsx) && /Intervenții în ziua asta/.test(bloc));
@@ -437,7 +437,7 @@ function parteaCalendarului() {
     const tel = CLOC.interventii.filter((i) => i.zi === zi).map((i) => ({ id: i.cerere_id, firma: i.company_name || '—', sub: CAL.subInterventie(i) }));
     T('fereastra zilei ' + zi + ': același rând', J(web) === J(tel), J([web, tel]));
   }
-  // Clicul: cererea ei (rezolvată = în „Toate").
+  // Clicul: cererea ei (rezolvată = în „Toate”).
   const x = fac({});
   for (const i of CLOC.interventii) {
     vm.runInContext(functie(bloc, 'window.raxMjCalInterventie = function (id, gata) {') + ';', x);
@@ -446,7 +446,7 @@ function parteaCalendarului() {
     T('clicul pe cererea ' + i.cerere_id + ': aceeași filă, aceeași cerere', cer.fel === t.fel && cer.spre === t.spre, J([cer, t]));
   }
   T('Montaj trece adresa; din foaie înlocuiește intrarea ei din istoric', /onInterventie=\{\(x, dinFoaie\) => loc\.route\(rutaCerere\(x\.cerere_id, interventieGata\(x\)\), dinFoaie\)\}/.test(S.montaj) && /onInterventie\(x, true\)/.test(S.calTsx) && /onInterventie\(x, false\)/.test(S.calTsx));
-  T('o intervenție nu e lucrare: nu intră în „De programat", nici în istoric, nici în foaia lucrării', !/interventii/.test(functie(S.calLib, 'export function deProgramatActive(') + functie(S.calLib, 'export function istoricFiltrat(')) && /\(pe\[zi\] \|\| \[\]\)\.map\(\(l\) => <RandLucrare/.test(S.calTsx));
+  T('o intervenție nu e lucrare: nu intră în „De programat”, nici în istoric, nici în foaia lucrării', !/interventii/.test(functie(S.calLib, 'export function deProgramatActive(') + functie(S.calLib, 'export function istoricFiltrat(')) && /\(pe\[zi\] \|\| \[\]\)\.map\(\(l\) => <RandLucrare/.test(S.calTsx));
 }
 
 function parteaAlertelor() {
@@ -537,13 +537,13 @@ async function parteaServerului() {
   const lgA = await tel('ana@ionescu.ro');
   T('administratorul firmei intră', !!lgA.token);
   const m0 = await Api.cereriEchipa();
-  T('fereastra: termenul, „când", ce se trimite, cum îl găsim, lista goală; nu `platforma`', !m0.platforma && m0.termen === CE.TERMEN && m0.cand.length === 5 && m0.dateTrimise === CE.DATE_TRIMISE && m0.contact.nume === 'Ana Pop' && m0.contact.email === 'ana@ionescu.ro' && L.planLista(m0).gol === L.GOL_CERERILE_TALE && L.fileFereastra(m0)[1].t === 'Cererile tale · 0', J(m0).slice(0, 500));
+  T('fereastra: termenul, „când”, ce se trimite, cum îl găsim, lista goală; nu `platforma`', !m0.platforma && m0.termen === CE.TERMEN && m0.cand.length === 5 && m0.dateTrimise === CE.DATE_TRIMISE && m0.contact.nume === 'Ana Pop' && m0.contact.email === 'ana@ionescu.ro' && L.planLista(m0).gol === L.GOL_CERERILE_TALE && L.fileFereastra(m0)[1].t === 'Cererile tale · 0', J(m0).slice(0, 500));
   // Din caseta de consum: ușa, adresa citită înapoi, corpul — apoi serverul.
   const oC = L.dinAdresa(citita(L.usaCaseta({ problema: 'consum', imei: IM[0] }, { dovada: 'Nivelul a stat la 22 L.' })).query);
   const r1 = await Api.trimiteCerere(L.corpCerere(oC, { imei: oC.imei, mesaj: 'A fost la service.', cand: ['dimineata'], unde: 'Strada Fabricii 12', telefon: '0722 345 678' }));
   const id1 = r1.cerere && r1.cerere.id;
   const pc = L.planTrimisa(m0, r1);
-  T('clientul trimite: „Am trimis cererea nr. N.", pașii, „se ocupă", unde o găsește', !!id1 && L.dupaTrimitere(200, r1).trimisa && pc.titlu === 'Am trimis cererea nr. ' + id1 + '.' && pc.pasi.length >= 3 && pc.pasi[0].gata && !pc.pasi[1].gata && !!pc.nota && /^Echipa RA Track se ocupă · cererea nr\./.test(r1.seOcupa), J(r1).slice(0, 500));
+  T('clientul trimite: „Am trimis cererea nr. N.”, pașii, „se ocupă”, unde o găsește', !!id1 && L.dupaTrimitere(200, r1).trimisa && pc.titlu === 'Am trimis cererea nr. ' + id1 + '.' && pc.pasi.length >= 3 && pc.pasi[0].gata && !pc.pasi[1].gata && !!pc.nota && /^Echipa RA Track se ocupă · cererea nr\./.test(r1.seOcupa), J(r1).slice(0, 500));
   T('…clientul NU primește datele aparatului', !cheiAparat(r1).length, J(cheiAparat(r1)));
   // A doua cerere pe aceeași mașină și problemă: 409, tot confirmare.
   await tel('dan@ionescu.ro');
@@ -554,13 +554,13 @@ async function parteaServerului() {
   const des = await Api.cereriDeschise(IM.join(','));
   const bC = { fel: 'echipa', text: 'x', problema: 'consum', imei: IM[0] };
   const ocu = L.seOcupaPeButon(des.deschise, bC);
-  T('caseta: „Echipa RA Track se ocupă · …" pe butonul mașinii, și nota de după', ocu && /^Echipa RA Track se ocupă · cererea nr\./.test(ocu.seOcupa) && !!des.notaDupa && !L.seOcupaPeButon(des.deschise, Object.assign({}, bC, { imei: IM[1] })) && !L.seOcupaPeButon(des.deschise, Object.assign({}, bC, { problema: 'semnal' })), J(des).slice(0, 300));
+  T('caseta: „Echipa RA Track se ocupă · …” pe butonul mașinii, și nota de după', ocu && /^Echipa RA Track se ocupă · cererea nr\./.test(ocu.seOcupa) && !!des.notaDupa && !L.seOcupaPeButon(des.deschise, Object.assign({}, bC, { imei: IM[1] })) && !L.seOcupaPeButon(des.deschise, Object.assign({}, bC, { problema: 'semnal' })), J(des).slice(0, 300));
   T('…fără datele aparatului', !cheiAparat(des).length);
   // Fără mașină; fără text → refuzul serverului.
   const e3 = await eroare(() => Api.trimiteCerere(L.corpCerere({ sursa: 'suport' }, { imei: '', mesaj: '  ', cand: [], unde: '', telefon: '' })));
   T('fără mașină și fără text: refuzul serverului rămâne în formular', e3 && e3.status === 400 && L.dupaTrimitere(e3.status, e3.data).eroare === CE.lipsa({ problema: 'alta', mesaj: '' }), J(e3 && e3.data));
   const r3 = await Api.trimiteCerere(L.corpCerere(L.dinAdresa(citita(L.usaMeniu()).query), { imei: '', mesaj: 'O întrebare pentru voi.', cand: [], unde: '', telefon: '' }));
-  T('fără mașină: cerere „alta"', !!(r3.cerere && r3.cerere.id) && !cheiAparat(r3).length, J(r3).slice(0, 300));
+  T('fără mașină: cerere „alta”', !!(r3.cerere && r3.cerere.id) && !cheiAparat(r3).length, J(r3).slice(0, 300));
   const r4 = await Api.trimiteCerere(L.corpCerere(L.dinAdresa(citita(L.usaFisa(IM[1])).query), { imei: IM[1], mesaj: 'Nu o văd.', cand: [], unde: '', telefon: '' }));
   T('din fișa mașinii: cerere pe mașina ei', !!(r4.cerere && r4.cerere.id));
   const e5 = await eroare(() => Api.cereriClienti('deschise'));
@@ -569,7 +569,7 @@ async function parteaServerului() {
   T('…și nu poate prelua', e5b && e5b.status === 403);
   await tel('ana@ionescu.ro');
   const m1 = await Api.cereriEchipa();
-  T('„Cererile tale": administratorul le vede pe toate, cu nota lui, fără datele aparatului', L.planLista(m1).randuri.length === 3 && !!L.planLista(m1).nota && !cheiAparat(m1.cereri).length && !cheiAparat(m1.contact).length && L.fileFereastra(m1)[1].t === 'Cererile tale · 3', J(L.planLista(m1)).slice(0, 400));
+  T('„Cererile tale”: administratorul le vede pe toate, cu nota lui, fără datele aparatului', L.planLista(m1).randuri.length === 3 && !!L.planLista(m1).nota && !cheiAparat(m1.cereri).length && !cheiAparat(m1.contact).length && L.fileFereastra(m1)[1].t === 'Cererile tale · 3', J(L.planLista(m1)).slice(0, 400));
   await tel('dan@ionescu.ro');
   const mDan = await Api.cereriEchipa();
   T('…omul obișnuit le vede doar pe ale lui, fără notă', mDan.cereri.length === 2 && !L.planLista(mDan).nota && !cheiAparat(mDan.cereri).length && L.planLista(mDan).randuri.every((c) => !c.deAltcineva), J(mDan.cereri).slice(0, 300));
@@ -587,9 +587,9 @@ async function parteaServerului() {
   const c1 = d1.cereri.find((c) => c.id === id1);
   const p1 = L.planCerere(c1);
   T('datele aparatului sunt doar la noi', p1.aparat.length > 0 && p1.aparat.some((a) => a.v === IM[0] || /350000000095001/.test(a.v)), J(p1.aparat));
-  T('cum îl găsim: numele, telefonul, emailul; butoanele de la server; „Deschide firma"', /Ana Pop/.test(p1.cine) && p1.telefon === '0722 345 678' && p1.email === 'ana@ionescu.ro' && p1.suna === 'tel:0722345678' && p1.firma === co.id && p1.butoane[0].k === 'preiau' && p1.butoane[0].prim, J(p1).slice(0, 500));
+  T('cum îl găsim: numele, telefonul, emailul; butoanele de la server; „Deschide firma”', /Ana Pop/.test(p1.cine) && p1.telefon === '0722 345 678' && p1.email === 'ana@ionescu.ro' && p1.suna === 'tel:0722345678' && p1.firma === co.id && p1.butoane[0].k === 'preiau' && p1.butoane[0].prim, J(p1).slice(0, 500));
   const cMeniu = d1.cereri.find((c) => c.id === r3.cerere.id);
-  T('cererea din meniu: la noi scrie „de pe telefon"', cMeniu && L.planCerere(cMeniu).sursa === 'de pe telefon', J(cMeniu).slice(0, 200));
+  T('cererea din meniu: la noi scrie „de pe telefon”', cMeniu && L.planCerere(cMeniu).sursa === 'de pe telefon', J(cMeniu).slice(0, 200));
   const pr = await Api.cererePreiau(id1);
   T('Preiau', !!pr.ok);
   const e7 = await eroare(() => Api.cererePreiau(id1));
@@ -610,7 +610,7 @@ async function parteaServerului() {
   const inte = (cal.interventii || []).filter((x) => x.cerere_id === id1);
   T('calendarul: intervenția, pe ziua ei și pe instalatorul ei', inte.length === 1 && inte[0].zi === f0.zi && inte[0].partener_id === pt.id && CAL.interventiiPeZi(cal.interventii, String(pt.id))[f0.zi].length === 1 && !CAL.interventiiPeZi(cal.interventii, '99999')[f0.zi] && /^Intervenție · cererea nr\./.test(CAL.titluInterventie(inte[0])) && CAL.subInterventie(inte[0]).indexOf('Montaj Rapid') > 0, J(cal.interventii).slice(0, 400));
   T('…nu e lucrare de montaj', !(cal.lucrari || []).some((l) => l.interventie) && !(cal.programate || []).some((l) => l.interventie), J(cal.lucrari));
-  T('…clicul duce la cererea ei, în „Deschise"', J(L.cerereDinAdresa(citita(L.rutaCerere(inte[0].cerere_id, CAL.interventieGata(inte[0]))).query)) === J({ fel: 'deschise', spre: id1 }));
+  T('…clicul duce la cererea ei, în „Deschise”', J(L.cerereDinAdresa(citita(L.rutaCerere(inte[0].cerere_id, CAL.interventieGata(inte[0]))).query)) === J({ fel: 'deschise', spre: id1 }));
   const e8 = await eroare(() => Api.cereriProgrameaza(id1, L.corpProgramare(Object.assign({}, fp, { zi: '2020-01-01' }))));
   T('o zi din trecut: refuzul serverului', e8 && e8.status === 400, e8 && e8.message);
   const e9 = await eroare(() => Api.cerereRezolvat(id1, L.corpRezolvat('')));
@@ -619,10 +619,10 @@ async function parteaServerului() {
   T('Rezolvat', !!rz.ok);
   const dr = await Api.cereriClienti('rezolvate');
   const crz = dr.cereri.find((c) => c.id === id1);
-  T('…apare la Rezolvate, cu ce i-am scris și „Redeschide"', crz && L.planCerere(crz).raspuns === 'Am schimbat cartela SIM.' && L.planCerere(crz).butoane.map((b) => b.k).indexOf('redeschide') >= 0, J(crz).slice(0, 300));
+  T('…apare la Rezolvate, cu ce i-am scris și „Redeschide”', crz && L.planCerere(crz).raspuns === 'Am schimbat cartela SIM.' && L.planCerere(crz).butoane.map((b) => b.k).indexOf('redeschide') >= 0, J(crz).slice(0, 300));
   const cal2 = await client.api('/api/montaj/calendar?luna=' + luna);
   const i2 = (cal2.interventii || []).find((x) => x.cerere_id === id1);
-  T('…intervenția rezolvată: gri, iar clicul duce în „Toate"', i2 && CAL.interventieGata(i2) && L.cerereDinAdresa(citita(L.rutaCerere(i2.cerere_id, true)).query).fel === 'toate', J(i2));
+  T('…intervenția rezolvată: gri, iar clicul duce în „Toate”', i2 && CAL.interventieGata(i2) && L.cerereDinAdresa(citita(L.rutaCerere(i2.cerere_id, true)).query).fel === 'toate', J(i2));
   const P = modul(F.push, {
     '@capacitor/core': { Capacitor: { isNativePlatform: () => false, getPlatform: () => 'web' } }, '../api/endpoints': { Api: {} }, '../app/store': { showToast: () => {} },
     './factura': { rutaFactura: () => '/billing' }, './contracte': { RUTA_NEASIGNATE: '/admin/devices?filtru=neasignate' }, './calendarMontaj': { rutaCalendarMontaj: () => '/admin/montaj' },
@@ -634,7 +634,7 @@ async function parteaServerului() {
   await tel('ana@ionescu.ro');
   const nA = await Api.notifications();
   const felA = (Array.isArray(nA) ? nA : []).filter((n) => /^cerere_/.test(n.type));
-  T('clientul: `cerere_preluata`, `_programata`, `_rezolvata`, toate spre „Cererile tale"', ['cerere_preluata', 'cerere_programata', 'cerere_rezolvata'].every((t) => felA.some((n) => n.type === t)) && felA.every((n) => P.adresaAnunt(n.type, n.data) === L.RUTA_CERERILE_TALE) && !cheiAparat(felA).length, J(felA.map((n) => n.type)));
+  T('clientul: `cerere_preluata`, `_programata`, `_rezolvata`, toate spre „Cererile tale”', ['cerere_preluata', 'cerere_programata', 'cerere_rezolvata'].every((t) => felA.some((n) => n.type === t)) && felA.every((n) => P.adresaAnunt(n.type, n.data) === L.RUTA_CERERILE_TALE) && !cheiAparat(felA).length, J(felA.map((n) => n.type)));
   const m2 = await Api.cereriEchipa();
   const rz2 = L.planLista(m2).randuri.find((c) => c.id === id1);
   T('la client: cererea e rezolvată, cu pașii ei, fără datele aparatului', rz2 && rz2.stare === 'rezolvata' && !cheiAparat(m2.cereri).length, J(rz2));
@@ -658,9 +658,9 @@ async function parteaServerului() {
   T('`suna_peste` pe regulile de viteză', dupa('Viteză 130').suna_peste === 140 && dupa('Viteză 30').suna_peste === 60, J(reg.map((a) => [a.name, a.suna_peste])));
   const ctx = vm.createContext({});
   vm.runInContext(tsJs(functie(S.alerte, 'function sunaText(a: any): string[] {') + '\n' + functie(S.alerte, 'function notaStare(cs: any, tip: string): string {') + '\nthis.sunaText = sunaText; this.notaStare = notaStare;', 'x.ts'), ctx);
-  T('…pe rând: „sună peste 140 km/h"', J(Array.from(ctx.sunaText(dupa('Viteză 130')))) === J(['sună peste 140 km/h']));
+  T('…pe rând: „sună peste 140 km/h”', J(Array.from(ctx.sunaText(dupa('Viteză 130')))) === J(['sună peste 140 km/h']));
   const cs = await Api.alerteCumSuna();
-  T('`cum_suna` pe regula de stare; nimic pe „Pornire motor"', !!dupa('Erori').cum_suna && ctx.sunaText(dupa('Erori')).length === 1 && ctx.sunaText(dupa('Pornire')).length === 0, J(reg.map((a) => [a.name, a.cum_suna])));
+  T('`cum_suna` pe regula de stare; nimic pe „Pornire motor”', !!dupa('Erori').cum_suna && ctx.sunaText(dupa('Erori')).length === 1 && ctx.sunaText(dupa('Pornire')).length === 0, J(reg.map((a) => [a.name, a.cum_suna])));
   T('fraza de stare, doar la tipurile din `deStare`', !!cs.text && ctx.notaStare(cs, 'dtc_error') === cs.text && ctx.notaStare(cs, 'overspeed') === '' && ctx.notaStare(cs, 'ignition_on') === '', J(cs));
   const v1 = await Api.alerteViteza('130'), v2 = await Api.alerteViteza('30'), v3 = await Api.alerteViteza('');
   T('fraza de sub prag se schimbă după cifră: 130, 30, gol', /când trece de 140 km\/h/.test(v1.text) && /când trece de 60 km\/h/.test(v2.text) && /când trece de 60 km\/h/.test(v3.text) && v1.text !== v2.text, J([v1.text, v2.text, v3.text]));
@@ -709,15 +709,15 @@ function parteaDesenului(texte) {
   T('formularul fără mașină: aceleași texte, în aceeași ordine', textHtml(fFara) === texte.formFara, JSON.stringify([textHtml(fFara), texte.formFara]));
   T('…telefonul din fișă e deja în casetă, cu lungimile de pe web', /maxLength="?2000|maxlength="?2000/i.test(fCu) && /value="0722 345 678"/.test(fCu) && /maxlength="?40/i.test(fCu) && /maxlength="?200/i.test(fCu));
   const fMasinaAleasa = r(h(E.FormularCerere, { m: META, o: { imei: '', problema: '', ce: '', sursa: 'suport', fila: 'noua' }, f: Object.assign({}, FG, { masina: MASINI[0].imei }), lista: MASINI, err: 'Eroare de la server', pune() {} }));
-  T('o mașină aleasă din listă aprinde „Când poate veni" și arată eroarea', /Când poate veni cineva la mașină/.test(fMasinaAleasa) && /Eroare de la server/.test(fMasinaAleasa) && /Mesaj pentru echipă/.test(fMasinaAleasa));
+  T('o mașină aleasă din listă aprinde „Când poate veni” și arată eroarea', /Când poate veni cineva la mașină/.test(fMasinaAleasa) && /Eroare de la server/.test(fMasinaAleasa) && /Mesaj pentru echipă/.test(fMasinaAleasa));
   const tr = r(h(E.ConfirmareCerere, { m: META, j: R200 }));
   T('confirmarea: aceleași texte', textHtml(tr).replace(/\s/g, '') === texte.trimisa.replace(/\s/g, ''), JSON.stringify([textHtml(tr), texte.trimisa]));
   const de = r(h(E.ConfirmareCerere, { m: META, j: R409 }));
   T('confirmarea la 409: aceleași texte', textHtml(de).replace(/\s/g, '') === texte.deja.replace(/\s/g, ''), JSON.stringify([textHtml(de), texte.deja]));
   const li = r(h(E.ListaCererilor, { m: META }));
-  T('„Cererile tale": aceleași texte', textHtml(li) === texte.lista, JSON.stringify([textHtml(li), texte.lista]));
+  T('„Cererile tale”: aceleași texte', textHtml(li) === texte.lista, JSON.stringify([textHtml(li), texte.lista]));
   T('…fiecare stare cu clasa ei', /class="ce-st trimisa"/.test(li) && /class="ce-st rezolvata"/.test(li));
-  // „Cereri de la clienți": rândul, lângă _cereriRand.
+  // „Cereri de la clienți”: rândul, lângă _cereriRand.
   const w = webCereri(), d = CERERI_D();
   w.ctx.__cer.d = d;
   const faraAct = (html) => textHtml(html);
@@ -729,11 +729,11 @@ function parteaDesenului(texte) {
   const c0 = d.cereri[0];
   w.ctx.__cer.form[c0.id] = 'programez';
   const prog = r(h(C.Cerere, { c: c0, d, form: { fel: 'programez', p: { zi: d.maine, interval: d.intervale[0].k, partener: '', mesaj: '', inCalendar: true }, r: '' }, arat: true, busy: false, onApasa() {}, onFirma() {}, onSchimba() {}, onInchide() {}, onTrimite() {} }));
-  T('formularul „Programez": aceleași texte, în aceeași ordine', faraAct(prog) === faraAct(w.ctx.__rand(c0)), JSON.stringify([faraAct(prog), faraAct(w.ctx.__rand(c0))]));
+  T('formularul „Programez”: aceleași texte, în aceeași ordine', faraAct(prog) === faraAct(w.ctx.__rand(c0)), JSON.stringify([faraAct(prog), faraAct(w.ctx.__rand(c0))]));
   T('…același minim, aceeași propunere, același text gol, aceeași limită, bifat', new RegExp('min="' + d.azi + '"').test(prog) && new RegExp('value="' + d.maine + '"').test(prog) && prog.indexOf('placeholder="' + esc(L.TEXT_FORM.mesajGol) + '"') > 0 && /maxlength="?300/i.test(prog) && /checked/.test(prog) && /cer-arat/.test(prog));
   w.ctx.__cer.form[c0.id] = 'rezolvat';
   const rez = r(h(C.Cerere, { c: c0, d, form: { fel: 'rezolvat', p: { zi: '', interval: '', partener: '', mesaj: '', inCalendar: true }, r: '' }, arat: false, busy: false, onApasa() {}, onFirma() {}, onSchimba() {}, onInchide() {}, onTrimite() {} }));
-  T('formularul „Rezolvat": aceleași texte, în aceeași ordine', faraAct(rez) === faraAct(w.ctx.__rand(c0)), JSON.stringify([faraAct(rez), faraAct(w.ctx.__rand(c0))]));
+  T('formularul „Rezolvat”: aceleași texte, în aceeași ordine', faraAct(rez) === faraAct(w.ctx.__rand(c0)), JSON.stringify([faraAct(rez), faraAct(w.ctx.__rand(c0))]));
   T('…același text gol, aceeași limită', rez.indexOf('placeholder="' + esc(L.TEXT_FORM.raspunsGol) + '"') > 0 && /maxlength="?1000/i.test(rez));
   // Un text de la server nu se desenează ca HTML.
   const rau = '<img src=x onerror=alert(1)>';
@@ -747,7 +747,7 @@ function parteaDesenului(texte) {
   T('caseta, la client: butonul, cu textul serverului, și nota', /Anunță echipa RA Track/.test(laClient) && /Vezi pe hartă/.test(laClient) && /Aparatul e treaba noastră\./.test(laClient));
   me.value = Object.assign({}, me.value, { isSuper: true });
   const laNoi = r(h(B.BulaAi, { l: lat, m: msg }));
-  T('caseta, la fondator: fără „Anunță echipa"; restul rămâne', !/Anunță echipa RA Track/.test(laNoi) && /Vezi pe hartă/.test(laNoi) && /Aparatul e treaba noastră\./.test(laNoi));
+  T('caseta, la fondator: fără „Anunță echipa”; restul rămâne', !/Anunță echipa RA Track/.test(laNoi) && /Vezi pe hartă/.test(laNoi) && /Aparatul e treaba noastră\./.test(laNoi));
   me.value = { role: 'company_admin', permissions: {}, features: {} };
 }
 
@@ -771,7 +771,7 @@ function parteaCulorilor() {
       const c = contrast(hex(val(ce, k)), fnd[fund]);
       T('tema ' + nume + ': ' + k + ' pe ' + fund + ' = ' + c.toFixed(2), c >= 4.5, val(ce, k));
     }
-    // Filă de stare „bifată": bifa pe verde.
+    // Filă de stare „bifată”: bifa pe verde.
     const gata = contrast(hex(val(ce, '--ce-gata-text')), hex(val(ce, '--ce-verde')));
     T('tema ' + nume + ': bifa pașilor pe verde = ' + gata.toFixed(2), gata >= 4.5);
     // Chip-ul ales: verde pe fundalul lui verde deschis, peste panou.
@@ -789,9 +789,9 @@ function parteaCulorilor() {
       const c = contrast(hex(val(mjc, t)), fc);
       T('tema ' + nume + ': ' + t + ' pe fundalul lui = ' + c.toFixed(2), c >= 4.5, J([val(mjc, t), fv]));
     }
-    // Caseta „se ocupă".
+    // Caseta „se ocupă”.
     const so = contrast(hex(val(ins, '--i-seocupa')), peste(rgba(val(ins, '--i-seocupa-fund')), fnd['--bg-panel']));
-    T('tema ' + nume + ': „Echipa se ocupă" = ' + so.toFixed(2), so >= 4.5);
+    T('tema ' + nume + ': „Echipa se ocupă” = ' + so.toFixed(2), so >= 4.5);
   }
   T('perechile sunt aceleași ca pe web (app.css)', (() => {
     const app = citeste('public/css/app.css');
@@ -830,6 +830,6 @@ function gata() {
   pornesteServerul();   // se încălzește cât rulează bucățile fără server
   let texte = {};
   for (const [nume, f] of [['ușile', parteaUsilor], ['fereastra', async () => { texte = await parteaFerestrei(); }], ['cererile', parteaCererilor], ['anunțurile', parteaAnunturilor], ['calendarul', parteaCalendarului], ['alertele', parteaAlertelor], ['serverul', parteaServerului], ['desenul', () => parteaDesenului(texte)], ['culorile', parteaCulorilor]]) {
-    try { await f(); } catch (e) { rele++; console.log('  ✗ EROARE în „' + nume + '": ' + ((e && e.stack) || e)); }
+    try { await f(); } catch (e) { rele++; console.log('  ✗ EROARE în „' + nume + '”: ' + ((e && e.stack) || e)); }
   }
 })().catch((e) => { rele++; console.log('  ✗ EROARE: ' + ((e && e.stack) || e)); }).then(gata);

@@ -1,6 +1,6 @@
-// Șoferi — ca pe web (Management → Șoferi): pe rând, poza sau inițialele, încadrarea („Profesionist" /
-// „Șofer"), cât mai are permisul („mai are 29 zile", „expirat de 43 zile", „fără permis în fișă"), mașina
-// pe care e pus omul; căutare, contor și exportul „Situația șoferilor" (Excel / PDF, prin serverul care
+// Șoferi — ca pe web (Management → Șoferi): pe rând, poza sau inițialele, încadrarea („Profesionist” /
+// „Șofer”), cât mai are permisul („mai are 29 zile”, „expirat de 43 zile”, „fără permis în fișă”), mașina
+// pe care e pus omul; căutare, contor și exportul „Situația șoferilor” (Excel / PDF, prin serverul care
 // pune numele brandat și logo-ul) plus CSV-ul de lucru. Importul din fișier rămâne pe web (lucru de birou).
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
@@ -18,7 +18,7 @@ import './flota.css';
 import { nrDe } from '../lib/numar';
 
 type Lic = { st: 'none' | 'nodate' | 'exp' | 'soon' | 'ok'; num: string; days?: number; date?: string };
-// Starea permisului, pe zile de calendar (un permis care expiră azi nu e „expirat" la ora 15:00).
+// Starea permisului, pe zile de calendar (un permis care expiră azi nu e „expirat” la ora 15:00).
 function permis(d: any): Lic {
   const num = String(d.license_number || '').trim();
   if (!d.license_expiry) return { st: num ? 'nodate' : 'none', num };
@@ -122,7 +122,7 @@ export function AdminDrivers() {
     catch (e: any) { showToast(e?.message || 'Eroare la ștergere', true); }
     finally { setSaving(false); }
   }
-  // Exportul trece prin serverul care pune numele „RA-Track - Raport Situația șoferilor - data" și logo-ul.
+  // Exportul trece prin serverul care pune numele „RA-Track - Raport Situația șoferilor - data” și logo-ul.
   // Numele fișierului se ia din răspunsul serverului, nu se compune aici.
   async function exporta(fmt: 'csv' | 'xlsx' | 'pdf') {
     if (exp) return;

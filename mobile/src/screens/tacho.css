@@ -32,7 +32,7 @@
 .th-due .mid { flex: 1; min-width: 0; }
 .th-due .nm { font-weight: 700; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .th-due .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Bara arată cât din termen s-a consumat. Fără nicio descărcare = plină și roșie: nu e „gol", e „tot". */
+/* Bara arată cât din termen s-a consumat. Fără nicio descărcare = plină și roșie: nu e „gol”, e „tot”. */
 .th-bar { height: 3px; border-radius: 2px; background: var(--bg-dark); margin-top: 7px; overflow: hidden; }
 .th-bar i { display: block; height: 100%; border-radius: 2px; }
 .th-due .rt { flex: 0 0 auto; text-align: right; }
@@ -60,12 +60,12 @@
 .th-up-b select:disabled { opacity: .45; }
 .th-up-msg { font-size: 13px; line-height: 1.5; font-weight: 700; }
 .th-up-reset { background: transparent; border: none; color: var(--text-muted); font-family: inherit; font-size: 12.5px; text-decoration: underline; padding: 0; }
-/* Chevronul se rotește în jos când blocul e deschis — nu avem iconiță separată „în jos", iar una
-   care ar arăta în stânga ar sugera „înapoi", nu „desfășurat". */
+/* Chevronul se rotește în jos când blocul e deschis — nu avem iconiță separată „în jos”, iar una
+   care ar arăta în stânga ar sugera „înapoi”, nu „desfășurat”. */
 .th-up-ch { display: flex; transition: transform .15s; }
 .th-up-ch.on { transform: rotate(90deg); }
 
-/* ── Tahograf: „Pe șofer" și „Abateri" (aceleași file ca pe web) ── */
+/* ── Tahograf: „Pe șofer” și „Abateri” (aceleași file ca pe web) ── */
 /* Cartonașul unui șofer: câte fișiere, câte zile citite, abaterile și termenul — dintr-o privire. */
 .th-card { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: var(--bg-card); border: 1px solid var(--border);
   border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; font-family: inherit; color: var(--text-primary); }
@@ -92,7 +92,7 @@
 .th-row .t span { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
 .th-row .adm-pill { flex: 0 0 auto; }
 
-/* Istoricul unui șofer: rândul fișierului + „Șterge" (doar cine poate modifica flota). */
+/* Istoricul unui șofer: rândul fișierului + „Șterge” (doar cine poate modifica flota). */
 .th-fis { display: flex; align-items: stretch; gap: 6px; margin-bottom: 8px; }
 .th-fis .th-due { margin-bottom: 0; flex: 1; min-width: 0; }
 .th-del { flex: 0 0 auto; width: 46px; display: flex; align-items: center; justify-content: center; background: var(--bg-card);
@@ -114,5 +114,5 @@
 
 :root[data-theme="light"] .th-pill.p-orange { color: #b45309; }
 :root[data-theme="light"] .th-pill.p-green { color: #0E7A3C; }
-/* Patru file pe un ecran de telefon: textul se strânge puțin, ca „De descărcat" să încapă întreg. */
+/* Patru file pe un ecran de telefon: textul se strânge puțin, ca „De descărcat” să încapă întreg. */
 .th-tabs.patru .th-tab { font-size: 12.5px; padding: 9px 3px; min-height: 40px; white-space: nowrap; }

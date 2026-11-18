@@ -5,7 +5,7 @@
 //     un singur DELETE pe zeci de milioane de rânduri blochează ingestul, iar ingestul blocat PIERDE date;
 //  2. pozițiile care urmează să fie șterse au o copie pe S3 înainte — altfel retenția e pierdere definitivă;
 //  3. starea backup-ului supraviețuiește unei reporniri — pe Railway procesul repornește des, iar înainte
-//     ecranul raporta „nicio rulare" cu bucket-ul plin.
+//     ecranul raporta „nicio rulare” cu bucket-ul plin.
 const { spawn } = require('child_process');
 const http = require('http');
 const os = require('os'), path = require('path'), fs = require('fs'), zlib = require('zlib');
@@ -14,7 +14,7 @@ const PORT = 3132, TCP = 5132, S3PORT = 3133;
 const DIR = path.join(os.tmpdir(), 'rax_ret_' + Date.now());
 const B = 'http://localhost:' + PORT;
 let ok = 0, fail = 0, cookie = '', srv = null, s3 = null;
-const puse = new Map();   // cheile primite de „S3"
+const puse = new Map();   // cheile primite de „S3”
 
 const t = (n, c, d) => { if (c) { ok++; console.log('  ✅ ' + n); } else { fail++; console.log('  ❌ ' + n + (d ? ' → ' + d : '')); } };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -30,7 +30,7 @@ async function req(m, p, body) {
   return { status: r.status, body: j };
 }
 
-// ── „S3" fals: acceptă orice PUT și reține corpul ──
+// ── „S3” fals: acceptă orice PUT și reține corpul ──
 function startS3() {
   return new Promise((res) => {
     s3 = http.createServer((rq, rs) => {
@@ -92,10 +92,10 @@ async function health(key) {
 
     // 2. Arhiva de poziții e programată și raportată
     let hp = await health('backup_positions');
-    t('„Stare producție" raportează arhiva de poziții', !!hp, JSON.stringify(hp));
-    t('cu S3 configurat, arhiva nu e „warn"', hp && hp.level !== 'warn', hp && hp.level);
+    t('„Stare producție” raportează arhiva de poziții', !!hp, JSON.stringify(hp));
+    t('cu S3 configurat, arhiva nu e „warn”', hp && hp.level !== 'warn', hp && hp.level);
 
-    // 3. Backup manual → ajunge pe „S3" și marchează starea
+    // 3. Backup manual → ajunge pe „S3” și marchează starea
     const bk = await req('POST', '/api/admin/backup/run');
     t('backup manual acceptat', bk.status === 200, JSON.stringify(bk.body).slice(0, 200));
     await sleep(500);
@@ -104,12 +104,12 @@ async function health(key) {
     t('dump-ul e criptat (antet RATBK1)', cheiDump.length > 0 && puse.get(cheiDump[0]).slice(0, 6).toString() === 'RATBK1', cheiDump[0]);
 
     const st = (await req('GET', '/api/admin/backup/status')).body;
-    t('starea zice „protejat" (a urcat efectiv)', st && st.protected === true, JSON.stringify(st).slice(0, 250));
+    t('starea zice „protejat” (a urcat efectiv)', st && st.protected === true, JSON.stringify(st).slice(0, 250));
 
     // 4. Tabelele nou-adăugate apar în dump
     const tabele = (st && st.tables) || {};
     ['invoices', 'invoice_counters', 'demo_requests', 'fuel_price_history'].forEach((tb) => {
-      t('„' + tb + '" e inclusă în backup', Object.prototype.hasOwnProperty.call(tabele, tb), Object.keys(tabele).join(','));
+      t('„' + tb + '” e inclusă în backup', Object.prototype.hasOwnProperty.call(tabele, tb), Object.keys(tabele).join(','));
     });
 
     // 5. Regresia principală: starea supraviețuiește unei REPORNIRI
@@ -120,7 +120,7 @@ async function health(key) {
     const st2 = (await req('GET', '/api/admin/backup/status')).body;
     t('starea backup-ului supraviețuiește repornirii', st2 && !!st2.at && st2.protected === true, JSON.stringify(st2).slice(0, 250));
     const hf = await health('backup_fresh');
-    t('„prospețime" nu mai zice „nicio rulare" după restart', hf && !/nicio rulare/.test(hf.detail || ''), JSON.stringify(hf));
+    t('„prospețime” nu mai zice „nicio rulare” după restart', hf && !/nicio rulare/.test(hf.detail || ''), JSON.stringify(hf));
 
     // 6. Lotizarea: verificată direct pe funcția din db.js, în proces separat (fără serverul pornit)
     await kill(srv); srv = null;
@@ -149,7 +149,7 @@ async function health(key) {
           // sute de interogări pentru nimic), deci pentru un test de 237 de rânduri îl dăm prin opțiuni.
           const r = await db.deleteOldPositionsDetail(180, { batch: 50 });
           const dupa = (await db.pool.query('SELECT COUNT(*) AS n FROM positions')).rows[0].n;
-          // buget minuscul → trebuie să se oprească devreme și să raporteze „epuizat"
+          // buget minuscul → trebuie să se oprească devreme și să raporteze „epuizat”
           for (let i = 0; i < 120; i++) {
             await db.pool.query("INSERT INTO positions (imei, timestamp, latitude, longitude, speed, angle, satellites, priority) VALUES ($1,$2,45,21,10,0,10,0)", ['860000000009901', new Date(vechi.getTime() + 500000 + i * 1000)]);
           }

@@ -1,22 +1,22 @@
 // verify_plan_incarcare.js — planurile de încărcare (simulatorul, pasul 4, 12.10): telefonul, ecranul șoferului,
-// „Am încărcat" care anunță dispecerul, „Trimite șoferului" și planurile salvate pe web.
+// „Am încărcat” care anunță dispecerul, „Trimite șoferului” și planurile salvate pe web.
 //
 //   node verify_plan_incarcare.js
 //
-// Robert (12.10): „hai cu etapa 4" — ordinea aprobată: „(4) telefonul"; macheta aprobată: artboard-ul „Telefon" = ecranul
-// șoferului (planul văzut de sus, ordinea de încărcare, greutatea pe osii, „Am o problemă" / „Am încărcat").
+// Robert (12.10): „hai cu etapa 4” — ordinea aprobată: „(4) telefonul”; macheta aprobată: artboard-ul „Telefon” = ecranul
+// șoferului (planul văzut de sus, ordinea de încărcare, greutatea pe osii, „Am o problemă” / „Am încărcat”).
 //
 // Ce apără proba:
 //   1. textele planului (incarcare.js): starea (netrimis / trimis / încărcat / problemă), ora pe ora României, nota de
 //      sub plan, pașii (în ordinea în care se încarcă), ce rămâne la rampă, rezumatul osiilor și al spațiului;
-//   2. desenul e UNUL: blocul paginii („desenul simulatorului") și copia telefonului (mobile/src/lib/simDesen.ts) dau
+//   2. desenul e UNUL: blocul paginii („desenul simulatorului”) și copia telefonului (mobile/src/lib/simDesen.ts) dau
 //      ACELAȘI SVG pe aceleași simulări (autotractor, camion, camion + remorcă, dubă; trei vederi; zece unghiuri); fiecare
 //      piesă are culori pe ambele teme (web + telefon); hârtia PDF pune pe pagină ACELAȘI desen (incarcare_pdf.js);
-//   3. pagina: „Trimite șoferului", planurile, fereastra șoferului, anunțurile (notifPlan); pagina nu socotește;
+//   3. pagina: „Trimite șoferului”, planurile, fereastra șoferului, anunțurile (notifPlan); pagina nu socotește;
 //   4. telefonul: ecranele (simulatorul, planul șoferului, lista), rutele, meniul, adresele (aceleași ca anunțurile),
 //      pe aceleași rute ale serverului; telefonul nu socotește; culorile au pereche pe ambele teme (contrast măsurat);
 //   5. pe server pornit: salvarea (fără marfă — refuz), trimiterea (doar unui om activ al firmei), șoferul își vede planul
-//      FĂRĂ drepturi pe camion, „Am o problemă" (cu text) / „Am încărcat" anunță cine a trimis, rolul „Dispecer" face și
+//      FĂRĂ drepturi pe camion, „Am o problemă” (cu text) / „Am încărcat” anunță cine a trimis, rolul „Dispecer” face și
 //      trimite planuri, altă firmă și noi (super-admin) nu vedem planurile firmei, planul reluat dispare de la șofer până
 //      pleacă din nou, ștergerea, modulul oprit.
 const fs = require('fs');
@@ -54,7 +54,7 @@ sect('1. Textele planului (incarcare.js)');
 const I = require('./incarcare.js');
 const ACUM = Date.UTC(2026, 9, 12, 13, 32);   // 16:32 pe ora României (ora de vară)
 T('ora: azi', I.cand(ACUM - 5 * 60000, ACUM) === 'azi, 16:27', I.cand(ACUM - 5 * 60000, ACUM));
-T('ora: după miezul nopții României e „azi" (deși pe ceasul serverului, UTC, e încă ieri)', I.cand(Date.UTC(2026, 9, 11, 21, 30), ACUM) === 'azi, 00:30', I.cand(Date.UTC(2026, 9, 11, 21, 30), ACUM));
+T('ora: după miezul nopții României e „azi” (deși pe ceasul serverului, UTC, e încă ieri)', I.cand(Date.UTC(2026, 9, 11, 21, 30), ACUM) === 'azi, 00:30', I.cand(Date.UTC(2026, 9, 11, 21, 30), ACUM));
 T('ora: ieri', I.cand(Date.UTC(2026, 9, 11, 20, 30), ACUM) === 'ieri, 23:30', I.cand(Date.UTC(2026, 9, 11, 20, 30), ACUM));
 T('ora: mai demult — ziua și luna', I.cand(Date.UTC(2026, 9, 10, 4, 5), ACUM) === '10.10, 07:05', I.cand(Date.UTC(2026, 9, 10, 4, 5), ACUM));
 T('ora: lipsă — nimic', I.cand(null, ACUM) === '' && I.cand(0, ACUM) === '');
@@ -66,9 +66,9 @@ T('starea: trimis (galben), cu omul, ora și ce așteaptă', st.fel === 'galben'
 st = I.stareaPlanului(Object.assign({ trimis_la: ACUM - 60000, incarcat_la: ACUM }, ION), ACUM);
 T('starea: încărcat (verde)', st.fel === 'verde' && st.cheie === 'incarcat' && st.text === 'Încărcat — Ion Popescu, azi, 16:32', st.text);
 st = I.stareaPlanului(Object.assign({ trimis_la: ACUM - 9e5, incarcat_la: ACUM - 6e5, problema_la: ACUM, problema_text: 'Au venit 2 paleți în plus' }, ION), ACUM);
-T('starea: o problemă DUPĂ „Am încărcat" (roșu), cu textul șoferului', st.fel === 'rosu' && st.cheie === 'problema' && st.text === 'Problemă de la Ion Popescu, azi, 16:32: „Au venit 2 paleți în plus”', st.text);
+T('starea: o problemă DUPĂ „Am încărcat” (roșu), cu textul șoferului', st.fel === 'rosu' && st.cheie === 'problema' && st.text === 'Problemă de la Ion Popescu, azi, 16:32: „Au venit 2 paleți în plus”', st.text);
 st = I.stareaPlanului(Object.assign({ trimis_la: ACUM - 9e5, problema_la: ACUM - 6e5, problema_text: 'x', incarcat_la: ACUM }, ION), ACUM);
-T('starea: „Am încărcat" DUPĂ o problemă — rezolvat (verde)', st.cheie === 'incarcat', J(st));
+T('starea: „Am încărcat” DUPĂ o problemă — rezolvat (verde)', st.cheie === 'incarcat', J(st));
 T('nota de sub plan: cine l-a trimis, când, și ce face șoferul dacă se schimbă marfa',
   I.notaSofer({ trimis_de_nume: 'Maria Dispecer', trimis_la: ACUM - 3600000 }, ACUM) === 'Trimis de Maria Dispecer azi, 15:32. Dacă se schimbă marfa la rampă, spune-i: reface planul și ți-l trimite din nou.',
   I.notaSofer({ trimis_de_nume: 'Maria Dispecer', trimis_la: ACUM - 3600000 }, ACUM));
@@ -103,17 +103,17 @@ T('…iar ce nu încape e spus și în rezumatul șoferului (rămâne la rampă)
 r = I.simuleaza({ vehicul: TRAC, semi: I.semiDin(PRELATA), marfa: [EUR(2, { nume: 'Prea înalt', inaltime: 300 }), EUR(3, { oprire: 2 }), EUR(1, { nume: 'Lada', oprire: 1 })], opriri: ['A', 'B'] });
 T('un rând care nu încape DELOC nu e un pas — dar șoferul află că rămâne la rampă',
   r.pasi.length === 2 && !r.pasi.some((x) => /Prea înalt/.test(x.text)) && r.rezumatSofer.ramane === 'Rămân la rampă (nu încap): 2 × Prea înalt.', J([r.pasi.map((x) => x.text), r.rezumatSofer.ramane]));
-T('o singură bucată se scrie la singular („Ultimul, spre uși: se descarcă primul.")', r.pasi[1].text === 'A — 1 × Lada' && /^Ultimul, spre uși: se descarcă primul\./.test(r.pasi[1].detaliu), r.pasi[1].detaliu);
-T('un singur pas cu o singură bucată: „Lipit de peretele din față."', I.simuleaza({ vehicul: TRAC, semi: I.semiDin(PRELATA), marfa: [EUR(1)] }).pasi[0].detaliu === 'Lipit de peretele din față. 500 kg bucata.');
+T('o singură bucată se scrie la singular („Ultimul, spre uși: se descarcă primul.”)', r.pasi[1].text === 'A — 1 × Lada' && /^Ultimul, spre uși: se descarcă primul\./.test(r.pasi[1].detaliu), r.pasi[1].detaliu);
+T('un singur pas cu o singură bucată: „Lipit de peretele din față.”', I.simuleaza({ vehicul: TRAC, semi: I.semiDin(PRELATA), marfa: [EUR(1)] }).pasi[0].detaliu === 'Lipit de peretele din față. 500 kg bucata.');
 r = I.simuleaza({ vehicul: TRAC, semi: I.semiDin(PRELATA), marfa: [] });
-T('fără marfă: niciun pas, osiile gri, „0 kg · 0 colete"', r.pasi.length === 0 && r.osiiRezumat.fel === 'gri' && r.rezumatSofer.greutate === '0 kg · 0 colete', J([r.osiiRezumat, r.rezumatSofer]));
+T('fără marfă: niciun pas, osiile gri, „0 kg · 0 colete”', r.pasi.length === 0 && r.osiiRezumat.fel === 'gri' && r.rezumatSofer.greutate === '0 kg · 0 colete', J([r.osiiRezumat, r.rezumatSofer]));
 const plin = I.vehiculDin({ imei: '9', plate: 'B 102 RAT', inc_fel: 'autotractor', inc_ampatament: 3.6, inc_sa_axa: 0.6, inc_tara_fata: 5100, inc_tara_spate: 2700, max_axle_loads: { axle1: 7500, axle2: 11500 }, max_weight_legal: 40000 });
 r = I.simuleaza({ vehicul: plin, semi: I.semiDin(PRELATA), marfa: [EUR(24, { kg: 1000 })], opriri: ['A'] });
-T('peste limită: rezumatul osiilor e roșu, „de corectat"', r.osiiRezumat.fel === 'rosu' && r.osiiRezumat.titlu === 'Greutatea pe osii: de corectat', J(r.osiiRezumat));
+T('peste limită: rezumatul osiilor e roșu, „de corectat”', r.osiiRezumat.fel === 'rosu' && r.osiiRezumat.titlu === 'Greutatea pe osii: de corectat', J(r.osiiRezumat));
 
 // ─── 2. Desenul e unul: pagina și telefonul ──────────────────────────────────────────────────────────────────────
 sect('2. Desenul: pagina și telefonul dau același SVG');
-const blocDesen = taie(html, '// ── începe „desenul simulatorului" ──', '// ── sfârșit „desenul simulatorului" ──');
+const blocDesen = taie(html, '// ── începe „desenul simulatorului” ──', '// ── sfârșit „desenul simulatorului” ──');
 T('desenul paginii stă între repere, ca funcție curată (_simSvg, _simMix)', /function _simSvg\(R, view, yaw, culoare\)/.test(blocDesen) && /function _simMix\(hex, spreAlb, t\)/.test(blocDesen));
 const ruleaza = (cod, fisier) => { const m = { exports: {} }; vm.runInNewContext(cod, { module: m, exports: m.exports }, { filename: fisier }); return m.exports; };
 let WEB = {}, TEL = {};
@@ -127,7 +127,7 @@ try {
   TEL = ruleaza(cod, 'simDesen.ts');
 } catch (e) { console.log('    (simDesen.ts: ' + e.message + ')'); }
 T('amândouă se încarcă și desenează', typeof WEB.simSvg === 'function' && typeof TEL.simSvg === 'function');
-// Robert, 13.10: „acum are grafica din desene animate, fă-le ceva mai rotunjite". Colțurile rotunde vin dintr-o singură
+// Robert, 13.10: „acum are grafica din desene animate, fă-le ceva mai rotunjite”. Colțurile rotunde vin dintr-o singură
 // funcție (_simRot): profilul cabinei (în metri) și formele plate (în pixeli, la ieșire); marfa nu mai are linii albe.
 let rotOk = false;
 try {
@@ -166,7 +166,7 @@ T('vederea 3D se rotește (alt unghi = alt desen), lateral și de sus nu depind 
 T('fără simulare: nimic de desenat (amândouă)', WEB.simSvg && WEB.simSvg(null, 'lat', 0, culoare) === '' && TEL.simSvg(null, 'lat', 0, culoare) === '');
 const corp = (s) => faraComentarii(s).replace(/export \{[^}]*\};?/, '').replace(/\s+/g, '');
 T('copia telefonului e ÎNTOCMAI blocul paginii (fără comentarii și spații) — schimbi desenul pe web, copiezi blocul aici',
-  corp(blocDesen) === corp(M.desen.replace(/^\/\/ @ts-nocheck[^\n]*\n/, '')), 'diferă — copiază blocul „desenul simulatorului" în ' + F.desen);
+  corp(blocDesen) === corp(M.desen.replace(/^\/\/ @ts-nocheck[^\n]*\n/, '')), 'diferă — copiază blocul „desenul simulatorului” în ' + F.desen);
 T('…și spune asta în capul fișierului', /^\/\/ @ts-nocheck — copie întocmai a desenului din pagină/.test(M.desen) && /export \{ _simSvg as simSvg, _simMix as simMix \};\s*$/.test(M.desen));
 T('pagina desenează cu aceeași funcție ecranul simulatorului și planul șoferului (văzut de sus)',
   /svg\.innerHTML = _simSvg\(S\.rez, S\.view, S\.yaw, culoare\);/.test(html) && /_simSvg\(R, 'sus', 32, culoare\)/.test(html));
@@ -174,7 +174,7 @@ T('culoarea unei opriri se alege la fel pe web și pe telefon (din culorile trim
   /const culoare = \(n\) => \{ const c = \(S\.meta && S\.meta\.culoriOpriri\) \|\| \['#3B82F6'\]; return c\[\(Math\.max\(1, n\) - 1\) % c\.length\]; \};/.test(html) &&
   /const culoare = \(n: number\) => \{ const c = \(meta && meta\.culoriOpriri\) \|\| \['#3B82F6'\]; return c\[\(Math\.max\(1, n\) - 1\) % c\.length\]; \};/.test(M.simulator) &&
   /const culoare = \(n: number\) => culori\[\(Math\.max\(1, n\) - 1\) % culori\.length\];/.test(M.sofer) && /m\.culoriOpriri/.test(M.sofer));
-// 13.10 (Robert: „mai lucrează la desenul mașinii" + „da" la hârtie): fiecare piesă a desenului are culorile ei pe AMBELE
+// 13.10 (Robert: „mai lucrează la desenul mașinii” + „da” la hârtie): fiecare piesă a desenului are culorile ei pe AMBELE
 // teme, pe web și pe telefon (altfel iese neagră), iar hârtia PDF pune pe pagină ACELAȘI desen — citit din pagină, cu
 // culorile temei deschise — nu un al doilea.
 const claseDesen = {};
@@ -190,7 +190,7 @@ T('fiecare piesă a desenului (' + CLASE.length + ' de clase) are culori pe ambe
 const PDFP = require('./incarcare_pdf.js');
 const DP = PDFP.desenPagina();
 const faraPeHartie = CLASE.filter((k) => !(DP && DP.stil[k] && (DP.stil[k].fill || DP.stil[k].stroke)));
-T('hârtia citește desenul din pagină (blocul „desenul simulatorului") și culorile temei deschise din app.css, pentru fiecare piesă',
+T('hârtia citește desenul din pagină (blocul „desenul simulatorului”) și culorile temei deschise din app.css, pentru fiecare piesă',
   !!DP && typeof DP.simSvg === 'function' && !!DP.stil._fond && !faraPeHartie.length, DP ? faraPeHartie.join(', ') : 'desenul nu s-a încărcat');
 if (DP && WEB.simSvg) {
   const PDFDocument = require('pdfkit');
@@ -214,10 +214,10 @@ if (DP && WEB.simSvg) {
 T('hârtia nu mai are al doilea desen (cabina dreptunghi, axele cerc, scara proprie)', !/doc\.rect\(X\(|doc\.circle\(X\(|const cabX1 = rez\.trac/.test(citeste('incarcare_pdf.js')));
 
 // ─── 3. Pagina ───────────────────────────────────────────────────────────────────────────────────────────────────
-sect('3. Pagina: „Trimite șoferului", planurile, fereastra șoferului, anunțurile');
-const BS = taie(html, '// ── începe „simulatorul de încărcare" ──', '// ── sfârșit „simulatorul de încărcare" ──');
-T('butonul „Trimite șoferului" e în capul simulatorului, lângă „Planuri" și PDF', /id="sim-trimite"[^>]*onclick="simTrimite\(\)"[^>]*>[\s\S]{0,80}Trimite șoferului/.test(BS) && /onclick="simPlanuri\(\)"/.test(BS));
-T('„Trimite șoferului" salvează întâi (nou → POST, deschis → PUT), apoi cere oamenii firmei și trimite',
+sect('3. Pagina: „Trimite șoferului”, planurile, fereastra șoferului, anunțurile');
+const BS = taie(html, '// ── începe „simulatorul de încărcare” ──', '// ── sfârșit „simulatorul de încărcare” ──');
+T('butonul „Trimite șoferului” e în capul simulatorului, lângă „Planuri” și PDF', /id="sim-trimite"[^>]*onclick="simTrimite\(\)"[^>]*>[\s\S]{0,80}Trimite șoferului/.test(BS) && /onclick="simPlanuri\(\)"/.test(BS));
+T('„Trimite șoferului” salvează întâi (nou → POST, deschis → PUT), apoi cere oamenii firmei și trimite',
   /fetch\('\/api\/incarcare\/planuri' \+ \(S\.planId \? '\/' \+ encodeURIComponent\(S\.planId\) : ''\), \{ method: S\.planId \? 'PUT' : 'POST'/.test(BS) &&
   /fetch\('\/api\/incarcare\/destinatari/.test(BS) && /'\/trimite', \{ method: 'POST'/.test(BS));
 T('funcțiile planurilor sunt pe window (le cheamă butoanele din atribute)',
@@ -228,7 +228,7 @@ T('fereastra șoferului: textele vin de la server (pașii, osiile, ce rămâne l
   /\(p\.alMeu \? '<div class="sim-chips"[\s\S]{0,200}simProblema\(' \+ p\.id \+ '\)[\s\S]{0,200}simIncarcat\(' \+ p\.id \+ '\)/.test(BS));
 T('pagina nu socotește starea planului și nici ora (stareaPlanului / cand stau pe server)', !/function (stareaPlanului|cand|notaSofer)\b/.test(BS) && /p\.stare|plan\.stare|S\.plan\.stare/.test(BS));
 T('rolul omului din listă vine scris de server (pagina nu-și ține a doua listă de nume)', /esc\(o\.rol\)/.test(BS) && !/ROLE_LABELS\[o\.rol\]/.test(BS));
-T('anunțurile planurilor: „Plan de încărcare" deschide planul șoferului, „Încărcat" / „Problemă" — planul în simulator',
+T('anunțurile planurilor: „Plan de încărcare” deschide planul șoferului, „Încărcat” / „Problemă” — planul în simulator',
   /const isPlan = \/\^plan_\(incarcare\|incarcat\|problema\)\$\/\.test\(n\.type\);/.test(html) && /function notifPlan\(id, tip\)/.test(html) &&
   /if \(tip === 'plan_incarcare'\) \{ if \(window\.simPlanSofer\) window\.simPlanSofer\(d\.planId\); \}/.test(html) && /window\.simDeschidePlan\(d\.planId\)/.test(html));
 T('fereastra și butonul plin au stilurile lor (.sim-ov peste tot, .sim-pri pe verde, pașii numerotați)',
@@ -250,10 +250,10 @@ T('rutele ecranelor sunt cele trei adrese (App.tsx)',
   /<Route path="\/incarcare" component=\{Simulator\} \/>/.test(M.app) && /<Route path="\/incarcare\/planuri" component=\{PlanuriIncarcare\} \/>/.test(M.app) &&
   /<Route path="\/incarcare\/plan\/:id" component=\{PlanSofer\} \/>/.test(M.app));
 T('simulatorul de pe telefon deschide planul din adresă (?plan=), ca anunțurile', /\(\(loc\.query \|\| \{\}\) as any\)\.plan/.test(M.simulator) && /Api\.planIncarcare\(Number\(planDinAdresa\)\)/.test(M.simulator));
-T('meniul: „Simulator încărcare" pentru cine face planuri (ca pe web), „Planurile de încărcare" pentru oricine din firmă',
+T('meniul: „Simulator încărcare” pentru cine face planuri (ca pe web), „Planurile de încărcare” pentru oricine din firmă',
   /modulIncarcare\(u\) && \(u\?\.isSuper \|\| perms\.manageFleet \|\| u\?\.role === 'dispatcher'\) && item\('boxes', 'Simulator încărcare', \(\) => loc\.route\('\/incarcare'\), undefined, '', 'incarcare'\)/.test(M.meniu) &&
   /modulIncarcare\(u\) && item\('clipboard', 'Planurile de încărcare', \(\) => loc\.route\(RUTA_PLANURI\)\)/.test(M.meniu));
-T('…iar regula „cine face planuri" e aceeași pe server, pe web și pe telefon (cine modifică flota sau e dispecer)',
+T('…iar regula „cine face planuri” e aceeași pe server, pe web și pe telefon (cine modifică flota sau e dispecer)',
   /const _incDispecer = \(req\) => req\.isSuper \|\| permReq\(req, 'manageFleet'\) \|\| getAuth\(req\)\.role === 'dispatcher';/.test(server) &&
   /\(\(me\.permissions && me\.permissions\.manageFleet\) \|\| me\.role === 'dispatcher'\)/.test(html) &&
   /const dispecer = !!\(me\.value\?\.isSuper \|\| me\.value\?\.permissions\?\.manageFleet \|\| me\.value\?\.role === 'dispatcher'\);/.test(M.lista));
@@ -282,10 +282,10 @@ T('telefonul nu așază marfa, nu socotește osii și nici starea planului (le p
 T('desenul de pe telefon e copia (simSvg), pus cu aceleași trei vederi și rotit cu butoanele sau trăgând cu degetul',
   /import \{ simSvg \} from '\.\.\/lib\/simDesen';/.test(M.simulator) && /simSvg\(R, view, yaw, culoare\)/.test(M.simulator) &&
   /\[\['lat', 'Lateral'\], \['sus', 'De sus'\], \['3d', '3D'\]\]/.test(M.simulator) && /onPointerMove=/.test(M.simulator) && /simSvg\(R, 'sus', 32, culoare\)/.test(M.sofer));
-T('ecranul șoferului: „Am o problemă" (cu text, obligatoriu) și „Am încărcat" — doar pe planul trimis LUI',
+T('ecranul șoferului: „Am o problemă” (cu text, obligatoriu) și „Am încărcat” — doar pe planul trimis LUI',
   /\{p && p\.alMeu && \(\s*<div class="ts-jos">/.test(M.sofer) && /Api\.planIncarcat\(id\)/.test(M.sofer) && /Api\.planProblema\(id, text\)/.test(M.sofer) &&
   /disabled=\{lucru \|\| !problema\.trim\(\)\}/.test(M.sofer));
-T('„Ai schimbat planul" se socotește din ce e pe ecran față de planul salvat (nu se ține minte)',
+T('„Ai schimbat planul” se socotește din ce e pe ecran față de planul salvat (nu se ține minte)',
   /const modificat = !!\(planId && plan && semn\(/.test(M.simulator) && !/setModificat/.test(M.simulator));
 T('lista: ce e trimis MIE se deschide ca la șofer, restul (la dispecer) în simulator', /p\.alMeu \|\| !dispecer \? rutaPlanSofer\(p\.id\) : rutaPlanSimulator\(p\.id\)/.test(M.lista));
 T('planul în lucru stă în telefon cu try/catch (o comoditate, nu o salvare)', /try \{ localStorage\.setItem\(CHEIE/.test(M.simulator) && /try \{ t = JSON\.parse\(localStorage\.getItem\(CHEIE/.test(M.simulator));
@@ -323,7 +323,7 @@ if (toate.every(Boolean) && tok('bg-card', true)) {
 T('desenul de pe telefon are culorile lui pe ambele teme (structura, roțile, centrul de greutate)',
   ['sim-cab1', 'sim-podea', 'sim-perete', 'sim-contur', 'sim-roata', 'sim-axa', 'sim-cg', 'sim-tl'].every((k) => new RegExp('\\.ts-svg \\.' + k + '\\b').test(M.css) && new RegExp(':root\\[data-theme="light"\\] \\.ts-svg \\.' + k + '\\b').test(M.css)));
 T('butonul plin are textul închis al casei pe verde (#06210F), ca pe web', /\.ts-btn\.pri \{ background: var\(--accent\); border-color: var\(--accent\); color: #06210F; \}/.test(M.css));
-// Robert, 13.10 (captura): „butoanele trebuie să fie la marginea de jos" — stăteau ridicate cât bara de file, pe ecrane fără ea.
+// Robert, 13.10 (captura): „butoanele trebuie să fie la marginea de jos” — stăteau ridicate cât bara de file, pe ecrane fără ea.
 const _fileApp = (M.app.match(/const showTabs = [^;]*;/) || [''])[0];
 T('bara cu butoanele (simulatorul, planul șoferului) stă la marginea de jos: ecranele astea n-au bara de file',
   /\.ts-jos \{ position: fixed; left: 0; right: 0; bottom: 0;[^}]*padding: 10px 14px calc\(10px \+ var\(--sab, 0px\)\);/.test(M.css) &&
@@ -381,7 +381,7 @@ const dateN = (n) => { let d = n && n.data; if (typeof d === 'string') { try { d
   T('șoferul (Viewer) nu face planuri', x.s === 403, x.s);
   x = await D1.POST('/api/incarcare/planuri', cerere);
   const plan = x.j;
-  T('rolul „Dispecer" face planul (netrimis, făcut de el, pe camionul firmei)', x.s === 200 && plan.id && plan.stare.cheie === 'ciorna' && plan.creat_de_nume === 'Dispecer Unu' && plan.vehicul === 'B 01 TIR', J(x));
+  T('rolul „Dispecer” face planul (netrimis, făcut de el, pe camionul firmei)', x.s === 200 && plan.id && plan.stare.cheie === 'ciorna' && plan.creat_de_nume === 'Dispecer Unu' && plan.vehicul === 'B 01 TIR', J(x));
   x = await D1.GET('/api/incarcare/destinatari');
   const oameni = Array.isArray(x.j) ? x.j : [];
   T('oamenii cărora le poate trimite: cei activi ai firmei, cu rolul scris pe înțelesul omului, fără conturile noastre și fără alte firme',
@@ -392,9 +392,9 @@ const dateN = (n) => { let d = n && n.data; if (typeof d === 'string') { try { d
   x = await D1.POST('/api/incarcare/planuri/' + plan.id + '/trimite', { user_id: ids['plecat@ci.ro'] });
   T('nu se trimite unui cont dezactivat', x.s === 400, J(x));
   x = await D1.POST('/api/incarcare/planuri/' + plan.id + '/trimite', { user_id: ids['ion@ci.ro'] });
-  T('se trimite șoferului: „Trimis lui Ion Șofer…"', x.s === 200 && x.j.stare.cheie === 'trimis' && /^Trimis lui Ion Șofer, /.test(x.j.stare.text), J(x));
+  T('se trimite șoferului: „Trimis lui Ion Șofer…”', x.s === 200 && x.j.stare.cheie === 'trimis' && /^Trimis lui Ion Șofer, /.test(x.j.stare.text), J(x));
   let an = await anunturi(V1);
-  T('șoferul primește anunțul: „Plan de încărcare: B 01 TIR", de la cine, cât cântărește; cu planul în date',
+  T('șoferul primește anunțul: „Plan de încărcare: B 01 TIR”, de la cine, cât cântărește; cu planul în date',
     an.length === 1 && an[0].type === 'plan_incarcare' && an[0].title === 'Plan de încărcare: B 01 TIR' &&
     an[0].body === 'De la Dispecer Unu · 12.720 kg · 28 de colete. Deschide-l pentru ordinea de încărcare.' && Number(dateN(an[0]).planId) === plan.id, J(an));
   T('…altă firmă nu-l vede', (await anunturi(A2)).length === 0);
@@ -404,21 +404,21 @@ const dateN = (n) => { let d = n && n.data; if (typeof d === 'string') { try { d
   T('…dar își vede planul în listă, ca al lui', x.s === 200 && x.j.length === 1 && x.j[0].id === plan.id && x.j[0].alMeu === true, J(x.j));
   const vs = await V1.GET('/api/incarcare/planuri/' + plan.id);
   const directa = await D1.POST('/api/incarcare/simuleaza', cerere);
-  T('…și îl deschide: pașii, osiile și rezumatul = simularea dispecerului pe aceleași date; nota „Trimis de Dispecer Unu…"; fără drept de schimbat',
+  T('…și îl deschide: pașii, osiile și rezumatul = simularea dispecerului pe aceleași date; nota „Trimis de Dispecer Unu…”; fără drept de schimbat',
     vs.s === 200 && vs.j.rezultat && J(vs.j.rezultat.pasi) === J(directa.j.pasi) && J(vs.j.rezultat.osiiRezumat) === J(directa.j.osiiRezumat) &&
     J(vs.j.rezultat.rezumatSofer) === J(directa.j.rezumatSofer) && /^Trimis de Dispecer Unu /.test(vs.j.notaSofer) && vs.j.poateEdita === false, J(vs.j).slice(0, 400));
   x = await V2.POST('/api/incarcare/planuri/' + plan.id + '/incarcat');
   T('alt șofer al firmei nu apasă pe planul lui Ion (nu-l vede deloc)', x.s === 404 && (await V2.GET('/api/incarcare/planuri/' + plan.id)).s === 404, x.s);
   x = await V1.POST('/api/incarcare/planuri/' + plan.id + '/problema', { text: '   ' });
-  T('„Am o problemă" cere un text', x.s === 400 && x.j.error === 'Scrie pe scurt ce s-a întâmplat.', J(x));
+  T('„Am o problemă” cere un text', x.s === 400 && x.j.error === 'Scrie pe scurt ce s-a întâmplat.', J(x));
   x = await V1.POST('/api/incarcare/planuri/' + plan.id + '/problema', { text: 'Au venit 2 paleți în plus' });
   an = await anunturi(D1);
-  T('„Am o problemă": planul e roșu, iar dispecerul primește anunțul cu textul șoferului',
+  T('„Am o problemă”: planul e roșu, iar dispecerul primește anunțul cu textul șoferului',
     x.s === 200 && x.j.stare.cheie === 'problema' && an.some((n) => n.type === 'plan_problema' && n.severity === 'warning' && n.title === 'Problemă la încărcare: B 01 TIR' &&
       n.body === 'Ion Șofer: „Au venit 2 paleți în plus”' && Number(dateN(n).planId) === plan.id), J([x.j.stare, an]));
   x = await V1.POST('/api/incarcare/planuri/' + plan.id + '/incarcat');
   an = await anunturi(D1);
-  T('„Am încărcat": planul e verde, iar dispecerul primește anunțul',
+  T('„Am încărcat”: planul e verde, iar dispecerul primește anunțul',
     x.s === 200 && x.j.stare.cheie === 'incarcat' && an.some((n) => n.type === 'plan_incarcat' && n.title === 'Încărcat: B 01 TIR' && n.body === 'Ion Șofer a apăsat „Am încărcat”.'), J([x.j.stare, an]));
   x = await A1.GET('/api/incarcare/planuri');
   T('adminul firmei vede planul (planurile sunt ale firmei) și îl poate schimba', x.s === 200 && x.j.some((p) => p.id === plan.id) && (await A1.GET('/api/incarcare/planuri/' + plan.id)).j.poateEdita === true, J(x));
@@ -429,19 +429,19 @@ const dateN = (n) => { let d = n && n.data; if (typeof d === 'string') { try { d
     x.s === 200 && !x.j.some((p) => p.id === plan.id) && a2.every((y) => y.s === 404), J(a2.map((y) => y.s)));
   x = await S.GET('/api/incarcare/planuri');
   const s4 = [await S.GET('/api/incarcare/planuri/' + plan.id), await S.PUT('/api/incarcare/planuri/' + plan.id, cerere), await S.DEL('/api/incarcare/planuri/' + plan.id)];
-  T('noi (super-admin) nu vedem planurile firmei (Robert: „nu vrem să vedem ce face o companie")',
+  T('noi (super-admin) nu vedem planurile firmei (Robert: „nu vrem să vedem ce face o companie”)',
     x.s === 200 && !x.j.some((p) => p.id === plan.id) && s4.every((y) => y.s === 404), J([x.j.map((p) => p.id), s4.map((y) => y.s)]));
   x = await D1.PUT('/api/incarcare/planuri/' + plan.id, Object.assign({}, cerere, { marfa: MIX.slice(0, 2) }));
   T('dispecerul reface planul trimis: redevine netrimis', x.s === 200 && x.j.stare.cheie === 'ciorna', J(x));
   x = await V1.GET('/api/incarcare/planuri/' + plan.id);
   const v1l = await V1.GET('/api/incarcare/planuri');
   const v1i = await V1.POST('/api/incarcare/planuri/' + plan.id + '/incarcat');
-  T('…iar șoferul nu-l mai are până pleacă din nou: nu e în listă, iar deschis îi spune că se reface (nu „nu există")',
+  T('…iar șoferul nu-l mai are până pleacă din nou: nu e în listă, iar deschis îi spune că se reface (nu „nu există”)',
     x.s === 404 && x.j.error === 'Dispecerul reface planul — ți-l trimite din nou când e gata.' && v1l.j.length === 0 && v1i.s === 404 && v1i.j.error === x.j.error, J([x, v1l.j, v1i]));
   x = await D1.POST('/api/incarcare/planuri/' + plan.id + '/trimite', { user_id: ids['vasile@ci.ro'] });
   const v2 = await V2.GET('/api/incarcare/planuri');
   const v1 = await V1.GET('/api/incarcare/planuri/' + plan.id);
-  T('trimis altui șofer: Vasile îl vede, Ion nu (acum chiar „nu există" pentru el)',
+  T('trimis altui șofer: Vasile îl vede, Ion nu (acum chiar „nu există” pentru el)',
     x.s === 200 && v2.j.length === 1 && v2.j[0].alMeu === true && v1.s === 404 && v1.j.error === 'Planul nu există.', J([x.s, v2.j, v1]));
   x = await D1.DEL('/api/incarcare/planuri/' + plan.id);
   T('ștergerea: planul dispare și de la șofer', x.s === 200 && (await V2.GET('/api/incarcare/planuri/' + plan.id)).s === 404 && (await D1.GET('/api/incarcare/planuri')).j.length === 0, J(x));

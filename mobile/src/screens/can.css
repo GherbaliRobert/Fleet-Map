@@ -1,4 +1,4 @@
-/* Ecranul „Date CAN" — grilă de dale cu iconiță la stânga, valoare + etichetă la dreapta.
+/* Ecranul „Date CAN” — grilă de dale cu iconiță la stânga, valoare + etichetă la dreapta.
    Clase prefixate `can-`: importurile de CSS sunt globale în aplicație (fără CSS modules), deci
    un nume generic (.tile, .grid) s-ar ciocni cu alt ecran. */
 
@@ -39,6 +39,6 @@
    niciodată — exact informația care justifică ecranul ar fi rămas inaccesibilă pe telefon. */
 .can-why { font-size: 10.5px; line-height: 1.4; color: var(--text-muted); margin-top: 5px; }
 /* Ambele stări ale pastilei au chenar, ca să se citească drept două variante ale aceluiași indicator,
-   nu ca „o alertă" și „o notă". */
+   nu ca „o alertă” și „o notă”. */
 .can-src.read { color: var(--text-secondary); border: 1px solid var(--text-muted); opacity: .85; }
 .can-raw { margin-top: 10px; width: 100%; justify-content: center; }

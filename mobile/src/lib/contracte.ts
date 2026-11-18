@@ -24,18 +24,18 @@ export const CTR_PAS: Record<string, [string, string] | null> = {
   activ: ['incheiat', 'Încheie contractul'],
   incheiat: null,
 };
-// „Ce urmează" — aceleași vorbe ca pe web (CTR_EXPLIC).
+// „Ce urmează” — aceleași vorbe ca pe web (CTR_EXPLIC).
 export const CTR_EXPLIC: Record<string, string> = {
   ciorna: 'Contractul e în lucru. Verifică datele de mai jos și anexa cu aparatele, apoi aprobă-l. ' +
-    'Până atunci, PDF-ul poartă pe fiecare pagină semnul „CIORNĂ" — tocmai ca să nu plece din greșeală la client.',
+    'Până atunci, PDF-ul poartă pe fiecare pagină semnul „CIORNĂ” — tocmai ca să nu plece din greșeală la client.',
   aprobat: 'Contractul e aprobat: PDF-ul nu mai are semnul de ciornă și se poate printa. ' +
     'Descarcă-l, listează-l în două exemplare și trimite-l la client pentru semnare.',
-  trimis: 'Contractul a plecat la client. Când primești hârtia semnată, urc-o mai jos la „Actele semnate" ' +
+  trimis: 'Contractul a plecat la client. Când primești hârtia semnată, urc-o mai jos la „Actele semnate” ' +
     'și marchează-l semnat. Din clipa aia nu se mai modifică.',
   activ: 'Contractul e semnat și în vigoare.',
   incheiat: 'Contractul s-a încheiat.',
 };
-// Actul adițional are același drum, fără „încheiat".
+// Actul adițional are același drum, fără „încheiat”.
 export const ACT_STARI_ET: Record<string, string> = {
   ciorna: 'în lucru',
   aprobat: 'aprobat — gata de semnat',
@@ -69,14 +69,14 @@ export const MONTAJ_STARI: Record<string, string> = {
   facturat_clientului: 'facturat clientului',
 };
 
-// Tariful casei pentru fiecare lucrare de montaj: ce rând din „Prețurile noastre" îi ține prețul. E aceeași
+// Tariful casei pentru fiecare lucrare de montaj: ce rând din „Prețurile noastre” îi ține prețul. E aceeași
 // potrivire ca pe web (`casa` din _raxMontTarifeOferta) — DOAR numele rândurilor; cifrele le dă serverul
 // (`/api/admin/offers/calc` cu `preturi`, adică lista casei de acum). `verify_contracte_telefon.js` pică dacă
 // potrivirea de aici se desparte de cea de pe web.
 export const MONTAJ_RAND_TARIF: Record<string, string> = {
   gps: 'mGps', lvcan: 'mLvCan', caninc: 'mCanInc', fms: 'mFms', demontare: 'mUninstall', inlocuire: 'mReplace', deplasare: 'mTravel',
 };
-// Din valorile „Prețurile noastre" (`preturi.valori.tp`, trimise de server) → prețul casei pe lucrare.
+// Din valorile „Prețurile noastre” (`preturi.valori.tp`, trimise de server) → prețul casei pe lucrare.
 export function tarifeMontajCasa(tp: any): Record<string, number | null> | null {
   if (!tp || typeof tp !== 'object') return null;
   const out: Record<string, number | null> = {};
@@ -95,7 +95,7 @@ export function tarifeMontajCasa(tp: any): Record<string, number | null> | null 
 // `verify_contracte_telefon.js` rulează funcția asta lângă cea de pe web, pe aceleași cifre, și pică dacă
 // verdictul, vreo propoziție sau rândul păstrării diferă.
 //   fel: 'gol' (Anexa nr. 1 goală) · 'dupaMontaj' (din ofertă, fără aparate încă) · 'bine' · 'diferit'
-//   pastrare: rândul „Păstrarea istoricului: …", cu bucățile îngroșate între ** (gol = nu e cazul)
+//   pastrare: rândul „Păstrarea istoricului: …”, cu bucățile îngroșate între ** (gol = nu e cazul)
 // La 'dupaMontaj', `probleme` sunt doar cele ale păstrării: istoricul curge de la primul aparat, deci regula
 // trebuie să fie bună din prima zi (cutia se face portocalie, ca pe web).
 // Corpul e JavaScript curat (fără tipuri), ca proba să-l poată rula așa cum e.
@@ -107,14 +107,14 @@ export function verdictComparatie(cmp: any): { fel: string; probleme: string[]; 
     ' · aplicația ține **' + (ps.firmaLuni != null ? luniText(ps.firmaLuni) : '—') + '**' + (ps.facturaLei ? ' · pe factură ' + lei(ps.facturaLei) : '') : '';
   const psProbleme = [];
   if (ps) {
-    if (ps.firmaLuni != null && ps.firmaLuni < ps.contractLuni) psProbleme.push('Păstrarea istoricului: contractul promite ' + luniText(ps.contractLuni) + ', dar pe firmă sunt trecute doar ' + luniText(ps.firmaLuni) + ' — aplicația ar șterge mai devreme. Pune ' + luniText(ps.contractLuni) + ' în „Abonament & plăți".');
+    if (ps.firmaLuni != null && ps.firmaLuni < ps.contractLuni) psProbleme.push('Păstrarea istoricului: contractul promite ' + luniText(ps.contractLuni) + ', dar pe firmă sunt trecute doar ' + luniText(ps.firmaLuni) + ' — aplicația ar șterge mai devreme. Pune ' + luniText(ps.contractLuni) + ' în „Abonament & plăți”.');
     else if (ps.firmaLuni != null && ps.firmaLuni > ps.contractLuni) psProbleme.push('Păstrarea istoricului: pe firmă sunt trecute ' + luniText(ps.firmaLuni) + ', contractul spune ' + luniText(ps.contractLuni) + '.');
     if (Math.abs((Number(ps.facturaLei) || 0) - (Number(ps.contractLei) || 0)) >= 0.01) psProbleme.push('Păstrarea istoricului: contractul spune ' + lei(ps.contractLei) + ' pe lună, factura ar pune ' + lei(ps.facturaLei) + '.');
   }
   if (!m.factura.nr && m.contract.dinOferta) return { fel: 'dupaMontaj', probleme: psProbleme, pastrare: pastrare };
   let probleme = [];
   const difNr = (Number(m.factura.nr) || 0) - (Number(m.contract.nr) || 0);
-  if (!m.factura.lei && m.contract.lei) probleme.push('Firma n-are preț în „Abonament & plăți" — factura n-ar avea abonamentul mașinilor.');
+  if (!m.factura.lei && m.contract.lei) probleme.push('Firma n-are preț în „Abonament & plăți” — factura n-ar avea abonamentul mașinilor.');
   else if (Math.abs(m.factura.lei - m.contract.lei) >= 0.01) {
     probleme.push('Mașinile: contractul spune ' + lei(m.contract.lei) + ' pe lună, factura ar fi ' + lei(m.factura.lei) + '.' +
       (difNr > 0 ? ' Firma are ' + nrMasini(difNr) + ' în plus față de contract — fă un act adițional.'
@@ -122,10 +122,10 @@ export function verdictComparatie(cmp: any): { fel: string; probleme: string[]; 
   }
   // Pachetul RA Insight (14.10): în contract un pachet cu prețul lui, pe factură un rând fix — se compară direct.
   if (ai && ai.pachet && ai.contractLei > 0 && Math.abs((Number(ai.facturaLei) || 0) - ai.contractLei) >= 0.01) {
-    probleme.push('RA Insight: contractul spune pachetul ' + (ai.contractNume || '') + ', ' + lei(ai.contractLei) + ' pe lună; pe factură ar fi ' + (ai.facturaNume ? '„' + ai.facturaNume + '", ' : '') + lei(ai.facturaLei || 0) + '. Pachetul firmei se pune din fila „Acces".');
+    probleme.push('RA Insight: contractul spune pachetul ' + (ai.contractNume || '') + ', ' + lei(ai.contractLei) + ' pe lună; pe factură ar fi ' + (ai.facturaNume ? '„' + ai.facturaNume + '”, ' : '') + lei(ai.facturaLei || 0) + '. Pachetul firmei se pune din fila „Acces”.');
   }
   for (let i = 0; i < nef.length; i++) {
-    probleme.push('„' + nef[i].nume + '" (' + lei(nef[i].lei) + ' pe lună) e în contract, dar nu ajunge pe factură.');
+    probleme.push('„' + nef[i].nume + '” (' + lei(nef[i].lei) + ' pe lună) e în contract, dar nu ajunge pe factură.');
   }
   probleme = probleme.concat(psProbleme);
   return { fel: probleme.length ? 'diferit' : 'bine', probleme: probleme, pastrare: pastrare };
@@ -142,11 +142,11 @@ export const LIPSA_ET: Record<string, string> = {
   actul: 'contractul semnat (PDF)',
   gdpr: 'acordul GDPR',
 };
-// Lipsurile pe care le completăm NOI, din „Completează" (aceleași trei pe care le refuză „Trimite la semnat").
+// Lipsurile pe care le completăm NOI, din „Completează” (aceleași trei pe care le refuză „Trimite la semnat”).
 // Copie a `CTRE_FIRMA` de pe web, păzită de probă.
 export const LIPSA_FIRMA: string[] = ['cui', 'sediu', 'reprezentant'];
-// „Adoptă aparatele" (drumul clientului) și anexa goală duc aici. Aparatele se adoptă într-un SINGUR loc —
-// „Dispozitive", grupul Neasignate (decizie Alin, 17.09) —, cu filtrul pus ÎNAINTE de deschidere, ca
+// „Adoptă aparatele” (drumul clientului) și anexa goală duc aici. Aparatele se adoptă într-un SINGUR loc —
+// „Dispozitive”, grupul Neasignate (decizie Alin, 17.09) —, cu filtrul pus ÎNAINTE de deschidere, ca
 // raxDevDeschideNeasignate pe web. Ecranul Dispozitive citește `?filtru=neasignate`.
 export const RUTA_NEASIGNATE = '/admin/devices?filtru=neasignate';
 
@@ -154,18 +154,18 @@ export const RUTA_NEASIGNATE = '/admin/devices?filtru=neasignate';
 // Aparatele firmei se arhivează, iar istoricul lor se mai păstrează `n` zile — cât clientul poate cere datele
 // înapoi —, apoi se șterge. Cifra o dă SERVERUL (`date_dupa_incetare_zile` din /overview =
 // contracts.ZILE_DATE_DUPA_INCETARE, promisiunea din contract); fără ea nu se scrie nimic, nu se inventează una.
-// Aceleași cuvinte ca pe web: `dupaIncetare` = cutia „ce urmează" a unui contract încheiat (_raxCtrActiuni),
-// `dupaIncetareConfirm` = întrebarea de la „Încheie contractul" (raxCtrTreci). `verify_contracte_telefon.js` le
+// Aceleași cuvinte ca pe web: `dupaIncetare` = cutia „ce urmează” a unui contract încheiat (_raxCtrActiuni),
+// `dupaIncetareConfirm` = întrebarea de la „Încheie contractul” (raxCtrTreci). `verify_contracte_telefon.js` le
 // rulează lângă textul de pe web. Corpurile sunt JavaScript curat, ca proba să le poată rula.
 export function dupaIncetare(n: any): string {
   const z = Number(n);
   if (!(z > 0)) return '';
-  return ' Arhivează aparatele firmei din „Dispozitive": din ziua aceea istoricul lor se mai păstrează ' + z + de(z) + 'zile — cât clientul poate cere datele înapoi — apoi se șterge singur, cum scrie în contract.';
+  return ' Arhivează aparatele firmei din „Dispozitive”: din ziua aceea istoricul lor se mai păstrează ' + z + de(z) + 'zile — cât clientul poate cere datele înapoi — apoi se șterge singur, cum scrie în contract.';
 }
 export function dupaIncetareConfirm(n: any): string {
   const z = Number(n);
   if (!(z > 0)) return '';
-  return '\n\nApoi arhivează aparatele firmei din „Dispozitive": istoricul lor se mai păstrează ' + z + de(z) + 'zile, apoi se șterge, cum scrie în contract.';
+  return '\n\nApoi arhivează aparatele firmei din „Dispozitive”: istoricul lor se mai păstrează ' + z + de(z) + 'zile, apoi se șterge, cum scrie în contract.';
 }
 
 // Se poate reînnoi: semnat, cu termen, NU se reînnoiește singur și n-are deja o prelungire pornită.
@@ -174,7 +174,7 @@ export function deReinnoit(c: any, sfarsit: any, prelungire: any): boolean {
   return !!(c && c.status === 'activ' && c.auto_renew === false && sfarsit && !prelungire);
 }
 
-// „12 luni", dar „24 de luni" — acordul românesc cu numerele, ca `_raxDe` de pe web. Întoarce
+// „12 luni”, dar „24 de luni” — acordul românesc cu numerele, ca `_raxDe` de pe web. Întoarce
 // separatorul cu spații: `n + de(n) + 'luni'`.
 export function de(n: any): string {
   const x = Math.abs(Math.round(Number(n) || 0));
@@ -190,7 +190,7 @@ export function nrAparate(n: any): string {
   const x = Number(n) || 0;
   return x === 1 ? '1 aparat' : x + de(x) + 'aparate';
 }
-// „12 luni", „24 de luni" (fără forma de singular: o durată de o lună nu apare pe niciun ecran).
+// „12 luni”, „24 de luni” (fără forma de singular: o durată de o lună nu apare pe niciun ecran).
 export function luniText(n: any): string { return n + de(n) + 'luni'; }
 // Câte zile mai are, din `zileRamase` dat de server (alarma). Telefonul nu le socotește.
 export function zileText(z: any): string {
@@ -239,7 +239,7 @@ export function luniOptiuni(val: any): [string, string][] {
   return opt;
 }
 
-// Cine semnează din partea noastră: „Alin X și Robert Y" ↔ listă. Funcția se potrivește singură.
+// Cine semnează din partea noastră: „Alin X și Robert Y” ↔ listă. Funcția se potrivește singură.
 export function semnatariDin(valoare: any): string[] {
   return String(valoare || '').split(/\s+și\s+/).map((s) => s.trim()).filter(Boolean);
 }

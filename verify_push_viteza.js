@@ -1,11 +1,11 @@
 // verify_push_viteza.js — comutatorul stins trebuie să stingă.
 //
-// Reclamația (Robert, 12.08): „am dezactivat alertele (push) pentru limita de viteză, dar tot le primesc".
+// Reclamația (Robert, 12.08): „am dezactivat alertele (push) pentru limita de viteză, dar tot le primesc”.
 //
 // Cauza: sunt DOUĂ motoare care produc o notificare de viteză, iar ele se uită la rânduri DIFERITE
 // din aceeași listă de preferințe:
-//   1. evaluateUserEvents (evenimente automate) → type='overspeed' → rândul „Depășire viteză"   ✔ respecta
-//   2. evaluateAlerts (regulile din secțiunea „Alerte") → type='alert' → rândul „Reguli de alertă" ✘ nu
+//   1. evaluateUserEvents (evenimente automate) → type='overspeed' → rândul „Depășire viteză”   ✔ respecta
+//   2. evaluateAlerts (regulile din secțiunea „Alerte”) → type='alert' → rândul „Reguli de alertă” ✘ nu
 // Tipul REAL al regulii ('overspeed') călătorea doar în data.alertType, unde nimeni nu-l citea la
 // filtrare. Deci stingeai un întrerupător, iar becul era pe celălalt.
 //
@@ -45,21 +45,21 @@ const userTypePref = new Function(
 console.log('\n══ Push de viteză: comutatorul stins chiar stinge ══\n');
 
 const U = 7;
-// Notificarea produsă de o REGULĂ de viteză din secțiunea „Alerte"
+// Notificarea produsă de o REGULĂ de viteză din secțiunea „Alerte”
 const regulaViteza = { type: 'alert', severity: 'warning', data: { alertId: 3, alertType: 'overspeed', speed: 118 } };
 // Notificarea produsă de motorul de evenimente automate
 const evenimentViteza = { type: 'overspeed', severity: 'warning', data: { eventType: 'overspeed' } };
 
-// ── 1. Situația reclamată: „Depășire viteză" stinsă explicit pentru push ──
+// ── 1. Situația reclamată: „Depășire viteză” stinsă explicit pentru push ──
 let prefs = { [U]: { types: { overspeed: { enabled: true, push: false } } } };
-t('regula de viteză NU mai trimite push când „Depășire viteză" e stinsă',
+t('regula de viteză NU mai trimite push când „Depășire viteză” e stinsă',
   seTrimitePush(prefs, U, regulaViteza, userTypePref) === false);
 t('evenimentul automat de viteză tăcea deja corect',
   seTrimitePush(prefs, U, evenimentViteza, userTypePref) === false);
 
 // ── 2. Stins de tot (nici măcar în clopoțel) ──
 prefs = { [U]: { types: { overspeed: { enabled: false } } } };
-t('„Depășire viteză" oprită complet → regula tot nu sună',
+t('„Depășire viteză” oprită complet → regula tot nu sună',
   seTrimitePush(prefs, U, regulaViteza, userTypePref) === false);
 
 // ── 3. NU am stricat cazul normal: cine n-a atins nimic primește în continuare ──
@@ -79,17 +79,17 @@ t('o regulă de ZONĂ (fără rând propriu în preferințe) sună în continuar
 
 // ── 5. Tipuri care NU se numesc la fel — capcana echivalențelor ──
 prefs = { [U]: { types: { idling: { enabled: true, push: false } } } };
-t('regula „idle_engine" respectă rândul „Idling prelungit"',
+t('regula „idle_engine” respectă rândul „Idling prelungit”',
   seTrimitePush(prefs, U, { type: 'alert', severity: 'warning', data: { alertType: 'idle_engine' } }, userTypePref) === false);
 prefs = { [U]: { types: { overload: { enabled: true, push: false } } } };
-t('regula „overload_legal" respectă rândul „Supraîncărcare"',
+t('regula „overload_legal” respectă rândul „Supraîncărcare”',
   seTrimitePush(prefs, U, { type: 'alert', severity: 'warning', data: { alertType: 'overload_legal' } }, userTypePref) === false);
-t('și „axle_overload" la fel',
+t('și „axle_overload” la fel',
   seTrimitePush(prefs, U, { type: 'alert', severity: 'warning', data: { alertType: 'axle_overload' } }, userTypePref) === false);
 
 // ── 6. Rândul general rămâne funcțional pentru cine vrea liniște totală ──
 prefs = { [U]: { types: { alert: { enabled: true, push: false } } } };
-t('stingând rândul „Reguli de alertă", TOATE regulile tac',
+t('stingând rândul „Reguli de alertă”, TOATE regulile tac',
   seTrimitePush(prefs, U, regulaViteza, userTypePref) === false
   && seTrimitePush(prefs, U, { type: 'alert', severity: 'warning', data: { alertType: 'fuel_drop' } }, userTypePref) === false);
 

@@ -4,13 +4,13 @@
 //
 // Ecranul de tahograf al clientului e al lui și rămâne cum e. Fondatorul îl vedea pe ACELAȘI ecran —
 // literalmente același nod, mutat în panoul de administrare — hrănit cu datele TUTUROR firmelor și
-// fără coloană de firmă. Scria „Ion Popescu, termen depășit" și nu puteai spune al cui e (Alin, 18.09).
+// fără coloană de firmă. Scria „Ion Popescu, termen depășit” și nu puteai spune al cui e (Alin, 18.09).
 //
 // Ce apără proba:
 //   • fondatorul are ecranul LUI, pe firme, nu nodul clientului mutat;
 //   • cele trei reguli (cine are card, ce vehicul are tahograf, când e depășit termenul) NU se scriu
 //     a doua oară aici — vin din `licenseCats` și `tacho`, ca la scadențarul clientului. Altfel cele
-//     două ecrane ar începe să spună lucruri diferite despre același șofer, exact ca la „Semnal";
+//     două ecrane ar începe să spună lucruri diferite despre același șofer, exact ca la „Semnal”;
 //   • pragurile se citesc PE FIRMĂ (una precaută poate cere 21 de zile în loc de 28);
 //   • pe ecranul fondatorului NU se încarcă și NU se șterg fișiere — e gospodăria clientului;
 //   • scadențarul întoarce firma și pentru VEHICULE (lipsea; camioanele cădeau pe dinafară la grupare);
@@ -45,9 +45,9 @@ function bloc(a, b) {
   if (i < 0 || j < 0 || j <= i) throw new Error('nu găsesc blocul ' + a);
   return html.slice(i, j);
 }
-// Reperul de început are și o lămurire după ghilimele („(privirea FONDATORULUI)"), deci îl căutăm
+// Reperul de început are și o lămurire după ghilimele („(privirea FONDATORULUI)”), deci îl căutăm
 // fără liniuțele de la capăt.
-const F = bloc('// ── începe „tahograful, pe firme"', '// ── sfârșit „tahograful, pe firme"');
+const F = bloc('// ── începe „tahograful, pe firme”', '// ── sfârșit „tahograful, pe firme”');
 const iRuta = server.indexOf("app.get('/api/admin/tacho-overview'");
 const RUTA = server.slice(iRuta, server.indexOf('\n});', iRuta) + 4);
 
@@ -62,7 +62,7 @@ sect('2. Regulile NU se scriu a doua oară');
 T('cine are card de tahograf vine din `licenseCats`', /licenseCats\.needsTacho\(d\.license_categories\)/.test(RUTA));
 T('ce vehicul are tahograf, din `tacho`', /tacho\.vehiculAreTahograf\(v\.vehicle_type\)/.test(RUTA));
 T('când e depășit termenul, tot din `tacho`', (RUTA.match(/tacho\.scadenta\(/g) || []).length >= 2);
-// „Fără praguri scrise de mână" se verifică pe COD, nu pe comentarii: explicațiile de deasupra
+// „Fără praguri scrise de mână” se verifică pe COD, nu pe comentarii: explicațiile de deasupra
 // pomenesc firesc cifrele (28, 90), iar prima variantă a probei se împiedica exact de ele.
 const faraComentarii = (s) => s.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 T('ruta nu are praguri scrise de mână',
@@ -81,17 +81,17 @@ T('și grupează după ea', /GROUP BY dv\.imei, dv\.name, dv\.plate, dv\.brand, 
 sect('4. Aici nu se umblă la fișierele clientului');
 T('ecranul n-are încărcare de fișier', !/type="file"/.test(F) && !/th-upl/.test(F));
 T('și nici ștergere', !/fa-trash/.test(F) && !/deleteTacho|api\/tacho\//.test(F));
-T('singura acțiune pe rând e „Deschide firma"', /raxOpenCompanyDetail\(' \+ f\.id \+ '\)"><i class="fas fa-building"><\/i> Deschide firma/.test(F));
+T('singura acțiune pe rând e „Deschide firma”', /raxOpenCompanyDetail\(' \+ f\.id \+ '\)"><i class="fas fa-building"><\/i> Deschide firma/.test(F));
 T('nu duplică nici comutatorul modulului', !/features/.test(F));
 
 sect('5. Ce spune fiecare rând');
 T('semnul firmei e scris într-un singur loc', /function _thfSemn\(f\)/.test(F));
 T('amenda bate vânzarea în ordine',
   F.indexOf('if (f.depasite) return') > 0 && F.indexOf('if (f.depasite) return') < F.indexOf('if (f.platitDegeaba)'));
-T('„are camioane, n-are modulul" e semnalat', /are camioane, n-are modulul/.test(F));
-T('„plătește și n-are ce descărca", la fel', /plătește modulul, n-are ce descărca/.test(F));
+T('„are camioane, n-are modulul” e semnalat', /are camioane, n-are modulul/.test(F));
+T('„plătește și n-are ce descărca”, la fel', /plătește modulul, n-are ce descărca/.test(F));
 T('firmele cu probleme stau primele', /if \(sa\.rau !== sb\.rau\) return sa\.rau \? -1 : 1;/.test(F));
-T('există filtru „doar de rezolvat"', /window\.raxThfProbleme = function \(\)/.test(F));
+T('există filtru „doar de rezolvat”', /window\.raxThfProbleme = function \(\)/.test(F));
 T('și căutare după firmă', /id="thf-cauta"/.test(F) && /window\.raxThfCauta = function/.test(F));
 T('scheletul se face o singură dată (cursorul nu sare din casetă)',
   /function _thfSchelet\(host\)/.test(F) && /if \(!host\._thfGata\) _thfSchelet\(host\)/.test(F));
@@ -99,13 +99,13 @@ T('scheletul se face o singură dată (cursorul nu sare din casetă)',
 sect('5b. Un CARTONAȘ pe firmă, nu un rând de tabel');
 T('nu mai e tabel', !/thf-corp/.test(F) && !/<thead>/.test(F));
 T('e o listă de cartonașe', /id="thf-lista"/.test(F) && /class="rax-devgr"/.test(F));
-T('cu aceleași chenare ca la „Dispozitive"', /rax-devgr-h/.test(F) && /rax-devgr-b/.test(F));
+T('cu aceleași chenare ca la „Dispozitive”', /rax-devgr-h/.test(F) && /rax-devgr-b/.test(F));
 T('pe cartonaș scrie câți șoferi și câte camioane', /' camion' : ' camioane'/.test(F));
 T('și când a intrat ultimul fișier', /ultimul fișier ' \+ _raxCand/.test(F));
 
-sect('5c. „Afișează mai mult" arată CINE e în urmă');
-// „Butonul există" se caută în COD, nu în comentarii: explicația de deasupra pomenește firesc
-// „Afișează mai mult", iar prima variantă a probei trecea și după ce butonul era scos.
+sect('5c. „Afișează mai mult” arată CINE e în urmă');
+// „Butonul există” se caută în COD, nu în comentarii: explicația de deasupra pomenește firesc
+// „Afișează mai mult”, iar prima variantă a probei trecea și după ce butonul era scos.
 T('butonul există', /Afișează mai mult/.test(faraComentarii(F)) && /window\.raxThfMaiMult = function \(id\)/.test(F));
 T('apare doar unde chiar e ceva de arătat', /are \? '<button class="rax-btn" onclick="raxThfMaiMult/.test(F));
 T('ce e deschis rămâne deschis la redesenare',
@@ -114,7 +114,7 @@ T('ce e deschis rămâne deschis la redesenare',
 T('rândul deschis spune numele', /esc\(p\.nume \|\| '—'\)/.test(F));
 T('și dacă e card de șofer sau memoria camionului', /p\.ce === 'card' \? 'card șofer' : 'memoria vehiculului'/.test(F));
 T('cuvintele întârzierii stau într-un singur loc', /function _thfProblema\(p\)/.test(F));
-T('„niciodată descărcat" nu se preface în zile', /if \(p\.stare === 'niciodata'\) return \{ t: 'niciodată descărcat'/.test(F));
+T('„niciodată descărcat” nu se preface în zile', /if \(p\.stare === 'niciodata'\) return \{ t: 'niciodată descărcat'/.test(F));
 T('când sunt prea multe, o spune', /și încă ' \+ \(f\.problemeTotal - are\)/.test(F));
 // serverul trimite numele, tăiate la un număr rezonabil
 T('ruta trimite numele celor în urmă', /f\.probleme\.push\(\{ tip, nume, ce, stare: s\.stare/.test(RUTA));
@@ -177,7 +177,7 @@ T('iar cand e filtrat o spune limpede, o data', /thf-filtrat[\s\S]{0,120}doar pe
 
   sect('7. Ruta e doar a noastră');
   // Contul de probă se face pe traseul REAL (link de parolă), prin ajutorul comun — nu pe o scurtătură
-  // scrisă aici. Regula e în CLAUDE.md: nicio portiță „doar pentru teste".
+  // scrisă aici. Regula e în CLAUDE.md: nicio portiță „doar pentru teste”.
   const { puneParola } = require('./test_parola');
   const cr = await POST('/api/users', { username: 'sef@thf.ro', full_name: 'Șef THF', role: 'company_admin', company_id: A });
   await puneParola(cr, 'Str4da-Verde-2026', B);

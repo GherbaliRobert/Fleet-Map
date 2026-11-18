@@ -1,22 +1,22 @@
-// verify_firma_stare.js — fereastra firmei: filele „Stare" și „Acces" și simulatorul de încărcare după flotă (12.10).
+// verify_firma_stare.js — fereastra firmei: filele „Stare” și „Acces” și simulatorul de încărcare după flotă (12.10).
 //
 //   node verify_firma_stare.js
 //
 // Robert (12.10): „un dashboard pentru fiecare companie, accesat din lista firmelor, să se deschidă un modal și acolo
-// să ai tot prin taburi" + simulatorul de încărcare „inclus în abonament, dar noi să bifăm la ce au acces" + „1.a"
+// să ai tot prin taburi" + simulatorul de încărcare „inclus în abonament, dar noi să bifăm la ce au acces” + „1.a”
 // (pornit singur la firmele cu camioane, dube sau remorci, oprit la celelalte).
 //
 // Ce apără proba:
 //   1. regula modulului `incarcare` (plans.js): după flotă cât nu l-am ales; alegerea noastră bate automatul; `null`
 //      îl întoarce la automat;
-//   2. serverul: flota se reîncarcă la fiecare schimbare care o mută; rutele trimit „ales de noi / după flotă";
-//      RA Insight în „Stare" e doar numere;
-//   3. web-ul: „Stare" prima, „Acces" ultima; comutatoarele s-au MUTAT în „Acces" (panoul separat a plecat, butoanele
+//   2. serverul: flota se reîncarcă la fiecare schimbare care o mută; rutele trimit „ales de noi / după flotă”;
+//      RA Insight în „Stare” e doar numere;
+//   3. web-ul: „Stare” prima, „Acces” ultima; comutatoarele s-au MUTAT în „Acces” (panoul separat a plecat, butoanele
 //      vechi duc acolo);
 //   4. telefonul: aceleași file, aceeași ordine, aceeași cale;
-//   5. modulele și vorbele „automat / ales de noi" — aceleași pe web și pe telefon;
-//   6. cartonașele „Stării" — socoteala paginii și a telefonului, RULATE pe aceleași firme, dau același rezultat;
-//   7. pe server pornit: un camion pornește simulatorul, alegerea noastră îl oprește, „înapoi la automat" îl repornește.
+//   5. modulele și vorbele „automat / ales de noi” — aceleași pe web și pe telefon;
+//   6. cartonașele „Stării” — socoteala paginii și a telefonului, RULATE pe aceleași firme, dau același rezultat;
+//   7. pe server pornit: un camion pornește simulatorul, alegerea noastră îl oprește, „înapoi la automat” îl repornește.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -53,12 +53,12 @@ plans.setFlotaGrea([]);
 T('fără vehicule care cară marfă: oprit', plans.featuresFor(firma(901)).incarcare === false);
 plans.setFlotaGrea([901]);
 T('cu camioane / dube / remorci: pornit singur', plans.featuresFor(firma(901)).incarcare === true);
-T('ales de noi „oprit" bate flota', plans.featuresFor(firma(901, { incarcare: false })).incarcare === false);
+T('ales de noi „oprit” bate flota', plans.featuresFor(firma(901, { incarcare: false })).incarcare === false);
 plans.setFlotaGrea([]);
-T('ales de noi „pornit" bate lipsa flotei', plans.featuresFor(firma(901, { incarcare: true })).incarcare === true);
+T('ales de noi „pornit” bate lipsa flotei', plans.featuresFor(firma(901, { incarcare: true })).incarcare === true);
 T('celelalte module își păstrează implicitul (agenții și RA Insight — pachetul Start — porniți, restul oprite)',
   J(plans.featuresFor(firma(902))) === J({ agents: true, ai_assistant: true, etransport: false, tahograf: false, etoll: false, incarcare: false }));
-T('„ales de noi" = doar cheile scrise', J(plans.featuresSetate(firma(903, { incarcare: false, agents: true, nimic: 1 }))) === J({ agents: true, incarcare: false }));
+T('„ales de noi” = doar cheile scrise', J(plans.featuresSetate(firma(903, { incarcare: false, agents: true, nimic: 1 }))) === J({ agents: true, incarcare: false }));
 T('felurile care cară marfă: autotractor, camion, TIR, dubă, remorcă (și scrierile vechi)',
   ['Autotractor', 'Camion', 'TIR', 'Duba', 'Remorca', 'truck', 'van', 'trailer'].every((t) => plans.TIPURI_CU_MARFA.indexOf(t) >= 0) &&
   ['Auto', 'Autobuz', 'Utilaj', 'Tractor', 'Remorcă tehnologică'].every((t) => plans.TIPURI_CU_MARFA.indexOf(t) < 0));
@@ -67,7 +67,7 @@ T('o firmă se poate trece pe loc (fișa firmei, cu flota în mână)', plans.ar
 plans.setFlotaGrea([]);
 
 // ─── 2. Serverul ─────────────────────────────────────────────────────────────────────────────────────────────────
-sect('2. Serverul: flota se ține la zi, rutele spun „ales de noi / după flotă"');
+sect('2. Serverul: flota se ține la zi, rutele spun „ales de noi / după flotă”');
 T('`null` pe o cheie = înapoi la automat (cheia iese din setări)',
   /if \(typeof body\.features\[k\] === 'boolean'\) f\[k\] = body\.features\[k\];[\s\S]{0,200}else if \(body\.features\[k\] === null\) delete f\[k\];/.test(server));
 T('flota se citește din baza de date după aceleași feluri (db.firmeCuFlotaGrea(plans.TIPURI_CU_MARFA))',
@@ -81,21 +81,21 @@ T('setările, comutatorul și fișa firmei trimit ce e ales de noi și ce merge 
 T('fișa firmei socotește flota pe vehiculele pe care le are în mână, înainte de module',
   /plans\.setFlotaGreaFirma\(id, vehicles\.some[\s\S]{0,200}\n    const features = plans \? plans\.featuresFor\(company\) : \{\};/.test(server));
 const iIns = server.indexOf('insight = { enabled: ri.enabled');
-T('RA Insight în „Stare" = doar numere (conturi, fond, folosite), nu cine ce a întrebat',
+T('RA Insight în „Stare” = doar numere (conturi, fond, folosite), nu cine ce a întrebat',
   iIns > 0 && /insight = \{ enabled: ri\.enabled, conturi: ri\.conturi, fond: ri\.fond, used: ri\.used, ramase: ri\.ramase, epuizat: ri\.epuizat \}/.test(server) &&
   !/oameni/.test(server.slice(iIns, server.indexOf('\n', iIns))));
 
 // ─── 3. Web ──────────────────────────────────────────────────────────────────────────────────────────────────────
-sect('3. Web: „Stare" prima, „Acces" ultima, comutatoarele mutate');
+sect('3. Web: „Stare” prima, „Acces” ultima, comutatoarele mutate');
 const iTabs = html.indexOf("'<div class=\"rax-cod-tabs\">'");
 const TABS = iTabs > 0 ? html.slice(iTabs, html.indexOf("'</div>'", iTabs)) : '';
 const ordine = (TABS.match(/data-ct="([a-z]+)"/g) || []).map((x) => x.slice(9, -1));
 T('filele: Stare · Detalii · Utilizatori · Vehicule · Facturi · Abonament & plăți · Contract · Acces',
   J(ordine) === J(['stare', 'detalii', 'utilizatori', 'vehicule', 'facturi', 'abonament', 'contract', 'acces']), J(ordine));
-T('„Stare" e aprinsă la deschidere și e fila implicită', /class="rax-cod-tab on" data-ct="stare"/.test(TABS) && /raxCodTab\(tab \|\| 'stare'\)/.test(html));
-T('raxCodTab știe „stare" și „acces"', /tab === 'stare' \? _raxCodStare\(d\)/.test(html) && /if \(tab === 'acces'\) _raxCodAccesIncarca\(d\.company\.id\)/.test(html));
+T('„Stare” e aprinsă la deschidere și e fila implicită', /class="rax-cod-tab on" data-ct="stare"/.test(TABS) && /raxCodTab\(tab \|\| 'stare'\)/.test(html));
+T('raxCodTab știe „stare” și „acces”', /tab === 'stare' \? _raxCodStare\(d\)/.test(html) && /if \(tab === 'acces'\) _raxCodAccesIncarca\(d\.company\.id\)/.test(html));
 T('panoul separat de configurare a plecat', !/rax-cfg-overlay|rax-cfg-body/.test(html));
-T('butoanele vechi („Configurează", „Module & limite") duc pe fila „Acces"',
+T('butoanele vechi („Configurează”, „Module & limite”) duc pe fila „Acces”',
   /window\.raxOpenCompanyConfig = function \(id\) \{ raxOpenCompanyDetail\(id, 'acces'\); \};/.test(html) &&
   /onclick="raxCodTab\(\\'acces\\'\)"><i class="fas fa-sliders"><\/i> Module &amp; limite/.test(html));
 T('reîmprospătarea după o editare rămâne pe fila deschisă', /raxOpenCompanyDetail\(window\._raxCodId, window\._raxCodFila\)/.test(html));
@@ -105,10 +105,10 @@ T('culorile de stare au pereche pe tema deschisă', /body:not\(\.dark\) \.raco-s
 sect('4. Telefonul: aceleași file, aceeași cale');
 const oTel = Array.from(sheet.matchAll(/\{ k: '([a-z]+)', et: /g)).map((m) => m[1]);
 T('filele telefonului, în aceeași ordine', J(oTel) === J(ordine), J(oTel));
-T('„Stare" e fila implicită', /\.tab \|\| 'stare'\)/.test(sheet) && /filaCeruta : 'stare'\)/.test(sheet));
-T('„Module & limite" din Detalii duce pe fila „Acces"', /onConfig=\{\(\) => alegeFila\('acces'\)\}/.test(sheet));
-T('foaia separată a plecat, fila „Acces" e CompanyAcces', !/CompanyConfigSheet/.test(sheet + editTel) && /fila === 'acces' && <CompanyAcces /.test(sheet));
-T('„Înapoi la automat" trimite `null` (tipul îl primește)', /Record<string, boolean \| null>/.test(endpoints) && /setCompanyFeatures\(companyId, \{ \[key\]: null \}\)/.test(editTel));
+T('„Stare” e fila implicită', /\.tab \|\| 'stare'\)/.test(sheet) && /filaCeruta : 'stare'\)/.test(sheet));
+T('„Module & limite” din Detalii duce pe fila „Acces”', /onConfig=\{\(\) => alegeFila\('acces'\)\}/.test(sheet));
+T('foaia separată a plecat, fila „Acces” e CompanyAcces', !/CompanyConfigSheet/.test(sheet + editTel) && /fila === 'acces' && <CompanyAcces /.test(sheet));
+T('„Înapoi la automat” trimite `null` (tipul îl primește)', /Record<string, boolean \| null>/.test(endpoints) && /setCompanyFeatures\(companyId, \{ \[key\]: null \}\)/.test(editTel));
 
 // ─── TypeScript-ul telefonului, tradus și rulat ─────────────────────────────────────────────────────────────────
 let ts = null;
@@ -127,7 +127,7 @@ const COMP = modul(libComp, 'companii.ts', {
 });
 
 // ─── 5. Modulele și vorbele ──────────────────────────────────────────────────────────────────────────────────────
-sect('5. Modulele și „automat / ales de noi" — aceleași pe web și pe telefon');
+sect('5. Modulele și „automat / ales de noi” — aceleași pe web și pe telefon');
 const iMods = html.indexOf('var _RAX_MODS = [');
 const RAX_MODS = iMods > 0 ? vm.runInNewContext('(' + html.slice(iMods + 'var _RAX_MODS = '.length, html.indexOf('];', iMods) + 1) + ')') : [];
 T('aceleași module, aceleași nume și descrieri, în aceeași ordine',
@@ -135,17 +135,17 @@ T('aceleași module, aceleași nume și descrieri, în aceeași ordine',
   J(RAX_MODS.map((m) => m[0])) + ' / ' + J(COMP.MODULE_FIRMA.map((m) => m.key)));
 const iAuto = html.indexOf('function _raxModAuto(');
 const AUTO = iAuto > 0 ? html.slice(iAuto, html.indexOf('\n    }', iAuto)) : '';
-T('„Ales de noi, de mână." și „Înapoi la automat" — aceleași vorbe',
+T('„Ales de noi, de mână.” și „Înapoi la automat” — aceleași vorbe',
   AUTO.indexOf(COMP.MOD_ALES) >= 0 && AUTO.indexOf(COMP.MOD_INAPOI) >= 0, COMP.MOD_ALES + ' / ' + COMP.MOD_INAPOI);
-T('„Automat, după flotă: pornit / oprit — …" — aceleași vorbe',
+T('„Automat, după flotă: pornit / oprit — …” — aceleași vorbe',
   AUTO.indexOf("Automat, după flotă: ' +") >= 0 &&
   COMP.modulAutoText(true) === 'Automat, după flotă: pornit — firma are camioane, dube sau remorci.' &&
   COMP.modulAutoText(false) === 'Automat, după flotă: oprit — firma n-are camioane, dube sau remorci.' &&
   AUTO.indexOf("'pornit — firma are camioane, dube sau remorci.'") >= 0 && AUTO.indexOf("'oprit — firma n-are camioane, dube sau remorci.'") >= 0);
 
-// ─── 6. Cartonașele „Stării", rulate pe ambele părți ─────────────────────────────────────────────────────────────
-sect('6. „Stare": pagina și telefonul, pe aceleași firme, același rezultat');
-const iB = html.indexOf('// ── începe „fila Stare" ──'), jB = html.indexOf('// ── sfârșit „fila Stare" ──');
+// ─── 6. Cartonașele „Stării”, rulate pe ambele părți ─────────────────────────────────────────────────────────────
+sect('6. „Stare”: pagina și telefonul, pe aceleași firme, același rezultat');
+const iB = html.indexOf('// ── începe „fila Stare” ──'), jB = html.indexOf('// ── sfârșit „fila Stare” ──');
 T('blocul paginii e între repere', iB > 0 && jB > iB);
 const WEB = vm.runInNewContext(html.slice(iB, jB) + '\n;({ cart: _raxStareCartonase, acces: _raxAccesEt })');
 const iSt = html.indexOf('var CTR_STARI = {');
@@ -181,15 +181,15 @@ CAZURI.forEach((c) => {
   T('la fel: ' + c.nume, JC(w) === JC(t), '\n    web:     ' + JC(w) + '\n    telefon: ' + JC(t));
 });
 const ia = (nume, k) => (WEB.cart(CAZURI.find((c) => c.nume === nume).d, ACUM, dep).find((x) => x.k === k) || {});
-T('„20 de aparate · 20 comunică" (cu „de")', ia('20 de aparate, toate comunică', 'Aparatele').v === '20 de aparate · 20 comunică', ia('20 de aparate, toate comunică', 'Aparatele').v);
-T('„142 din 300 de întrebări luna asta"', ia('RA Insight cu fond', 'RA Insight').d === '142 din 300 de întrebări luna asta', ia('RA Insight cu fond', 'RA Insight').d);
+T('„20 de aparate · 20 comunică” (cu „de”)', ia('20 de aparate, toate comunică', 'Aparatele').v === '20 de aparate · 20 comunică', ia('20 de aparate, toate comunică', 'Aparatele').v);
+T('„142 din 300 de întrebări luna asta”', ia('RA Insight cu fond', 'RA Insight').d === '142 din 300 de întrebări luna asta', ia('RA Insight cu fond', 'RA Insight').d);
 T('restanța: 2 documente, una trecută, ultima plată cea mai nouă',
   ia('restanță cu zilele până la suspendare', 'Facturi și plăți').v === '2 documente de plată' &&
   /1 trecută de scadență/.test(ia('restanță cu zilele până la suspendare', 'Facturi și plăți').d) &&
   /ultima plată: 50,00 lei/.test(ia('restanță cu zilele până la suspendare', 'Facturi și plăți').d), J(ia('restanță cu zilele până la suspendare', 'Facturi și plăți')));
 T('accesul: aceleași cuvinte ca în Detalii (_raxAccesEt)', ia('restanță cu zilele până la suspendare', 'Accesul').v === WEB.acces({ status: 'grace', neplata: { zilePanaLaSuspendare: 6 } })[0]);
 T('motivul nostru de oprire se vede doar la noi', ia('oprită de noi, cu motivul nostru', 'Accesul').d === 'Motivul nostru: cerere client');
-T('peste trei aparate fără semnal (aici 5): primele trei și „și încă 2"', /· și încă 2$/.test(ia('aparate tăcute și fără semnal (peste 3)', 'Aparatele').d), ia('aparate tăcute și fără semnal (peste 3)', 'Aparatele').d);
+T('peste trei aparate fără semnal (aici 5): primele trei și „și încă 2”', /· și încă 2$/.test(ia('aparate tăcute și fără semnal (peste 3)', 'Aparatele').d), ia('aparate tăcute și fără semnal (peste 3)', 'Aparatele').d);
 
 // ─── 7. Pe server pornit ─────────────────────────────────────────────────────────────────────────────────────────
 const PORT = 3488, DIR = '.firma-stare-db';
@@ -225,12 +225,12 @@ function gata(code) {
   let r = await PUT('/api/companies/' + T1 + '/features', { features: { incarcare: false } });
   T('oprit de noi: rămâne oprit, deși are camion', r.features && r.features.incarcare === false && r.features_setate && r.features_setate.incarcare === false, J(r));
   r = await PUT('/api/companies/' + T1 + '/features', { features: { incarcare: null } });
-  T('„înapoi la automat": cheia iese, simulatorul repornește după flotă', r.features && r.features.incarcare === true && !('incarcare' in (r.features_setate || {})), J(r));
+  T('„înapoi la automat”: cheia iese, simulatorul repornește după flotă', r.features && r.features.incarcare === true && !('incarcare' in (r.features_setate || {})), J(r));
   await PUT('/api/devices/861000000330002', { name: 'Logan', plate: 'B 02 AUT', vehicle_type: 'Duba' });
   s2 = await GET('/api/companies/' + T2 + '/settings');
   T('o dubă trecută în fișă pornește simulatorul pe loc (fără să aștepte 2 minute)', s2.features.incarcare === true && s2.flota_grea === true, J({ f: s2.flota_grea, i: s2.features && s2.features.incarcare }));
   const ov = await GET('/api/companies/' + T1 + '/overview');
-  T('fișa firmei aduce pentru „Stare": RA Insight (doar numere), modulele, ce e ales de noi',
+  T('fișa firmei aduce pentru „Stare”: RA Insight (doar numere), modulele, ce e ales de noi',
     ov.insight && typeof ov.insight.conturi === 'number' && !('oameni' in ov.insight) && ov.features && ov.features.incarcare === true &&
     ov.features_setate && J(ov.dupa_flota) === J(['incarcare']), J({ ins: ov.insight, f: ov.features, s: ov.features_setate }));
   fin();

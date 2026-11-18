@@ -14,9 +14,9 @@ const INTENTS = [
   { key: 'status', kw: ['status flota', 'rezumat flota', 'situatia flotei', 'cum sta flota', 'overview', 'sumar', 'pe scurt'] }
 ];
 
-// Toate felurile de întrebare dintr-un mesaj, în ordinea listei. Răspunsul rapid știe UNUL; „Cât a mers azi și unde e?" are două
-// răspunsuri diferite (km-ii nu spun locul) și merge la RA Insight (Alin, 10.11: „să citească mai bine întrebările"). Excepția:
-// „unde sunt cele oprite / care merg / cel mai rapid" — listele acelea arată deja și locul fiecărei mașini.
+// Toate felurile de întrebare dintr-un mesaj, în ordinea listei. Răspunsul rapid știe UNUL; „Cât a mers azi și unde e?” are două
+// răspunsuri diferite (km-ii nu spun locul) și merge la RA Insight (Alin, 10.11: „să citească mai bine întrebările”). Excepția:
+// „unde sunt cele oprite / care merg / cel mai rapid” — listele acelea arată deja și locul fiecărei mașini.
 const ARATA_LOCUL = { stopped: true, moving: true, fastest: true };
 function detectIntents(message) {
   const m = norm(message); if (!m) return [];
@@ -35,13 +35,13 @@ function detectIntent(message) {
   return null;
 }
 
-// Ora pe ora ROMÂNIEI (20.10): serverul merge pe UTC, iar până atunci „ultima poziție" ieșea cu 2–3 ore în urmă.
+// Ora pe ora ROMÂNIEI (20.10): serverul merge pe UTC, iar până atunci „ultima poziție” ieșea cu 2–3 ore în urmă.
 function fmtTime(ts) { try { return new Date(ts).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return '' + ts; } }
 function online(v, now) { return v.ultima_actualizare && (now - new Date(v.ultima_actualizare).getTime()) < 65 * 60000; } // 1h + tampon (parcate care trimit o data/ora = online/oprit)
 function moving(v, now) { return online(v, now) && (v.viteza_kmh || 0) > 3; }
-// Fără emoji (Alin, 20.10: răspunsul instant „unde e acum" era plin de 📍 🚚 🟠 și nu arăta profesionist lângă insignele
-// RA Insight). Titlu îngroșat, apoi mașina și câte un rând cu „•".
-// „19 vehicule", dar „20 de vehicule": de la 20 în sus româna cere „de" (ultimele două cifre între 1 și 19 = fără „de").
+// Fără emoji (Alin, 20.10: răspunsul instant „unde e acum” era plin de 📍 🚚 🟠 și nu arăta profesionist lângă insignele
+// RA Insight). Titlu îngroșat, apoi mașina și câte un rând cu „•”.
+// „19 vehicule”, dar „20 de vehicule”: de la 20 în sus româna cere „de” (ultimele două cifre între 1 și 19 = fără „de”).
 function de(n) { const r = Math.abs(Math.round(Number(n) || 0)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
 function cant(n, unu, multe) { return Number(n) === 1 ? '1 ' + unu : n + de(n) + multe; }
 function cine(v) { return '**' + (v.nume || '?') + '**' + (v.nr ? ' (' + v.nr + ')' : ''); }

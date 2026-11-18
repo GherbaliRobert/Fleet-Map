@@ -1,8 +1,8 @@
 // abonament.js — de la ce zi plătește clientul abonamentul unei mașini (decizie Alin, 28.09).
 //
-// Alin a ales varianta A: „pe zile, din ziua în care aparatul transmite prima dată". Până atunci, factura
+// Alin a ales varianta A: „pe zile, din ziua în care aparatul transmite prima dată”. Până atunci, factura
 // automată lua luna ÎNTREAGĂ și număra toate aparatele trecute pe firmă în clipa emiterii, montate sau nu:
-// 3 aparate înregistrate, niciunul montat → factură pe toată luna. Iar dacă „Auto" era bifat înainte de
+// 3 aparate înregistrate, niciunul montat → factură pe toată luna. Iar dacă „Auto” era bifat înainte de
 // montaj, pleca factura la primele aparate trecute pe firmă, iar celelalte nu mai plăteau luna deloc.
 //
 // Regula, într-o frază: factura lunii M (emisă în ziua de facturare din M) cuprinde
@@ -38,7 +38,7 @@ function dinCheie(cheie) {
   return (luna >= 1 && luna <= 12) ? { an: an, luna: luna } : null;
 }
 function numeLuna(an, luna) { return LUNI[luna - 1] + ' ' + an; }
-// „10–31.10.2026": perioada dintr-o lună, scrisă românește, pentru rândul de pe factură.
+// „10–31.10.2026”: perioada dintr-o lună, scrisă românește, pentru rândul de pe factură.
 function perioadaText(zi, an, luna, zileLuna) {
   const ll = String(luna).padStart(2, '0');
   return zi + '–' + zileLuna + '.' + ll + '.' + an;
@@ -88,7 +88,7 @@ function imparte(aparate, an, luna) {
 
 // Un rând de factură luat pe o parte din lună: aceeași cantitate; prețul UNEI bucăți × fracția, rotunjit la ban,
 // iar valoarea = cantitate × preț. Până pe 29.09 se rotunjea valoarea rândului, iar factura scria
-// „10 × 24,68 = 246,77" — cantitatea înmulțită cu prețul nu dădea valoarea, nici pe hârtie, nici în e-Factura.
+// „10 × 24,68 = 246,77” — cantitatea înmulțită cu prețul nu dădea valoarea, nici pe hârtie, nici în e-Factura.
 function scaleaza(linie, fractie, sufix, cotaTva) {
   const vr = Number(cotaTva) || 0;
   const qty = Number(linie.qty) > 0 ? Number(linie.qty) : 1;

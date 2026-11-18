@@ -52,7 +52,7 @@ const EURO = [
 //
 // ── Culorile spun CÂT COSTĂ, nu ce fel de drum e (cerut de Alin, 26.08) ───────────────────────
 // Erau pe dos: verde pe autostradă, roșu pe drumul național. Pe un ecran cu bani, roșul se citește
-// „scump" — iar autostrada e de DOUĂ ORI mai scumpă decât nationalul în fiecare celulă din grilă
+// „scump” — iar autostrada e de DOUĂ ORI mai scumpă decât nationalul în fiecare celulă din grilă
 // (0,48 față de 0,24 lei/km la peste 12 t Euro 6). Acum: roșu = cel mai scump, verde = mai ieftin,
 // albastru = nu se plătește deloc.
 // ⚠ Alegerea se sprijină pe faptul că autostrada rămâne mai scumpă decât nationalul în TOATE
@@ -69,12 +69,12 @@ const CLASE_DRUM = [
 ];
 
 // ── Categorii care NU intră NICIODATĂ la taxa pe kilometru ────────────────────────────────────
-// Fără regula asta, aplicația cere „masa maximă autorizată" pentru un Dacia Logan — o întrebare la
+// Fără regula asta, aplicația cere „masa maximă autorizată” pentru un Dacia Logan — o întrebare la
 // care nu există răspuns util, fiindcă un autoturism nu trece de 3,5 t. Omul ori o completează
 // degeaba, ori se întreabă ce a greșit. Prins pe flota reală a fondatorilor (Alin, 26.08): toate
 // cele trei mașini ale lor cereau masa, deși două erau un Logan și un Caddy.
 //
-// Aici stau DOAR cazurile fără dubiu. „Dubă" lipsește dinadins: o dubă mare (Sprinter, Ducato) e
+// Aici stau DOAR cazurile fără dubiu. „Dubă” lipsește dinadins: o dubă mare (Sprinter, Ducato) e
 // chiar la limita de 3,5 t și trebuie cântărită, nu presupusă.
 const TIPURI_FARA_TAXA = {
   'auto': 'autoturism — plătește rovinietă, nu taxă pe km',
@@ -89,7 +89,7 @@ const TIPURI_FARA_TAXA = {
   'combina agricola': 'utilaj — nu e transport rutier de marfă',
   'grup electrogen': 'utilaj — nu e transport rutier de marfă',
 };
-// Categoria se scrie cu diacritice în fișă („Combină agricolă"), dar cheile de mai sus sunt fără —
+// Categoria se scrie cu diacritice în fișă („Combină agricolă”), dar cheile de mai sus sunt fără —
 // altfel o singură literă cu căciulă ar face regula să nu se potrivească niciodată.
 function _faraDiacritice(s) {
   return String(s == null ? '' : s).toLowerCase().trim()
@@ -131,7 +131,7 @@ function categorieDupaMasa(kg) {
   return null;
 }
 
-// Fișa vehiculului ține norma ca text liber: „Euro 6", „EURO6", „euro VI", „6". Le aducem la
+// Fișa vehiculului ține norma ca text liber: „Euro 6”, „EURO6”, „euro VI”, „6”. Le aducem la
 // aceeași formă. Necunoscut → tratăm ca cea mai poluantă: mai bine o estimare prudentă (cost
 // maxim) decât una optimistă pe care omul o pune în ofertă și pierde bani.
 const _ROMAN = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6 };
@@ -164,7 +164,7 @@ function clasaDinOsm(highway) {
 }
 
 // Grila salvată de super-admin poate fi parțială sau stricată; o completăm cu implicitele și
-// respingem valorile absurde. O taxă de 900 lei/km, „salvată din greșeală", ar trece nevăzută.
+// respingem valorile absurde. O taxă de 900 lei/km, „salvată din greșeală”, ar trece nevăzută.
 function grilaValida(g) {
   const out = { aplicabilDin: APLICABIL_DIN, moneda: 'RON', tarife: {} };
   const src = (g && typeof g === 'object') ? g : {};
@@ -177,7 +177,7 @@ function grilaValida(g) {
       const dat = (st[c.key] && st[c.key][e.key]) || {};
       const num = (v, d) => { const n = Number(v); return (Number.isFinite(n) && n >= 0 && n <= 10) ? n : d; };
       const a = num(dat.autostrada, impl.autostrada), n2 = num(dat.national, impl.national);
-      // „Presupus" rămâne doar dacă valoarea a rămas cea implicită; dacă omul a scris-o, e a lui.
+      // „Presupus” rămâne doar dacă valoarea a rămas cea implicită; dacă omul a scris-o, e a lui.
       const atins = (a !== impl.autostrada) || (n2 !== impl.national);
       out.tarife[c.key][e.key] = { autostrada: a, national: n2, presupus: impl.presupus && !atins };
     }

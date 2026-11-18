@@ -1,5 +1,5 @@
-/* Agenții AI — telefonul de prezentare de pe prima pagină (17.11; Alin, la cele trei machete: „hai să facem varianta B să o testez").
-   În stânga cei șase agenți (butoanele, în pagină), în dreapta un telefon cu pagina agentului din aplicație („Agenți AI" → agentul).
+/* Agenții AI — telefonul de prezentare de pe prima pagină (17.11; Alin, la cele trei machete: „hai să facem varianta B să o testez”).
+   În stânga cei șase agenți (butoanele, în pagină), în dreapta un telefon cu pagina agentului din aplicație („Agenți AI” → agentul).
    Trece singur de la unul la altul cât e pe ecran; un clic alege agentul; mouse-ul sau tastatura pe el îl opresc pe loc.
 
    Ce scrie în telefon e ce scrie aplicația:
@@ -8,10 +8,10 @@
      - numele, rolurile și descrierile = AGENTS din agents.js; iconițele = AGP_META, etichetele ecranului = pagina din aplicație
        (agpOpen, agpLiveRefresh, _agpClientCard din public/index.html) — legate de aceeași probă.
    Mașinile și cifrele sunt de probă; zilele se socotesc față de azi, pe ora României, ca pagina să nu îmbătrânească.
-   Cine a cerut „mai puțină mișcare" vede agentul ales, fără schimbări singure.
+   Cine a cerut „mai puțină mișcare” vede agentul ales, fără schimbări singure.
 
-   Pe tabletă și pe telefon (≤ 1000 px; 18.11, Alin: „1. da, 2. da") NU se arată telefonul desenat: în locul lui stau cartonașele
-   paginii „Agenți AI" din aplicație (cartonase(), mai jos) — pe două coloane pe tabletă, un rând pe agent pe telefon (≤ 620 px).
+   Pe tabletă și pe telefon (≤ 1000 px; 18.11, Alin: „1. da, 2. da”) NU se arată telefonul desenat: în locul lui stau cartonașele
+   paginii „Agenți AI” din aplicație (cartonase(), mai jos) — pe două coloane pe tabletă, un rând pe agent pe telefon (≤ 620 px).
    Insigna și rândul de stare (`card` din date()) = _agpSortate / _agpInsigna / _agpStatusLine din aplicație, legate de probă. */
 (function () {
   'use strict';
@@ -19,12 +19,12 @@
   var MISCARE = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var TZ = 'Europe/Bucharest', ZI = 864e5;
   // Ora din telefon = ora la care rulează agenții pe flota de probă (agenti_demo_flota.js → ORA_TELEFON): RA Dispatch caută
-  // mașinile nefolosite abia după-amiaza. RA Watch a rulat ultima oară la ora fixă de dinainte („verifică din oră în oră").
+  // mașinile nefolosite abia după-amiaza. RA Watch a rulat ultima oară la ora fixă de dinainte („verifică din oră în oră”).
   var ORA = '14:30', RULARE = '14:00', ACUM_RULARE = 'acum 30 min', ACUM = 'acum';
   var ZILE_ITP = 12, ZILE_RCA = 19;
   var DUR = 8500;
   var _fd = null;
-  // „29.11.2026" — ca roDate din agents.js (toLocaleDateString('ro-RO')), pe ora României.
+  // „29.11.2026” — ca roDate din agents.js (toLocaleDateString('ro-RO')), pe ora României.
   function zi(acum, n) {
     if (!_fd) _fd = new Intl.DateTimeFormat('ro-RO', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' });
     return _fd.format(new Date(acum + n * ZI));
@@ -40,7 +40,7 @@
   };
 
   // Cei șase, în ordinea butoanelor din pagină. `live` = agenții care se verifică la deschiderea paginii (LIVE_AGENT_KEYS din pagină).
-  // `card` = cartonașul agentului din pagina „Agenți AI" (insigna și rândul de stare; `b` = îngroșat), pentru tabletă și telefon.
+  // `card` = cartonașul agentului din pagina „Agenți AI” (insigna și rândul de stare; `b` = îngroșat), pentru tabletă și telefon.
   function date(acum) {
     return [
       { k: 'watch', nume: 'RA Watch', rol: 'Supraveghere', desc: 'Mașini fără semnal, scăderi bruște de combustibil, ralanti prelungit, camioane fără date de tahograf.', ic: 'fa-shield-halved',
@@ -90,7 +90,7 @@
         ] }
     ];
   }
-  // „1.240" — ca nrRo din agents.js.
+  // „1.240” — ca nrRo din agents.js.
   function nr(x) { return String(Math.round(Number(x) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -107,7 +107,7 @@
     var b = el('div', 'agd-fi-b'), t = el('div', 'agd-ti'); var i = ic('fa-spinner'); if (MISCARE) i.className += ' fa-spin';
     t.appendChild(i); t.appendChild(document.createTextNode(APP.scan)); b.appendChild(t); r.appendChild(b); return r;
   }
-  // RA Client: cartonașul zilei, ca _agpClientCard din aplicație. Un clic pe „De verificat" deschide agentul (ca acolo).
+  // RA Client: cartonașul zilei, ca _agpClientCard din aplicație. Un clic pe „De verificat” deschide agentul (ca acolo).
   function cartonasClient(s, alege) {
     var w = el('div', 'agd-fi-cl');
     var tiles = el('div', 'agd-tiles');
@@ -135,9 +135,9 @@
     return w;
   }
 
-  // ── Pe tabletă și pe telefon (≤ 1000 px): cartonașele paginii „Agenți AI" din aplicație, fără telefon desenat ──
-  // (18.11, Alin: „B-ul de acum pe web și C-ul pe telefoane și unde ecranele se îngustează" → „1. da, 2. da"; macheta
-  // https://claude.ai/artifact/9QPDcc4q6Y2XxqDA6Neaf9). Tableta: două coloane, „Vezi ce a găsit azi" deschide cartonașul. Telefonul
+  // ── Pe tabletă și pe telefon (≤ 1000 px): cartonașele paginii „Agenți AI” din aplicație, fără telefon desenat ──
+  // (18.11, Alin: „B-ul de acum pe web și C-ul pe telefoane și unde ecranele se îngustează” → „1. da, 2. da”; macheta
+  // https://claude.ai/artifact/9QPDcc4q6Y2XxqDA6Neaf9). Tableta: două coloane, „Vezi ce a găsit azi” deschide cartonașul. Telefonul
   // (≤ 620 px): un rând pe agent, cu ce a găsit azi; se deschide la atingere. Unul deschis odată. Ce scrie pe cartonaș (insigna,
   // rândul de stare) = `card` din date(), pe care proba îl compară cu _agpSortate / _agpInsigna / _agpStatusLine din aplicație,
   // rulate pe ce scriu agenții; descrierea = textul butonului de pe site (.agd-b-d), constatările = ale telefonului.
@@ -209,7 +209,7 @@
 
     var cur = 0, gen = 0, ceas = null, pornit = false, pauza = false, vazut = !('IntersectionObserver' in window);
     function alegeK(k) { if (dupaK[k] == null) return; alege(dupaK[k], true); }
-    // Desenează agentul i; `gata` = direct starea de la capăt (fără „Se verifică flota…").
+    // Desenează agentul i; `gata` = direct starea de la capăt (fără „Se verifică flota…”).
     function deseneaza(i, gata) {
       var a = ag[i];
       butoane.forEach(function (b) {
@@ -239,7 +239,7 @@
     }
     function opresteCeas() { if (ceas) { clearTimeout(ceas); ceas = null; } }
     function asteapta(g, ms) { return new Promise(function (r) { ceas = setTimeout(function () { ceas = null; r(g === gen); }, ms); }); }
-    // Un agent: apare „Se verifică flota…", apoi constatările una câte una; după DUR trece la următorul (dacă nu e oprit).
+    // Un agent: apare „Se verifică flota…”, apoi constatările una câte una; după DUR trece la următorul (dacă nu e oprit).
     async function arata(i) {
       var g = ++gen; opresteCeas();
       corp.classList.add('agd-stins'); if (!(await asteapta(g, 220))) return;

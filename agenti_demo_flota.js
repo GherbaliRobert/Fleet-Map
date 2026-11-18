@@ -1,5 +1,5 @@
 'use strict';
-// Flota de probă a telefonului cu agenți de pe prima pagină (17.11; Alin, la machete: „hai să facem varianta B să o testez").
+// Flota de probă a telefonului cu agenți de pe prima pagină (17.11; Alin, la machete: „hai să facem varianta B să o testez”).
 // Opt mașini cu o zi întreagă de poziții, pe care rulează AGENȚII ADEVĂRAȚI (agents.runAll, aceleași praguri ca în aplicație).
 // Ce scriu ei e ce scrie telefonul din public/js/agenti-demo.js: verify_agenti_demo.js rulează agenții pe flota asta și compară,
 // rând cu rând. Schimbi un text în agents.js → proba pică până schimbi și telefonul (sau flota, dacă s-a schimbat regula).
@@ -22,7 +22,7 @@ const MASINI = [
 // Alte cifre decât telefonul RA Insight de pe aceeași pagină (acolo: ieri 1.240 km, B 77 TIR 412 km), ca să nu pară copiate.
 const KM_AZI = { 'DEMO-AG-1': 61, 'DEMO-AG-2': 95, 'DEMO-AG-3': 30, 'DEMO-AG-4': 0, 'DEMO-AG-5': 386, 'DEMO-AG-6': 205, 'DEMO-AG-7': 236, 'DEMO-AG-8': 172 };
 const KM_IERI = { 'DEMO-AG-1': 140, 'DEMO-AG-2': 310, 'DEMO-AG-3': 85, 'DEMO-AG-4': 22, 'DEMO-AG-5': 0, 'DEMO-AG-6': 181, 'DEMO-AG-7': 175, 'DEMO-AG-8': 145 };
-// Ora la care „deschizi" pagina agenților în telefon: 14:30, pe ora României (RA Dispatch caută mașinile nefolosite de la 12:00).
+// Ora la care „deschizi” pagina agenților în telefon: 14:30, pe ora României (RA Dispatch caută mașinile nefolosite de la 12:00).
 const ORA_TELEFON = { h: 14, m: 30 };
 const ZILE_ITP = 12, ZILE_RCA = 19;
 

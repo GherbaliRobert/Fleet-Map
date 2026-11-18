@@ -1,12 +1,12 @@
-// verify_versiune_noua.js — banda „A apărut o versiune nouă" (14.10, Robert: „vreau doar banda").
+// verify_versiune_noua.js — banda „A apărut o versiune nouă” (14.10, Robert: „vreau doar banda”).
 //
 //   node verify_versiune_noua.js            (partea 4 are nevoie de server pornit: BASE=http://localhost:3199)
 //
 // La o publicare, cine are aplicația deschisă rămâne pe pagina veche până o reîncarcă. Pagina își știe acum amprenta
-// (scrisă de server la încărcare) și o compară cu cea de pe server; când diferă, arată o bandă cu „Reîncarcă".
+// (scrisă de server la încărcare) și o compară cu cea de pe server; când diferă, arată o bandă cu „Reîncarcă”.
 //
 // Ce păzește proba:
-//   1. regula ecranului, decupată din pagină și rulată: banda doar când amprentele diferă, NU reîncarcă singură, „×" o
+//   1. regula ecranului, decupată din pagină și rulată: banda doar când amprentele diferă, NU reîncarcă singură, „×” o
 //      ascunde o oră, verificările nu se înghesuie (cel mult una la 15 secunde, afară de ceas);
 //   2. pagina e legată: pornește după autentificare, verifică la reconectarea hărții live (o publicare o închide);
 //   3. amprenta de pe server, decupată și rulată pe un dosar de probă: se mișcă doar când se schimbă pagina, stilurile
@@ -33,7 +33,7 @@ const tic = () => new Promise((r) => setImmediate(r));
 
 // ─── 1. Regula ecranului, rulată ────────────────────────────────────────────────────────────────────
 console.log('1. Banda: doar când pagina e alta decât cea de pe server; nu reîncarcă singură');
-const BLOC = intre(html, '// ═══ banda „A apărut o versiune nouă" (14.10, Robert) — început ═══', '// ═══ banda „A apărut o versiune nouă" — sfârșit ═══');
+const BLOC = intre(html, '// ═══ banda „A apărut o versiune nouă” (14.10, Robert) — început ═══', '// ═══ banda „A apărut o versiune nouă” — sfârșit ═══');
 function mediu(peMeta, peServer) {
   const st = { ceas: 1800000000000, server: peServer, cereri: 0, reincarcat: 0, ids: {} };
   const document = {
@@ -61,7 +61,7 @@ function mediu(peMeta, peServer) {
   T('fără amprentă pe una din părți → fără bandă (nu ghicim)', R.verDeArata('', 'b', 0, acum) === false && R.verDeArata('a', '', 0, acum) === false && R.verDeArata('a', null, 0, acum) === false);
   T('ascunsă acum 10 minute → nu revine încă', R.verDeArata('a', 'b', acum - 10 * MIN, acum) === false);
   T('ascunsă acum 61 de minute → revine', R.verDeArata('a', 'b', acum - 61 * MIN, acum) === true);
-  T('„×" ține o oră, verificarea merge la 5 minute, pauza dintre verificări e 15 secunde',
+  T('„×” ține o oră, verificarea merge la 5 minute, pauza dintre verificări e 15 secunde',
     R.VER_ASCUNSA_MS === 60 * MIN && R.VER_PAS_MS === 5 * MIN && R.VER_PAUZA_MS === 15000);
 }
 (async () => {
@@ -75,13 +75,13 @@ function mediu(peMeta, peServer) {
     T('textul și butoanele cheamă funcții de pe window (nu scriu în variabile)', /A apărut o versiune nouă a aplicației\./.test(b.innerHTML) &&
       /onclick="verReincarca\(\)"/.test(b.innerHTML) && /onclick="verAscunde\(\)"/.test(b.innerHTML) && />Reîncarcă</.test(b.innerHTML), b.innerHTML);
     m.window.verAscunde();
-    T('„×" o ascunde', b.style.display === 'none');
+    T('„×” o ascunde', b.style.display === 'none');
     m.st.ceas += 20000; m.R.verVerifica(true); await tic(); await tic();
     T('…și nu revine la următoarea verificare', b.style.display === 'none');
     m.st.ceas += 61 * 60000; m.R.verVerifica(true); await tic(); await tic();
     T('…revine după o oră, cât pagina e tot veche', b.style.display === 'flex');
     m.window.verReincarca();
-    T('„Reîncarcă" reîncarcă pagina', m.st.reincarcat === 1);
+    T('„Reîncarcă” reîncarcă pagina', m.st.reincarcat === 1);
   }
   {
     const m = mediu('a', 'a');

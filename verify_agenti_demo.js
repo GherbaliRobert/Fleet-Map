@@ -4,16 +4,16 @@
 //   node verify_agenti_demo.js
 //
 // Ce păzește:
-//   1. pagina: în capitolul „Inteligență artificială", partea 2, cele șase butoane (ordinea, numele, iconițele din aplicație) și locul
+//   1. pagina: în capitolul „Inteligență artificială”, partea 2, cele șase butoane (ordinea, numele, iconițele din aplicație) și locul
 //      telefonului, cu foaia și scriptul lui; cartonașele vechi au plecat; puntea are aceleași iconițe;
 //   2. ce scrie în telefon e ce scrie aplicația: numele, rolurile, descrierile (AGENTS din agents.js), iconițele (AGP_META), etichetele
 //      paginii agentului (agpOpen, agpLiveRefresh, _agpClientCard);
 //   3. constatările = ce scriu AGENȚII ADEVĂRAȚI: îi rulează pe flota de probă (agenti_demo_flota.js), la ora din telefon, și compară
 //      titlul, textul, culoarea și ordinea fiecăruia, plus cartonașul lui RA Client;
-//   4. textele telefonului: fără „24/7" / „non-stop", fără prețuri, fără „gratuit" / „tokeni", fără numele furnizorului de AI;
+//   4. textele telefonului: fără „24/7” / „non-stop”, fără prețuri, fără „gratuit” / „tokeni”, fără numele furnizorului de AI;
 //   5. în browser (dacă e Chromium): telefonul se desenează, trece singur la agentul următor, un clic alege agentul, totul încape în
-//      telefon la fiecare agent, iar cu „mai puțină mișcare" nu se schimbă singur;
-//   6. pe tabletă și pe telefon (≤ 1000 px; 18.11, Alin: „1. da, 2. da"): în locul telefonului desenat, cartonașele paginii „Agenți AI"
+//      telefon la fiecare agent, iar cu „mai puțină mișcare” nu se schimbă singur;
+//   6. pe tabletă și pe telefon (≤ 1000 px; 18.11, Alin: „1. da, 2. da”): în locul telefonului desenat, cartonașele paginii „Agenți AI”
 //      din aplicație — insigna și rândul de stare scrise de _agpSortate / _agpInsigna / _agpStatusLine (proba le rulează pe ce scriu
 //      agenții), două coloane pe tabletă, un rând pe agent pe telefon, se deschid la atingere, încap la 360 px.
 'use strict';
@@ -52,8 +52,8 @@ const META = {};
 for (const m of IX.matchAll(/^\s+(watch|dispatch|care|optimize|compliance|client):\s+\{ name: '([^']+)',\s+icon: '([a-z-]+)'/gm)) META[m[1]] = { name: m[2], icon: m[3] };
 T('pagina aplicației are AGP_META pentru toți șase', ORDINE.every((k) => META[k]), META);
 T('pe butoane: numele din agents.js și iconițele din aplicație (AGP_META)', BUT.every((m) => AG.AGENTS[m[1]] && m[3] === AG.AGENTS[m[1]].name && META[m[1]] && m[2] === META[m[1]].icon), BUT.map((m) => m[1] + ':' + m[2] + ':' + m[3]));
-T('…și descrierea de pe site, cu „RA Watch verifică flota în fiecare oră" (din oră în oră, ca în server)', /Verifică flota în fiecare oră: vehicule care nu mai transmit/.test(BUT[0] ? BUT[0][4] : '') && /setInterval\(runAgentsWorker, 60 \* 60 \* 1000\)/.test(rd('server.js')));
-T('locul telefonului și „Exemplu cu o flotă de probă" sub el', /<div class="agd-tel-loc"><\/div>\s*<span class="ri-exemplu">Exemplu cu o flotă de probă<\/span>/.test(BLOC));
+T('…și descrierea de pe site, cu „RA Watch verifică flota în fiecare oră” (din oră în oră, ca în server)', /Verifică flota în fiecare oră: vehicule care nu mai transmit/.test(BUT[0] ? BUT[0][4] : '') && /setInterval\(runAgentsWorker, 60 \* 60 \* 1000\)/.test(rd('server.js')));
+T('locul telefonului și „Exemplu cu o flotă de probă” sub el', /<div class="agd-tel-loc"><\/div>\s*<span class="ri-exemplu">Exemplu cu o flotă de probă<\/span>/.test(BLOC));
 T('cele șase cartonașe de dinainte (.agents-grid / .agent) au plecat, cu foaia lor', !/class="agents-grid"|class="agent reveal"|\.agents-grid\{|\.agent\{/.test(faraCom(L)));
 // 18.11 (găsit pe drum, Alin: „fă-le cum le-ai propus”): pagina „Agenți AI” de pe site spune rolurile cu numele din aplicație
 // (era „Paznicul”, „Dispeceratul”, „Condusul economic”…, iar prima pagină și aplicația „Supraveghere”, „Dispecerat”, „Condus economic”).
@@ -61,7 +61,7 @@ const PAG_AGENTI = rd('public/agenti-ai.html');
 const ROLURI = [...PAG_AGENTI.matchAll(/<div class="rol">([^<]+)<\/div>\s*<h3>([^<]+)<\/h3>/g)].map((m) => [m[2], m[1]]);
 T('/agenti-ai: rolul fiecărui agent = cel din aplicație (agents.js)', ROLURI.length === 6 && ROLURI.every(([n, r]) => { const k = Object.keys(AG.AGENTS).find((x) => AG.AGENTS[x].name === n); return k && AG.AGENTS[k].role === r; }), ROLURI);
 const PUNTE = intre(SEC, '<div class="ai-punte-ic" aria-hidden="true">', '</div>');
-T('puntea „Azi la tine": aceleași iconițe, în aceeași ordine', [...PUNTE.matchAll(/fa-solid ([a-z-]+)/g)].map((m) => m[1]).join() === ORDINE.map((k) => META[k] && META[k].icon).join(), PUNTE);
+T('puntea „Azi la tine”: aceleași iconițe, în aceeași ordine', [...PUNTE.matchAll(/fa-solid ([a-z-]+)/g)].map((m) => m[1]).join() === ORDINE.map((k) => META[k] && META[k].icon).join(), PUNTE);
 
 console.log('\n2. Ce scrie în telefon e ce scrie aplicația');
 const NOW = FL.flota(Date.now()).now;
@@ -75,24 +75,24 @@ for (const a of D) {
 const LIVE = (IX.match(/var LIVE_AGENT_KEYS = \[([^\]]+)\]/) || [])[1] || '';
 T('care se verifică la deschiderea paginii (LIVE_AGENT_KEYS din pagină) și care rulează din oră în oră (RA Watch)', D.every((a) => a.live === LIVE.includes("'" + a.k + "'")), LIVE);
 const FH = (IX.match(/var _fh = \{([^}]+)\}/) || [])[1] || '';
-T('titlul listei: ca în aplicație („Disponibile acum", „Scadențe acum"…, „Verificări & alerte" la RA Watch)',
+T('titlul listei: ca în aplicație („Disponibile acum”, „Scadențe acum”…, „Verificări & alerte” la RA Watch)',
   D.every((a) => a.live ? FH.includes(a.k + ": '" + a.fh + "'") : (a.fh === 'Verificări & alerte' && IX.includes("feedHead = 'Verificări &amp; alerte'"))), FH);
 const APP = DEMO._APP;
 const AGP = intre(IX, 'window.agpOpen = function (k) {', '// Constatare RA Care legată de o mentenanță');
 const LIVEF = intre(IX, 'window.agpLiveRefresh = async function (k) {', '// ── Tutorial per agent');
 const CL = intre(IX, 'function _agpClientCard(s) {', 'window.agpLiveRefresh');
-T('etichetele paginii agentului: „Toți agenții", „activ", „Rulează", „Cum funcționează", „Toate văzute (N)"',
+T('etichetele paginii agentului: „Toți agenții”, „activ”, „Rulează”, „Cum funcționează”, „Toate văzute (N)”',
   AGP.includes('<i class="fas fa-arrow-left"></i> ' + APP.inapoi + '</button>') && AGP.includes('<span class="agp-status">' + APP.activ + '</span>') &&
   AGP.includes('<i class="fas fa-bolt"></i> ' + APP.ruleaza + '</button>') && AGP.includes('<i class="fas fa-circle-question"></i> ' + APP.cum + '</button>') &&
   AGP.includes(APP.toateVazute + " (' + fs.length + ')") && APP.bara === 'Agenți AI' && IX.includes("<i class=\"fas fa-robot\" style=\"margin-right:8px;color:var(--accent);\"></i> Agenți AI</span>"));
-T('„Se verifică flota…" și subsolurile: „Ultima rulare: azi …" la RA Watch, „Verificat: … · se actualizează…" la ceilalți',
+T('„Se verifică flota…” și subsolurile: „Ultima rulare: azi …” la RA Watch, „Verificat: … · se actualizează…” la ceilalți',
   LIVEF.includes('<i class="fas fa-spinner fa-spin"></i> ' + APP.scan + '</div>') && AGP.includes("'" + APP.ultimaRulare + "<b>' + _agpWhen(lastMs)") &&
   AGP.includes("'" + APP.automat.slice(3) + "'") && LIVEF.includes("'<i class=\"fas fa-clock\"></i> " + APP.verificat + "<b>' + when + '</b>" + APP.seActualizeaza + "'"));
 T('cartonașul lui RA Client: aceleași etichete ca _agpClientCard', ['km', 'active', 'nefolosite', 'ieri'].every((k) => CL.includes("'" + APP.client[k] + "'")) &&
   CL.includes(APP.client.top + '<b>') && CL.includes(APP.client.ydKm + '<b>') && CL.includes('>' + APP.client.deVerificat + '</div>'));
-// Cartonașul din pagina „Agenți AI" (18.11): o regulă, în funcții, pe care le folosește pagina și le rulează proba (mai jos).
+// Cartonașul din pagina „Agenți AI” (18.11): o regulă, în funcții, pe care le folosește pagina și le rulează proba (mai jos).
 const GRID = intre(IX, 'var cards = keys.map(function (k, i) {', "}).join('');");
-T('pagina „Agenți AI" face cartonașul cu _agpSortate / _agpCate / _agpInsigna / _agpStatusLine (o singură regulă)',
+T('pagina „Agenți AI” face cartonașul cu _agpSortate / _agpCate / _agpInsigna / _agpStatusLine (o singură regulă)',
   /var fs = _agpSortate\(byAgent\[k\]\);/.test(GRID) && /var summaryCount = _agpCate\(k, fs\);/.test(GRID) && /var ins = _agpInsigna\(k, fs\);/.test(GRID) &&
   /_agpStatusLine\(k, last, summaryCount\)/.test(GRID) && !/semnalări/.test(GRID), GRID.slice(0, 300));
 const APPF = (() => {
@@ -108,7 +108,7 @@ T('…și funcțiile se pot rula singure (proba le are)', !!(APPF && APPF._agpIn
 T('fila „Acces” a firmei: agenții din AGP_META, în ordinea AGP_ORDER — fără a doua listă cu texte vechi',
   /function _raxAgs\(\) \{\s+var M = window\.AGP_META \|\| \{\}, ord = window\.AGP_ORDER/.test(IX) && /_raxAgs\(\)\.map\(function \(a\)/.test(IX) && /window\.AGP_ORDER = AGP_ORDER;/.test(IX) &&
   !/_RAX_AGS|Vehicule offline \+|Eco-driving — scor șofer|Raport zilnic automat/.test(IX.replace(/^\s*\/\/[^\n]*$/gm, '')));
-T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch a rulat la ora fixă de dinainte („acum 30 min", ca _agpAgo)',
+T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch a rulat la ora fixă de dinainte („acum 30 min”, ca _agpAgo)',
   DEMO.ORA === String(FL.ORA_TELEFON.h).padStart(2, '0') + ':' + String(FL.ORA_TELEFON.m).padStart(2, '0') && DEMO.RULARE === String(FL.ORA_TELEFON.h).padStart(2, '0') + ':00' &&
   DEMO.ACUM_RULARE === 'acum ' + FL.ORA_TELEFON.m + ' min' && /if \(s < 3600\) return 'acum ' \+ Math\.round\(s \/ 60\) \+ ' min';/.test(IX) && DEMO.ZILE_ITP === FL.ZILE_ITP && DEMO.ZILE_RCA === FL.ZILE_RCA);
 
@@ -120,7 +120,7 @@ T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch 
     const f = R.findings.filter((x) => x.agent === a.k);
     if (a.k === 'client') {
       const s = R.meta.client && R.meta.client.summary;
-      T('RA Client: cartonașul zilei (km, active, nefolosite, față de ieri, cel mai activ, ieri, „De verificat")', JSON.stringify(s) === JSON.stringify(a.sumar), { agent: s, telefon: a.sumar });
+      T('RA Client: cartonașul zilei (km, active, nefolosite, față de ieri, cel mai activ, ieri, „De verificat”)', JSON.stringify(s) === JSON.stringify(a.sumar), { agent: s, telefon: a.sumar });
       continue;
     }
     const ag = f.map((x) => [x.severity, x.title, x.body]), tel = a.f.map((x) => [x.s, x.t, x.b]);
@@ -139,7 +139,7 @@ T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch 
     const s = APPF._agpSortate(fsr), ins = APPF._agpInsigna(a.k, s), lin = APPF._agpStatusLine(a.k, s[0], APPF._agpCate(a.k, s));
     const linDemo = a.card.l.map((p) => (typeof p === 'string' ? p : p.b)).join('') + (a.card.tm ? ' · ' + a.card.tm : '');
     const bApp = [...lin.matchAll(/<b>([^<]*)<\/b>/g)].map((m) => m[1]), bDemo = a.card.l.filter((p) => typeof p !== 'string').map((p) => p.b);
-    T(a.nume + ', cartonașul: insigna „' + a.card.ins + '" și rândul „' + linDemo + '", ca în pagina „Agenți AI"',
+    T(a.nume + ', cartonașul: insigna „' + a.card.ins + '” și rândul „' + linDemo + '”, ca în pagina „Agenți AI”',
       !ins.ok && ins.t === a.card.ins && ins.sev === a.card.s && fara(lin) === linDemo && JSON.stringify(bApp) === JSON.stringify(bDemo) &&
       lin.includes('background:' + APPF._agpSevCol(a.card.s)), { aplicatie: [ins.t, ins.sev, fara(lin), bApp], site: [a.card.ins, a.card.s, linDemo, bDemo] });
   }
@@ -147,14 +147,14 @@ T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch 
 
   console.log('\n4. Textele telefonului');
   const TXT = JS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-  T('fără „24/7" / „non-stop" (RA Watch verifică din oră în oră)', !/24\/7|non-?stop/i.test(TXT));
-  T('fără numele furnizorului de AI, „gratuit", „tokeni", prețuri de abonament', !/Claude|Anthropic|gratuit|tokeni|lei\s*\/\s*lun|€/i.test(TXT));
+  T('fără „24/7” / „non-stop” (RA Watch verifică din oră în oră)', !/24\/7|non-?stop/i.test(TXT));
+  T('fără numele furnizorului de AI, „gratuit”, „tokeni”, prețuri de abonament', !/Claude|Anthropic|gratuit|tokeni|lei\s*\/\s*lun|€/i.test(TXT));
   T('cu diacritice (ș, ț cu virgulă, nu cu sedilă)', !/[şţŞŢ]/.test(JS));
   T('textele se pun cu textContent (niciun innerHTML în telefon)', !/innerHTML/.test(TXT));
-  T('stilul telefonului e pe clase „agd-" (rama: a telefonului RA Insight)', !/^\.(?!agd|ri-)[a-z]/m.test(CSS.replace(/\/\*[\s\S]*?\*\//g, '')) && /\.agd-tel \.ri-bt/.test(CSS));
-  T('„mai puțină mișcare": fără schimbări singure și fără animații', /var MISCARE = !\(window\.matchMedia/.test(JS) && /@media \(prefers-reduced-motion: reduce\)/.test(CSS) && /if \(!MISCARE\) return;/.test(JS));
+  T('stilul telefonului e pe clase „agd-” (rama: a telefonului RA Insight)', !/^\.(?!agd|ri-)[a-z]/m.test(CSS.replace(/\/\*[\s\S]*?\*\//g, '')) && /\.agd-tel \.ri-bt/.test(CSS));
+  T('„mai puțină mișcare”: fără schimbări singure și fără animații', /var MISCARE = !\(window\.matchMedia/.test(JS) && /@media \(prefers-reduced-motion: reduce\)/.test(CSS) && /if \(!MISCARE\) return;/.test(JS));
 
-  console.log('\n5. În browser: se desenează, trece singur, clicul, încape, 360 px, „mai puțină mișcare"');
+  console.log('\n5. În browser: se desenează, trece singur, clicul, încape, 360 px, „mai puțină mișcare”');
   let pw = null; try { pw = require('playwright'); } catch (e) {}
   let br = null;
   if (pw) { try { br = await pw.chromium.launch(); } catch (e) { br = null; } }
@@ -188,9 +188,9 @@ T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch 
     T('…trece singur la agentul următor (RA Care)', await astepta(p, () => (document.querySelector('.agd-b[aria-pressed="true"]') || {}).getAttribute && document.querySelector('.agd-b[aria-pressed="true"]').getAttribute('data-k') === 'care', null, 12000));
     await p.click('.agd-b[data-k="client"]');
     T('un clic alege agentul: RA Client, cu cartonașul zilei', await astepta(p, () => /RA Client/.test(document.querySelector('.agd-head b').textContent) && !!document.querySelector('.agd-tiles') && !document.querySelector('.agd-scan'), null, 4000));
-    T('…care arată „1.185 km" și „7/8", ca aplicația (punctul miilor, „7/8" lipit)', await p.evaluate(() => [...document.querySelectorAll('.agd-tile b')].map((b) => b.textContent).slice(0, 2).join('|')) === '1.185 km|7/8');
+    T('…care arată „1.185 km” și „7/8”, ca aplicația (punctul miilor, „7/8” lipit)', await p.evaluate(() => [...document.querySelectorAll('.agd-tile b')].map((b) => b.textContent).slice(0, 2).join('|')) === '1.185 km|7/8');
     await p.click('.agd-dv button:nth-of-type(2)');
-    T('…iar „2 scadențe · RA Care" din „De verificat" deschide RA Care (ca în aplicație)', await astepta(p, () => /RA Care/.test(document.querySelector('.agd-head b').textContent), null, 3000));
+    T('…iar „2 scadențe · RA Care” din „De verificat” deschide RA Care (ca în aplicație)', await astepta(p, () => /RA Care/.test(document.querySelector('.agd-head b').textContent), null, 3000));
     await p.hover('.agd-tel');
     const inainte = await ales(p); await p.waitForTimeout(9500);
     T('…mouse-ul pe telefon îl oprește pe loc (nu trece mai departe)', (await ales(p)) === inainte, [inainte, await ales(p)]);
@@ -240,7 +240,7 @@ T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch 
       await p.addStyleTag({ content: '.reveal{opacity:1!important;transform:none!important}' });
       await p.evaluate(() => document.getElementById('agenti-ai').scrollIntoView());
       c0 = await cart(p);
-      T(w + ' px: cartonașele C în locul telefonului desenat, pe ' + cols + (cols === 1 ? ' coloană' : ' coloane') + (cols === 1 ? ', cu „Atinge un agent…"' : ''),
+      T(w + ' px: cartonașele C în locul telefonului desenat, pe ' + cols + (cols === 1 ? ' coloană' : ' coloane') + (cols === 1 ? ', cu „Atinge un agent…”' : ''),
         !c0.b && !c0.tel && c0.cart && c0.n === 6 && c0.cols === cols && c0.ind === (cols === 1), c0);
       const txt = await p.evaluate(() => [...document.querySelectorAll('.agd-cr')].map((r) => [r.querySelector('.agd-cr-n b').textContent, r.querySelector('.agd-cr-n small').textContent,
         r.querySelector('.agd-cr-ins').textContent, r.querySelector('.agd-cr-lt').textContent, r.querySelector('.agd-cr-d').textContent]));
@@ -263,7 +263,7 @@ T('ora din telefon = ora la care rulează agenții pe flota de probă; RA Watch 
       if (w === 402) {
         await p.click('.agd-cr:nth-child(5) .agd-cr-cap');
         await p.click('.agd-cr:nth-child(5) .agd-dv button:nth-of-type(2)');
-        T('…„2 scadențe · RA Care" din „De verificat" deschide cartonașul RA Care', await astepta(p, () => document.querySelector('.agd-cr.agd-cr-on .agd-cr-n b').textContent === 'RA Care', null, 2000));
+        T('…„2 scadențe · RA Care” din „De verificat” deschide cartonașul RA Care', await astepta(p, () => document.querySelector('.agd-cr.agd-cr-on .agd-cr-n b').textContent === 'RA Care', null, 2000));
         await p.click('.agd-cr.agd-cr-on .agd-cr-cap');
         const inchis = await cart(p);
         T('…închis, rândurile de pe telefon sunt mai scurte decât butoanele + telefonul desenat de dinainte (855 px)', inchis.h > 0 && inchis.h < 760, inchis.h);

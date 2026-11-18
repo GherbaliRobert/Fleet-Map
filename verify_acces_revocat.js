@@ -110,7 +110,7 @@ function legaturaToken(cheie) {
   T('și are harta live', await asteapta(() => L1.init, 8000));
   await cerere('PUT', '/api/users/' + plecat.id, S, { active: false });
   T('legătura live se închide imediat după dezactivare', await asteapta(() => L1.inchisa, 4000));
-  T('cu motivul „Neautorizat"', L1.eroare === 'Neautorizat', L1.eroare);
+  T('cu motivul „Neautorizat”', L1.eroare === 'Neautorizat', L1.eroare);
   T('cererile cu sesiunea veche iau 401', (await cerere('GET', '/api/me', plecat.ck)).status === 401);
   T('inclusiv poziţiile live', (await cerere('GET', '/api/live', plecat.ck)).status === 401);
   const L1b = legatura(plecat.ck);
@@ -159,14 +159,14 @@ function legaturaToken(cheie) {
   T('omul are harta live', await asteapta(() => L5.init, 8000));
   const dz = await cerere('POST', '/api/debug/dezactiveaza-fara-sesiuni', S, { id: tacut.id });
   T('contul e dezactivat direct în bază, sesiunile rămân', dz.status === 200, dz.status);
-  // Căile cu MAJUSCULE: înainte, verificările de la fiecare cerere se uitau doar la „/api" și le săreau, dar rutele
+  // Căile cu MAJUSCULE: înainte, verificările de la fiecare cerere se uitau doar la „/api” și le săreau, dar rutele
   // răspundeau pe rolul din sesiune. Nu contează codul exact (404), contează că datele nu mai ies.
   const rMare = await cerere('GET', '/API/me', tacut.ck);
   const tMare = await rMare.text();
-  T('„/API/me" scris cu majuscule nu mai dă datele contului', !(rMare.status === 200 && /"username"|"role"/.test(tMare)), rMare.status + ' ' + tMare.slice(0, 80));
+  T('„/API/me” scris cu majuscule nu mai dă datele contului', !(rMare.status === 200 && /"username"|"role"/.test(tMare)), rMare.status + ' ' + tMare.slice(0, 80));
   const rLive = await cerere('GET', '/API/live', tacut.ck);
   const tLive = await rLive.text();
-  T('„/API/live" scris cu majuscule nu mai dă pozițiile', !(rLive.status === 200 && tLive.trim().charAt(0) === '['), rLive.status + ' ' + tLive.slice(0, 60));
+  T('„/API/live” scris cu majuscule nu mai dă pozițiile', !(rLive.status === 200 && tLive.trim().charAt(0) === '['), rLive.status + ' ' + tLive.slice(0, 60));
   T('verificarea de la fiecare cerere îl oprește singură (401)', (await cerere('GET', '/api/me', tacut.ck)).status === 401);
   const L5b = legatura(ck2);
   T('legătura live nouă e refuzată de verificarea de la deschidere', (await asteapta(() => L5b.inchisa, 6000)) && !L5b.init);
@@ -226,7 +226,7 @@ function legaturaToken(cheie) {
 
   console.log('\n8. Pagina web');
   const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  T('la „Neautorizat" pagina întreabă /api/me și duce la autentificare',
+  T('la „Neautorizat” pagina întreabă /api/me și duce la autentificare',
     /msg\.data\.error === 'Neautorizat'[\s\S]{0,200}fetch\('\/api\/me'[\s\S]{0,120}r\.status === 401\) location\.href = '\/'/.test(html));
   T('super-adminul își păstrează sesiunea', (await cerere('GET', '/api/me', S)).status === 200);
 

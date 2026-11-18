@@ -18,7 +18,7 @@ async function sendEmail(subject, text) {
 // Trimite email către un destinatar specific (folosit pentru notificările per-utilizator)
 // html (opțional) → email HTML cu fallback text. Fără email pe server → false; emailul care n-a plecat → aruncă (cine
 // cheamă hotărăște: invitația arată atunci linkul pe ecran).
-// `opts.jurnal` ({ fel, companyId, userId }): emailul intră în „Trimise" din panoul Mail. Îl pun doar emailurile NOASTRE
+// `opts.jurnal` ({ fel, companyId, userId }): emailul intră în „Trimise” din panoul Mail. Îl pun doar emailurile NOASTRE
 // (invitații, linkuri de parolă, cererile din formular, suportul) — nu și rapoartele / alertele unei firme.
 async function sendEmailTo(to, subject, text, attachments, html, opts) {
   if (!mailer.enabled() || !to) return false;

@@ -37,7 +37,7 @@
 .ts-msg { padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.45; border: 1px solid var(--border); color: var(--text-primary); }
 .ts-msg.ton-rosu { border-color: #ef4444; background: #2a1416; } .ts-msg.ton-galben { border-color: #eab308; background: #2a2410; } .ts-msg.ton-verde { border-color: #2BB763; background: #14281D; }
 /* Bara de jos (simulatorul, planul șoferului): lipită de marginea de jos a ecranului — pe ecranele astea nu e bara de file,
-   deci nu se lasă loc pentru ea (Robert, 13.10: „butoanele trebuie să fie la marginea de jos"; stăteau în mijlocul paginii). */
+   deci nu se lasă loc pentru ea (Robert, 13.10: „butoanele trebuie să fie la marginea de jos”; stăteau în mijlocul paginii). */
 .ts-jos { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 10px 14px calc(10px + var(--sab, 0px)); background: var(--bg-panel); border-top: 1px solid var(--border); z-index: 5; }
 .ts-jos .ts-btn { flex: 1 1 0; }
 .ts-pasi { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
@@ -132,7 +132,7 @@
 :root[data-theme="light"] .ts-svg .sim-lampa { fill: #f59e0b; stroke: #b45309; stroke-width: .5; }
 :root[data-theme="light"] .ts-svg .sim-stop { fill: #ef4444; stroke: #991b1b; stroke-width: .5; }
 :root[data-theme="light"] .ts-svg .sim-rama { fill: #64748b; stroke: #475569; stroke-width: .5; }
-/* 13.10 (Robert: „are grafica din desene animate, fă-le ceva mai rotunjite") — aceleași margini ca pe web (app.css): fâșiile
+/* 13.10 (Robert: „are grafica din desene animate, fă-le ceva mai rotunjite”) — aceleași margini ca pe web (app.css): fâșiile
    cabinei și parbrizul se contopesc, restul are o margine discretă, marfa o margine închisă și subțire. */
 .ts-svg .sim-cab2 { stroke: #56616e; } .ts-svg .sim-cab3 { stroke: #323a44; } .ts-svg .sim-parbriz { stroke: #2d4459; }
 .ts-svg .sim-cab4 { fill: #454f5b; stroke: #454f5b; stroke-linejoin: round; } .ts-svg .sim-muchie { fill: none; stroke: #303843; stroke-width: .8; stroke-linejoin: round; }

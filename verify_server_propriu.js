@@ -13,7 +13,7 @@
 //   1. aplicația primește TOT `.env`-ul (`env_file`), iar ce ține de mașină (baza, porturile) îl bate;
 //   2. nicio listă de copiat pe mână nu se mai strecoare înapoi;
 //   3. exemplul de `.env` numește doar variabile pe care codul chiar le citește, cu cheile serviciilor;
-//   4. ghidul pornește cu versiunea (GIT_SHA), ca `/api/health` să nu scrie „dev";
+//   4. ghidul pornește cu versiunea (GIT_SHA), ca `/api/health` să nu scrie „dev”;
 //   5. dacă e `docker compose` pe mașină: configurația REZOLVATĂ, cu un `.env` ca cel copiat din Railway.
 const fs = require('fs');
 const os = require('os');
@@ -40,7 +40,7 @@ const ALE_MASINII = ['PORT', 'TCP_PORT', 'NODE_ENV', 'DATABASE_URL', 'PGSSL', 'C
 
 sect('1. Aplicația primește tot .env-ul');
 T('fișierele există', !!compose && !!exemplu && !!ghid);
-// Blocul serviciului `app`: de la „  app:" până la următorul serviciu (două spații + nume + „:").
+// Blocul serviciului `app`: de la „  app:” până la următorul serviciu (două spații + nume + „:”).
 const mApp = faraComentarii(compose).match(/\n  app:\n([\s\S]*?)(?=\n  [a-z][a-z0-9_-]*:\n|\nvolumes:)/);
 const app = mApp ? mApp[1] : '';
 T('serviciul app există în docker-compose.prod.yml', !!app);
@@ -81,7 +81,7 @@ const scrise = new Set(faraComentarii(exemplu).split('\n').map((r) => (r.match(/
 CHEI_SERVICII.forEach((k) => T(k + ' e în exemplu (necomentată) și o citește codul', scrise.has(k) && citite.has(k)));
 T('POSITION_RETENTION_DAYS (retrasă) nu e pusă nici în exemplu, nici în compose',
   !/^\s*-?\s*POSITION_RETENTION_DAYS=/m.test(faraComentarii(exemplu) + '\n' + faraComentarii(compose)));
-T('compose nu mai promite „180 de zile"', !/180 de zile/.test(compose));
+T('compose nu mai promite „180 de zile”', !/180 de zile/.test(compose));
 const dom = (faraComentarii(exemplu).match(/^DOMAIN=(.*)$/m) || [])[1];
 const baza = (faraComentarii(exemplu).match(/^BASE_URL=(.*)$/m) || [])[1];
 T('DOMAIN = gazda din BASE_URL (aplicația, telefonul și emailurile pe același domeniu)',
@@ -104,7 +104,7 @@ if (ver.status !== 0) {
   try {
     fs.writeFileSync(path.join(dir, 'docker-compose.prod.yml'), compose);
     fs.writeFileSync(path.join(dir, 'Caddyfile'), citeste('Caddyfile'));
-    // Cum arată un .env după „Raw Editor" din Railway lipit la capăt: aceleași chei, a doua oară,
+    // Cum arată un .env după „Raw Editor” din Railway lipit la capăt: aceleași chei, a doua oară,
     // plus baza, portul și versiunea Railway-ului. Cheia JSON — între apostrofuri, ca în ghid.
     const jsonFcm = '{"type":"service_account","private_key":"-----BEGIN-----\\nAAA\\n-----END-----\\n","x":"a b"}';
     fs.writeFileSync(path.join(dir, '.env'), [

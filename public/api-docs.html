@@ -23,7 +23,7 @@
     /* Sidebar */
     aside{position:sticky;top:0;align-self:flex-start;height:100vh;overflow:auto;width:248px;flex:0 0 248px;padding:22px 14px;border-right:1px solid var(--border)}
     aside .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px;margin-bottom:18px}
-    /* Sigla oficială: monograma „RA |" (imagine) + „Track" cu Nunito ExtraBold, ca în aplicație și pe prima pagină. */
+    /* Sigla oficială: monograma „RA |" (imagine) + „Track” cu Nunito ExtraBold, ca în aplicație și pe prima pagină. */
     .ralogo{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto}
     .ralogo img{display:block;width:auto}
     .ralogo .raw{font-family:'Nunito','Segoe UI',Arial,sans-serif;font-weight:800;letter-spacing:-.5px;color:#fff;line-height:1}
@@ -139,7 +139,7 @@
 
     <!-- AUTH -->
     <h2 id="auth">Autentificare</h2>
-    <p>Accesul se face cu o <b>cheie API</b> (prefix <code>gpsk_</code>) generată de administratorul contului tău din <b>Administrare → Chei API</b>. Cheia este legată de un utilizator și <b>moștenește automat rolul și accesul acelui utilizator</b> la vehicule — deci „vede" exact aceeași flotă pe care o vede acel cont în aplicație.</p>
+    <p>Accesul se face cu o <b>cheie API</b> (prefix <code>gpsk_</code>) generată de administratorul contului tău din <b>Administrare → Chei API</b>. Cheia este legată de un utilizator și <b>moștenește automat rolul și accesul acelui utilizator</b> la vehicule — deci „vede” exact aceeași flotă pe care o vede acel cont în aplicație.</p>
     <p>Trimite cheia pe fiecare cerere, în unul din cele două anteturi:</p>
     <pre><code>Authorization: Bearer gpsk_xxxxxxxxxxxxxxxxxxxxxxxx
 # sau
@@ -147,7 +147,7 @@ X-API-Key: gpsk_xxxxxxxxxxxxxxxxxxxxxxxx</code></pre>
     <p>Exemplu complet:</p>
     <pre><code>curl -H "Authorization: Bearer gpsk_xxxx" https://ratrack.ro/api/live</code></pre>
     <div class="note"><b>Securitate:</b> cheia se afișează o singură dată la creare (stocăm doar hash-ul). Tratează-o ca pe o parolă — nu o pune în cod public/front-end. Poate fi revocată oricând din panou. Toate apelurile trebuie făcute prin HTTPS.</div>
-    <div class="note"><b>Domeniu de acces:</b> o cheie nu poate accesa date din altă companie și nici vehicule în afara accesului contului ei. Dacă vrei acces read-only, leagă cheia de un cont cu rol „Vizualizare".</div>
+    <div class="note"><b>Domeniu de acces:</b> o cheie nu poate accesa date din altă companie și nici vehicule în afara accesului contului ei. Dacă vrei acces read-only, leagă cheia de un cont cu rol „Vizualizare”.</div>
 
     <!-- CONVENTIONS -->
     <h2 id="conv">Convenții & limite</h2>
@@ -356,7 +356,7 @@ curl -H "Authorization: Bearer gpsk_xxxx" -o raport.xlsx \
 
 // Răspuns — secretul de semnătură se afișează O SINGURĂ DATĂ:
 { "id": 1, "url": "...", "events": [...], "secret": "whsec_xxxxxxxx" }</code></pre>
-    <p>Configurarea se poate face și din aplicație: <b>Meniu → Administrare → Webhooks (integrări)</b> (listă, adăugare, buton „Testează", status livrare).</p>
+    <p>Configurarea se poate face și din aplicație: <b>Meniu → Administrare → Webhooks (integrări)</b> (listă, adăugare, buton „Testează”, status livrare).</p>
 
     <h3>Evenimente disponibile</h3>
     <p>

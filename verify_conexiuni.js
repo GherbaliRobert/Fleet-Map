@@ -52,7 +52,7 @@ console.log('\n2. Limita de timp stă DOAR pe rezerva recepției');
   T('și e în configurația rezervei', /statement_timeout/.test(blocRezerva));
   const blocPrincipal = dbSrc.slice(dbSrc.indexOf('pool = new Pool('), dbSrc.indexOf('});', dbSrc.indexOf('pool = new Pool(')));
   T('conexiunile obișnuite NU au limită (migrările și copiile pot dura minute)', !/statement_timeout/.test(blocPrincipal));
-  T('„Stare producție" arată cele două rezerve', /add\('pool', 'Conexiuni la bază'/.test(svSrc) && /poolIngestStats/.test(svSrc));
+  T('„Stare producție” arată cele două rezerve', /add\('pool', 'Conexiuni la bază'/.test(svSrc) && /poolIngestStats/.test(svSrc));
 }
 
 console.log('\n3. railway.json și railway.toml spun același lucru');
@@ -84,8 +84,8 @@ const rj = JSON.parse(fs.readFileSync(path.join(RAD, 'railway.json'), 'utf8'));
 
 console.log('\n4. Ce pornește o publicare și ce nu');
 {
-  // Regulile Railway sunt în stilul .gitignore: ultima regulă care se potrivește decide, „!" exclude,
-  // „/" la început ancorează la rădăcina depozitului. O schimbare care nu se potrivește cu nimic NU publică.
+  // Regulile Railway sunt în stilul .gitignore: ultima regulă care se potrivește decide, „!” exclude,
+  // „/” la început ancorează la rădăcina depozitului. O schimbare care nu se potrivește cu nimic NU publică.
   const reguli = (rj.build.watchPatterns || []).map((p) => {
     const neg = p.startsWith('!');
     let corp = neg ? p.slice(1) : p;
@@ -98,10 +98,10 @@ console.log('\n4. Ce pornește o publicare și ce nu');
 
   T('există reguli de publicare', reguli.length > 0);
   for (const f of ['server.js', 'db.js', 'backup.js', 'reports.js', 'codec8e.js', 'public/index.html', 'public/css/app.css', 'public/sw.js', 'Dockerfile', 'package.json', 'package-lock.json', 'railway.json']) {
-    T('„' + f + '" pornește o publicare', publica(f));
+    T('„' + f + '” pornește o publicare', publica(f));
   }
   for (const f of ['JURNAL-MODIFICARI.md', 'CLAUDE.md', 'DEPLOY_RAILWAY.md', 'docs/RA-Track-Manual.pdf', 'docs_promo/img/harta.png', 'docs_audit/raport.md', 'verify_pornire.js', 'verify_conexiuni.js', 'rbac_smoke.js', '.github/workflows/ci.yml']) {
-    T('„' + f + '" NU pornește o publicare', !publica(f));
+    T('„' + f + '” NU pornește o publicare', !publica(f));
   }
   T('un .md din public/ (servit de aplicație) pornește o publicare', publica('public/ajutor.md'));
   // Dacă aplicația mobilă nu publică (oricum ar fi scrisă regula), serverul chiar nu trebuie să citească nimic de acolo.
@@ -116,7 +116,7 @@ console.log('\n4. Ce pornește o publicare și ce nu');
 
 console.log('\n6. Pe PostgreSQL, rezerva e chiar alt set de conexiuni');
 // PGlite are o singură conexiune, deci secțiunea 5 nu poate dovedi separarea. Aici încărcăm db.js într-un proces copil
-// cu un „pg" fals care ține minte ce configurație primește fiecare Pool: fără bază adevărată, dar pe codul real.
+// cu un „pg” fals care ține minte ce configurație primește fiecare Pool: fără bază adevărată, dar pe codul real.
 {
   const { spawnSync } = require('child_process');
   const cod = [

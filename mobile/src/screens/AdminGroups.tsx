@@ -1,5 +1,5 @@
 // Grupe — ca pe web (Management → Grupe): apeși pe grupă și îi vezi mașinile, le scoți (✕) sau aduci
-// altele („B 12 ABC (acum în Camioane)"). Pe rând: câte vehicule are, câți oameni văd mașinile PRIN grupă
+// altele („B 12 ABC (acum în Camioane)”). Pe rând: câte vehicule are, câți oameni văd mașinile PRIN grupă
 // și dacă are program propriu. Ștergerea spune tot: vehiculele rămân fără grupă, iar cine le vedea prin
 // ea nu le mai vede. Mutarea merge pe ruta dedicată, care nu atinge șoferul mașinii.
 import { useEffect, useState } from 'preact/hooks';
@@ -24,12 +24,12 @@ function nrVehicule(n: number): string {
 
 export function AdminGroups() {
   const loc = useLocation();
-  // Grupele le scrie cine are „modifică flota" (ca pe web și pe server); mutarea unei mașini cere în plus
+  // Grupele le scrie cine are „modifică flota” (ca pe web și pe server); mutarea unei mașini cere în plus
   // ca firma să nu fi tăiat rolului editarea vehiculelor (serverul: requireEdit('vehicule')).
   const canWrite = !!me.value?.permissions?.manageFleet;
   const canMove = canWrite && !(me.value?.editariTaiate || []).includes('vehicule');
-  // Programul de lucru al grupei merge pe altă rută, care cere în plus „Editare grupe"
-  // (serverul: requireEdit('grupe')). Numele, descrierea și culoarea cer doar „modifică flota".
+  // Programul de lucru al grupei merge pe altă rută, care cere în plus „Editare grupe”
+  // (serverul: requireEdit('grupe')). Numele, descrierea și culoarea cer doar „modifică flota”.
   const canSched = canWrite && !(me.value?.editariTaiate || []).includes('grupe');
   const [list, setList] = useState<any[] | null>(null);
   const [err, setErr] = useState('');

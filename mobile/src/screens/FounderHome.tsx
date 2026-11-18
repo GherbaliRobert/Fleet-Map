@@ -9,14 +9,14 @@ import { nrDe } from '../lib/numar';
 import './admin.css';
 import './fondator.css';
 
-// „Acasă" (Gestiune) — cele 4 cartonașe-sumar ale fondatorului, ca pe web (loadAdminDash): cifra, dedesubt starea
-// („1 fără contract · 0 restanțe", „2 n-au intrat niciodată", „istoric păstrat 30 de zile de la arhivare"), iar „Vezi detalii în <rândul
+// „Acasă” (Gestiune) — cele 4 cartonașe-sumar ale fondatorului, ca pe web (loadAdminDash): cifra, dedesubt starea
+// („1 fără contract · 0 restanțe”, „2 n-au intrat niciodată”, „istoric păstrat 30 de zile de la arhivare”), iar „Vezi detalii în <rândul
 // din meniu>" duce în pagina unde se lucrează. Cartonașul e SUMAR, nu loc de lucru (hotărât 17.09). Portocaliul se
 // aprinde doar când chiar e ceva de rezolvat. Cifrele vin de la server (/api/admin/counts).
-// „Pe ducă" = ACEEAȘI regulă ca în Dispozitive arhivate (și ca pe web, _adashArhiva): nu a doua copie.
+// „Pe ducă” = ACEEAȘI regulă ca în Dispozitive arhivate (și ca pe web, _adashArhiva): nu a doua copie.
 
 type Card = { cheie: string; icon: IconName; titlu: string; ruta: string; meniu: string };
-// „Vezi detalii în …" scrie EXACT numele rândului din meniu (ca _RAX_NUME pe web), ca să nu se despartă.
+// „Vezi detalii în …” scrie EXACT numele rândului din meniu (ca _RAX_NUME pe web), ca să nu se despartă.
 const CARDURI: Card[] = [
   { cheie: 'companies', icon: 'building', titlu: 'Companii', ruta: '/admin/companies', meniu: 'Companii' },
   { cheie: 'users', icon: 'user', titlu: 'Utilizatori', ruta: '/admin/users', meniu: 'Utilizatori' },
@@ -95,7 +95,7 @@ export function FounderHome() {
           })}
         </div>
         <div class="fd-note" style="margin-top:16px">
-          Cifrele de mai sus sunt un sumar. Apasă „Vezi detalii" pe oricare ca să deschizi secțiunea întreagă, unde poți și modifica.
+          Cifrele de mai sus sunt un sumar. Apasă „Vezi detalii” pe oricare ca să deschizi secțiunea întreagă, unde poți și modifica.
         </div>
       </div>
     </div>

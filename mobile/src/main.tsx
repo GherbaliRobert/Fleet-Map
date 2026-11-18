@@ -12,7 +12,7 @@ import { API_BASE } from './api/client';
 
 getTheme().then((t) => document.documentElement.setAttribute('data-theme', t || 'dark')).catch(() => {});
 
-// Raportare erori de client → backend (apar în „Erori recente" + Sentry dacă e configurat). Throttle 10/sesiune.
+// Raportare erori de client → backend (apar în „Erori recente” + Sentry dacă e configurat). Throttle 10/sesiune.
 let _erN = 0;
 function _reportErr(message?: string, stack?: string) {
   if (_erN >= 10 || !message) return; _erN++;
@@ -29,7 +29,7 @@ window.addEventListener('unhandledrejection', (e: any) => { const r = e && e.rea
 render(<App />, document.getElementById('app')!);
 
 // Splash-ul nativ predă DIRECT către intro-ul nostru: ascunde overlay-ul Capacitor imediat ce
-// #ra-intro (HTML static) e pictat, ca să NU mai existe al doilea ecran static „generat" de 800ms.
+// #ra-intro (HTML static) e pictat, ca să NU mai existe al doilea ecran static „generat” de 800ms.
 // (Splash-ul OS de pe Android 12+ e obligatoriu de sistem și rămâne — dar acum e scurt + curge în intro.)
 import('@capacitor/splash-screen')
   .then(({ SplashScreen }) => { requestAnimationFrame(() => { SplashScreen.hide().catch(() => {}); }); })

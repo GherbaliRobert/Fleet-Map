@@ -8,7 +8,7 @@ import './CanFlags.css';
 // Uși, lumini, martori — ce se întâmplă ACUM, dintr-o privire. Numele, pictogramele și explicațiile
 // vin din `can_flags.js` de pe server (prin /api/can-flags), NU sunt scrise aici.
 //
-// Așezarea nu mai e pe categorii („Lumini", „Camion"…). Avea sens cât se arătau toate cele ~120 de
+// Așezarea nu mai e pe categorii („Lumini”, „Camion”…). Avea sens cât se arătau toate cele ~120 de
 // plăcuțe, aprinse și stinse. De când se văd doar cele active, categoriile rămâneau aproape goale —
 // cinci titluri cu câte o plăcuță sub fiecare. Acum se așază după cât de mult cer atenție:
 // starea mașinii · martori aprinși · ce e deschis · ce e pornit. Regula e în `canBenzi`, iar ordinea
@@ -87,7 +87,7 @@ export function CanFlags({ io }: { io: any }) {
     );
   }
 
-  // Prima bandă („starea mașinii") nu primește titlu: e chiar subiectul panoului, iar un al doilea
+  // Prima bandă („starea mașinii”) nu primește titlu: e chiar subiectul panoului, iar un al doilea
   // titlu identic sub el arăta a greșeală.
   function Banda({ cheie, titlu, icon, lista, mare }: { cheie: string; titlu: string; icon: any; lista: Banda[]; mare?: boolean }) {
     if (!lista.length) return null;

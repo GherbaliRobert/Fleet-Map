@@ -1,9 +1,9 @@
-// incarcare_pdf.js — planul de încărcare pe hârtie (simulatorul, pasul 3, 12.10; butonul „Descarcă PDF" din machetă).
+// incarcare_pdf.js — planul de încărcare pe hârtie (simulatorul, pasul 3, 12.10; butonul „Descarcă PDF” din machetă).
 //
 // Primește REZULTATUL simulării (incarcare.simuleaza, aceleași cifre și texte ca pe ecran) și îl desenează: cifrele de sus,
 // desenul văzut de sus și din lateral (același desen ca ecranul, citit din pagină), marfa, greutatea pe osii și ce e de
 // corectat. Nu socotește nimic: dacă ar socoti, hârtia s-ar putea despărți de ecran. Logo-ul casei pentru fundal alb
-// (logo-light.png), fonturile cu diacritice, numele după regula casei: „RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.pdf".
+// (logo-light.png), fonturile cu diacritice, numele după regula casei: „RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.pdf”.
 //
 // Fișierul e CURAT: nu atinge baza și nu știe de rute.
 
@@ -29,11 +29,11 @@ function numeFisier(rez, ms) {
   return 'RA-Track - Plan de încărcare' + (v ? ' ' + v : '') + ' - ' + _zi(ms || Date.now()) + '.pdf';
 }
 
-// Desenul de pe hârtie = desenul de pe ecran (Robert, 13.10: „da" la „refac la fel și desenul de pe hârtie?"). Hârtia NU are
-// al doilea desen: citește funcția paginii (public/index.html, blocul „desenul simulatorului" — aceeași pe care o copiază și
+// Desenul de pe hârtie = desenul de pe ecran (Robert, 13.10: „da” la „refac la fel și desenul de pe hârtie?”). Hârtia NU are
+// al doilea desen: citește funcția paginii (public/index.html, blocul „desenul simulatorului” — aceeași pe care o copiază și
 // telefonul) și culorile temei deschise din public/css/app.css, apoi pune pe hârtie poligoanele, liniile și etichetele pe
 // care le-ar pune ecranul. Se citesc o dată, la primul plan; fără ele, hârtia spune că desenul lipsește (nu desenează altul).
-const REPER_DESEN = ['// ── începe „desenul simulatorului" ──', '// ── sfârșit „desenul simulatorului" ──'];
+const REPER_DESEN = ['// ── începe „desenul simulatorului” ──', '// ── sfârșit „desenul simulatorului” ──'];
 let _desenCitit = null;
 function desenPagina() {
   if (_desenCitit) return _desenCitit.simSvg ? _desenCitit : null;
@@ -50,7 +50,7 @@ function desenPagina() {
   return _desenCitit.simSvg ? _desenCitit : null;
 }
 
-// Culorile temei deschise: regulile „.sim-svg .sim-…" (nu cele cu body.dark); fondul din „.sim-svg { background }".
+// Culorile temei deschise: regulile „.sim-svg .sim-…” (nu cele cu body.dark); fondul din „.sim-svg { background }".
 function _stilDesen(css) {
   const st = { _fond: null };
   css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/([^{}]+)\{([^}]*)\}/g, (tot, sel, decl) => {
@@ -66,7 +66,7 @@ function _stilDesen(css) {
   return st;
 }
 
-// O culoare din CSS / SVG pentru PDFKit: { c, a } (a = opacitatea), sau null pentru „none".
+// O culoare din CSS / SVG pentru PDFKit: { c, a } (a = opacitatea), sau null pentru „none”.
 function _culoare(c) {
   if (!c || c === 'none' || c === 'transparent') return null;
   let m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(c);

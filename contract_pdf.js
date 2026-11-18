@@ -2,10 +2,10 @@
 //
 // ⚠ CE ESTE ȘI CE NU ESTE. Fișierul ăsta scoate o CIORNĂ: aceleași clauze de fiecare dată,
 // completate cu datele reale ale părților, cu anexa aparatelor și cu acordul GDPR. NU e consultanță
-// juridică și nu înlocuiește avocatul — de asta scrie „ciornă" pe fiecare pagină până când omul
+// juridică și nu înlocuiește avocatul — de asta scrie „ciornă” pe fiecare pagină până când omul
 // marchează contractul ca semnat. Textul clauzelor se schimbă într-un singur loc, aici.
 //
-// Datele NOASTRE (Prestatorul) vin din „Date emitent" (setarea `invoice_issuer`), aceleași care
+// Datele NOASTRE (Prestatorul) vin din „Date emitent” (setarea `invoice_issuer`), aceleași care
 // apar pe facturi — ca să nu existe două versiuni ale firmei noastre în aceeași aplicație.
 
 const PDFDocument = require('pdfkit');
@@ -16,7 +16,7 @@ const C = require('./contracts');
 const VERDE = '#3FE07D', NEGRU = '#111', GRI = '#6b7280', LINIE = '#e5e7eb';
 
 let _logoBuf = null, _logoTried = false;
-// „logo-light.png" e varianta ÎNCHISĂ (pentru fundal deschis) — pe hârtie albă asta se vede.
+// „logo-light.png” e varianta ÎNCHISĂ (pentru fundal deschis) — pe hârtie albă asta se vede.
 function _logo() {
   if (!_logoTried) { _logoTried = true; try { _logoBuf = fs.readFileSync(path.join(__dirname, 'public', 'logo-light.png')); } catch (e) { _logoBuf = null; } }
   return _logoBuf;
@@ -114,7 +114,7 @@ function _parte(doc, eticheta, d) {
   doc.y += 8;
 }
 // Taie un text ca să încapă într-o coloană, MĂSURÂND lățimea lui, nu ghicind după numărul de
-// litere. Fără asta, „Teltonika FMC650 · 860000000000001" se rupea pe două rânduri și strica tot
+// litere. Fără asta, „Teltonika FMC650 · 860000000000001” se rupea pe două rânduri și strica tot
 // tabelul; iar `ellipsis` din pdfkit nu se poartă la fel pentru orice combinație de opțiuni.
 function _taie(doc, text, latime) {
   let s = String(text == null ? '—' : text);
@@ -124,7 +124,7 @@ function _taie(doc, text, latime) {
 }
 function _tabelAnexa(doc, anexa) {
   const { left, w } = _ST(doc);
-  // Cinci coloane, fiindcă anexa trebuie să justifice prețul: un vehicul „cu CAN" costă mai mult
+  // Cinci coloane, fiindcă anexa trebuie să justifice prețul: un vehicul „cu CAN” costă mai mult
   // tocmai pentru că aparatul citește date din motor. Fără coloanele astea, anexa spunea o sumă
   // fără să spună pentru ce.
   const col = [w * 0.23, w * 0.14, w * 0.32, w * 0.13, w * 0.18];
@@ -175,7 +175,7 @@ function _tabelAnexa(doc, anexa) {
   } else {
     rand(cap, true);
     doc.x = left;
-    _p(doc, 'Nu au fost trecute aparate în anexă la momentul generării. Anexa se completează în aplicație, la fila „Contract" a firmei, după ce aparatele sunt adoptate.');
+    _p(doc, 'Nu au fost trecute aparate în anexă la momentul generării. Anexa se completează în aplicație, la fila „Contract” a firmei, după ce aparatele sunt adoptate.');
   }
   // Ce se plătește lunar fără să țină de o mașină: conturile RA Insight, păstrarea datelor, agenții
   // (incluși). Până pe 23.09 nu apăreau deloc: totalul le cuprindea, dar hârtia nu spunea pentru ce.
@@ -326,17 +326,17 @@ function scrieContract(doc, date) {
   const firma = date.firma || {};
   const em = date.emitent || {};
   const anexa = contract.annex || { vehicles: [], monthlyTotal: 0, currency: 'RON' };
-  // Semnul „CIORNĂ" ține de o singură stare: „în lucru". Din clipa în care contractul e APROBAT,
+  // Semnul „CIORNĂ” ține de o singură stare: „în lucru”. Din clipa în care contractul e APROBAT,
   // hârtia e curată și se poate printa pentru semnare — asta a fost cererea lui Alin: „dacă noi deja
   // vorbim de o semnare de contract, aici ar trebui aprobă contractul și îl poți descărca printabil".
   const ciorna = contract.status === 'ciorna';
   // Reprezentantul de pe contract DOAR dacă are nume; altfel cel scris pe firmă (lista lui Robert, 01.10, pct. 16): „Client
-  // nou" fără nume salva pe contract doar funcția, „Completează" punea numele pe firmă, iar hârtia rămânea cu o linie goală.
+  // nou" fără nume salva pe contract doar funcția, „Completează” punea numele pe firmă, iar hârtia rămânea cu o linie goală.
   const clientRep = _repCuNume(contract.client_rep) || _repCuNume(firma.legal_rep) || contract.client_rep || firma.legal_rep || {};
   const ourRep = contract.our_rep || {};
   const gdprAnexa = !(contract.gdpr && contract.gdpr.kind === 'separat');
   // Anexa nr. 2 e montajul (costurile unice), dacă există; atunci acordul GDPR e Anexa nr. 3. Textul
-  // contractului trimite la acord prin numărul ĂSTA — până pe 23.09 scria mereu „Anexa nr. 2", deși,
+  // contractului trimite la acord prin numărul ĂSTA — până pe 23.09 scria mereu „Anexa nr. 2”, deși,
   // cu montaj, acordul se tipărea ca Anexa nr. 3: un act semnat care trimitea la anexa greșită.
   const mont = contract.montaj;
   const echip = mont && mont.echipamente;
@@ -413,7 +413,7 @@ function scrieContract(doc, date) {
   const chirieA = anexa.chirie && (anexa.chirie.aparate || []).length ? anexa.chirie : null;
   const luniMinCh = chirieA ? (Number(chirieA.luniMin) || C.CHIRIE_LUNI_MIN) : 0;
   if (chirieA) {
-    _p(doc, 'Aparatele de monitorizare enumerate în Anexa nr. 1, la „Aparate închiriate", sunt date Beneficiarului în folosință, cu chirie, și rămân proprietatea Prestatorului pe toată durata contractului. ' +
+    _p(doc, 'Aparatele de monitorizare enumerate în Anexa nr. 1, la „Aparate închiriate”, sunt date Beneficiarului în folosință, cu chirie, și rămân proprietatea Prestatorului pe toată durata contractului. ' +
       'Chiria lunară este cuprinsă în prețul de mai sus și apare pe factură pe rând separat. Durata minimă a contractului este de ' + C.numar(luniMinCh, 'lună', 'luni') + '.');
   }
   // De la ce zi se plătește (decizie Alin, 28.09): prima transmisie a aparatului montat, prima lună pe zile.
@@ -436,14 +436,14 @@ function scrieContract(doc, date) {
   _titlu(doc, 'V. OBLIGAȚIILE PĂRȚILOR');
   _p(doc, 'Prestatorul se obligă: să asigure funcționarea platformei și accesul Beneficiarului la datele proprii; să păstreze confidențialitatea datelor Beneficiarului; să asigure asistență tehnică în timpul programului de lucru; să anunțe din timp lucrările planificate care afectează serviciul.');
   _p(doc, 'Beneficiarul se obligă: să achite prețul la termenele convenite; să folosească platforma potrivit legii și scopului declarat; să își informeze proprii angajați despre monitorizarea vehiculelor, potrivit legislației muncii și protecției datelor; să anunțe Prestatorul despre modificările din flotă care afectează Anexa nr. 1.');
-  // Termenul nostru curge de la ÎNCASAREA avansului, nu de la semnare (decizie Alin, 29.09: „2. DA").
+  // Termenul nostru curge de la ÎNCASAREA avansului, nu de la semnare (decizie Alin, 29.09: „2. DA”).
   if (areEchip) {
     _p(doc, areLucrari
       ? 'Prestatorul livrează și montează echipamentele din Anexa nr. 2 în cel mult ' + C.numar(C.MONTAJ_ZILE_DUPA_AVANS, 'zi', 'zile') +
         ' de la încasarea avansului, la datele de montaj convenite cu Beneficiarul.'
       : 'Prestatorul livrează echipamentele din Anexa nr. 2 în cel mult ' + C.numar(C.MONTAJ_ZILE_DUPA_AVANS, 'zi', 'zile') + ' de la încasarea avansului.');
   }
-  // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA"): termenul se prelungește, drumul în plus se plătește.
+  // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA”): termenul se prelungește, drumul în plus se plătește.
   // Doar când există montaj (pct. 22): fără lucrări nu există zile de montaj.
   if (areLucrari) {
     _p(doc, 'Beneficiarul pune vehiculele la dispoziție la datele de montaj convenite. Dacă un vehicul nu este disponibil, termenul de montaj se prelungește cu zilele de întârziere, ' +
@@ -463,7 +463,7 @@ function scrieContract(doc, date) {
   _p(doc, 'Contractul încetează: prin ajungerea la termen, dacă nu se prelungește; prin acordul scris al părților; prin denunțare unilaterală, cu preaviz de ' + preaviz + ' de zile comunicat în scris; prin reziliere, în cazul neexecutării obligațiilor, după o notificare rămasă fără efect timp de 15 zile.');
   _p(doc, 'La încetare, Prestatorul oprește colectarea datelor de la aparatele Beneficiarului. Datele deja colectate se păstrează sau se șterg potrivit ' +
     (gdprAnexa ? 'Anexei nr. ' + nrGdpr + ' (acordul de prelucrare a datelor).' : 'acordului de prelucrare a datelor semnat separat.'));
-  // Avansul care nu vine (decizie Alin, 29.09: „2. DA"): nu comandăm nimic și nimeni nu rămâne legat.
+  // Avansul care nu vine (decizie Alin, 29.09: „2. DA”): nu comandăm nimic și nimeni nu rămâne legat.
   if (areEchip) {
     _p(doc, 'Dacă avansul pentru echipamente nu este plătit în ' + C.numar(C.AVANS_ZILE_RENUNTARE, 'zi', 'zile') +
       ' de la semnare, oricare parte poate renunța la contract, fără penalități, printr-o notificare scrisă.');
@@ -474,7 +474,7 @@ function scrieContract(doc, date) {
     _p(doc, 'Dacă Beneficiarul denunță contractul înainte de împlinirea duratei minime de ' + C.numar(luniMinCh, 'lună', 'luni') +
       ', datorează chiria aparatelor închiriate pentru lunile rămase până la împlinirea acesteia, precum și demontarea lor, ' +
       (tDem ? 'la tariful de ' + _bani(tDem, 'RON') + ' pe aparat, fără TVA.' : 'la tariful de dezinstalare al Prestatorului.'));
-    // Demontarea la termen o facem NOI, fără cost (decizie Alin, 25.09: „aparatul e al nostru și îl vrem înapoi").
+    // Demontarea la termen o facem NOI, fără cost (decizie Alin, 25.09: „aparatul e al nostru și îl vrem înapoi”).
     _p(doc, 'La încetarea contractului, Beneficiarul restituie aparatele închiriate: pune vehiculele la dispoziția Prestatorului pentru demontare în cel mult ' +
       C.numar(C.CHIRIE_ZILE_RETUR, 'zi', 'zile') + '. La încetarea contractului la termen, demontarea se face de Prestator, fără cost pentru Beneficiar. ' +
       'Aparatele nerestituite sau deteriorate din culpa Beneficiarului se plătesc la valoarea din Anexa nr. 1.');
@@ -625,7 +625,7 @@ function scrieAct(doc, date) {
   _p(doc, 'Modificările produc efecte începând cu data de ' + _data(act.start_at) + '.');
   if (act.luni_noi) {
     // Cu data până la care ține contractul DUPĂ prelungire (o dă serverul, din capătul de azi). Textul
-    // vechi — „cu N luni de la data de mai sus" — lăsa de ghicit de la ce dată se numără.
+    // vechi — „cu N luni de la data de mai sus” — lăsa de ghicit de la ce dată se numără.
     _p(doc, 'Durata contractului se prelungește cu ' + C.numar(act.luni_noi, 'lună', 'luni') +
       (date.panaLa ? ', până la data de ' + _data(date.panaLa) + '.' : '.'));
   }
@@ -729,7 +729,7 @@ function confirmarePachetPdf(date) {
   doc.end();
   return doc;
 }
-// „RA-Track - Confirmare pachet RA Insight - Transport Alfa SRL - 14.10.2026.pdf"
+// „RA-Track - Confirmare pachet RA Insight - Transport Alfa SRL - 14.10.2026.pdf”
 function numeConfirmarePachet(firma, ms) {
   const curat = function (x) { return String(x || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
   const cine = curat(firma && firma.name);
@@ -755,9 +755,9 @@ function contractPdf(date) {
 
 // Numele fișierului descărcat, după regula casei (ca rapoartele și ofertele): „RA-Track - Contract
 // RAT-C-2026-0001 - Transport Alfa SRL.pdf". Hotărât de Alin pe 24.09 (pe 09.09 ceruse „RA
-// TRAKS-Contract", de pe vremea când și logo-ul scria „traks").
+// TRAKS-Contract", de pe vremea când și logo-ul scria „traks”).
 // Caracterele interzise în numele de fișier se scot din TOT numele, nu doar din firmă: numărul unui
-// act adițional are „/" („RAT-C-2026-0001/A1"), iar browserul îl transforma cum voia el.
+// act adițional are „/” („RAT-C-2026-0001/A1”), iar browserul îl transforma cum voia el.
 function numeFisier(contract, firma, fel) {
   const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
   const nr = curat((contract && contract.number) || 'ciornă');
@@ -766,7 +766,7 @@ function numeFisier(contract, firma, fel) {
 }
 
 // ─── Contractul de colaborare cu un PARTENER DE MONTAJ (24.09) ──────────────────────────────────
-// Alin: „semnăm contracte cu partenerii fix la fel ca la clienți", iar textul „fă-l tu". Aici banii
+// Alin: „semnăm contracte cu partenerii fix la fel ca la clienți”, iar textul „fă-l tu”. Aici banii
 // merg invers: partenerul (PRESTATOR) execută lucrări pentru noi (BENEFICIAR) și ne facturează pe noi.
 // Clientul nu apare pe hârtie și nu vede niciodată partenerul — pentru el montăm noi.
 // Ce contează juridic: partenerul intră la clienți și vede date ale lor (adrese, persoane de contact,

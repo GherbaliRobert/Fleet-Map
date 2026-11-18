@@ -1,6 +1,6 @@
-// verify_admin_retras.js — contul de instalare „admin" se retrage singur, dar NU vă închide afară.
+// verify_admin_retras.js — contul de instalare „admin” se retrage singur, dar NU vă închide afară.
 //
-// Decizie 2026-08-11 (Robert): contul „admin" nu mai trebuie să funcționeze. E un cont cu nume
+// Decizie 2026-08-11 (Robert): contul „admin” nu mai trebuie să funcționeze. E un cont cu nume
 // previzibil, cunoscut public din documentația de deploy, care administrează TOATE companiile.
 //
 // Riscul evident al unei asemenea cereri e blocarea proprietarului în afara propriei platforme.
@@ -47,14 +47,14 @@ function boot(env2) {
 const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () => r()); p.kill(); setTimeout(r, 4500); });
 
 (async () => {
-  console.log('\n══ Contul de instalare „admin" se retrage ══\n');
+  console.log('\n══ Contul de instalare „admin” se retrage ══\n');
   try {
-    // ── Prima pornire: platformă nouă, „admin" e singurul super-admin ──
+    // ── Prima pornire: platformă nouă, „admin” e singurul super-admin ──
     let b = await boot(); srv = b.p; await sleep(3500);
     const S = jar();
-    t('la instalare, „admin" funcționează (e singurul super-admin)',
+    t('la instalare, „admin” funcționează (e singurul super-admin)',
       (await req(S, 'POST', '/api/login', { username: 'admin', password: 'admin123' })).status === 200);
-    t('serverul avertizează că „admin" e încă activ', /ÎNCĂ activ|se va retrage/i.test(b.log()), '(fără avertisment în log)');
+    t('serverul avertizează că „admin” e încă activ', /ÎNCĂ activ|se va retrage/i.test(b.log()), '(fără avertisment în log)');
 
     // Îmi fac contul personal de super-admin, exact ca fondatorii
     const creat = await req(S, 'POST', '/api/users', {
@@ -66,14 +66,14 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
     const P = jar();
     t('contul personal se autentifică', (await req(P, 'POST', '/api/login', { username: 'robert@unitip.ro', password: 'Curcubeu7Vara' })).status === 200);
 
-    // ── A doua pornire: acum EXISTĂ alt super-admin → „admin" trebuie să se retragă ──
+    // ── A doua pornire: acum EXISTĂ alt super-admin → „admin” trebuie să se retragă ──
     // Pornim FĂRĂ ADMIN_PASSWORD: variabila e calea de recuperare, ar ține contul în viață intenționat.
     await kill(srv);
     b = await boot({ _faraAdminPass: true }); srv = b.p; await sleep(3500);
     t('serverul anunță retragerea contului de instalare', /DEZACTIVAT/i.test(b.log()), '(fără anunț în log)');
 
     const dupa = await req(jar(), 'POST', '/api/login', { username: 'admin', password: 'admin123' });
-    t('„admin" NU se mai poate autentifica', dupa.status !== 200, 'status ' + dupa.status + ' ' + JSON.stringify(dupa.body).slice(0, 80));
+    t('„admin” NU se mai poate autentifica', dupa.status !== 200, 'status ' + dupa.status + ' ' + JSON.stringify(dupa.body).slice(0, 80));
 
     const P2 = jar();
     const eu = await req(P2, 'POST', '/api/login', { username: 'robert@unitip.ro', password: 'Curcubeu7Vara' });

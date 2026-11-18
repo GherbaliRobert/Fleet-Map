@@ -1,4 +1,4 @@
-// verify_index_pozitii.js — un singur index pe (imei, timestamp) la poziții (Robert, 02.11: „acum").
+// verify_index_pozitii.js — un singur index pe (imei, timestamp) la poziții (Robert, 02.11: „acum”).
 //
 //   node verify_index_pozitii.js
 //

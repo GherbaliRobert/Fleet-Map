@@ -1,4 +1,4 @@
-// „Anunță echipa RA Track" și „Cereri de la clienți" pe telefon (02.11) — ce fac pe web blocurile cu aceleași nume
+// „Anunță echipa RA Track” și „Cereri de la clienți” pe telefon (02.11) — ce fac pe web blocurile cu aceleași nume
 // (public/index.html), pe aceleași rute. Regulile și textele sunt ale serverului (cereri_echipa.js); aici stau adresele și ce se
 // desenează, din ce a trimis el. Fără JSX și fără cereri: verify_telefon_echipa.js le rulează lângă codul paginii, pe aceleași răspunsuri.
 // Aparatul e treaba NOASTRĂ: clientul are un singur lucru de făcut, să ne anunțe, iar datele aparatului le pune serverul.
@@ -27,7 +27,7 @@ export function dinAdresa(q: any): { imei: string; problema: string; ce: string;
   const s = (v: any) => (v == null ? '' : String(v));
   return { imei: s(x.imei), problema: s(x.problema), ce: s(x.ce), sursa: s(x.sursa), fila: x.fila === 'lista' ? 'lista' : 'noua' };
 }
-// O cerere anume, în „Cereri de la clienți": din calendar, la vedere (rezolvată = în „Toate"; web: raxMjCalInterventie).
+// O cerere anume, în „Cereri de la clienți”: din calendar, la vedere (rezolvată = în „Toate”; web: raxMjCalInterventie).
 export function rutaCerere(id: any, gata: any): string {
   return RUTA_CERERI_CLIENTI + '?fel=' + (gata ? 'toate' : 'deschise') + '&spre=' + enc(String(id));
 }
@@ -40,7 +40,7 @@ export function cerereDinAdresa(q: any): { fel: string; spre: number | null } {
 
 // ─── Fereastra clientului: ușile, cu ce pune fiecare în cerere ───
 export const usaFisa = (imei: any) => rutaEchipa({ imei, problema: 'aparat', sursa: 'fisa' });
-// Pe web, iconița cu căști scrie la noi „din iconița cu căști" (`suport`). Telefonul n-o are: din meniu, „de pe telefon" (`telefon`, tot din cereri_echipa.js).
+// Pe web, iconița cu căști scrie la noi „din iconița cu căști” (`suport`). Telefonul n-o are: din meniu, „de pe telefon” (`telefon`, tot din cereri_echipa.js).
 export const usaMeniu = () => rutaEchipa({ sursa: 'telefon' });
 export function usaCaseta(b: any, p?: any): string {
   return rutaEchipa({ imei: b && b.imei, problema: b && b.problema, ce: b && b.problema === 'consum' && p && p.dovada ? String(p.dovada) : '', sursa: 'insight' });
@@ -88,7 +88,7 @@ export function corpCerere(o: any, f: { imei: string; mesaj: string; cand: strin
     cand: fara ? [] : f.cand, unde: fara ? '' : f.unde, telefon: f.telefon, sursa: x.sursa || 'telefon',
   };
 }
-// Răspunsul la trimitere: 200, sau 409 cu `deja` („Echipa RA Track se ocupă deja de asta"), duc la confirmare; altfel, eroarea serverului.
+// Răspunsul la trimitere: 200, sau 409 cu `deja` („Echipa RA Track se ocupă deja de asta”), duc la confirmare; altfel, eroarea serverului.
 export function dupaTrimitere(status: any, j: any): { trimisa: boolean; eroare: string } {
   if (status === 200 || (status === 409 && j && j.deja)) return { trimisa: true, eroare: '' };
   return { trimisa: false, eroare: (j && j.error) || EROARE_TRIMITERE };
@@ -125,7 +125,7 @@ export function seOcupaPeButon(deschise: any[] | null | undefined, b: any): any 
   return (deschise || []).find((d: any) => String(b.imei) === String(d.imei) && b.problema === d.problema) || null;
 }
 
-// ─── „Cereri de la clienți" (fondatorii) ───
+// ─── „Cereri de la clienți” (fondatorii) ───
 export const TITLU_CERERI = 'Cereri de la clienți';
 export const EROARE_LISTA = 'Lista nu s-a putut încărca. Încearcă din nou peste un minut.';
 export function fileCereri(d: any): { k: string; t: string }[] {

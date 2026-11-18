@@ -1,21 +1,21 @@
-// Calendarul de montaj (Business → Montaj, PRIMA filă) pe telefon — ce face pagina în blocul „calendarul de montaj"
+// Calendarul de montaj (Business → Montaj, PRIMA filă) pe telefon — ce face pagina în blocul „calendarul de montaj”
 // (public/index.html: _mjcCalendarHtml, _mjcDeProgramatHtml, _mjcFormHtml, _mjcLucrareHtml, raxMjCalLuna …
 // raxMjCalSterge), pe aceleași rute.
 //
 // Alin, 30.09: „în secțiunea Montaj, calendar de programare… să pot selecta eu ziua, și să-mi arate jos ce am de
 // instalat și disponibilitatea". SINGURUL loc în care se programează montajul unui contract SEMNAT: fiecare zi
-// programată e o lucrare („programat"). Ce mai e de programat (Anexa nr. 2 minus lucrări), termenul de 30 de zile,
-// prețurile (din anexă) și costul (din tarifele instalatorului), „montată cu mai puține" (restul se întoarce singur
-// la „De programat") — toate le face SERVERUL (montaj.js, contracts.js). Telefonul doar arată ce primește și trimite
+// programată e o lucrare („programat”). Ce mai e de programat (Anexa nr. 2 minus lucrări), termenul de 30 de zile,
+// prețurile (din anexă) și costul (din tarifele instalatorului), „montată cu mai puține” (restul se întoarce singur
+// la „De programat”) — toate le face SERVERUL (montaj.js, contracts.js). Telefonul doar arată ce primește și trimite
 // ce a ales omul; refuzurile serverului apar cu vorbele lui.
 //
-// Regulile de AFIȘARE de aici (cum se scrie o zi, „N mașini", culoarea termenului, grila lunii, ce se propune în
+// Regulile de AFIȘARE de aici (cum se scrie o zi, „N mașini”, culoarea termenului, grila lunii, ce se propune în
 // formular) sunt copiate din pagină și LEGATE de ea printr-o probă care rulează bucata paginii și pe a telefonului pe
 // aceleași cazuri. Schimbi una pe web → proba pică până o schimbi și aici.
 //
 // Refăcut pe 01.10, odată cu pagina (macheta aprobată de Alin): culoarea zilei după confirmări (verde = au confirmat
 // instalatorul și clientul, galben = mai lipsește una, gri = montată), cele două confirmări vorbite la telefon, anularea
-// cu motiv (o zi anulată rămâne în istoric) și „Reprogramează". Textele istoricului, încărcarea instalatorilor și nota de
+// cu motiv (o zi anulată rămâne în istoric) și „Reprogramează”. Textele istoricului, încărcarea instalatorilor și nota de
 // stoc le scrie SERVERUL (montaj.js); telefonul doar le arată.
 import { api } from '../api/client';
 import { MONTAJ_TIPURI, zi as ziMs } from './contracte';
@@ -36,7 +36,7 @@ export type CalContract = {
   contract_id: number; company_id: number; company_name?: string | null; number?: string | null;
   termen: CalTermen | null; text: string; masini: number; programate: number; montate: number; ramase: number; tipuri: CalTip[];
 };
-// O intervenție din „Cereri de la clienți" (22.10): îl ține ocupat pe instalator, dar nu e lucrare de montaj (nici în contract, nici în facturi).
+// O intervenție din „Cereri de la clienți” (22.10): îl ține ocupat pe instalator, dar nu e lucrare de montaj (nici în contract, nici în facturi).
 export type CalInterventie = {
   id: string; cerere_id: number; zi: string; partener_id?: number | null; partener_nume?: string | null; company_id?: number | null; company_name?: string | null;
   status: string; vehicul?: string | null; interval?: string | null; text: string;
@@ -72,8 +72,8 @@ export const reprogrameazaLucrarea = (id: number, b: ReturnType<typeof corpRepro
 // Nota de stoc din programare: ce are instalatorul la el și ce trebuie să-i mai duci (o socotește serverul).
 export const notaStocMontaj = (b: { contract_id: number; partener_id: number | null; cate: Record<string, number> }) =>
   api<{ text: string; lipsa: any[] }>('/api/montaj/nota-stoc', { method: 'POST', body: b });
-// Numele firmei unui contract care nu e la „De programat" (nesemnat, sau fără montaj de aparat în anexă), din lista
-// contractelor — pentru „… n-are nimic de programat acum". Pe web îl dă lista firmelor; null = nu s-a găsit.
+// Numele firmei unui contract care nu e la „De programat” (nesemnat, sau fără montaj de aparat în anexă), din lista
+// contractelor — pentru „… n-are nimic de programat acum”. Pe web îl dă lista firmelor; null = nu s-a găsit.
 export async function numeFirmaContract(contractId: any): Promise<string | null> {
   try {
     const j: any = await api<any>('/api/contracts');
@@ -83,7 +83,7 @@ export async function numeFirmaContract(contractId: any): Promise<string | null>
 }
 
 // Adresa care deschide calendarul cu programarea pregătită pentru un contract (web: raxDrumMontaj → _raxMj.cal.pre).
-// Din „Drumul clientului" („Programează montajul") și din fișă („Programează în calendar"). Ecranul Montaj o citește
+// Din „Drumul clientului” („Programează montajul”) și din fișă („Programează în calendar”). Ecranul Montaj o citește
 // o dată și își curăță adresa, ca o întoarcere pe ecran să nu redeschidă formularul.
 export const rutaCalendarMontaj = (contractId: any) => '/admin/montaj?fila=calendar&contract=' + encodeURIComponent(String(contractId));
 
@@ -91,14 +91,14 @@ export const rutaCalendarMontaj = (contractId: any) => '/admin/montaj?fila=calen
 export const MJC_LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
 export const MJC_ZILE = ['L', 'Ma', 'Mi', 'J', 'V', 'S', 'D'];
 // Numele întreg al zilei — doar pe telefon (titlul foii unei zile și lista zilelor cu montaj), unde grila n-are loc
-// să scrie clientul: „miercuri, 10.03.2027".
+// să scrie clientul: „miercuri, 10.03.2027”.
 const ZILE_NUME = ['luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă', 'duminică'];
 export const CAL_TEXT = {
   sub: 'Apasă pe o zi: se deschide fereastra zilei, unde programezi, confirmi, muți sau anulezi. Alege un instalator ca să vezi doar zilele lui ocupate.',
   subDeProgramat: 'Contractele semnate, cu ce a mai rămas de montat. Termenul e cel din contract: 30 de zile de la încasarea avansului.',
   golDeProgramat: 'Niciun contract semnat nu mai are mașini de montat.',
   nimic: 'Nimic de programat: niciun contract semnat nu mai are mașini rămase.',
-  maiPutine: 'Dacă s-au montat mai puține, celelalte se întorc singure la „Ce ai de montat".',
+  maiPutine: 'Dacă s-au montat mai puține, celelalte se întorc singure la „Ce ai de montat”.',
   faraZi: 'Alege ziua montajului.',
   faraZiMuta: 'Alege ziua.',
   // 01.10 — confirmările, anularea, reprogramarea (aceleași litere ca pe web)
@@ -107,16 +107,16 @@ export const CAL_TEXT = {
   faraZiNoua: 'Alege ziua nouă.',
 };
 
-// „10.03.2027" din „2027-03-10" (_mjcZiRo). Altceva → gol.
+// „10.03.2027” din „2027-03-10” (_mjcZiRo). Altceva → gol.
 export function ziRo(zi: any): string {
   const p = String(zi || '').split('-');
   return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : '';
 }
-// „1 mașină", „5 mașini", „20 de mașini" (_mjcMasini).
+// „1 mașină”, „5 mașini”, „20 de mașini” (_mjcMasini).
 export function masini(n: any): string { return nrDe(n, 'mașină', 'mașini'); }
 // Montată = executată (și, după ea, facturată) — aceleași stări ca montaj.STARI_MONTATE (_mjcMontata).
 export function esteMontata(st: any): boolean { return st === 'executat' || st === 'facturat_de_partener' || st === 'facturat_clientului'; }
-// „10× Instalare dispozitiv GPS, 6× Instalare modul LV-CAN" (_mjcCeSeMonteaza).
+// „10× Instalare dispozitiv GPS, 6× Instalare modul LV-CAN” (_mjcCeSeMonteaza).
 export function ceSeMonteaza(items: any): string {
   return (Array.isArray(items) ? items : []).map((r: any) => {
     const t = MONTAJ_TIPURI.find((x) => x[0] === r.tip);
@@ -130,12 +130,12 @@ export function ziCuNume(zi: string): string {
 }
 
 // ─── Luna ───
-// „octombrie 2026" (capul calendarului). Lună stricată → gol.
+// „octombrie 2026” (capul calendarului). Lună stricată → gol.
 export function lunaText(luna: string): string {
   const y = parseInt(String(luna || '').slice(0, 4), 10), m = parseInt(String(luna || '').slice(5, 7), 10);
   return y && m ? MJC_LUNI[m - 1] + ' ' + y : '';
 }
-// ‹ / › / „Azi" (raxMjCalLuna): pas -1 / +1 lângă luna arătată; 0 = luna zilei de azi, cum o dă serverul.
+// ‹ / › / „Azi” (raxMjCalLuna): pas -1 / +1 lângă luna arătată; 0 = luna zilei de azi, cum o dă serverul.
 export function lunaAlaturata(luna: string, pas: number, azi: string): string {
   if (!pas) return String(azi || '').slice(0, 7);
   let y = parseInt(String(luna || '').slice(0, 4), 10), m = parseInt(String(luna || '').slice(5, 7), 10) + pas;
@@ -143,7 +143,7 @@ export function lunaAlaturata(luna: string, pas: number, azi: string): string {
   return y + '-' + ('0' + m).slice(-2);
 }
 // Grila lunii (_mjcCalendarHtml): câte căsuțe goale înaintea zilei de 1 (săptămâna începe luni) și zilele, cu
-// sâmbăta/duminica și ziua de azi. null = luna nu e încă știută („Se încarcă…").
+// sâmbăta/duminica și ziua de azi. null = luna nu e încă știută („Se încarcă…”).
 export type ZiGrila = { zi: string; nr: number; wk: boolean; azi: boolean };
 export function grilaLunii(luna: string, azi: string): { gol: number; zile: ZiGrila[] } | null {
   const y = parseInt(String(luna || '').slice(0, 4), 10), m = parseInt(String(luna || '').slice(5, 7), 10);
@@ -183,7 +183,7 @@ export function subInterventie(x: CalInterventie): string {
 }
 // Culoarea unei zile (_mjcClasa): gri = montată, verde = au confirmat amândoi, galben = mai lipsește o confirmare.
 export function clasaLucrare(l: CalLucrare): string { return esteMontata(l.status) ? 'mjc-mont' : (l.conf === 'confirmat' ? 'mjc-ok' : 'mjc-conf'); }
-// Tot ce spune o lucrare din calendar, pe un rând: „Calendar SRL · 3 mașini · Instal Vest SRL · programat".
+// Tot ce spune o lucrare din calendar, pe un rând: „Calendar SRL · 3 mașini · Instal Vest SRL · programat”.
 export function titluLucrare(l: CalLucrare, stari: Record<string, string> | null | undefined): string {
   return (l.company_name || '') + ' · ' + masini(l.masini) + ' · ' + (l.partener_nume || 'instalator neales') + ' · ' + stareText(l, stari);
 }
@@ -195,7 +195,7 @@ export function instalatoriFiltru(parteneri: CalPartener[] | null | undefined, p
   return (parteneri || []).filter((p) => p.active || String(p.id) === part);
 }
 
-// ─── „De programat" (_mjcDeProgramatHtml) ───
+// ─── „De programat” (_mjcDeProgramatHtml) ───
 // Culoarea termenului: depășit roșu, curând portocaliu, altfel neutru.
 export function termenFel(t: CalTermen | null | undefined): string {
   return t ? (t.stare === 'depasit' ? 'bad' : t.stare === 'curand' ? 'warn' : '') : '';
@@ -205,23 +205,23 @@ export function termenZi(t: CalTermen): string {
   return ziRo(new Date(Number(t.pana)).toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' }));
 }
 export function termenPastila(t: CalTermen): string { return 'termen ' + termenZi(t) + ', ' + t.text; }
-// Sub formularul de programare: „Termenul din contract: 30.10.2026 (mai sunt 21 de zile)."
+// Sub formularul de programare: „Termenul din contract: 30.10.2026 (mai sunt 21 de zile).”
 export function termenLinie(t: CalTermen): string { return 'Termenul din contract: ' + termenZi(t) + ' (' + t.text + ').'; }
-// „0 din 5 mașini montate · 3 mașini programate · 2 mașini de programat".
+// „0 din 5 mașini montate · 3 mașini programate · 2 mașini de programat”.
 export function detaliiContract(c: CalContract): string {
   return [c.text, c.programate ? masini(c.programate) + ' programate' : null,
     c.ramase ? masini(c.ramase) + ' de programat' : 'toate sunt programate'].filter(Boolean).join(' · ');
 }
-// „Teltonika FMC130 — 12 în depozit, 3 la instalatori · Modul LV-CAN200 — 4 în depozit".
+// „Teltonika FMC130 — 12 în depozit, 3 la instalatori · Modul LV-CAN200 — 4 în depozit”.
 export function stocText(stoc: CalStoc[] | null | undefined): string {
   return (stoc || []).map((s) => s.eticheta + ' — ' + s.depozit + ' în depozit' + (s.instalator ? ', ' + s.instalator + ' la instalatori' : '')).join(' · ');
 }
-// Contractele care mai au mașini de programat — și cifra de pe fila „Calendar".
+// Contractele care mai au mașini de programat — și cifra de pe fila „Calendar”.
 export function deProgramatActive(d: CalDate | null | undefined): CalContract[] {
   return ((d && d.deProgramat) || []).filter((x) => x.ramase > 0);
 }
 
-// ─── Formularul „Programează montajul" (_mjcFormHtml, raxMjCalClient, raxMjCalCate, raxMjCalSalveaza) ───
+// ─── Formularul „Programează montajul” (_mjcFormHtml, raxMjCalClient, raxMjCalCate, raxMjCalSalveaza) ───
 // Contractul arătat: cel cerut, dacă mai are mașini de programat, altfel primul (cel mai strâns termen).
 export function contractulFormularului(d: CalDate | null | undefined, contractId: any): CalContract | null {
   const ctrs = deProgramatActive(d);
@@ -236,7 +236,7 @@ export function alteTipuri(c: CalContract): CalTip[] {
 }
 // La N mașini, câte bucăți din tipul ăsta: cât merge pe o mașină (serverul dă `peMasina`), niciodată peste rest.
 export function propuneAlt(n: number, t: CalTip): number { return Math.min(t.ramase, Math.round(n * t.peMasina)); }
-// Rândul unui client în lista „Clientul": „Calendar SRL — 5 mașini de programat".
+// Rândul unui client în lista „Clientul”: „Calendar SRL — 5 mașini de programat”.
 export function optiuneClient(x: CalContract): string { return (x.company_name || '—') + ' — ' + masini(x.ramase) + ' de programat'; }
 // Cine poate monta o zi nouă: doar instalatorii activi.
 export function instalatoriActivi(parteneri: CalPartener[] | null | undefined): CalPartener[] { return (parteneri || []).filter((p) => p.active); }
@@ -244,9 +244,9 @@ export function faraClientText(nume: string): string {
   return nume + ' n-are nimic de programat acum: contractul nu e semnat sau toate mașinile sunt deja programate.';
 }
 
-// Formularul, ca valori de casete (text, exact ce vede omul). `ci` / `cc` = bifele „am vorbit cu instalatorul / clientul".
+// Formularul, ca valori de casete (text, exact ce vede omul). `ci` / `cc` = bifele „am vorbit cu instalatorul / clientul”.
 export type FormProg = { zi: string; contract_id: number; n: string; part: string; alte: Record<string, string>; atinse: Record<string, boolean>; ci?: boolean; cc?: boolean };
-// `partener` = instalatorul propus (cel ales în filtru), doar dacă e activ — altfel „— îl aleg mai târziu —".
+// `partener` = instalatorul propus (cel ales în filtru), doar dacă e activ — altfel „— îl aleg mai târziu —”.
 export function formNou(d: CalDate | null | undefined, zi: string | null, contractId: any, partener: any): FormProg | null {
   const c = contractulFormularului(d, contractId);
   if (!c || !d) return null;
@@ -276,7 +276,7 @@ export function corpProgramare(c: CalContract, f: FormProg) {
   return { contract_id: c.contract_id, data_lucrare: ziMs(f.zi), partener_id: f.part ? parseInt(f.part, 10) : null, cate,
     confirmat_instalator: !!f.ci, confirmat_client: !!f.cc };
 }
-// Ce are deja un instalator în ziua aleasă — textul îl scrie serverul (montaj.textIncarcare); „liber" e `textLiber`.
+// Ce are deja un instalator în ziua aleasă — textul îl scrie serverul (montaj.textIncarcare); „liber” e `textLiber`.
 export function incarcareText(d: CalDate | null | undefined, zi: string, partenerId: any): string {
   const x = (((d && d.incarcare) || {})[zi] || {})[String(partenerId)];
   return x ? x.text : ((d && d.textLiber) || '');
@@ -285,7 +285,7 @@ export function toastProgramat(c: CalContract | null | undefined, n: number, zi:
   return 'Programat: ' + ((c && c.company_name) || 'clientul') + ', ' + masini(n) + ', pe ' + ziRo(zi) + ' ✓';
 }
 // Venit cu `?contract=` (din drumul clientului): formularul pe contractul lui, sau — dacă n-are nimic de programat —
-// numele firmei, pentru „… n-are nimic de programat acum". `null` = nu știm numele (îl caută ecranul).
+// numele firmei, pentru „… n-are nimic de programat acum”. `null` = nu știm numele (îl caută ecranul).
 export function dinContract(d: CalDate | null | undefined, contractId: number): { contract_id: number } | { faraClient: string | null } {
   const c = deProgramatActive(d).find((x) => Number(x.contract_id) === Number(contractId));
   if (c) return { contract_id: c.contract_id };
@@ -309,16 +309,16 @@ export function corpMutare(f: FormLuc) {
 export function corpMontata(f: FormLuc) { return { masini: parseInt(f.mont, 10) || 0 }; }
 export function intrebareMontata(l: CalLucrare, n: number): string {
   return 'Treci lucrarea ca montată: ' + masini(n) + ' la ' + (l.company_name || 'client') + '?' +
-    (l.masini && n < l.masini ? (l.masini - n === 1 ? ' Cealaltă mașină se întoarce la „Ce ai de montat".' : ' Celelalte ' + masini(l.masini - n) + ' se întorc la „Ce ai de montat".') : '') +
+    (l.masini && n < l.masini ? (l.masini - n === 1 ? ' Cealaltă mașină se întoarce la „Ce ai de montat”.' : ' Celelalte ' + masini(l.masini - n) + ' se întorc la „Ce ai de montat”.') : '') +
     ' Aparatele le treci apoi pe firmă din Dispozitive → Neasignate.';
 }
 export function toastMutat(zi: string): string { return 'Mutat pe ' + ziRo(zi) + ' ✓'; }
 export function toastMontata(j: { inapoi_la_programat?: number } | null | undefined): string {
-  return 'Montată ✓' + (j && j.inapoi_la_programat ? ' · ' + masini(j.inapoi_la_programat) + ' înapoi la „Ce ai de montat"' : '');
+  return 'Montată ✓' + (j && j.inapoi_la_programat ? ' · ' + masini(j.inapoi_la_programat) + ' înapoi la „Ce ai de montat”' : '');
 }
 
 // ─── Anularea și reprogramarea (raxMjCalAnuleaza…, raxMjCalReprogrameaza…, 01.10) ───
-// Motivul e unul din cele DOUĂ ale serverului (`d.motive`); amănuntele, dacă vrei; ziua nouă, la „Reprogramează".
+// Motivul e unul din cele DOUĂ ale serverului (`d.motive`); amănuntele, dacă vrei; ziua nouă, la „Reprogramează”.
 export type FormAnulare = { motiv: string; detalii: string; reprog: boolean; zi: string; part: string };
 export function formAnulare(parteneri: CalPartener[] | null | undefined, l: CalLucrare): FormAnulare {
   const are = l.partener_id != null && instalatoriLucrare(parteneri, l).some((p) => p.id === l.partener_id);
@@ -331,7 +331,7 @@ export function corpAnulare(f: FormAnulare) {
   return b;
 }
 export function toastAnulat(j: { reprogramata?: { zi: string } | null } | null | undefined): string {
-  return j && j.reprogramata ? 'Anulată și reprogramată pe ' + ziRo(j.reprogramata.zi) + ' ✓' : 'Anulată ✓ · mașinile ei s-au întors la „Ce ai de montat"';
+  return j && j.reprogramata ? 'Anulată și reprogramată pe ' + ziRo(j.reprogramata.zi) + ' ✓' : 'Anulată ✓ · mașinile ei s-au întors la „Ce ai de montat”';
 }
 export function corpReprogramare(f: { zi: string; part: string }) {
   return { data_lucrare: ziMs(f.zi), partener_id: f.part ? parseInt(f.part, 10) : null };
@@ -342,7 +342,7 @@ export function istoricFiltrat(d: CalDate | null | undefined, filtru: string): C
   return ((d && d.istoric) || []).filter((l) => filtru === 'toate' || (filtru === 'anulate' ? l.anulata : !l.anulata));
 }
 
-// Mesajul unei cereri refuzate: vorbele serverului; unde n-a spus nimic („Eroare 500"), fraza paginii.
+// Mesajul unei cereri refuzate: vorbele serverului; unde n-a spus nimic („Eroare 500”), fraza paginii.
 export function eroarea(e: any, implicit: string): string {
   const m = e && e.message ? String(e.message) : '';
   return !m || /^Eroare \d+$/.test(m) ? implicit : m;

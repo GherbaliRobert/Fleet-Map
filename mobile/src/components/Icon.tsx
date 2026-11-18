@@ -14,11 +14,11 @@ export type IconName =
   // Meniul fondatorului (grupele de pe web: Gestiune = depozit, AI & Module = piesă de puzzle, Business = servietă)
   // + arhiva (cutie, nu coș de gunoi: arhivarea nu șterge), inventarul, firma, copierea unei chei, documentația.
   | 'warehouse' | 'puzzle' | 'briefcase' | 'archive' | 'clipboard' | 'building' | 'copy' | 'book'
-  // Ofertare Live (fondatori): „Prețurile noastre" (eticheta de preț) și „Client nou din ofertă".
+  // Ofertare Live (fondatori): „Prețurile noastre” (eticheta de preț) și „Client nou din ofertă”.
   | 'tag' | 'userPlus'
-  // Stoc echipamente (fondatori): cutiile stivuite (fa-boxes-stacked de pe web) și „Mută" (fa-right-left).
+  // Stoc echipamente (fondatori): cutiile stivuite (fa-boxes-stacked de pe web) și „Mută” (fa-right-left).
   | 'boxes' | 'swap'
-  // RA Insight pe telefon (02.11): globul („Sursă externă"), trimite, „⋯", 👍 / 👎, creierașul („ținut minte"), notița, „deschide",
+  // RA Insight pe telefon (02.11): globul („Sursă externă”), trimite, „⋯”, 👍 / 👎, creierașul („ținut minte”), notița, „deschide”,
   // continuarea, cerculețele de pe casete, discuția.
   | 'globe' | 'arrowUp' | 'ellipsis' | 'thumbsUp' | 'thumbsDown' | 'brain' | 'note' | 'externalLink' | 'cornerDown' | 'circleCheck' | 'circleInfo' | 'comments'
   // Steaguri CAN (vezi can_flags.js, campul `mi`) — martori de bord, usi, lumini, transmisie.
@@ -194,7 +194,7 @@ const P: Record<IconName, string> = {
   bulb: '<path d="M9 18h6M10 21h4M12 2a6 6 0 0 0-3.6 10.8c.6.5 1 1.3 1.1 2.2h5c.1-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 2z"/>',
   shield: '<path d="M12 2 4 5.5V11c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5.5z"/>',
   // Schema în H a schimbătorului de viteze. NU o roată dințată: desenată la 17px ieșea identică cu
-  // `sun`, care e chiar alături în același panou („Faza lungă").
+  // `sun`, care e chiar alături în același panou („Faza lungă”).
   gears: '<path d="M6 4v8M18 4v8M6 8h12M12 8v10"/><circle cx="12" cy="20" r="2"/>',
   fan: '<circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-8 4-8 2 0 3 2 2 4-.8 1.6-3 3-6 4M14 12c4 0 8 1 8 4 0 2-2 3-4 2-1.6-.8-3-3-4-6M12 14c0 4-1 8-4 8-2 0-3-2-2-4 .8-1.6 3-3 6-4M10 12c-4 0-8-1-8-4 0-2 2-3 4-2 1.6.8 3 3 4 6"/>',
   play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5 16 12l-6 3.5z"/>',
@@ -226,7 +226,7 @@ const P: Record<IconName, string> = {
   tire: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/>',
   plug: '<path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0zM12 17v5"/>',
   alertO: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
-  // Panoul Mail (13.10): răspunde, redirecționează, steaua (goală / plină), Primite, „Recuperează", citit.
+  // Panoul Mail (13.10): răspunde, redirecționează, steaua (goală / plină), Primite, „Recuperează”, citit.
   reply: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5A5.5 5.5 0 0 1 20 14.5V20"/>',
   forward: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5V20"/>',
   // „Distribuie locația” (21.10): trei noduri legate.

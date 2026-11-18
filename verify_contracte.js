@@ -7,7 +7,7 @@
 // clientului, ceea ce ne face persoană împuternicită în sensul GDPR. Lucrurile care nu au voie să
 // se strice tăcut, în ordinea gravității:
 //   • dosarul să ajungă sub ochii cuiva care nu e fondator (proba 1);
-//   • starea dosarului să MINTĂ — „în regulă" la o firmă fără contract semnat sau fără acord GDPR
+//   • starea dosarului să MINTĂ — „în regulă” la o firmă fără contract semnat sau fără acord GDPR
 //     e mai rău decât niciun semn (proba 2);
 //   • un contract semnat să poată fi șters — ar dispărea dovada că a existat (proba 5);
 //   • datele luate de la ANAF să fie citite greșit: un CUI corect cu denumire greșită înseamnă
@@ -45,22 +45,22 @@ const ACTIV = { status: 'activ', signed_at: start, start_at: start, months: 12, 
   auto_renew: false, notice_days: 30, has_file: true, gdpr: { kind: 'anexa', signed_at: start } };
 const s = (firma, contract, acum) => C.stareDosar(firma, contract, acum || ACUM);
 
-T('firmă fără contract → „fără contract"', s(FIRMA, null).nivel === 'lipsa', s(FIRMA, null).eticheta);
+T('firmă fără contract → „fără contract”', s(FIRMA, null).nivel === 'lipsa', s(FIRMA, null).eticheta);
 T('și spune că lipsește contractul', s(FIRMA, null).lipsuri.indexOf('contract') >= 0, s(FIRMA, null).text);
 T('ciorna nu trece drept contract', s(FIRMA, { status: 'ciorna' }).nivel === 'nesemnat');
 T('trimis la semnat tot nu e semnat', s(FIRMA, { status: 'trimis' }).nivel === 'nesemnat', s(FIRMA, { status: 'trimis' }).eticheta);
-// Defectul găsit la proba în aplicație: scria „lipsește data semnării" lângă un câmp completat.
+// Defectul găsit la proba în aplicație: scria „lipsește data semnării” lângă un câmp completat.
 T('la ciornă NU pretinde că lipsește data semnării',
   s(FIRMA, { status: 'ciorna', signed_at: start }).lipsuri.indexOf('semnatura') < 0,
   s(FIRMA, { status: 'ciorna', signed_at: start }).text);
-T('dosar complet → „în regulă"', s(FIRMA, ACTIV).nivel === 'ok', JSON.stringify(s(FIRMA, ACTIV)));
+T('dosar complet → „în regulă”', s(FIRMA, ACTIV).nivel === 'ok', JSON.stringify(s(FIRMA, ACTIV)));
 
-// Fiecare piesă lipsă, luată una câte una: niciuna nu are voie să treacă drept „în regulă".
+// Fiecare piesă lipsă, luată una câte una: niciuna nu are voie să treacă drept „în regulă”.
 const fara = (schimb) => s(FIRMA, Object.assign({}, ACTIV, schimb));
-T('activ fără actul semnat urcat NU e „în regulă"', fara({ has_file: false }).nivel === 'incomplet', fara({ has_file: false }).text);
+T('activ fără actul semnat urcat NU e „în regulă”', fara({ has_file: false }).nivel === 'incomplet', fara({ has_file: false }).text);
 T('și spune exact ce lipsește', /contractul semnat/.test(fara({ has_file: false }).text), fara({ has_file: false }).text);
-T('activ fără acord GDPR NU e „în regulă"', fara({ gdpr: null }).nivel === 'incomplet', fara({ gdpr: null }).text);
-T('activ fără data semnării NU e „în regulă"', fara({ signed_at: null }).nivel === 'incomplet', fara({ signed_at: null }).text);
+T('activ fără acord GDPR NU e „în regulă”', fara({ gdpr: null }).nivel === 'incomplet', fara({ gdpr: null }).text);
+T('activ fără data semnării NU e „în regulă”', fara({ signed_at: null }).nivel === 'incomplet', fara({ signed_at: null }).text);
 T('firmă fără CUI e semnalată', s({ name: 'X' }, ACTIV).lipsuri.indexOf('cui') >= 0);
 T('firmă fără sediu e semnalată', s({ name: 'X', cui: 'RO1' }, ACTIV).lipsuri.indexOf('sediu') >= 0);
 T('firmă fără reprezentant e semnalată', s({ name: 'X', cui: 'RO1', address: 'a' }, ACTIV).lipsuri.indexOf('reprezentant') >= 0);
@@ -84,17 +84,17 @@ T('starea are mereu aceeași formă (interfața nu are de gândit)',
   ['nivel', 'eticheta', 'lipsuri', 'text', 'zileRamase'].every(function (k) { return k in s(FIRMA, null); }));
 
 sect('2b. Drumul contractului: în lucru → aprobat → trimis → semnat → încheiat');
-// Treapta „aprobat" e cea cerută de Alin: până acolo e ciornă, de acolo încolo se printează și se
-// semnează. Fără ea, singura cale de la „ciornă" la „semnat" era să minți despre stare.
-T('starea „aprobat" există pe server', /const CONTRACT_STARI = \['ciorna', 'aprobat', 'trimis', 'activ', 'incheiat'\]/.test(server));
+// Treapta „aprobat” e cea cerută de Alin: până acolo e ciornă, de acolo încolo se printează și se
+// semnează. Fără ea, singura cale de la „ciornă” la „semnat” era să minți despre stare.
+T('starea „aprobat” există pe server', /const CONTRACT_STARI = \['ciorna', 'aprobat', 'trimis', 'activ', 'incheiat'\]/.test(server));
 T('un contract aprobat NU e dat drept semnat', s(FIRMA, { status: 'aprobat' }).nivel === 'nesemnat');
-T('și se citește „gata de semnat", nu „ciornă"', /gata de semnat/.test(s(FIRMA, { status: 'aprobat' }).eticheta), s(FIRMA, { status: 'aprobat' }).eticheta);
-T('„trimis" spune că e la client', /la client/.test(s(FIRMA, { status: 'trimis' }).eticheta), s(FIRMA, { status: 'trimis' }).eticheta);
-T('nicio stare nu mai foloseşte cuvântul „ciornă" în afară de prima',
+T('și se citește „gata de semnat”, nu „ciornă”', /gata de semnat/.test(s(FIRMA, { status: 'aprobat' }).eticheta), s(FIRMA, { status: 'aprobat' }).eticheta);
+T('„trimis” spune că e la client', /la client/.test(s(FIRMA, { status: 'trimis' }).eticheta), s(FIRMA, { status: 'trimis' }).eticheta);
+T('nicio stare nu mai foloseşte cuvântul „ciornă” în afară de prima',
   Object.keys(C.ETICHETE_STARE).filter(function (k) { return /ciorn/i.test(C.ETICHETE_STARE[k]); }).length === 0,
   JSON.stringify(C.ETICHETE_STARE));
 // Interfața are propria copie a etichetelor (nu poate cere serverul pentru fiecare desen). Copia
-// aia trebuie să fie IDENTICĂ — altfel un ecran spune „trimis la client" și altul „trimis la semnat".
+// aia trebuie să fie IDENTICĂ — altfel un ecran spune „trimis la client” și altul „trimis la semnat”.
 const mCli = /var CTR_STARI = \{([\s\S]*?)\};/.exec(html);
 T('găsesc etichetele din interfață', !!mCli);
 if (mCli) {
@@ -104,7 +104,7 @@ if (mCli) {
     Object.keys(cli).sort().join(',') === Object.keys(C.ETICHETE_STARE).sort().join(','),
     Object.keys(cli).join(',') + '  ≠  ' + Object.keys(C.ETICHETE_STARE).join(','));
   Object.keys(C.ETICHETE_STARE).forEach(k =>
-    T('eticheta „' + k + '" e scrisă la fel în amândouă locurile', cli[k] === C.ETICHETE_STARE[k], cli[k] + ' ≠ ' + C.ETICHETE_STARE[k]));
+    T('eticheta „' + k + '” e scrisă la fel în amândouă locurile', cli[k] === C.ETICHETE_STARE[k], cli[k] + ' ≠ ' + C.ETICHETE_STARE[k]));
 }
 const mPas = /var CTR_PAS = \{([\s\S]*?)\};/.exec(html);
 T('găsesc pașii din interfață', !!mPas);
@@ -112,15 +112,15 @@ if (mPas) {
   const pas = {};
   [...mPas[1].matchAll(/(\w+):\s*\['([^']*)',\s*'([^']*)'\]/g)].forEach(m => { pas[m[1]] = [m[2], m[3]]; });
   Object.keys(C.URMATORUL_PAS).filter(k => C.URMATORUL_PAS[k]).forEach(k => {
-    T('după „' + k + '" urmează același pas în amândouă locurile',
+    T('după „' + k + '” urmează același pas în amândouă locurile',
       pas[k] && pas[k][0] === C.URMATORUL_PAS[k][0] && pas[k][1] === C.URMATORUL_PAS[k][1],
       JSON.stringify(pas[k]) + ' ≠ ' + JSON.stringify(C.URMATORUL_PAS[k]));
   });
-  T('din „încheiat" nu mai urmează nimic', !pas.incheiat && C.URMATORUL_PAS.incheiat === null);
+  T('din „încheiat” nu mai urmează nimic', !pas.incheiat && C.URMATORUL_PAS.incheiat === null);
 }
 
 sect('2c. Parola clientului nu trece niciodată prin mâinile noastre');
-// Alin, 08.09: „doar trimitem invitația și parola o pune singur, nu are ce căuta la noi."
+// Alin, 08.09: „doar trimitem invitația și parola o pune singur, nu are ce căuta la noi.”
 T('traseul nu mai are câmp de parolă', !/cn-pass/.test(html));
 T('și nu mai trimite parolă la crearea administratorului',
   /body: JSON\.stringify\(\{ username: s\.admin\.username \}\)/.test(html));
@@ -157,11 +157,11 @@ T('anexa îngheață modelul aparatului', anexa.vehicles[0].gpsModel === 'Telton
 T('și dacă citește date din motor (CAN)', anexa.vehicles[0].can === true && anexa.vehicles[1].can === false,
   JSON.stringify([anexa.vehicles[0].can, anexa.vehicles[1].can]));
 T('un aparat fără model nu inventează unul', C.facAnexa([{ imei: '9' }]).vehicles[0].gpsModel === null);
-T('lipsa informației despre CAN nu devine „are CAN"', C.facAnexa([{ imei: '9' }]).vehicles[0].can === false);
+T('lipsa informației despre CAN nu devine „are CAN”', C.facAnexa([{ imei: '9' }]).vehicles[0].can === false);
 T('anexa deja salvată își păstrează modelul la recitire',
   C.facAnexa([{ imei: '9', gpsModel: 'FMC650', can: true }]).vehicles[0].gpsModel === 'FMC650');
 // Pe hârtie: coloanele există, IMEI-ul NU se taie (stă pe rândul lui, sub model).
-T('PDF-ul are coloana „Aparat" și „Date motor"',
+T('PDF-ul are coloana „Aparat” și „Date motor”',
   /const cap = \['Vehicul', 'Nr\. înmatric\.', 'Aparat', 'Date motor', 'Abonament'\]/.test(fs.readFileSync('./contract_pdf.js', 'utf8')));
 T('IMEI-ul are rândul lui, ca să nu fie tăiat',
   /sub: 'IMEI ' \+ v\.imei/.test(fs.readFileSync('./contract_pdf.js', 'utf8')));
@@ -170,7 +170,7 @@ T('textul din tabel se taie MĂSURAT, nu ghicit după litere',
 T('modelul aparatului ajunge de la server în ecran', /gps_model: d\.gps_model \|\| null/.test(server));
 
 sect('4. Datele de la ANAF se citesc corect');
-T('CUI-ul se curăță de „RO" și spații', A.curataCui('RO 12345678') === '12345678');
+T('CUI-ul se curăță de „RO” și spații', A.curataCui('RO 12345678') === '12345678');
 T('un CUI fără cifre e refuzat', A.curataCui('abc') === null);
 const RASPUNS = {
   cod: 200, message: 'SUCCESS',
@@ -201,7 +201,7 @@ T('interfața chiar arată avertismentul de firmă radiată/inactivă',
 sect('5. Ce nu are voie să se întâmple');
 T('un contract semnat nu se poate șterge (regula e pe server)',
   /if \(c\.status === 'activ' \|\| c\.status === 'incheiat'\)[\s\S]{0,160}Un contract semnat nu se șterge/.test(server));
-T('„încheiat" fără dată de încetare primește data de azi',
+T('„încheiat” fără dată de încetare primește data de azi',
   /if \(date\.status === 'incheiat' && !date\.ended_at\) date\.ended_at = Date\.now\(\);/.test(server));
 T('un identificator care nu e număr nu ajunge la baza de date',
   /function _idCtr\(req, res\) \{[\s\S]{0,220}Identificator invalid/.test(server));
@@ -219,9 +219,9 @@ T('fișierele NU se aduc în listele de contracte',
 T('și există o singură cale prin care ies: descărcarea explicită',
   /async function getContractFile\(id, care\)/.test(dbjs));
 
-sect('6. Traseul „client nou" din interfață');
-const i1 = html.indexOf('    // ── începe „Dosarul juridic"');
-const i2 = html.indexOf('    // ── sfârșit „Dosarul juridic" ──');
+sect('6. Traseul „client nou” din interfață');
+const i1 = html.indexOf('    // ── începe „Dosarul juridic”');
+const i2 = html.indexOf('    // ── sfârșit „Dosarul juridic” ──');
 T('găsesc blocul între repere', i1 > 0 && i2 > i1, 'i1=' + i1 + ' i2=' + i2);
 if (i1 > 0 && i2 > i1) {
   const win = {};
@@ -237,7 +237,7 @@ if (i1 > 0 && i2 > i1) {
   const p = (nivel, eticheta, text) => M.pastila({ nivel: nivel, eticheta: eticheta, text: text }, 7);
   T('pastila lipsă e roșie', /raco-dos bad/.test(p('lipsa', 'fără contract', 'contractul')), p('lipsa', 'fără contract', 'contractul'));
   T('pastila nesemnată e portocalie', /raco-dos warn/.test(p('nesemnat', 'ciornă de contract', '')));
-  T('pastila „în regulă" e verde', /raco-dos ok/.test(p('ok', 'în regulă', '')));
+  T('pastila „în regulă” e verde', /raco-dos ok/.test(p('ok', 'în regulă', '')));
   T('pastila duce direct în fila Contract', /raxOpenCompanyDetail\(7, 'contract'\)/.test(p('lipsa', 'x', '')));
   T('la trecerea cu mouse-ul spune ce lipsește', /Lipsește din dosar: contractul/.test(p('lipsa', 'x', 'contractul')));
   T('compania demo nu primește pastilă', M.pastila({ nivel: 'demo' }, 7) === '');
@@ -254,22 +254,22 @@ sect('7. Ciorna de contract spune că e ciornă');
 const cpdf = fs.readFileSync('./contract_pdf.js', 'utf8');
 T('scrie pe hârtie că e ciornă până la semnare', /CIORNĂ — generată automat/.test(cpdf));
 T('și că trebuie verificată juridic', /A se verifica juridic înainte de semnare/.test(cpdf));
-// Alin, 08.09: „de ce o ciornă, dacă noi deja vorbim de o semnare de contract?" — din clipa în care
+// Alin, 08.09: „de ce o ciornă, dacă noi deja vorbim de o semnare de contract?” — din clipa în care
 // contractul e APROBAT, hârtia e curată și se poate printa. Semnul rămâne doar cât e în lucru.
 T('semnul de ciornă apare DOAR cât contractul e în lucru', /const ciorna = contract\.status === 'ciorna';/.test(cpdf));
 T('foloseşte logo-ul pentru fundal alb (vezi CLAUDE.md)', /logo-light\.png/.test(cpdf));
-// Numele fișierului, după regula casei (Alin, 24.09: „RA-Track - Contract"). Rulat, nu doar citit.
+// Numele fișierului, după regula casei (Alin, 24.09: „RA-Track - Contract”). Rulat, nu doar citit.
 const numeF = require('./contract_pdf').numeFisier;
 T('numele fișierului e brandat ca restul casei',
   numeF({ number: 'RAT-C-2026-0001' }, { name: 'Transport Țăndărei SRL' }) === 'RA-Track - Contract RAT-C-2026-0001 - Transport Țăndărei SRL.pdf',
   numeF({ number: 'RAT-C-2026-0001' }, { name: 'Transport Țăndărei SRL' }));
-T('actul adițional nu mai are „/" în nume (numărul lui e „…/A1")',
+T('actul adițional nu mai are „/” în nume (numărul lui e „…/A1”)',
   !/\//.test(numeF({ number: 'RAT-C-2026-0001/A1' }, { name: 'X SRL' }, 'Act adițional')), numeF({ number: 'RAT-C-2026-0001/A1' }, { name: 'X SRL' }, 'Act adițional'));
-T('vechiul „RA TRAKS" a plecat', !/RA TRAKS/.test(cpdf));
+T('vechiul „RA TRAKS” a plecat', !/RA TRAKS/.test(cpdf));
 T('rolurile GDPR sunt scrise corect: clientul operator, noi împuternicit',
   /Beneficiarul are calitatea de OPERATOR, iar Prestatorul pe cea de PERSOANĂ ÎMPUTERNICITĂ/.test(cpdf));
 T('anexa GDPR dispare dacă acordul e act separat', /const gdprAnexa = !\(contract\.gdpr && contract\.gdpr\.kind === 'separat'\);/.test(cpdf));
-T('datele noastre vin din „Date emitent", nu scrise a doua oară',
+T('datele noastre vin din „Date emitent”, nu scrise a doua oară',
   /invoice_issuer/.test(server) && /const emitent = \(\(await getSystemSettings\(\)\)\.invoice_issuer\) \|\| \{\};/.test(server));
 
 sect('7b. Ceasul care anunță contractele aproape de capăt');
@@ -319,10 +319,10 @@ T('prețul din ofertă intră în anexa contractului',
 // Din 14.10: oferta duce PACHETUL RA Insight (cu prețurile celorlalte). Prețul unui cont (regula veche) a ieșit pe 11.11.
 T('și pachetul RA Insight (cu prețul lui și al celorlalte), ca regula să fie semnată',
   /aiPachet: _cfgOf\.aiPachet \? \{ cod: _cfgOf\.aiPachet, pretRON: _cfgOf\.aiPachetPret,/.test(server));
-T('și nimic „pe cont" (prețul unui cont, întrebările pe cont)', !/aiSeatPriceRON|aiQuestionsPerSeat/.test(server));
+T('și nimic „pe cont” (prețul unui cont, întrebările pe cont)', !/aiSeatPriceRON|aiQuestionsPerSeat/.test(server));
 T('dar aparatele NU vin din ofertă (acolo sunt doar numere)',
   /Aparatele NU vin din ofertă/.test(server));
-T('traseul „client nou" poate porni dintr-o ofertă', /window\.coNouDinOferta = function \(offerId\)/.test(html));
+T('traseul „client nou” poate porni dintr-o ofertă', /window\.coNouDinOferta = function \(offerId\)/.test(html));
 T('și trimite oferta mai departe la crearea contractului', /offer_id: s\.offerId \|\| null/.test(html));
 T('ofertele deja devenite contract nu se mai propun a doua oară',
   /\.filter\(function \(o\) \{ return !o\.contract_id; \}\)/.test(html));
@@ -336,7 +336,7 @@ const grupBiz = /<div class="nav-group" data-vert="fondator" data-super data-gro
 T('găsesc grupul Business în meniu', !!grupBiz);
 if (grupBiz) {
   const randuri = [...grupBiz[1].matchAll(/<span>([^<]+)<\/span>/g)].map(m => m[1].replace(/&amp;/g, '&').trim());
-  // randuri[0] e chiar titlul grupei („Business"); pașii încep de la al doilea.
+  // randuri[0] e chiar titlul grupei („Business”); pașii încep de la al doilea.
   T('primele trei rânduri sunt exact pașii, în ordine',
     randuri.slice(1, 4).join(' → ') === 'Ofertare Live → Contracte → Companii', randuri.join(' · '));
   // Montajul are secțiunea lui din 24.09 și stă unde îi e locul pe drum: după client, înaintea facturii.
@@ -346,7 +346,7 @@ if (grupBiz) {
   T('Gestiune a rămas cu aparatele și oamenii',
     /data-group="gestiune"[\s\S]{0,900}?<span>Dispozitive<\/span>[\s\S]{0,900}?<span>Utilizatori<\/span>/.test(html));
 }
-T('ecranul „Contracte" are containerul lui', /<div id="admin-tab-contracte" style="display:none;"><\/div>/.test(html));
+T('ecranul „Contracte” are containerul lui', /<div id="admin-tab-contracte" style="display:none;"><\/div>/.test(html));
 T('și se încarcă la deschiderea filei', /name === 'contracte'\) \{\s*\n\s*if \(window\.raxLoadContracte\)/.test(html));
 // Paza se citește din pagină și se verifică secțiune cu secțiune: lista a crescut (Montaj 24.09, Stoc 25.09)
 // și o căutare a textului exact pica la fiecare secțiune nouă, deși paza era întreagă.
@@ -358,7 +358,7 @@ T('ruta care dă toate contractele cere super-admin',
   /app\.get\('\/api\/contracts', requireAuth, requireSuperadmin/.test(server));
 T('ruta trimite și firmele FĂRĂ contract — aia e gaura adevărată',
   /fara_contract: fara/.test(server) && /async function firmeFaraContract\(\)/.test(dbjs));
-T('firmele demo nu apar ca „fără contract"', /firmeFaraContract[\s\S]{0,300}COALESCE\(co\.is_demo, false\) = false/.test(dbjs));
+T('firmele demo nu apar ca „fără contract”', /firmeFaraContract[\s\S]{0,300}COALESCE\(co\.is_demo, false\) = false/.test(dbjs));
 T('ecranul are filtre după ce te întrebi de fapt, nu după stări din bază',
   /\['desemnat', 'De semnat'/.test(html) && /\['incomplet', 'Dosar incomplet'/.test(html) && /\['expira', 'Expiră curând'/.test(html));
 T('și se poate căuta după client, număr sau CUI', /Caută după client, număr de contract sau CUI/.test(html));
@@ -366,29 +366,29 @@ T('fiecare rând duce în dosarul clientului',
   /raxOpenCompanyDetail\(' \+ c\.company_id \+ ', \\'contract\\'\)/.test(html));
 
 sect('7e. Semnăm amândoi, numele fișierului, și fără amânări de scadență');
-// Alin, 09.09: „la administrator trece și Alin Tîlvar și Gherbali Robert. Ți-am mai zis."
+// Alin, 09.09: „la administrator trece și Alin Tîlvar și Gherbali Robert. Ți-am mai zis.”
 // De regulă semnează amândoi fondatorii, deci bife cu toți bifați implicit — nu un singur nume.
 T('semnatarii noștri sunt bife, nu un singur nume', /function _raxNoiBifeHtml\(idPrefix, valoare\)/.test(html));
 T('la un contract nou sunt bifați TOȚI', /var bifat = function \(n\) \{ return alesi\.length \? alesi\.indexOf\(n\) >= 0 : true; \};/.test(html));
-T('numele se leagă cu „și", ca pe hârtie', /return \(_raxNoi \|\| \[\]\)\.join\(' și '\);/.test(html));
-T('funcția devine „Administratori" la mai mulți', /return cati > 1 \? 'Administratori' : 'Administrator';/.test(html));
+T('numele se leagă cu „și”, ca pe hârtie', /return \(_raxNoi \|\| \[\]\)\.join\(' și '\);/.test(html));
+T('funcția devine „Administratori” la mai mulți', /return cati > 1 \? 'Administratori' : 'Administrator';/.test(html));
 T('lista vine tot din conturile de super-admin, nu din nume scrise în cod',
   /x\.role === 'superadmin' && x\.active !== false/.test(html));
 T('câmpul rămâne editabil (se poate semna și prin împuternicit)', /id="' \+ idPrefix \+ '-our"/.test(html));
 // Numele fișierului descărcat, cerut de Alin.
-T('contractul se descarcă „RA-Track - Contract …"', /return 'RA-Track - ' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
-// Amânarea scadenței: Alin, 09.09 — „nu înțeleg, nu vreau să existe asta". Scoasă de tot.
+T('contractul se descarcă „RA-Track - Contract …”', /return 'RA-Track - ' \+ \(fel \|\| 'Contract'\)/.test(cpdf));
+// Amânarea scadenței: Alin, 09.09 — „nu înțeleg, nu vreau să existe asta”. Scoasă de tot.
 T('nu mai există rută de amânare a scadenței', !/\/api\/invoices\/:id\/due/.test(server));
 T('și nici funcția din spate', !/'set_due', 'invoice'/.test(server));
 
 sect('7f. Actele adiționale: contractul semnat nu se mai schimbă');
-// „Ca na se poate modifica contractul inițial, gen mai cumpără clientul mașini, mai vrea servicii."
+// „Ca na se poate modifica contractul inițial, gen mai cumpără clientul mașini, mai vrea servicii.”
 T('actele adiționale au tabela lor', /CREATE TABLE IF NOT EXISTS acte_aditionale/.test(dbjs));
 T('sunt legate de contract și de firmă', /contract_id INTEGER NOT NULL,\s*\n\s*company_id INTEGER NOT NULL/.test(dbjs));
 T('se numerotează per contract (A1, A2…), nu global',
   /async function urmatorulNrAct\(contractId\)[\s\S]{0,220}MAX\(nr_ordine\), 0\) \+ 1/.test(dbjs));
-T('numărul se propune ca „<contract>/A<n>"', /date\.number = \(c\.number \|\| 'contract'\) \+ '\/A' \+ nr;/.test(server));
-// (23.09) Mai strict: act adițional DOAR la un contract semnat și în vigoare. „Trimis" e tot nesemnat
+T('numărul se propune ca „<contract>/A<n>”', /date\.number = \(c\.number \|\| 'contract'\) \+ '\/A' \+ nr;/.test(server));
+// (23.09) Mai strict: act adițional DOAR la un contract semnat și în vigoare. „Trimis” e tot nesemnat
 // (clientul n-a semnat încă), iar unui contract încheiat nu mai ai ce-i schimba.
 T('NU se face act adițional decât la un contract semnat și în vigoare',
   /if \(c\.status !== 'activ'\) \{[\s\S]{0,400}modifică-l direct, nu prin act adițional/.test(server));
@@ -412,7 +412,7 @@ T('anexa nouă spune limpede că o înlocuiește pe cea veche',
 T('în ecran, actele apar doar la contractele semnate',
   /var semnat = c\.status === 'activ' \|\| c\.status === 'incheiat';/.test(html) &&
   /if \(semnat\) \{\s*\n\s*h \+= '<div class="raco-h2" style="margin-top:22px;">Acte adiționale<\/div>'/.test(html));
-T('și „Act adițional nou" doar la unul în vigoare', /var inVigoare = _raxCtr && _raxCtr\.contract && _raxCtr\.contract\.status === 'activ';/.test(html));
+T('și „Act adițional nou” doar la unul în vigoare', /var inVigoare = _raxCtr && _raxCtr\.contract && _raxCtr\.contract\.status === 'activ';/.test(html));
 T('și se explică de ce există', /Contractul semnat nu se mai schimbă\. Când clientul mai cumpără mașini/.test(html));
 T('nu se salvează un act fără să scrie ce schimbă', /Scrie ce se schimbă — asta ajunge pe hârtie/.test(html));
 
@@ -421,7 +421,7 @@ sect('8. Aliniamentul contractului — fiecare scriere își spune poziția');
 // pdfkit ȚINE MINTE ultima poziție scrisă. Blocul părților scria valorile la x = margine + 106;
 // de acolo încolo, orice `doc.text(t)` fără poziție pornea de la 156 în loc de 50 — adică TOT
 // contractul era împins cu zece centimetri spre dreapta și intra în marginea din dreapta.
-// Aici punem un „document de carton" care înregistrează fiecare scriere și verificăm că fiecare
+// Aici punem un „document de carton” care înregistrează fiecare scriere și verificăm că fiecare
 // și-a dat singură x-ul și lățimea, și că nimic nu iese din pagină.
 const CP = require('./contract_pdf');
 const A4 = { width: 595.28, height: 841.89, margins: { top: 50, bottom: 50, left: 50, right: 50 } };
@@ -489,7 +489,7 @@ T('prelungirea se socotește de la început (31 ian + 1 + 1 = 31 martie, nu 28)'
 }
 T('fără prelungiri, capătul e cel scris', C.sfarsitContract({ start_at: start, months: 12, end_at: 123 }) === 123);
 T('pe durată nedeterminată nu există capăt', C.sfarsitContract({ start_at: start, months: null }) === null);
-// Reînnoirea automată: „pe perioade succesive egale", cum scrie în contract.
+// Reînnoirea automată: „pe perioade succesive egale”, cum scrie în contract.
 const doiAni = ACUM - 400 * ZI;
 const auto = { status: 'activ', start_at: doiAni, months: 12, end_at: C.calcSfarsit(doiAni, 12), auto_renew: true, notice_days: 30 };
 T('la reînnoirea automată, termenul CURENT e în viitor (nu cel de acum un an)',
@@ -527,7 +527,7 @@ T('după bifarea aparatelor, totalul NU mai cade la 193 (serviciile rămân)', c
 T('și pachetul RA Insight rămâne (Business, 28 de lei negociați)', !!cuAparate.aiPachet && cuAparate.aiPachet.cod === 'business' && cuAparate.aiPachet.pretRON === 28, JSON.stringify(cuAparate.aiPachet));
 T('ce se păstrează la re-salvare NU sunt aparatele sau totalul vechi',
   !('vehicles' in C.dinAnexaDePastrat(dinOf)) && !('monthlyTotal' in C.dinAnexaDePastrat(dinOf)));
-T('anexa nu mai ține nimic „pe cont" (prețul unui cont, întrebările pe cont) — regula veche a ieșit pe 11.11',
+T('anexa nu mai ține nimic „pe cont” (prețul unui cont, întrebările pe cont) — regula veche a ieșit pe 11.11',
   (function (a) { return !('aiSeatPriceRON' in a) && !('aiQuestionsPerSeat' in a) && !('aiSeatPriceRON' in C.dinAnexaDePastrat(Object.assign({ aiSeatPriceRON: 14 }, a))); })(C.facAnexa([], { monthlyTotal: 14, aiSeatPriceRON: 14, aiQuestionsPerSeat: 0 })));
 T('o anexă veche (doar suma) își păstrează suma', C.facAnexa([], { monthlyTotal: 271 }).monthlyTotal === 271);
 T('un rând inclus nu adaugă bani', C.facAnexa([], { servicii: [SERV[1]] }).monthlyTotal === 0);
@@ -538,16 +538,16 @@ T('anexa în vigoare e a ultimului act SEMNAT care a schimbat aparatele',
 T('fără acte, e cea din contract', C.anexaInVigoare({ annex: dinOf }, []).monthlyTotal === 271);
 
 sect('11. Contractul semnat se încuie (23.09)');
-// Regula era scrisă pe ecran („Contractul semnat nu se mai schimbă"), dar nu o apăra nimic: anexa
-// unui contract semnat se rescria, iar lista de stări îl dădea înapoi la „în lucru" — de unde butonul
-// „Șterge" îl făcea să dispară. Funcția de trecere se decupează din server și se rulează.
+// Regula era scrisă pe ecran („Contractul semnat nu se mai schimbă”), dar nu o apăra nimic: anexa
+// unui contract semnat se rescria, iar lista de stări îl dădea înapoi la „în lucru” — de unde butonul
+// „Șterge” îl făcea să dispară. Funcția de trecere se decupează din server și se rulează.
 const mTr = /function _trecereContract\(din, spre\) \{[\s\S]*?\n\}/.exec(server);
 T('găsesc regula de trecere pe server', !!mTr);
 if (mTr) {
   const tr = new Function(mTr[0] + '\nreturn _trecereContract;')();
   T('nesemnat → semnat: se poate', tr('trimis', 'activ') === null && tr('ciorna', 'activ') === null);
   T('nesemnat înainte și înapoi: se poate', tr('trimis', 'ciorna') === null && tr('aprobat', 'trimis') === null);
-  T('semnat → „în lucru": NU', !!tr('activ', 'ciorna') && !!tr('activ', 'aprobat') && !!tr('activ', 'trimis'));
+  T('semnat → „în lucru”: NU', !!tr('activ', 'ciorna') && !!tr('activ', 'aprobat') && !!tr('activ', 'trimis'));
   T('semnat → încheiat: da', tr('activ', 'incheiat') === null);
   T('încheiat → orice altceva: NU', !!tr('incheiat', 'activ') && !!tr('incheiat', 'ciorna'));
   T('nesemnat → încheiat: NU (o ciornă se șterge, nu se încheie)', !!tr('ciorna', 'incheiat') && !!tr('trimis', 'incheiat'));
@@ -555,13 +555,13 @@ if (mTr) {
 T('după semnare, serverul refuză schimbarea actului (anexe, durată, părți)',
   /if \(vechi\.status === 'activ' \|\| vechi\.status === 'incheiat'\) \{\s*\n\s*const schimbate = _campuriSchimbateDupaSemnare\(vechi, b\);/.test(server) &&
   /if \(b\.annex !== undefined\) schimbate\.push\('annex'\);/.test(server));
-T('„Salvează anexa" nu mai șterge serviciile lunare',
+T('„Salvează anexa” nu mai șterge serviciile lunare',
   /b\.annex = Object\.assign\(\{\}, contracte\.dinAnexaDePastrat\(vechi\.annex\), b\.annex\);/.test(server));
-T('un act adițional semnat se încuie la fel', /Actul e semnat și nu se mai schimbă/.test(server) && /Actul e semnat — nu se mai întoarce la „în lucru"/.test(server));
+T('un act adițional semnat se încuie la fel', /Actul e semnat și nu se mai schimbă/.test(server) && /Actul e semnat — nu se mai întoarce la „în lucru”/.test(server));
 T('al doilea contract, cât primul e în lucru sau în vigoare, e refuzat', /if \(curent && curent\.status !== 'incheiat'\) \{\s*\n\s*return res\.status\(409\)/.test(server));
 T('un contract nou nu se naște încheiat', /Un contract nou nu se poate naște încheiat/.test(server));
 T('ștergerea unei ciorne dezleagă oferta și lucrările', /UPDATE offers SET contract_id = NULL/.test(dbjs) && /UPDATE montaje SET contract_id = NULL/.test(dbjs));
-// În ecran: lista de stări NU mai are „semnat" și „încheiat" (se fac doar din butonul mare, care întreabă),
+// În ecran: lista de stări NU mai are „semnat” și „încheiat” (se fac doar din butonul mare, care întreabă),
 // iar un contract semnat se arată de citit, fără formular.
 T('lista de stări are doar pașii nesemnați', /\['ciorna', 'aprobat', 'trimis'\]\.map\(function \(k\) \{\s*\n\s*return '<option value="' \+ k \+ '"' \+ \(c\.status === k/.test(html));
 const bucSemnat = (/function _raxCtrDateSemnate\(c\) \{[\s\S]*?\n    \}/.exec(html) || [''])[0];
@@ -574,23 +574,23 @@ T('socoteala ofertei pleacă la server odată cu contractul', /din_oferta: ofAle
 T('...făcută cu ACEEAȘI funcție care a făcut oferta', /var r = _ofCalc\(cfg, Object\.assign\(\{\}, _ofTarifeDeBaza\(\), o\.config\.prices \|\| \{\}\)\);/.test(html));
 T('prețul de facturare se scrie pe firmă DOAR dacă n-are deja unul', /if \(co && plans && !plans\.ofertaFirmei\(co\)\) \{/.test(server));
 T('rândurile se folosesc doar dacă se adună la suma acceptată de client', /if \(Math\.abs\(suma - \(Number\(oferta\.monthly_total\) \|\| 0\)\) > 0\.02\) return null;/.test(server));
-T('oferta devenită contract trece singură pe „acceptată"', /if \(oferta\.status !== 'acceptata'\) \{ try \{ await db\.setOfferStatus\(oferta\.id, 'acceptata', \{\}\); \} catch \(e\) \{\} \}/.test(server));
+T('oferta devenită contract trece singură pe „acceptată”', /if \(oferta\.status !== 'acceptata'\) \{ try \{ await db\.setOfferStatus\(oferta\.id, 'acceptata', \{\}\); \} catch \(e\) \{\} \}/.test(server));
 T('fișa pune contractul lângă factura calculată cu funcția facturii', /const f = buildInvoiceLines\(company, bc, features, 0\);/.test(server));
 
 sect('13. Reînnoirea și alarma (23.09)');
-T('„Reînnoiește" are ruta lui, doar a noastră', /app\.post\('\/api\/contracts\/:id\/reinnoire', requireAuth, requireSuperadmin/.test(server));
+T('„Reînnoiește” are ruta lui, doar a noastră', /app\.post\('\/api\/contracts\/:id\/reinnoire', requireAuth, requireSuperadmin/.test(server));
 T('se reînnoiește doar un contract semnat', /Se reînnoiește doar un contract semnat și în vigoare\./.test(server));
 T('o a doua apăsare nu face al doilea act', /Există deja o prelungire în lucru/.test(server));
 T('actul pornește ca ciornă, de la capătul de azi', /status: 'ciorna', start_at: capat, luni_noi: luni,/.test(server));
 T('alarma din ecran folosește regula notificării, nu starea dosarului', /alarma: contracte\.deAnuntat\(c, acum\)/.test(server) &&
   /var expira = _raxCtre\.tot\.filter\(function \(c\) \{ return !!c\.alarma; \}\)/.test(html));
-T('banda de alarmă are butonul „Reînnoiește"', /function _ctreBenzi\(\)[\s\S]{0,3200}raxCtrReinnoieste\(/.test(html));
+T('banda de alarmă are butonul „Reînnoiește”', /function _ctreBenzi\(\)[\s\S]{0,3200}raxCtrReinnoieste\(/.test(html));
 T('și pe fiecare rând: Vezi și Descarcă, prin aceeași cale ca oferta', /_raxHartieBtn\('\/api\/contracts\/' \+ c\.id \+ '\/pdf', 'Contractul', true\)/.test(html) &&
   /var nume = _numeDinAntet\(resp, 'contract\.pdf'\);/.test(html));
-T('notificarea zilnică trimite la „Reînnoiește"', /apasă „Reînnoiește" pe rândul lui/.test(server));
+T('notificarea zilnică trimite la „Reînnoiește”', /apasă „Reînnoiește” pe rândul lui/.test(server));
 T('firmele cu contract încheiat care încă intră apar lângă cele fără contract', /incheiate_cu_acces: incheiateCuAcces/.test(server));
 
-sect('14. Hârtia: anexele numerotate corect, fără „plan", nelimitat ca nelimitat (23.09)');
+sect('14. Hârtia: anexele numerotate corect, fără „plan”, nelimitat ca nelimitat (23.09)');
 const texte = [];
 const cartonTot = Object.assign({}, carton, { _pagini: 1, x: 50, y: 50,
   text(t, x, y, o) { texte.push(String(t == null ? '' : t)); if (typeof y === 'number') this.y = y + 11; else this.y += 11; return this; },
@@ -604,10 +604,10 @@ CP.scrieContract(cartonTot, {
 });
 const tot = texte.join(' ');
 T('cu montaj, textul trimite la acordul GDPR ca Anexa nr. 3', /cele din Anexa nr\. 3 — Acord de prelucrare/.test(tot) && /ANEXA nr\. 3 — Acord de prelucrare/.test(tot));
-T('și nicăieri la „Anexa nr. 2" pentru acord', !/Anexa nr\. 2 — Acord/.test(tot) && !/Anexei nr\. 2/.test(tot));
-T('cuvântul „plan" nu apare pe contract', !/\bplan(ul)?\b/i.test(tot));
-T('RA Insight se scrie ca pachet (Business), cu clauza de trecere; nimic „pe cont"', /RA Insight: pachetul Business/.test(tot) && !/Prețul unui cont de RA Insight|Numărul de întrebări nu este limitat|aduce 50/.test(tot));
-T('durata: „24 de luni"', /durată de 24 de luni/.test(tot));
+T('și nicăieri la „Anexa nr. 2” pentru acord', !/Anexa nr\. 2 — Acord/.test(tot) && !/Anexei nr\. 2/.test(tot));
+T('cuvântul „plan” nu apare pe contract', !/\bplan(ul)?\b/i.test(tot));
+T('RA Insight se scrie ca pachet (Business), cu clauza de trecere; nimic „pe cont”', /RA Insight: pachetul Business/.test(tot) && !/Prețul unui cont de RA Insight|Numărul de întrebări nu este limitat|aduce 50/.test(tot));
+T('durata: „24 de luni”', /durată de 24 de luni/.test(tot));
 T('Anexa 1 are și serviciile lunare', texte.indexOf('Servicii lunare') >= 0 && texte.some(t => /^RA Insight Business/.test(t)) && texte.some(t => /^Păstrare date 24 de luni/.test(t)));
 T('și mașinile din ofertă, cât aparatele nu sunt bifate', texte.indexOf('Vehicule monitorizate') >= 0 && texte.some(t => /^Vehicule cu CAN/.test(t)));
 T('prețul spune că le cuprinde', /cuprinde abonamentul vehiculelor și serviciile lunare/.test(tot));
@@ -647,7 +647,7 @@ function gata() {
     let j = null; try { j = await r.json(); } catch (e) {}
     return { s: r.status, j: j };
   };
-  // Oferta și clientul, ca din „Client nou din ofertă" (cu socoteala pe care o trimite ecranul).
+  // Oferta și clientul, ca din „Client nou din ofertă” (cu socoteala pe care o trimite ecranul).
   const of = (await R('POST', '/api/admin/offers', { name: 'CI Ofertă', client_name: 'CI Contract SRL', monthly_total: 271, currency: 'RON',
     config: { cfg: { aiA: true, aiPachet: 'business', aiPachetPret: 28, contractMonths: 24, montaj: {}, devices: {} }, prices: { pkBasic: 10, pkPro: 20, pkBusiness: 30 } } })).j;
   await R('PUT', '/api/admin/offers/' + of.id + '/stare', { status: 'trimisa' });
@@ -657,10 +657,10 @@ function gata() {
   T('contractul din ofertă se face', c1.s === 200 && c1.j.annex && c1.j.annex.monthlyTotal === 271, c1.s + ' ' + JSON.stringify(c1.j && c1.j.annex && c1.j.annex.monthlyTotal));
   const ov = (await R('GET', '/api/companies/' + co.id + '/overview')).j;
   T('prețul de facturare e scris pe firmă', ov.offer && ov.offer.priceNoneRON === 29 && ov.offer.priceCanRON === 45, JSON.stringify(ov.offer));
-  // Hotărârea lui Alin (29.09, „da"): factura automată pornește singură, odată cu prețul din prima ofertă.
+  // Hotărârea lui Alin (29.09, „da”): factura automată pornește singură, odată cu prețul din prima ofertă.
   T('factura automată a pornit singură, odată cu prețul (și răspunsul o spune)',
     c1.j.auto_factura === true && ov.company && ov.company.auto_invoice === true, JSON.stringify({ raspuns: c1.j.auto_factura, firma: ov.company && ov.company.auto_invoice }));
-  // Un client care avea deja un preț (negociat separat) și „Auto" oprit: nu-i schimbăm alegerea.
+  // Un client care avea deja un preț (negociat separat) și „Auto” oprit: nu-i schimbăm alegerea.
   const coV = (await R('POST', '/api/companies', { name: 'CI Client Vechi SRL' })).j;
   await R('PUT', '/api/companies/' + coV.id + '/oferta', { oferta: { name: 'Negociat', priceNoneRON: 25, priceCanRON: 40, priceFmsRON: 60 } });
   const ofV = (await R('POST', '/api/admin/offers', { name: 'CI Ofertă 2', client_name: 'CI Client Vechi SRL', monthly_total: 90, currency: 'RON',
@@ -668,21 +668,21 @@ function gata() {
   const cV = await R('POST', '/api/companies/' + coV.id + '/contract', { offer_id: ofV.id, months: 24,
     din_oferta: { unitati: { plain: 29, can: 45, fms: 65 }, vehicule: [], servicii: [] } });
   const ovV = (await R('GET', '/api/companies/' + coV.id + '/overview')).j;
-  T('la un client care avea deja preț, „Auto" rămâne cum l-am lăsat (oprit), iar prețul lui nu se calcă',
+  T('la un client care avea deja preț, „Auto” rămâne cum l-am lăsat (oprit), iar prețul lui nu se calcă',
     cV.s === 200 && !cV.j.auto_factura && ovV.company && ovV.company.auto_invoice === false && ovV.offer && ovV.offer.priceNoneRON === 25,
     JSON.stringify({ s: cV.s, auto: ovV.company && ovV.company.auto_invoice, pret: ovV.offer && ovV.offer.priceNoneRON }));
   const oferte = (await R('GET', '/api/admin/offers')).j;
-  T('oferta e „acceptată"', (oferte.find(o => o.id === of.id) || {}).status === 'acceptata');
+  T('oferta e „acceptată”', (oferte.find(o => o.id === of.id) || {}).status === 'acceptata');
   T('al doilea contract e refuzat', (await R('POST', '/api/companies/' + co.id + '/contract', { status: 'ciorna' })).s === 409);
   const cid = c1.j.id;
   T('act adițional la un contract nesemnat: refuzat', (await R('POST', '/api/contracts/' + cid + '/acte', { obiect: 'x' })).s === 400);
   const an = await R('PUT', '/api/contracts/' + cid, { annex: { vehicles: [{ imei: '1', monthlyRON: 29 }, { imei: '2', monthlyRON: 29 }, { imei: '3', monthlyRON: 45 }, { imei: '4', monthlyRON: 45 }, { imei: '5', monthlyRON: 45 }], currency: 'RON' } });
-  T('„Salvează anexa" păstrează serviciile, totalul și pachetul', an.s === 200 && an.j.annex.monthlyTotal === 271 && an.j.annex.aiPachet && an.j.annex.aiPachet.cod === 'business', JSON.stringify(an.j && an.j.annex && [an.j.annex.monthlyTotal, an.j.annex.aiPachet]));
+  T('„Salvează anexa” păstrează serviciile, totalul și pachetul', an.s === 200 && an.j.annex.monthlyTotal === 271 && an.j.annex.aiPachet && an.j.annex.aiPachet.cod === 'business', JSON.stringify(an.j && an.j.annex && [an.j.annex.monthlyTotal, an.j.annex.aiPachet]));
   const semn = await R('PUT', '/api/contracts/' + cid, { status: 'activ', signed_at: Date.now() });
   T('se semnează', semn.s === 200 && semn.j.status === 'activ');
   T('anexa semnată nu se mai rescrie', (await R('PUT', '/api/contracts/' + cid, { annex: { vehicles: [], currency: 'RON' } })).s === 400);
   T('durata semnată nu se mai schimbă', (await R('PUT', '/api/contracts/' + cid, { months: 36 })).s === 400);
-  T('nu se mai întoarce la „în lucru"', (await R('PUT', '/api/contracts/' + cid, { status: 'ciorna' })).s === 400);
+  T('nu se mai întoarce la „în lucru”', (await R('PUT', '/api/contracts/' + cid, { status: 'ciorna' })).s === 400);
   T('și nu se șterge', (await R('DELETE', '/api/contracts/' + cid)).s === 400);
   T('data semnării se poate corecta', (await R('PUT', '/api/contracts/' + cid, { signed_at: Date.now() - 86400000 })).s === 200);
   // Reînnoirea, pe un contract care se termină peste 40 de zile și nu se reînnoiește singur.
@@ -693,7 +693,7 @@ function gata() {
   T('contractul care se termină apare la alarmă', !!(lista.contracte.find(x => x.id === c2.id) || {}).alarma);
   const capInainte = (lista.contracte.find(x => x.id === c2.id) || {}).sfarsit;
   const rn = await R('POST', '/api/contracts/' + c2.id + '/reinnoire', { luni: 12 });
-  T('„Reînnoiește" face actul de prelungire, ciornă', rn.s === 200 && rn.j.act.status === 'ciorna' && rn.j.act.luni_noi === 12);
+  T('„Reînnoiește” face actul de prelungire, ciornă', rn.s === 200 && rn.j.act.status === 'ciorna' && rn.j.act.luni_noi === 12);
   T('a doua apăsare e refuzată', (await R('POST', '/api/contracts/' + c2.id + '/reinnoire', { luni: 12 })).s === 409);
   lista = (await R('GET', '/api/contracts')).j;
   T('cât actul nu e semnat, capătul nu se mută', (lista.contracte.find(x => x.id === c2.id) || {}).sfarsit === capInainte);
@@ -761,7 +761,7 @@ function gata() {
   const aS0 = JSON.stringify(await anexaDe(co.id));
   const lS = (await R('POST', '/api/companies/' + co.id + '/montaje', { contract_id: cid, status: 'executat', data_lucrare: Date.now(), items: [{ tip: 'gps', buc: 1, pretClient: 100 }] })).j || {};
   const dS = await R('DELETE', '/api/montaje/' + lS.id);
-  T('la un contract SEMNAT, salvarea și ștergerea unei lucrări nu ating anexa („rămâne cum s-a semnat")', lS.anexa === 'semnat' && dS.s === 200 && dS.j.anexa === 'semnat' &&
+  T('la un contract SEMNAT, salvarea și ștergerea unei lucrări nu ating anexa („rămâne cum s-a semnat”)', lS.anexa === 'semnat' && dS.s === 200 && dS.j.anexa === 'semnat' &&
     /rămâne cum s-a semnat/.test(dS.j.mesaj || '') && JSON.stringify(await anexaDe(co.id)) === aS0, JSON.stringify([lS.anexa, dS]));
   // Totul e al fondatorilor.
   const { puneParola } = require('./test_parola');

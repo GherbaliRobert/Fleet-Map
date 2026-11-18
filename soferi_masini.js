@@ -1,28 +1,28 @@
-// soferi_masini.js — Capitolul 2, pasul 2 („RA Insight face, cu Da-ul tău"; Alin, 21–22.10: „da" la flux, „da" la „Da"-ul
+// soferi_masini.js — Capitolul 2, pasul 2 („RA Insight face, cu Da-ul tău”; Alin, 21–22.10: „da” la flux, „da” la „Da”-ul
 // nenumărat și de la Basic), partea 1: ȘOFERII PE MAȘINI. Ce permis cere fiecare mașină, ce acoperă permisul unui șofer, ce e
-// de rezolvat pe flotă, ce se propune și textele cartonașului din discuție și ale paginii „Șoferi pe mașini".
+// de rezolvat pe flotă, ce se propune și textele cartonașului din discuție și ale paginii „Șoferi pe mașini”.
 //
 // Curat: fără bază, fără rețea, fără model. Categoriile de pe permis vin din license_cats.js (sursa lor unică), zilele până la
-// o dată și forma ei („02.10", „14.03.2031") din ramuri.js — aceleași ca la „Mentenanță & acte". Serverul adună fișele (mașinile
+// o dată și forma ei („02.10”, „14.03.2031”) din ramuri.js — aceleași ca la „Mentenanță & acte”. Serverul adună fișele (mașinile
 // omului, șoferii firmei, istoricul șoferilor) și le dă aici; aplică schimbările pe calea ecranului (Vehicule › fișa mașinii ›
 // Șofer). Păzit de verify_soferi_masini.js.
 //
 // Ce NU știe aplicația: cine a condus cu adevărat (n-avem identificarea șoferului la bord). Știe cine e TRECUT pe mașină —
-// de aceea textele spun „a mai fost trecut pe ea", nu „a mai condus-o".
+// de aceea textele spun „a mai fost trecut pe ea”, nu „a mai condus-o”.
 'use strict';
 
 const licenseCats = require('./license_cats');
 const { zz, zilePana } = require('./ramuri');
 const insight = require('./insight');
 
-const ANULARE_MIN = 10;          // „Anulează" ține 10 minute după „Da" (macheta din 21.10, aprobată)
+const ANULARE_MIN = 10;          // „Anulează” ține 10 minute după „Da” (macheta din 21.10, aprobată)
 const PROPUNERE_ORE = 24;        // o propunere neapăsată mai veche de o zi nu se mai aplică: se cere din nou
-const RECENT_ZILE = 30;          // „Azi la tine": mașina rămasă fără șofer în ultimele 30 de zile (cea fără șofer dintotdeauna, doar în pagină)
-const PERMIS_CURAND_ZILE = 30;   // „expiră curând" — același prag ca anunțul permiselor (NOTIFY_EXPIRY_DAYS)
+const RECENT_ZILE = 30;          // „Azi la tine”: mașina rămasă fără șofer în ultimele 30 de zile (cea fără șofer dintotdeauna, doar în pagină)
+const PERMIS_CURAND_ZILE = 30;   // „expiră curând” — același prag ca anunțul permiselor (NOTIFY_EXPIRY_DAYS)
 
 // ─── Ce permis cere mașina ──────────────────────────────────────────────────────────────────────────
-// Din „Categorie" (devices.vehicle_type) — aceeași listă ca formularul vehiculului —, iar la autoturisme, dube și camioane și din
-// masa maximă din „Config Camion" (kg), când e trecută: peste 3.500 kg cere C1, peste 7.500 kg cere C. La autobuz, locurile:
+// Din „Categorie” (devices.vehicle_type) — aceeași listă ca formularul vehiculului —, iar la autoturisme, dube și camioane și din
+// masa maximă din „Config Camion” (kg), când e trecută: peste 3.500 kg cere C1, peste 7.500 kg cere C. La autobuz, locurile:
 // cel mult 16 pasageri → D1. Utilajele și tractorul nu primesc o categorie anume (aplicația nu le potrivește pe permis), iar
 // remorcile și grupul electrogen n-au șofer.
 const FEL = {
@@ -49,10 +49,10 @@ const TIPURI = {
   'motocicleta': 'moto', 'motorcycle': 'moto'
 };
 const FARA_SOFER = new Set(['remorca', 'remorca tehnologica', 'trailer', 'trailer_tech', 'grup electrogen', 'generator']);
-// Ordinea categoriilor cerute, de la cea mai „grea": o mașină care cere CE își alege șoferul înaintea uneia care cere B.
+// Ordinea categoriilor cerute, de la cea mai „grea”: o mașină care cere CE își alege șoferul înaintea uneia care cere B.
 const RANG = { CE: 6, D: 5, C: 4, C1: 3, D1: 3, B: 1, A1: 1, Tr: 1 };
 // Cine acoperă o categorie cerută: categoria însăși și cele care o cuprind. C și D se iau doar după B (permisul B e condiția
-// lor), deci un permis trecut doar „C" are și B.
+// lor), deci un permis trecut doar „C” are și B.
 const ACOPERA = {
   B: ['B', 'BE', 'C1', 'C1E', 'C', 'CE', 'D1', 'D1E', 'D', 'DE'],
   C1: ['C1', 'C1E', 'C', 'CE'], C: ['C', 'CE'], CE: ['CE'],
@@ -84,7 +84,7 @@ function acoperitoare(categorii, cod) {
   return (ACOPERA[cod] || [cod]).filter(function (x) { return c.indexOf(x) >= 0; });
 }
 function acopera(categorii, cod) { return acoperitoare(categorii, cod).length > 0; }
-// Cea mai „grea" categorie de pe permis — ca un șofer de CE să nu fie folosit pe un autoturism când există unul de B.
+// Cea mai „grea” categorie de pe permis — ca un șofer de CE să nu fie folosit pe un autoturism când există unul de B.
 function rangSofer(categorii) { return licenseCats.parse(categorii).reduce(function (m, c) { return Math.max(m, RANG[c] || 0); }, 0); }
 
 // ─── Permisul unui șofer față de o mașină ───────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ function verdict(sofer, ceruta, acum) {
   const zile = s.expira ? zilePana(s.expira, acum) : null;
   if (zile != null && zile < 0) return { stare: 'expirat', nivel: 'r', text: 'permis expirat pe ' + zz(s.expira, acum) };
   if (!ceruta || !ceruta.cod) {
-    return { stare: 'necunoscut', nivel: 'i', text: ceruta && ceruta.tipLipsa ? 'categoria mașinii nu e trecută în fișă, deci nu verific permisul' : 'nu verific permisul la ' + (ceruta && ceruta.fel ? '„' + ceruta.fel + '"' : 'mașina asta') };
+    return { stare: 'necunoscut', nivel: 'i', text: ceruta && ceruta.tipLipsa ? 'categoria mașinii nu e trecută în fișă, deci nu verific permisul' : 'nu verific permisul la ' + (ceruta && ceruta.fel ? '„' + ceruta.fel + '”' : 'mașina asta') };
   }
   if (!cats.length) return { stare: 'fara_categorii', nivel: 'i', text: 'categoriile permisului nu sunt trecute în fișa șoferului' };
   const ac = acoperitoare(cats, ceruta.cod);
@@ -121,7 +121,7 @@ function luna(ms, acum) {
 // o = {
 //   masini: [{ imei, nr, nume, tip, masaMax, locuri, soferId, grupa }] — mașinile omului (fără arhivate);
 //   soferi: [{ id, nume, categorii, expira, masini: [imei…] }] — TOȚI șoferii firmei, cu mașinile lor din toată firma
-//           (un șofer trecut pe o mașină pe care omul n-o vede nu e „liber");
+//           (un șofer trecut pe o mașină pe care omul n-o vede nu e „liber”);
 //   istoric: [{ imei, driver_id, de_la, pana_la }] — istoricul șoferilor (istoric_soferi);
 //   acum
 // }
@@ -169,8 +169,8 @@ function analiza(o) {
     propuneri: p.propuneri, faraPropunere: p.faraPropunere, faraSoferi: soferi.length === 0,
     rezumat: rezumat(deRezolvat, inRegula, liberi) };
 }
-// A mai fost trecut șoferul pe mașina asta? Luna ultimei treceri, pentru „a mai fost trecut pe ea în septembrie". O trecere mai
-// scurtă de o oră nu se socotește (o greșeală îndreptată pe loc, un „Anulează"); cea „de dinainte să ținem minte" (de_la = 0), da.
+// A mai fost trecut șoferul pe mașina asta? Luna ultimei treceri, pentru „a mai fost trecut pe ea în septembrie”. O trecere mai
+// scurtă de o oră nu se socotește (o greșeală îndreptată pe loc, un „Anulează”); cea „de dinainte să ținem minte” (de_la = 0), da.
 // Istoricul se strânge O DATĂ într-o hartă (mașină|șofer → ultima trecere): la sute de mașini, căutarea ar merge altfel la nesfârșit.
 const TRECERE_MIN_MS = 60 * 60000;
 function indexIstoric(ist) {
@@ -191,7 +191,7 @@ function _poateConduce(categorii) {
 }
 // Propunerile: pe rând, întâi mașinile cu cei mai puțini șoferi potriviți (o mașină care cere CE își alege înaintea uneia
 // care cere B). Șoferul ales iese din cei liberi; cel scos de pe o mașină cu permisul nepotrivit devine liber („după ce iese de
-// pe …") și poate merge pe altă mașină. Alegerea: cine a mai fost trecut pe mașină, apoi cel mai puțin „prea calificat" (un
+// pe …") și poate merge pe altă mașină. Alegerea: cine a mai fost trecut pe mașină, apoi cel mai puțin „prea calificat” (un
 // șofer de CE rămâne pentru camioane), apoi cine are valabilitatea trecută în fișă, apoi numele.
 function _propuneri(deRezolvat, soferi, ist, acum) {
   const valid = function (s) { const z = s.expira ? zilePana(s.expira, acum) : null; return licenseCats.parse(s.categorii).length > 0 && !(z != null && z < 0); };
@@ -207,7 +207,7 @@ function _propuneri(deRezolvat, soferi, ist, acum) {
   };
   for (let pas = 0; pas < 5000 && ramase.length; pas++) {
     // Mașina care alege acum: cea cu cei mai puțini șoferi potriviți; la egalitate, cea pe care cel ales a mai fost trecut
-    // (Ion, scos de pe TIR, merge pe duba pe care a mai fost, nu pe alt autoturism), apoi permisul cel mai „greu", apoi numărul.
+    // (Ion, scos de pe TIR, merge pe duba pe care a mai fost, nu pe alt autoturism), apoi permisul cel mai „greu”, apoi numărul.
     const cand = ramase.map(function (m) { const c = liberi.filter(function (s) { return s._poate[m.ceruta.cod]; }); const a = c.length ? alegeDintre(m, c) : null; return { m: m, c: c, a: a, fost: a && aMaiFost(idx, m.imei, a.id) ? 1 : 0 }; })
       .filter(function (x) { return x.c.length; })
       .sort(function (a, b) { return (a.c.length - b.c.length) || (b.fost - a.fost) || ((RANG[b.m.ceruta.cod] || 0) - (RANG[a.m.ceruta.cod] || 0)) || String(a.m.nr).localeCompare(String(b.m.nr), 'ro'); });
@@ -231,16 +231,16 @@ function _propuneri(deRezolvat, soferi, ist, acum) {
     if (m.stare === 'expirat') propuneri.push({ imei: m.imei, deLa: m.sofer.id, la: null, scoate: true, deCe: lipsa });
     else faraPropunere.push({ imei: m.imei, motiv: lipsa });
   });
-  // Permisul expirat pe o mașină fără o categorie știută (utilaj, „Altul", categoria netrecută): nu caut alt șofer (nu știu ce
+  // Permisul expirat pe o mașină fără o categorie știută (utilaj, „Altul”, categoria netrecută): nu caut alt șofer (nu știu ce
   // permis cere), dar nu-l las nici pe dinafară — propun să-l scot, ca la orice permis expirat.
   deRezolvat.filter(function (m) { return !(m.ceruta && m.ceruta.cod) && m.stare === 'expirat' && m.sofer; }).forEach(function (m) {
     propuneri.push({ imei: m.imei, deLa: m.sofer.id, la: null, scoate: true, deCe: 'permisul a expirat; categoria mașinii nu e știută, deci nu caut alt șofer' });
   });
-  // „după ce iese de pe B 77 TIR": cu numărul mașinii, pentru pagină.
+  // „după ce iese de pe B 77 TIR”: cu numărul mașinii, pentru pagină.
   propuneri.forEach(function (p) { if (p.dupa) { const d = deRezolvat.filter(function (m) { return m.imei === p.dupa; })[0]; p.dupaNr = d ? d.nr : ''; } });
   return { propuneri: propuneri, faraPropunere: faraPropunere };
 }
-// Cartonașele de sus ale paginii: „3 · un permis nepotrivit, unul expirat, o mașină fără șofer".
+// Cartonașele de sus ale paginii: „3 · un permis nepotrivit, unul expirat, o mașină fără șofer”.
 function rezumat(deRezolvat, inRegula, liberi) {
   const n = function (s) { return deRezolvat.filter(function (m) { return m.stare === s; }).length; };
   const nep = n('nepotrivit'), exp = n('expirat'), fara = n('fara');
@@ -261,7 +261,7 @@ function rezumat(deRezolvat, inRegula, liberi) {
 // Textele care nu depind de date (pagina le ia de la server, nu le scrie).
 const TEXTE = {
   deCand: 'din clipa în care apeși Da',
-  faraDa: 'Fără „Da" nu schimb nimic.',
+  faraDa: 'Fără „Da” nu schimb nimic.',
   anulare: 'Se poate anula în următoarele ' + ANULARE_MIN + ' minute.',
   sofeiNuPrimesc: 'Fiecare schimbare intră în istoricul mașinii și se poate anula în următoarele ' + ANULARE_MIN + ' minute. Șoferii nu primesc niciun mesaj.',
   intro: 'Din fișele șoferilor (categoriile și valabilitatea permisului) și din cine a mai fost trecut pe fiecare mașină. Nu se schimbă nimic până nu apeși „Aplică”.',
@@ -272,7 +272,7 @@ function caleText(cineNume) {
 }
 function nuSeSchimba(grupa) { return 'Nu se schimbă: grupa mașinii' + (grupa ? ' (' + grupa + ')' : '') + ', alertele și rapoartele programate.'; }
 
-// Cartonașul pentru o pereche cerută („Pune-l pe Mihai Ionescu pe B 77 TIR"). Întoarce { ok: false, text, alege? } când nu se
+// Cartonașul pentru o pereche cerută („Pune-l pe Mihai Ionescu pe B 77 TIR”). Întoarce { ok: false, text, alege? } când nu se
 // poate propune (permisul nu acoperă mașina, e expirat, e deja acolo) — cu șoferii potriviți, de ales —, altfel { ok: true, card }.
 function propunerePereche(an, o) {
   const x = o || {}, acum = x.acum || Date.now();
@@ -314,7 +314,7 @@ function propunerePereche(an, o) {
   return { ok: true, card: _card(m, { la: { id: s.id, nume: s.nume }, schimbari: schimbari, dovezi: dovezi, cine: x.cine, poate: x.poate, aproba: x.aproba,
     alternative: _alternative(an, m, x.soferi, s.id) }) };
 }
-// Cartonașul pentru o mașină („Propune un șofer pentru B 268 ROY", din „Azi la tine"): propunerea paginii pentru ea.
+// Cartonașul pentru o mașină („Propune un șofer pentru B 268 ROY”, din „Azi la tine”): propunerea paginii pentru ea.
 // { ok: false, text } când mașina e în regulă sau n-am pe cine propune.
 function propunerePentru(an, o) {
   const x = o || {}, acum = x.acum || Date.now();
@@ -331,10 +331,10 @@ function propunerePentru(an, o) {
     const dovezi = [{ nivel: 'r', text: 'Permisul lui ' + m.sofer.nume + ' a expirat (' + m.text + ').' }, { nivel: 'i', text: p.deCe.replace(/^n/, 'N') + ': mașina rămâne fără șofer până trece permisul nou în fișa lui.' }];
     return { ok: true, card: _card(m, { la: null, schimbari: [{ imei: m.imei, deLa: m.sofer.id, la: null }], dovezi: dovezi, cine: x.cine, poate: x.poate, aproba: x.aproba, alternative: [] }) };
   }
-  // Șoferul propus e încă pe mașina de pe care l-ar scoate altă propunere („după ce iese de pe…"): aici, singur, îl mut pe față.
+  // Șoferul propus e încă pe mașina de pe care l-ar scoate altă propunere („după ce iese de pe…”): aici, singur, îl mut pe față.
   return propunerePereche(an, Object.assign({}, x, { soferId: p.la }));
 }
-// „Scoate-l pe Andrei Pop de pe B 112 RFG": mașina rămâne fără șofer trecut. { ok: false, text } când n-are pe nimeni (sau pe
+// „Scoate-l pe Andrei Pop de pe B 112 RFG”: mașina rămâne fără șofer trecut. { ok: false, text } când n-are pe nimeni (sau pe
 // altcineva decât cel numit).
 function propunereScoate(an, o) {
   const x = o || {};
@@ -347,10 +347,10 @@ function propunereScoate(an, o) {
   }
   const dovezi = [];
   if (m.stare === 'expirat' || m.stare === 'nepotrivit') dovezi.push({ nivel: m.nivel, text: m.sofer.nume + ': ' + m.text + '.' });
-  dovezi.push({ nivel: 'i', text: m.nr + ' rămâne fără șofer trecut, până pui altul (din fișa mașinii sau cu „Pune-l pe … pe ' + m.nr + '").' });
+  dovezi.push({ nivel: 'i', text: m.nr + ' rămâne fără șofer trecut, până pui altul (din fișa mașinii sau cu „Pune-l pe … pe ' + m.nr + '”).' });
   return { ok: true, card: _card(m, { la: null, schimbari: [{ imei: m.imei, deLa: m.sofer.id, la: null }], dovezi: dovezi, cine: x.cine, poate: x.poate, aproba: x.aproba, alternative: [] }) };
 }
-// Ceilalți șoferi liberi care pot conduce mașina — pentru „Schimbă".
+// Ceilalți șoferi liberi care pot conduce mașina — pentru „Schimbă”.
 function _alternative(an, m, soferi, faraId) {
   if (!m.ceruta || !m.ceruta.cod) return [];
   return an.liberi.filter(function (l) {
@@ -372,7 +372,7 @@ function _card(m, o) {
     deCand: TEXTE.deCand,
     dovezi: o.dovezi, dovT: scoate ? 'De ce' : 'De ce se potrivește',
     nuSeSchimba: nuSeSchimba(m.grupa),
-    sub: o.poate ? caleText(o.cine || 'tu') : 'Doar cine poate schimba vehiculele apasă „Da"' + (o.aproba ? ': ' + o.aproba : '') + '.',
+    sub: o.poate ? caleText(o.cine || 'tu') : 'Doar cine poate schimba vehiculele apasă „Da”' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: scoate ? 'Da, scoate-l' : 'Da, trece-l',
     poate: !!o.poate,
     alternative: o.alternative || [],
@@ -380,9 +380,9 @@ function _card(m, o) {
   };
 }
 
-// ─── După „Da" ─────────────────────────────────────────────────────────────────────────────────────
+// ─── După „Da” ─────────────────────────────────────────────────────────────────────────────────────
 function oraText(ms) { return new Date(ms).toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }); }
-// „Gata. Mihai Ionescu e pe B 77 TIR de azi, 10:42." + rândul jurnalului, scris de server după ce schimbarea chiar s-a făcut.
+// „Gata. Mihai Ionescu e pe B 77 TIR de azi, 10:42.” + rândul jurnalului, scris de server după ce schimbarea chiar s-a făcut.
 function gata(card, cine, la) {
   const ora = oraText(la);
   const zi = new Date(la).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -394,9 +394,9 @@ function gata(card, cine, la) {
       (card.sofer.de ? ' În istoricul mașinii: ' + card.sofer.de + ' până azi la ' + ora + (scoate ? '.' : ', ' + card.sofer.la + ' de atunci.') : '')
   };
 }
-// Textul jurnalului pentru o schimbare (în audit, lângă „prin RA Insight").
+// Textul jurnalului pentru o schimbare (în audit, lângă „prin RA Insight”).
 function jurnalText(nrMasina, numeSofer) { return numeSofer ? 'șoferul ' + numeSofer + ' pe ' + nrMasina : 'fără șofer pe ' + nrMasina; }
-// Pasul următor, după „Da": cel rămas fără mașină și o mașină pentru el (din propunerile flotei de acum), altfel ce mai e de rezolvat.
+// Pasul următor, după „Da”: cel rămas fără mașină și o mașină pentru el (din propunerile flotei de acum), altfel ce mai e de rezolvat.
 function pasulUrmator(an, eliberatId) {
   const p = eliberatId != null ? an.propuneri.filter(function (q) { return Number(q.la) === Number(eliberatId) && !q.scoate; })[0] : null;
   if (p) {
@@ -412,9 +412,9 @@ function pasulUrmator(an, eliberatId) {
 }
 
 // ─── Ce cere omul, în cuvinte ───────────────────────────────────────────────────────────────────────
-// Pe reguli, fără model. O CERERE = un verb de schimbare + un șofer + o mașină („Pune-l pe Mihai Ionescu pe B 77 TIR"), sau
-// „propune un șofer pentru …", „scoate-l pe … de pe …", „potrivirea șoferilor". O întrebare („ce mașină conduce Mihai?",
-// „cine l-a trecut pe…") rămâne întrebare: trecutul („pus", „trecut") nu e o cerere.
+// Pe reguli, fără model. O CERERE = un verb de schimbare + un șofer + o mașină („Pune-l pe Mihai Ionescu pe B 77 TIR”), sau
+// „propune un șofer pentru …”, „scoate-l pe … de pe …”, „potrivirea șoferilor”. O întrebare („ce mașină conduce Mihai?”,
+// „cine l-a trecut pe…”) rămâne întrebare: trecutul („pus”, „trecut”) nu e o cerere.
 const RE_PAGINA = /\b(potrivirea soferilor|potriveste soferii|soferi pe masini|soferii pe masini)\b/;
 const RE_PROPUNE = /\b(propune|propune-mi|recomanda|recomanda-mi|gaseste|gaseste-mi)\b.*\bsofer|\bpe cine (pun|trec|las)\b|\bcine (poate|ar putea) (conduce|sa conduca)\b/;
 const RE_SCOATE = /\b(scoate|scoate-l|scoate-o|scoateti|elibereaza)\b.*\b(de pe|de la)\b/;
@@ -426,8 +426,8 @@ function pareCerere(text) {
   return RE_PAGINA.test(t) || RE_PROPUNE.test(t) || RE_SCOATE.test(t) || RE_PUNE.test(t) || RE_SCHIMBA.test(t);
 }
 function eDaScris(text) { return RE_DA.test(_norm(text).replace(/\s+/g, ' ')); }
-// Șoferii pomeniți: numele întreg (cel mai lung întâi), altfel un singur cuvânt din nume, doar după „pe", „lui", „șoferul", „cu"
-// (altfel „consum mare" ar găsi pe Ionel Mare). Două potriviri pe același cuvânt = îndoială, de lămurit cu butoane.
+// Șoferii pomeniți: numele întreg (cel mai lung întâi), altfel un singur cuvânt din nume, doar după „pe”, „lui”, „șoferul”, „cu”
+// (altfel „consum mare” ar găsi pe Ionel Mare). Două potriviri pe același cuvânt = îndoială, de lămurit cu butoane.
 function gasesteSoferi(text, soferi) {
   let t = ' ' + _norm(text).replace(/[^a-z0-9]+/g, ' ') + ' ';
   const out = { soferi: [], ambigui: [], rest: t };
@@ -483,16 +483,16 @@ function cerere(text, soferi, fisa) {
 // ─── Istoricul: ce șoferi a avut o mașină, pe ce mașini a fost un șofer (05.11) ────────────────────────────────
 // Alin: „aș vrea ca șoferul să aibă istoric pe ce mașini a fost pus — la fel și în vehicule, să am un istoric pe fiecare mașină de
 // ce șoferi a fost condusă". Rândurile vin din istoric_soferi (scris la fiecare schimbare, din 06.10); aici doar textele.
-// `de_la` = 0 = primul șofer al mașinii, socotit „de la început" (așa îi pun și rapoartele zilele de dinainte).
+// `de_la` = 0 = primul șofer al mașinii, socotit „de la început” (așa îi pun și rapoartele zilele de dinainte).
 const _ore = require('./cereri_echipa');
 const ISTORIC = {
   masina: 'Istoricul șoferilor', sofer: 'Istoricul mașinilor',
   golMasina: 'Mașina n-a avut încă niciun șofer trecut în aplicație.',
   golSofer: 'Șoferul n-a fost încă trecut pe nicio mașină.',
-  nota: 'Fiecare schimbare de șofer rămâne aici. Primul șofer al unei mașini e socotit „de la început", cum îl iau și rapoartele.',
+  nota: 'Fiecare schimbare de șofer rămâne aici. Primul șofer al unei mașini e socotit „de la început”, cum îl iau și rapoartele.',
   inceput: 'de la început', acum: 'acum', arhivata: 'arhivată'
 };
-// „azi, 10:42" / „ieri, 16:20" / „14.10, 09:15" în anul de acum; din alt an, ziua întreagă („14.10.2025").
+// „azi, 10:42” / „ieri, 16:20” / „14.10, 09:15” în anul de acum; din alt an, ziua întreagă („14.10.2025”).
 function _candIstoric(ms, acum) {
   return _ore.ziua(ms).slice(0, 4) === _ore.ziua(acum).slice(0, 4) ? _ore.cand(ms, acum) : _ore.dataLunga(ms);
 }

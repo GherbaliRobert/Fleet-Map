@@ -21,7 +21,7 @@ import './companii.css';
 // activ), venitul lunar (socotit pe server cu motorul facturii — telefonul nu socotește bani), încasat,
 // ultima activitate. Filtrele se numără pe TOATĂ lista, nu pe rezultatul căutării.
 // Fișa firmei (file: Detalii · Utilizatori · Vehicule · Facturi · Abonament & plăți · Contract) e în
-// CompanySheet.tsx; „Client nou" (firmă + contract + administrator) în ClientNou.tsx; mutările în MutaCompanii.tsx.
+// CompanySheet.tsx; „Client nou” (firmă + contract + administrator) în ClientNou.tsx; mutările în MutaCompanii.tsx.
 export function AdminCompanies() {
   const loc = useLocation();
   const [items, setItems] = useState<any[] | null>(null);
@@ -33,7 +33,7 @@ export function AdminCompanies() {
   const [sort, setSort] = useState<{ col: ColSort; dir: number }>({ col: 'name', dir: 1 });
   const [exportBusy, setExportBusy] = useState(false);
 
-  // „Client nou din ofertă" venit pe adresa veche (/admin/companies?nou=<id ofertă>) → traseul Client nou.
+  // „Client nou din ofertă” venit pe adresa veche (/admin/companies?nou=<id ofertă>) → traseul Client nou.
   const nou = String(((loc.query || {}) as any).nou || '');
   useEffect(() => { if (nou) loc.route('/admin/client-nou' + (nou !== '1' ? '?oferta=' + encodeURIComponent(nou) : ''), true); }, [nou]);
 
@@ -42,7 +42,7 @@ export function AdminCompanies() {
     Api.companies()
       .then((l) => setItems(Array.isArray(l) ? l : []))
       .catch((e: any) => { setErr(e?.status === 403 ? 'Acces interzis.' : (e?.message || 'Eroare la încărcare')); setItems(null); });
-    // Banii vin separat: lista se deschide pe loc, „Lunar" și totalul apar o clipă mai târziu.
+    // Banii vin separat: lista se deschide pe loc, „Lunar” și totalul apar o clipă mai târziu.
     Api.companiesMrr().then((d) => setMrr(d && (d as any).firme ? d : null)).catch(() => setMrr(null));
     // Banda de sus: câte aparate transmit și nu sunt la nicio firmă. Adopția se face DOAR în Dispozitive.
     Api.unassignedDevices().then((l) => setNeadoptate(Array.isArray(l) ? l.length : 0)).catch(() => setNeadoptate(0));
@@ -61,7 +61,7 @@ export function AdminCompanies() {
     setSort((s) => (s.col === col ? { col, dir: -s.dir } : { col, dir: col === 'name' ? 1 : -1 }));
   }
   // Lista de clienți în Excel. Serverul verifică din nou cine cere și trece descărcarea în jurnalul de audit;
-  // numele fișierului vine din antetul lui („RA-Track - Raport Companii - zz.ll.aaaa.xlsx").
+  // numele fișierului vine din antetul lui („RA-Track - Raport Companii - zz.ll.aaaa.xlsx”).
   async function exportExcel() {
     if (exportBusy) return;
     setExportBusy(true);
@@ -80,7 +80,7 @@ export function AdminCompanies() {
       </header>
       <div class="content co-page">
         {neadoptate > 0 && (
-          // Tapul duce în Dispozitive; filtrul „Neasignate" îl alege ecranul acela (parametrul e pentru el).
+          // Tapul duce în Dispozitive; filtrul „Neasignate” îl alege ecranul acela (parametrul e pentru el).
           <button class="co-banda" onClick={() => loc.route('/admin/devices?filtru=neasignate')}>
             <Icon name="cpu" size={18} color="var(--co-warn)" />
             <span><b>{neadoptate === 1 ? 'Un aparat așteaptă să fie adoptat.' : neadoptate + ' aparate așteaptă să fie adoptate.'}</b>{' '}
@@ -143,7 +143,7 @@ export function AdminCompanies() {
               {rows.map((c) => <Cartonas c={c} mrr={mrr} onOpen={(fila) => loc.route(rutaFisa(c.id, fila))} />)}
             </div>
             {rows.length === 0 && (
-              <div class="fm-empty" style="padding:24px 12px">{q.trim() ? 'Nicio companie pentru „' + q.trim() + '".' : 'Nicio companie în filtrul ăsta.'}</div>
+              <div class="fm-empty" style="padding:24px 12px">{q.trim() ? 'Nicio companie pentru „' + q.trim() + '”.' : 'Nicio companie în filtrul ăsta.'}</div>
             )}
           </>
         )}

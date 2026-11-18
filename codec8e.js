@@ -232,7 +232,7 @@ function parseIoElement(buffer, offset, isExtended) {
   }
 
   // ── FIX COLIZIUNI (harta STANDARD / LV-CAN200 mașini) ──
-  // Mai multe AVL ID-uri se mapează pe ACELAȘI semnal și „ultimul câștigă" (Object.assign):
+  // Mai multe AVL ID-uri se mapează pe ACELAȘI semnal și „ultimul câștigă” (Object.assign):
   //   RPM ← 35 (real) + 85 (=engine_load J1939) + 88 ;  km ← 36 (real) + 87 (=fuel_pct) ;  litri ← 34 (real) + 84.
   // Un ALIAS de camion (85/87) suprascria semnalul REAL al mașinii → RPM=0, km înghețat/greșit. Forțăm ID-ul PRIMAR
   // (35/36/34) să câștige, indiferent de ordinea din pachet. Doar iface STANDARD (null) — FMS/tacho au alte semnificații.
@@ -362,8 +362,8 @@ function getIoName(id, iface) {
     // IO_EXTRA (generat din spec). FMS-ul adevarat (FMC650) foloseste FMS_NAMES, prin iface='fms'.
     // ─── LV-CAN200 / FMC650 — ID-uri CAN REALE (sursă: io_catalog.js; confirmat live pe Dacia B 154 UIP) ───
     // Cheia 'can_*' declanșează convertCanValue pe server (litri/km/°C corecte). Vechile etichete de la 35/36
-    // ('fms_coolant_temp'/'fms_pedal_position') erau GREȘITE: afișau RPM-ul (687) ca „687 °C" și kilometrajul
-    // (31798270 m) ca „poziție pedală". NU începeau cu 'can_' → nu se aplica nicio conversie.
+    // ('fms_coolant_temp'/'fms_pedal_position') erau GREȘITE: afișau RPM-ul (687) ca „687 °C” și kilometrajul
+    // (31798270 m) ca „poziție pedală”. NU începeau cu 'can_' → nu se aplica nicio conversie.
     34:  'can_fuel_level_liters',   // L — Fuel Level (brut ×10 → /10) — confirmat 430 → 43.0 L
     35:  'can_engine_rpm',          // RPM — Engine RPM — confirmat 687 (era 'fms_coolant_temp')
     36:  'can_total_mileage',       // m → /1000 = km — confirmat 31798270 → 31798 km (era 'fms_pedal_position')
@@ -459,7 +459,7 @@ function getIoName(id, iface) {
     199: 'trip_odometer',               // already mapped above (system)
     // ─── CORECTAT pe specul OFICIAL Teltonika FMC650 (wiki.teltonika-gps.com) ───
     // Vechea mapare 202-216 (oil/coolant/washer/tahograf) era GREȘITĂ și producea valori
-    // aberante (ex: „Lichid spalare 246479620" = de fapt GSM Cell ID la ID 205). Conform
+    // aberante (ex: „Lichid spalare 246479620” = de fapt GSM Cell ID la ID 205). Conform
     // spec-ului, 201-216 = senzori LLS + GSM Cell/Area + RFID + Ultrasonic.
     // 201-204 (LLS 1/2 nivel/temp) sunt definite mai sus și NU se mai suprascriu.
     205: 'gsm_cell_id',                 // GSM Cell ID
@@ -473,7 +473,7 @@ function getIoName(id, iface) {
     213: 'lls_fuel_temp_4',             // LLS 4 Temperature (°C)
     214: 'lls_fuel_level_5',            // LLS 5 Fuel Level
     // 215, 216 → io_215/io_216 (necunoscute) — de confirmat din configurator, fără mapare greșită
-    // 217 NU mai e aici: era etichetat 'can_vin', dar oficial ID 217 = „Geofence zone 36".
+    // 217 NU mai e aici: era etichetat 'can_vin', dar oficial ID 217 = „Geofence zone 36”.
     // VIN-ul adevarat pe ALL-CAN300 e ID 325 (17 octeti ASCII) — vine din IO_EXTRA. Aceeasi
     // categorie de greseala ca fms_* de la 29-38: un nume ghicit care arata date de altundeva.
     218: 'can_engine_total_fuel_used', // liters * 100 (lifetime)
@@ -486,14 +486,14 @@ function getIoName(id, iface) {
     // System IO
     232: 'can_battery_soc',             // % (EV battery state of charge)
     235: 'can_odo_high_res',            // high resolution odometer
-    // 652/658-661/898 NU mai sunt aici: erau GHICITE („semnalizator stanga", „frana de mana"...).
+    // 652/658-661/898 NU mai sunt aici: erau GHICITE („semnalizator stanga”, „frana de mana”...).
     // Oficial sunt steaguri individuale de stare: 652 = cheia in contact, 658 = portbagaj deschis,
     // 659/660/661 = treapta N/P/R, 898 = CONTACT. Confirmate pe VW Passat B7 (program 11173), unde
     // rulau live cu intelesul gresit. Numele corecte vin din IO_EXTRA; legatura cu placutele din
     // interfata se face in can_flag_io.js.
-    // 900/902/904 NU mai sunt aici: „can_manual_0/2/4" era GHICIT. Oficial sunt steaguri de stare —
+    // 900/902/904 NU mai sunt aici: „can_manual_0/2/4” era GHICIT. Oficial sunt steaguri de stare —
     // 900 = motorul functioneaza, 902 = gata de plecare, 904 = regim de lucru. Se vedea pe Passat:
-    // can_manual_4 = 1 aprindea „Regim personal", desi 1 inseamna SERVICIU. Numele corecte vin din
+    // can_manual_4 = 1 aprindea „Regim personal”, desi 1 inseamna SERVICIU. Numele corecte vin din
     // IO_EXTRA, iar legatura cu placutele se face in can_flag_io.js.
     // Green driving
     253: 'green_driving_type',
@@ -538,10 +538,10 @@ function numeDeMana(id, iface) {
 // unitati reale (°C, mG, %), ca la campurile poastre mapate de mana, nu in unitati brute de device.
 // Valorile din grupul NX (lungime variabila) soseau TOATE ca sir hex — si ramaneau asa.
 // Doua urmari, amandoua vazute in practica:
-//   • campurile TEXT (VIN, cod de bare, nume sofer) se afisau ca „5756325a5a..." in loc de
-//     „WV2ZZZ2KZ8X017409" — adica erau acolo, dar ilizibile;
+//   • campurile TEXT (VIN, cod de bare, nume sofer) se afisau ca „5756325a5a...” in loc de
+//     „WV2ZZZ2KZ8X017409” — adica erau acolo, dar ilizibile;
 //   • containerele de stegulete P4, daca dispozitivul le trimite prin NX in loc de grupul de 8
-//     octeti, ajungeau ca „0080000000100002", iar BigInt() citeste asa ceva ca ZECIMAL → toti
+//     octeti, ajungeau ca „0080000000100002”, iar BigInt() citeste asa ceva ca ZECIMAL → toti
 //     bitii ieseau gresiti, deci usi/lumini raportate aiurea. Aici le aducem la forma corecta.
 const _NX_HEX_NUMERIC = new Set([
   'can_security_state_flags_p4', 'can_control_state_flags_p4', 'can_indicator_state_flags_p4',
@@ -738,7 +738,7 @@ function decodeControlFlags(value) {
 }
 
 // ── Stegulete P4 (ALL-CAN300 / programele noi de vehicul, ex. VW Passat B7) ─────────────────────
-// Bitii vin din tabelul oficial „Security State Flags P4" (wiki Teltonika, fixture:
+// Bitii vin din tabelul oficial „Security State Flags P4” (wiki Teltonika, fixture:
 // tools/fixtures/p4-flags.json). Numerotarea e ABSOLUTA pe bit (bit 8 = byte 1, bit 0).
 // Unde semantica exista si in P2, folosim ACELASI nume de steag — categoriile din interfata
 // (Usi, Lumini, Transmisie...) functioneaza atunci pentru amandoua protocoalele fara nicio schimbare.
@@ -762,14 +762,14 @@ function decodeSecurityFlagsP4(value) {
   flags.interlock = B(17);
   flags.handbrake = B(18);
   flags.footbrake = B(19);
-  flags.clutch = B(20);                 // cheia din can_flags.js (era anticipata acolo ca „necitita")
+  flags.clutch = B(20);                 // cheia din can_flags.js (era anticipata acolo ca „necitita”)
   flags.hazard_lights = B(21);
   flags.door_front_left = B(22);
   flags.door_front_right = B(23);
   flags.door_rear_left = B(24);
   flags.door_rear_right = B(25);
   flags.trunk_open = B(26);
-  flags.hood_open = B(27);              // oficial „engine cover opened"
+  flags.hood_open = B(27);              // oficial „engine cover opened”
   flags.charging_cable = B(28);
   flags.battery_charging = B(29);
   flags.electric_engine = B(30);
@@ -848,7 +848,7 @@ function decodeIndicatorFlagsP4(value) {
   flags.low_fuel = B(15);
   flags.maintenance = B(16);
   flags.glow_plug = B(17);
-  flags.dpf_warning = B(18);            // oficial „FAP indicator"
+  flags.dpf_warning = B(18);            // oficial „FAP indicator”
   flags.epc_warning = B(19);
   flags.oil_filter_clogged = B(20);
   flags.oil_pressure_low = B(21);

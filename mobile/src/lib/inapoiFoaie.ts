@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'preact/hooks';
 
-// Butonul „înapoi" de pe Android închide FOAIA deschisă, nu ecranul de sub ea.
+// Butonul „înapoi” de pe Android închide FOAIA deschisă, nu ecranul de sub ea.
 //
 // App.tsx face history.back() la butonul fizic. Fără pază, asta pleca de pe ecran și arunca tot ce era bifat în
-// foaie, fără întrebarea „Închizi fără să salvezi?". Așa că, cât stă foaia deschisă, punem în istoric o intrare
-// în plus, cu ACEEAȘI adresă (routerul nu vede nicio schimbare și ecranul rămâne pe loc). „Înapoi" consumă
+// foaie, fără întrebarea „Închizi fără să salvezi?”. Așa că, cât stă foaia deschisă, punem în istoric o intrare
+// în plus, cu ACEEAȘI adresă (routerul nu vede nicio schimbare și ecranul rămâne pe loc). „Înapoi” consumă
 // intrarea asta; noi prindem popstate și întrebăm foaia dacă se poate închide (`laInapoi` întoarce true dacă s-a
-// închis). Dacă rămâne deschisă (ex. omul a apăsat „Anulează" la întrebare, sau se salvează chiar acum), punem
-// intrarea la loc, ca următorul „înapoi" să fie păzit la fel.
+// închis). Dacă rămâne deschisă (ex. omul a apăsat „Anulează” la întrebare, sau se salvează chiar acum), punem
+// intrarea la loc, ca următorul „înapoi” să fie păzit la fel.
 //
 // Când foaia se închide altfel (X, fundalul, Salvează), scoatem singuri intrarea — DOAR dacă e încă a noastră:
 // dacă între timp s-a navigat pe alt ecran, istoricul nu se mai atinge.
@@ -21,7 +21,7 @@ const aNoastra = (id: string) => {
 };
 
 // Un history.back() dat de noi e asincron. Dacă imediat după se deschide altă foaie, intrarea ei se pune abia
-// după ce s-a terminat întoarcerea — altfel „înapoi"-ul nostru ar putea s-o scoată chiar pe ea.
+// după ce s-a terminat întoarcerea — altfel „înapoi”-ul nostru ar putea s-o scoată chiar pe ea.
 let inapoiInCurs: Promise<void> | null = null;
 function scoateIntrarea() {
   let fin = () => {};
@@ -39,7 +39,7 @@ function scoateIntrarea() {
   history.back();
 }
 
-// Un drum pornit când se închide o foaie: după ce foaia și-a scos intrarea din istoric, ca „înapoi" să nu dea peste ea.
+// Un drum pornit când se închide o foaie: după ce foaia și-a scos intrarea din istoric, ca „înapoi” să nu dea peste ea.
 export function dupaInapoi(fn: () => void) { if (inapoiInCurs) inapoiInCurs.then(fn); else fn(); }
 
 let nr = 0;
@@ -58,7 +58,7 @@ export function useInapoiInchide(deschisa: boolean, laInapoi: () => boolean) {
       try { history.pushState({ raFoaie: id }, '', location.href); armat = true; } catch { armat = false; }
     };
     const laPop = () => {
-      if (!viu || !armat || aNoastra(id)) return; // nu e „înapoi"-ul care ne privește
+      if (!viu || !armat || aNoastra(id)) return; // nu e „înapoi”-ul care ne privește
       armat = false; // intrarea noastră tocmai a fost consumată
       let inchisa = true;
       try { inchisa = fn.current(); } catch { inchisa = true; }

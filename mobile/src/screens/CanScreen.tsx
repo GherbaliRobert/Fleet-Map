@@ -19,9 +19,9 @@ function num(x: any): number | null {
   const n = parseFloat(x);
   return Number.isFinite(n) ? n : null;
 }
-// Magistrala CAN semnalează „valoare indisponibilă" cu sentinele (0xFFFF / 0xFF...). Fluxul live NU trece
+// Magistrala CAN semnalează „valoare indisponibilă” cu sentinele (0xFFFF / 0xFF...). Fluxul live NU trece
 // prin curățarea de la scriere (db._sanitizeIo, aplicată doar la insert în istoric), deci ecranul ar putea
-// afișa „65535 RPM" ca valoare citită, în timp ce rapoartele pentru aceeași poziție au null.
+// afișa „65535 RPM” ca valoare citită, în timp ce rapoartele pentru aceeași poziție au null.
 function plauzibil(x: number | null, min: number, max: number): number | null {
   return x == null ? null : (x >= min && x <= max ? x : null);
 }
@@ -34,7 +34,7 @@ function Tile(p: {
   icon: IconName; label: string; value: string | null;
   src?: Src; explic?: string; cls?: string; full?: boolean;
 }) {
-  // Fără valoare → dala nu se randează deloc. O grilă plină de „—" arată ca un ecran stricat
+  // Fără valoare → dala nu se randează deloc. O grilă plină de „—” arată ca un ecran stricat
   // pe autoturismele care pur și simplu nu au CAN.
   if (p.value == null) return null;
   return (
@@ -112,7 +112,7 @@ export function CanScreen() {
   } else if (_can != null) { fuelL = _can; fuelSrc = 'read'; fuelWhy = 'Litrii transmiși de mașină prin CAN.'; }
 
   const cap = num(full?.tank_capacity);
-  // Procentul brut de pe CAN NU se folosește: pe senzorii de serie e nesigur (42 L raportați ca „100%").
+  // Procentul brut de pe CAN NU se folosește: pe senzorii de serie e nesigur (42 L raportați ca „100%”).
   const fuelPct = (fuelL != null && cap && cap > 0) ? Math.max(0, Math.min(100, (fuelL / cap) * 100)) : null;
 
   // ── Kilometraj ─────────────────────────────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ export function CanScreen() {
       ? 'Odometrul de bord al camionului, prin magistrala FMS.'
       : 'Distanța însumată de dispozitiv din poziții GPS, de la montare.';
   }
-  if (odo != null && odo <= 0) odo = null;   // 0 km = contor neconfigurat, nu „mașină nouă"
+  if (odo != null && odo <= 0) odo = null;   // 0 km = contor neconfigurat, nu „mașină nouă”
 
   // ── Greutate ───────────────────────────────────────────────────────────────────────────────────
   // Axele se mapează 1-10 în parser, nu 1-5. Iar suma parțială NU trebuie să bată greutatea citită:
@@ -159,9 +159,9 @@ export function CanScreen() {
     catch { showToast('Nu s-a putut copia VIN-ul', true); }
   }
 
-  // Steagurile (uși, lumini, martori de bord) contează la „transmite ceva": o mașină poate să nu dea
+  // Steagurile (uși, lumini, martori de bord) contează la „transmite ceva”: o mașină poate să nu dea
   // nicio cifră, dar să spună că are o ușă deschisă și CHECK ENGINE aprins. Fără ele în listă, scria
-  // „Vehiculul nu transmite date CAN" chiar deasupra plăcuțelor care arătau contrariul.
+  // „Vehiculul nu transmite date CAN” chiar deasupra plăcuțelor care arătau contrariul.
   const areSteaguri = !!(io._security_flags || io._control_flags);
   const areCeva = areSteaguri || [v?.speed, rpm, temp, fuelL, odo, greutate, vitCan, adbluePct, cons].some((x) => x != null);
   const asteptam = !gata || !v;   // fișa nu s-a încărcat sau lista live nu are încă vehiculul
@@ -171,8 +171,8 @@ export function CanScreen() {
       <header class="app-header">
         <button class="h-btn" onClick={() => history.back()} aria-label="Înapoi"><Icon name="chevronL" /></button>
         <div class="h-title">Date CAN</div>
-        {/* „Ce înseamnă?" — deschis oricui, ca în web. Nu e o unealtă de administrare, e răspunsul
-            la „ce dă mașina asta?", pe care și-l pune orice om care se uită la ecranul ăsta. */}
+        {/* „Ce înseamnă?” — deschis oricui, ca în web. Nu e o unealtă de administrare, e răspunsul
+            la „ce dă mașina asta?”, pe care și-l pune orice om care se uită la ecranul ăsta. */}
         <button class="h-btn" onClick={() => setExplic(true)} aria-label="Ce înseamnă semnalele"><Icon name="cpu" /></button>
       </header>
 

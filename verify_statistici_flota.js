@@ -1,17 +1,17 @@
-// verify_statistici_flota.js — ecranul „Statistici flotă" din verticala partenerului.
+// verify_statistici_flota.js — ecranul „Statistici flotă” din verticala partenerului.
 //
 //   node verify_statistici_flota.js
 //
 // De ce există: în verticala partenerului au stat, pe rând, DOUĂ ecrane care nu-i erau ale lui.
 // Întâi tabloul PLATFORMEI (MRR, cheia Anthropic, backup-uri) — un duplicat al celui din
-// „Business → Dashboard platformă". Apoi un „dashboard de flotă" construit de noi, care s-a dovedit
-// tot un duplicat: repeta cifrele din „Statistici" (aceeași sursă, aceeași zi). Acum e UN ecran, cu
+// „Business → Dashboard platformă”. Apoi un „dashboard de flotă” construit de noi, care s-a dovedit
+// tot un duplicat: repeta cifrele din „Statistici” (aceeași sursă, aceeași zi). Acum e UN ecran, cu
 // numele lui, îmbogățit cu ce lipsea.
 //
 // Ce prinde: oricare din cele două duplicate întors în meniu, media de consum lăsată să scoată
-// aberații („153 L/100km" la 35 km și 54 de litri), vehiculele fără semnal rămase iar doar un număr,
+// aberații („153 L/100km” la 35 km și 54 de litri), vehiculele fără semnal rămase iar doar un număr,
 // orele de motor ascunse înapoi în text mărunt, și constatările agenților desprinse de AGP_META
-// sau lăsate text mort, fără legătură către „Agenți AI".
+// sau lăsate text mort, fără legătură către „Agenți AI”.
 const fs = require('fs');
 const P = (f) => require('path').join(__dirname, f);
 const html = fs.readFileSync(P('public/index.html'), 'utf8');
@@ -27,9 +27,9 @@ function taie(s, a, b) {
 }
 
 console.log('\n1. Un singur ecran de flotă, cu numele lui');
-T('în meniu scrie „Statistici flotă"', /<span>Statistici flotă<\/span>/.test(html));
+T('în meniu scrie „Statistici flotă”', /<span>Statistici flotă<\/span>/.test(html));
 T('și pe ecran, la fel', /<\/i> Statistici flotă<\/span>/.test(html));
-T('nu mai există intrarea „Dashboard" în verticala partenerului', !/id="nav-dashboard"/.test(html));
+T('nu mai există intrarea „Dashboard” în verticala partenerului', !/id="nav-dashboard"/.test(html));
 T('nici containerul dashboard-ului de flotă pe care l-am scos', !/fleet-dash-(modal|body)|raxFleetDash/.test(html));
 T('nici containerul tabloului de platformă din verticala partenerului', !/platform-dash-(modal|body)/.test(html));
 T('tabloul platformei a rămas la fondator, în Business',
@@ -39,18 +39,18 @@ T('ecranul de flotă își ia datele din calea filtrată pe drepturi',
   /app\.get\('\/api\/dashboard', requireAuth, withScope/.test(server));
 
 console.log('\n2. Media de consum nu mai scoate aberații');
-const plasa = taie(html, '// ─── începe „Plasa de la media de consum"', '// ─── sfârșit „Plasa de la media de consum" ──');
+const plasa = taie(html, '// ─── începe „Plasa de la media de consum”', '// ─── sfârșit „Plasa de la media de consum” ──');
 const fn = new Function('d', plasa + '\n; return { p: _per100, t: _consPer100 };');
 T('la 2 km și 5 litri nu inventează o medie', fn({ totalKm: 2, totalFuel: 5 }).p === null);
 T('și spune de ce', /prea puțini km/.test(fn({ totalKm: 2, totalFuel: 5 }).t), fn({ totalKm: 2, totalFuel: 5 }).t);
 T('la 100 km și 30 de litri dă 30', Math.round(fn({ totalKm: 100, totalFuel: 30 }).p) === 30, String(fn({ totalKm: 100, totalFuel: 30 }).p));
-T('„153 L/100km" nu mai ajunge pe ecran', fn({ totalKm: 35.2, totalFuel: 54 }).p === null, String(fn({ totalKm: 35.2, totalFuel: 54 }).p));
+T('„153 L/100km” nu mai ajunge pe ecran', fn({ totalKm: 35.2, totalFuel: 54 }).p === null, String(fn({ totalKm: 35.2, totalFuel: 54 }).p));
 T('iar acolo scrie că datele-s incomplete, nu că ar fi prea puțini km',
   /incomplete/.test(fn({ totalKm: 35.2, totalFuel: 54 }).t), fn({ totalKm: 35.2, totalFuel: 54 }).t);
 T('fără litri, o liniuță', fn({ totalKm: 120, totalFuel: 0 }).t === '—');
 
 console.log('\n3. Cine tace, scris pe nume');
-const tace = taie(html, '// ─── începe „Cine tace"', '// ─── sfârșit „Cine tace" ──');
+const tace = taie(html, '// ─── începe „Cine tace”', '// ─── sfârșit „Cine tace” ──');
 const nume = new Function('d', '_dashEsc', tace + '\n; return _subOffline;');
 const E = (v) => String(v == null ? '' : v);
 T('când toate transmit, o spune',
@@ -63,7 +63,7 @@ T('la mai mult de trei, le numără pe restul',
 T('cele care n-au transmis niciodată se numără separat',
   /1 n-au transmis niciodată/.test(nume({ offlineCount: 2, devices: [{ name: 'Camion A', isOnline: false }] }, E)),
   nume({ offlineCount: 2, devices: [{ name: 'Camion A', isOnline: false }] }, E));
-T('„Fără semnal" e cartonaș mare, nu o notiță', /heroCard\('fa-tower-broadcast'/.test(html));
+T('„Fără semnal” e cartonaș mare, nu o notiță', /heroCard\('fa-tower-broadcast'/.test(html));
 T('și se face roșu când există', /d\.offlineCount > 0 \? 'var\(--red\)'/.test(html));
 
 console.log('\n4. Timpul de mers a urcat din text mărunt în cartonaș');
@@ -71,20 +71,20 @@ T('e cartonaș', /heroCard\('fa-clock'[\s\S]{0,80}'Timp de mers azi'/.test(html)
 T('și nu se mai repetă sub bara de stare', !/Ore motor azi/.test(html));
 
 console.log('\n5. Constatările agenților, strânse pe categorii');
-const grup = taie(html, '// ─── începe „Constatările, strânse pe categorii"', '// ─── sfârșit „Constatările, strânse pe categorii" ──');
+const grup = taie(html, '// ─── începe „Constatările, strânse pe categorii”', '// ─── sfârșit „Constatările, strânse pe categorii” ──');
 T('numele agenților vin din AGP_META, nu dintr-o listă paralelă',
   /window\.AGP_META/.test(grup) && !/watch: \['RA Watch'/.test(html));
 T('se grupează pe agent, nu un rând per constatare', /pe\[k\] \|\| \(pe\[k\] = \{ n: 0/.test(grup));
 T('numără și câte vehicule sunt atinse', /vehicule\.length/.test(grup));
 T('cele critice urcă primele', /rank\[pe\[a\]\.sev\]/.test(grup));
-T('fiecare rând duce în „Agenți AI"', /onclick="showView\(\\'agenti\\'\)"/.test(grup));
+T('fiecare rând duce în „Agenți AI”', /onclick="showView\(\\'agenti\\'\)"/.test(grup));
 T('rândurile folosesc stilul comun, nu unul inventat pe loc',
   /class="fd-rand /.test(grup) && css.indexOf('.fd-rand') > 0);
 T('lista lor e o coloană, nu o grilă', /<div id="dash-agents" class="fd-lista">/.test(html));
 
 console.log('\n6. Cele șase cifre mari');
 ['Total vehicule', 'Fără semnal', 'Km azi', 'Timp de mers azi', 'Consum azi', 'Alerte'].forEach(function (c) {
-  T('are cartonașul „' + c + '"', html.indexOf("'" + c + "'") > 0);
+  T('are cartonașul „' + c + '”', html.indexOf("'" + c + "'") > 0);
 });
 T('rândul de cartonașe se așază singur (nu forțat pe 4 coloane)',
   /id="dash-hero"[^>]*repeat\(auto-fit,minmax\(190px/.test(html));
@@ -92,12 +92,12 @@ T('rândul de cartonașe se așază singur (nu forțat pe 4 coloane)',
 console.log('\n7. Agenții: gratuiți, deci activi la toate firmele');
 // RA Track nu vinde pe planuri, ci pe OFERTE. Agenții sunt gratuiți (reguli fixe, zero tokeni) și
 // sunt scoși din calculatorul de ofertă — deci n-au ce căuta într-un tabel de planuri. Înainte,
-// fiecare firmă nouă pica pe „standard" (= start), unde scria `agents: false`: clientul nu-i avea,
+// fiecare firmă nouă pica pe „standard” (= start), unde scria `agents: false`: clientul nu-i avea,
 // iar traseul de deschidere nu-i atingea deloc.
 const plans = require('./plans.js');
 ['standard', 'start', 'pro', 'premium', 'enterprise', 'custom', undefined].forEach(function (pl) {
   const f = plans.featuresFor({ plan: pl });
-  T('agenții sunt porniți pe „' + (pl || 'fără plan') + '"', f.agents === true, JSON.stringify(f));
+  T('agenții sunt porniți pe „' + (pl || 'fără plan') + '”', f.agents === true, JSON.stringify(f));
 });
 T('și sunt toți șase, nu o parte', plans.enabledAgentsFor({ plan: 'standard' }).length === 6,
   JSON.stringify(plans.enabledAgentsFor({ plan: 'standard' })));
@@ -107,22 +107,22 @@ T('și poate alege doar o parte din ei',
   plans.enabledAgentsFor({ plan: 'standard', settings: { enabled_agents: ['watch'] } }).join() === 'watch');
 // Ce se VINDE rămâne oprit până îl aprinde oferta — altfel am da pe gratis module cu plată.
 ['tahograf', 'etransport', 'etoll'].forEach(function (k) {
-  T('„' + k + '" rămâne oprit implicit (se vinde)', plans.featuresFor({ plan: 'standard' })[k] === false);
+  T('„' + k + '” rămâne oprit implicit (se vinde)', plans.featuresFor({ plan: 'standard' })[k] === false);
 });
 // RA Insight (14.10): pornit la toate firmele — pachetul Start e inclus în contract; ce se vinde (AI, ramuri) stă în pachet.
-T('„ai_assistant" pornit implicit (pachetul Start, inclus); ce se plătește vine din pachet', plans.featuresFor({ plan: 'standard' }).ai_assistant === true &&
+T('„ai_assistant” pornit implicit (pachetul Start, inclus); ce se plătește vine din pachet', plans.featuresFor({ plan: 'standard' }).ai_assistant === true &&
   require('./pachete').pachetFirma({}).cod === 'start' && require('./pachete').pachetFirma({}).ai === false);
 
 console.log('\n8. Secțiunea agenților nu mai dispare');
-const ag = taie(html, '// ─── începe „Ce veghează agenții"', '// ─── sfârșit „Ce veghează agenții" ──');
+const ag = taie(html, '// ─── începe „Ce veghează agenții”', '// ─── sfârșit „Ce veghează agenții” ──');
 T('se arată întotdeauna', /wrap\.style\.display = 'block';/.test(ag) && !/if \(!nw\.length\) \{ wrap\.style\.display = 'none'/.test(html));
 T('întreabă și ce agenți sunt activi', /fetch\('\/api\/agents'/.test(ag));
 T('spune că veghează flota', /Agenții AI veghează flota/.test(html));
 T('spune când a fost ultima verificare', /ultima verificare/.test(ag) && /din oră în oră/.test(ag));
 T('și dacă verificarea automată e oprită din Setări', /verificarea automată e oprită din Setări/.test(ag));
 T('când n-a găsit nimic, o spune', /Nimic de rezolvat\. Agenții au verificat/.test(ag));
-// 17.11 (Alin: „rezolvă"): fără „non-stop" — RA Watch verifică din oră în oră; „25 de vehicule", nu „25 vehicule".
-T('listează CE urmăresc, pe câte vehicule (fără „non-stop", cu „de" de la 20)', /Ce urmăresc pe /.test(ag) && /nrVehicule/.test(ag) && !/non-stop/.test(ag) && /r >= 1 && r <= 19/.test(ag));
+// 17.11 (Alin: „rezolvă”): fără „non-stop” — RA Watch verifică din oră în oră; „25 de vehicule”, nu „25 vehicule”.
+T('listează CE urmăresc, pe câte vehicule (fără „non-stop”, cu „de” de la 20)', /Ce urmăresc pe /.test(ag) && /nrVehicule/.test(ag) && !/non-stop/.test(ag) && /r >= 1 && r <= 19/.test(ag));
 T('textul fiecărui agent vine din AGP_META (`checks`), nu scris de mână', /m\.checks \|\| m\.desc/.test(ag));
 T('dacă sunt opriți pe firma aia, o spune', /Agenții AI sunt opriți pentru firma asta/.test(ag));
 T('iar fondatorului îi arată și de unde-i pornește',

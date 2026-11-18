@@ -1,4 +1,4 @@
-// Pictogramele moderne de vehicul — setul „Plutitor cu umbră" (ales în 2026-08), ACELAȘI ca pe web
+// Pictogramele moderne de vehicul — setul „Plutitor cu umbră” (ales în 2026-08), ACELAȘI ca pe web
 // (public/index.html → VEH_MODERN). Profil lateral 64:44, fill pe currentColor: geamuri la 25%,
 // umbra-elipsă la 18%. Dacă schimbi desenele, schimbă-le în AMBELE locuri.
 export type VehCat = 'car' | 'van' | 'truck' | 'tir' | 'bus' | 'motorcycle' | 'tractor' | 'trailer';

@@ -12,7 +12,7 @@ function caleRaport(type: string, from: string, to: string, imeis: string[] | un
 }
 
 // Rapoartele trec pe ACELAȘI drum ca hârtiile de mai jos: numele fișierului vine din antetul serverului
-// („RA-Track - Raport Traseu - 06.07.2026.xlsx", regula casei din report_export.js → sendReport). Până pe
+// („RA-Track - Raport Traseu - 06.07.2026.xlsx”, regula casei din report_export.js → sendReport). Până pe
 // 29.09 telefonul le salva „raport_<tip>_<data>" — singurele descărcări rămase fără numele brandat.
 // `raport_…` rămâne doar ca rezervă, dacă antetul lipsește.
 export async function exportReport(type: string, from: string, to: string, imeis: string[] | undefined, format: 'pdf' | 'xlsx', opts?: ReportOpts) {
@@ -27,13 +27,13 @@ export async function exportHistoryReport(id: number, type: string, format: 'pdf
 // ─── Un fișier făcut de SERVER: contractul, actul adițional, oferta, factura, un scan urcat ─────
 // UN SINGUR drum pentru toate hârtiile, ca pe web (`raxHartie`): telefonul nu desenează niciun PDF,
 // ci cere fișierul generatorului de pe server și i-l predă telefonului sub numele din ANTETUL
-// răspunsului („RA-Track - Contract RAT-C-2026-0001 - Firma.pdf"), nu sub unul compus aici.
+// răspunsului („RA-Track - Contract RAT-C-2026-0001 - Firma.pdf”), nu sub unul compus aici.
 //   • Cererea trece prin stratul nativ, cu tokenul: un <a href> nu cară tokenul, iar un fetch() din
 //     pagină e blocat (serverul nu trimite antete CORS — verificat 13.09, vezi VehicleDocs.tsx).
-//   • `deschide` = „Vezi": foaia telefonului se deschide ca s-o citești (vizualizatorul de PDF-uri);
-//     fără el = „Descarcă": aceeași foaie, de unde o salvezi în Fișiere/Drive sau o trimiți. Fără
+//   • `deschide` = „Vezi”: foaia telefonului se deschide ca s-o citești (vizualizatorul de PDF-uri);
+//     fără el = „Descarcă”: aceeași foaie, de unde o salvezi în Fișiere/Drive sau o trimiți. Fără
 //     pluginuri noi — Filesystem + Share, exact ca exportul de rapoarte.
-//   • Eroarea serverului ajunge pe ecran cu vorbele lui (ex. 503 „Generatorul de PDF nu e disponibil").
+//   • Eroarea serverului ajunge pe ecran cu vorbele lui (ex. 503 „Generatorul de PDF nu e disponibil”).
 // Întoarce numele cu care s-a salvat.
 export function numeDinAntet(antete: Record<string, any> | null | undefined, implicit: string): string {
   const h = antete || {};
@@ -81,7 +81,7 @@ export async function salveazaDeLaServer(path: string, numeImplicit: string, opt
     const nume = numeDinAntet(res.headers, numeImplicit);
     const b64 = typeof res.data === 'string' ? res.data.replace(/\s+/g, '') : '';
     if (!b64) throw new Error('Serverul n-a trimis fișierul');
-    // Numărul unui act adițional are „/" în el (RAT-C-2026-0001/A1): pe disc ar fi un dosar. Doar calea
+    // Numărul unui act adițional are „/” în el (RAT-C-2026-0001/A1): pe disc ar fi un dosar. Doar calea
     // se curăță; numele arătat rămâne cel din antet.
     const cale = nume.replace(/[\\/:*?"<>|]+/g, '-');
     const { Filesystem, Directory } = await import('@capacitor/filesystem');

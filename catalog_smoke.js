@@ -1,6 +1,6 @@
 // Gardă pe catalogul de rapoarte: FIECARE raport trebuie să aibă descriere (se afișează în catalog și în
 // panoul cascadă) și o iconiță PROPRIE în REP_ICONS (public/index.html). Fără asta, un raport nou apare
-// cu iconița generică „fa-file-lines" și fără explicație — exact ce s-a întâmplat cu cele 8 rapoarte de
+// cu iconița generică „fa-file-lines” și fără explicație — exact ce s-a întâmplat cu cele 8 rapoarte de
 // senzori/CAN adăugate ulterior. Rulează fără server (doar citește sursele).
 const fs = require('fs');
 const path = require('path');

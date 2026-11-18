@@ -10,8 +10,8 @@
 .msb-search { display: flex; align-items: center; gap: 8px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; min-width: 240px; }
 .msb-search i { color: var(--text-muted); font-size: 13px; }
 .msb-search input { background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 14px; width: 100%; }
-/* Pastila „vehicule afișate pe hartă" (fost buton cu mașinuță). Reinterpretată: iconiță de vizibilitate,
-   contorul cu totalul estompat, chevron care se rotește, plus stare „filtrat" (portocaliu) când nu vezi tot. */
+/* Pastila „vehicule afișate pe hartă” (fost buton cu mașinuță). Reinterpretată: iconiță de vizibilitate,
+   contorul cu totalul estompat, chevron care se rotește, plus stare „filtrat” (portocaliu) când nu vezi tot. */
 .msb-toggle { -webkit-appearance: none; appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: #06210F; border: none; border-radius: 9px; padding: 8px 12px; font-size: 13px; font-weight: 800; white-space: nowrap; box-shadow: 0 2px 8px rgba(63,224,125,.28); transition: background .15s ease, box-shadow .15s ease, transform .1s ease; }
 .msb-toggle:hover { box-shadow: 0 5px 16px rgba(63,224,125,.4); }
 .msb-toggle:active { transform: translateY(1px); }
@@ -22,7 +22,7 @@
 .msb-toggle.open .msb-cv { transform: rotate(180deg); }
 /* Pastila rămâne VERDE și când urmărești doar o parte din flotă: a filtra e o alegere normală, nu o
    problemă. Portocaliul de dinainte arăta ca un avertisment. Cât vezi din total spune deja contorul
-   („1/2"), iar mai jos, sub el, scrie explicit câte sunt ascunse. */
+   („1/2”), iar mai jos, sub el, scrie explicit câte sunt ascunse. */
 .msb-toggle.filtered .msb-count .msb-tot { opacity: .75; }
 .msb-note {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 1199;
@@ -45,7 +45,7 @@
 .msb-plate { color: var(--accent); font-weight: 700; font-size: 11px; }
 .msb-empty { padding: 12px; color: var(--text-muted); font-size: 12px; text-align: center; }
 /* Tabletă (769–1100 px): bara stă în rândul barei de sus (nu deasupra ei) și se strânge cât e loc. Centrată peste bară, acoperea
-   butoanele „Anunță echipa RA Track" și „Temă" (26.10, măsurat la 820–834 px: căsuța de 240 px + pastila nu încăpeau între logo și
+   butoanele „Anunță echipa RA Track” și „Temă” (26.10, măsurat la 820–834 px: căsuța de 240 px + pastila nu încăpeau între logo și
    butoane). Pe calculator rămâne centrată, ca înainte. */
 @media (min-width: 769px) and (max-width: 1100px) {
   .topbar-center { position: static; transform: none; flex: 1 1 auto; min-width: 0; max-width: none; justify-content: center; padding: 0 10px; }
@@ -68,7 +68,7 @@
 /* ── Grupuri în dropdown (filtrare pe categorie) ── */
 .msb-grp-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 12px; font-weight: 700; color: var(--text-primary); cursor: pointer; border-bottom: 1px solid var(--border); user-select: none; }
 .msb-grp-head .msb-grp-caret { margin-left: auto; font-size: 11px; color: var(--text-muted); transition: transform .15s; }
-.msb-grp-head .msb-grp-caret:not(.open) { transform: rotate(-90deg); }   /* „închis" → săgeata spre dreapta */
+.msb-grp-head .msb-grp-caret:not(.open) { transform: rotate(-90deg); }   /* „închis” → săgeata spre dreapta */
 .msb-grp { border-bottom: 1px solid var(--border); }
 .msb-grp-row { display: flex; align-items: center; gap: 9px; padding: 8px 12px; }
 .msb-grp-cb { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto; }

@@ -1,7 +1,7 @@
 // io_names_extra.js — GENERAT de tools/gen-io-extra.js din specul oficial Teltonika FMC130.
 // NU edita de mână: rulează generatorul după ce actualizezi tools/fixtures/avl-fmc130.json.
 // Harta scrisă de mână din codec8e.js are prioritate; aici e restul listei oficiale (511 ID-uri),
-// ca un Passat cu ALL-CAN300 să nu mai apară cu zeci de „io_517" nedescifrate.
+// ca un Passat cu ALL-CAN300 să nu mai apară cu zeci de „io_517” nedescifrate.
 // Câmpuri: name (cheia din io_data) · mult (multiplicator afișare/conversie) · semnat (two's complement)
 //          · octeti (lățimea valorii) · unit · comentariu = numele oficial + grupul din spec.
 module.exports = {

@@ -24,7 +24,7 @@ const MAP_STYLE: any = {
 };
 
 // Straturi de bază (paritate cu web): Străzi, Satelit, Satelit + etichete, Relief. {s} extins în URL-uri explicite (MapLibre cere listă), {r} eliminat.
-// „Deschis"/„Închis" (CARTO) au ieșit: CARTO cere acum cheie și scrie „API KEY REQUIRED" peste hartă — vezi lib/mapLayer.ts.
+// „Deschis”/„Închis” (CARTO) au ieșit: CARTO cere acum cheie și scrie „API KEY REQUIRED” peste hartă — vezi lib/mapLayer.ts.
 // Tipul Record<MapLayerKey, …> leagă catalogul de lista din lib: un strat scos dintr-o parte și uitat în cealaltă nu mai compilează.
 const OSM_TILES = ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'];
 const SAT_TILES = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
@@ -57,7 +57,7 @@ function applyMapLayer(map: maplibregl.Map, key: MapLayerKey) {
 function esc(s: any) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string)); }
 
 // Conținutul unui marker. În modul 3D: DOAR eticheta cu numărul (mașina e model 3D real pe hartă,
-// randat de stratul Three.js). În 2D: silueta „Realist top-down" (stil AROBS), rotită după direcția de
+// randat de stratul Three.js). În 2D: silueta „Realist top-down” (stil AROBS), rotită după direcția de
 // mers — botul arată încotro merge, fără săgeată separată. Aceeași ca pe harta web.
 function markerInner(v: Position, st: StatusInfo, use3d: boolean) {
   const label = esc(v.plate || v.name || '');
@@ -65,12 +65,12 @@ function markerInner(v: Position, st: StatusInfo, use3d: boolean) {
   if (use3d) return `<div class="vmk-inner vmk-3d">${lbl}</div>`;
   return `<div class="vmk-inner">${lbl}<div class="vmk-icon">${markerTopSvg(vehCatDin(v as any), HEX[st.status], v.angle || 0)}</div></div>`;
 }
-// Mașina de pe butonul „mod de afișare": exact desenul de pe hartă (silueta văzută de sus, verde de brand),
+// Mașina de pe butonul „mod de afișare”: exact desenul de pe hartă (silueta văzută de sus, verde de brand),
 // dar FĂRĂ elipsa de umbră — ea așază vehiculul pe teren pe hartă, într-un buton mic doar îngroașă conturul.
 // Ca pe web (_mapStyleCarSvg): butonul arată stilul pe care îl primești, nu o săgeată care nu mai există.
 const BTN_CAR_SVG = markerTopSvg('car', '#3FE07D', 0, 24).replace(/<ellipse\b[^>]*opacity="0\.25"[^>]*\/>/, '');
 
-// „Vehicule apropiate": mașini la cel mult 100 m una de alta intră în aceeași bulă (același prag ca pe web,
+// „Vehicule apropiate”: mașini la cel mult 100 m una de alta intră în aceeași bulă (același prag ca pe web,
 // _proximityClusters). Distanța e pe teren, nu pe ecran — bula nu se desface doar pentru că mărești harta.
 function distM(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371000, r = Math.PI / 180;
@@ -78,7 +78,7 @@ function distM(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const s = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * r) * Math.cos(bLat * r) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
 }
-// Același rezultat ca bucla „fiecare cu fiecare" de pe web, dar căutarea vecinilor trece printr-o grilă de
+// Același rezultat ca bucla „fiecare cu fiecare” de pe web, dar căutarea vecinilor trece printr-o grilă de
 // celule de ~maxM: harta se redesenează la fiecare poziție live, iar la sute de mașini bucla simplă ar îngheța
 // telefonul. Pentru un vehicul-sămânță i intră în bulă toți j de după el, încă nefolosiți, aflați la ≤ maxM.
 function grupeApropiate(vs: Position[], maxM = 100): { key: string; imeis: string[]; lat: number; lng: number }[] {
@@ -123,7 +123,7 @@ function popupHtml(v: Position, st: StatusInfo, stale: boolean) {
   return `<div class="vmpop"><div class="vmpop-name">${title}</div>${line}<button class="vmpop-btn" data-imei="${esc(v.imei)}">Detalii →</button></div>`;
 }
 
-// Instructaj „prima dată pe harta 3D" — 3 pași, gesturi pentru touch. Afișat o singură dată.
+// Instructaj „prima dată pe harta 3D” — 3 pași, gesturi pentru touch. Afișat o singură dată.
 const TOUR3D: { e: string; t: string; d: string }[] = [
   { e: '🏙️', t: 'Bine ai venit pe harta 3D', d: 'Vezi vehiculele ca <b>modele 3D reale</b>, printre <b>clădiri 3D</b>. Harta se înclină pentru o perspectivă realistă a flotei.' },
   { e: '✌️', t: 'Rotește și înclină', d: 'Cu <b>2 degete</b>: trage vertical ca să <b>înclini</b> harta, răsucește-le ca să <b>rotești</b>. Ciupește pentru zoom — exact ca pe Google Maps.' },
@@ -132,7 +132,7 @@ const TOUR3D: { e: string; t: string; d: string }[] = [
 
 export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq, follow, onFocus, grupareOprita }: {
   vehicles: Position[]; offlineMin: number; onSelect: (imei: string) => void; focusImei?: string; follow?: boolean; onFocus?: (imei: string) => void;
-  // focusSeq: crește la fiecare „arată pe hartă" — harta se recentrează și când ceri a doua oară același vehicul.
+  // focusSeq: crește la fiecare „arată pe hartă” — harta se recentrează și când ceri a doua oară același vehicul.
   // grupareOprita: e activă o alegere de vehicule → fără bule (ca pe web: gruparea se oprește singură).
   focusSeq?: number; grupareOprita?: boolean;
 }) {
@@ -141,14 +141,14 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
   const markers = useRef<Map<string, { mk: maplibregl.Marker; el: HTMLDivElement; pop: maplibregl.Popup }>>(new Map());
   const bule = useRef<Map<string, { mk: maplibregl.Marker; el: HTMLDivElement; imeis: string[] }>>(new Map());
   const lastFocusSeq = useRef<number | undefined>(undefined);
-  // „Unește mașinile apropiate": preferința de pe cont (uneste_masini, implicit oprită), ca pe web. Butonul o
+  // „Unește mașinile apropiate”: preferința de pe cont (uneste_masini, implicit oprită), ca pe web. Butonul o
   // schimbă pe loc aici și o urcă pe cont; până sosesc preferințele contului, rămâne oprită.
   const [grupareLocal, setGrupareLocal] = useState<boolean | null>(null);
   const grupare = grupareLocal != null ? grupareLocal : !!(uiPrefs.value && uiPrefs.value.uneste_masini === true);
   function toggleGrupare() {
     // Cu vehicule alese, bulele stau oprite oricum — apăsarea n-ar schimba nimic pe hartă, doar ar muta în
-    // tăcere preferința contului. Pe telefon nu există „hover", deci motivul se spune, nu stă într-un `title`.
-    if (grupareOprita) { showToast('Bulele stau oprite cât ai vehicule alese. Apasă „Arată tot".'); return; }
+    // tăcere preferința contului. Pe telefon nu există „hover”, deci motivul se spune, nu stă într-un `title`.
+    if (grupareOprita) { showToast('Bulele stau oprite cât ai vehicule alese. Apasă „Arată tot”.'); return; }
     const nv = !grupare;
     setGrupareLocal(nv);
     urcaUiPrefs({ uneste_masini: nv });
@@ -174,11 +174,11 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
     setUse3d(nv);
     if (nv) { try { if (!localStorage.getItem('ra3dTourSeen')) setTour(0); } catch {} } // instructaj o singură dată, DOAR la activarea 3D
   }
-  const use3dRef = useRef(use3d); use3dRef.current = use3d; // valoarea curentă, citibilă din closure-ul de „load"
+  const use3dRef = useRef(use3d); use3dRef.current = use3d; // valoarea curentă, citibilă din closure-ul de „load”
   const viewerMarker = useRef<maplibregl.Marker | null>(null); // poziția dispozitivului de pe care urmărești
   const watchId = useRef<string | null>(null);
   const [locating, setLocating] = useState(false);
-  // Alegerea salvată; „Deschis"/„Închis" (CARTO, scoase) sunt mutate automat pe Străzi — vezi lib/mapLayer.ts.
+  // Alegerea salvată; „Deschis”/„Închis” (CARTO, scoase) sunt mutate automat pe Străzi — vezi lib/mapLayer.ts.
   const [layer, setLayer] = useState<MapLayerKey>(loadMapLayer);
   const layerRefC = useRef(layer); layerRefC.current = layer;
   const [layerSheet, setLayerSheet] = useState(false);
@@ -192,7 +192,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
   const [tour, setTour] = useState(-1); // -1 = ascuns; 0..n = pasul curent din instructaj (declanșat DOAR la apăsarea butonului 3D)
   function endTour() { try { localStorage.setItem('ra3dTourSeen', '1'); } catch {} setTour(-1); }
 
-  // „Unde sunt eu": cere permisiunea, ia poziția, pune un punct albastru + centrează, apoi urmărește live.
+  // „Unde sunt eu”: cere permisiunea, ia poziția, pune un punct albastru + centrează, apoi urmărește live.
   async function locateMe() {
     const map = mapRef.current; if (!map || locating) return;
     setLocating(true);
@@ -232,7 +232,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
     // sosesc pozițiile de la server. Pe date mobile, între cele două momente apuci să tragi de hartă — și
     // camera ți-ar sări din mână. `originalEvent` există doar la gesturi, nu la easeTo/fitBounds programatic.
     map.on('movestart', (e: any) => { if (e && e.originalEvent) userMoved.current = true; });
-    // jos-STÂNGA: colțul jos-dreapta e ocupat de FAB-ul „+" iar bara de tab-uri acoperă marginea de jos
+    // jos-STÂNGA: colțul jos-dreapta e ocupat de FAB-ul „+” iar bara de tab-uri acoperă marginea de jos
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showZoom: true, showCompass: true }), 'bottom-left');
     map.on('load', () => {
       ready.current = true;
@@ -266,7 +266,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
       _syncRef.current(); // randează modelele 3D imediat ce stratul e gata
       try { applyMapLayer(map, layerRefC.current); } catch { /* strat restaurat din sesiunea anterioară */ }
     });
-    // buton „Detalii" din balon → ecranul vehiculului (delegare pe container, supraviețuiește re-randării)
+    // buton „Detalii” din balon → ecranul vehiculului (delegare pe container, supraviețuiește re-randării)
     ref.current.addEventListener('click', (ev: any) => {
       const btn = ev.target && ev.target.closest ? ev.target.closest('.vmpop-btn') : null;
       if (btn) { ev.stopPropagation(); const imei = btn.getAttribute('data-imei'); if (imei) onSelectRef.current(imei); }
@@ -303,7 +303,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
           const pop = new maplibregl.Popup({ closeButton: false, offset: 16, className: 'vmk-popup' }).setHTML(pophtml);
           const mk = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([v.longitude, v.latitude]).setPopup(pop).addTo(map);
           const tapImei = v.imei;
-          el.addEventListener('click', () => { // tap pe mașină → centrează harta pe EA + oprește urmărirea flotei (altfel revine „între" mașini la următorul update)
+          el.addEventListener('click', () => { // tap pe mașină → centrează harta pe EA + oprește urmărirea flotei (altfel revine „între” mașini la următorul update)
             try { map.easeTo({ center: mk.getLngLat(), zoom: Math.max(map.getZoom(), 15), duration: 500 }); } catch { /* */ }
             if (onFocusRef.current) onFocusRef.current(tapImei);
           });
@@ -314,8 +314,8 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
       }
       for (const [imei, rec] of markers.current) if (!seen.has(imei)) { rec.mk.remove(); markers.current.delete(imei); }
 
-      // Bulele „vehicule apropiate" (doar în 2D: în 3D mașinile sunt modele, nu markerele de aici).
-      // Vehiculul cerut explicit („arată pe hartă") rămâne mereu în afara bulei — l-ai cerut ca să-l vezi.
+      // Bulele „vehicule apropiate” (doar în 2D: în 3D mașinile sunt modele, nu markerele de aici).
+      // Vehiculul cerut explicit („arată pe hartă”) rămâne mereu în afara bulei — l-ai cerut ca să-l vezi.
       const grupeAcum = (grupare && !grupareOprita && !use3d)
         ? grupeApropiate(focusImei ? vehicles.filter((x) => x.imei !== focusImei) : vehicles) : [];
       const grupate = new Set<string>();
@@ -369,7 +369,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
         fitted.current = true;
       } else if (!fitted.current && !userMoved.current && n) {
         // Încadrarea AUTOMATĂ de la prima încărcare — singura care poate ateriza peste navigarea manuală.
-        // „Urmărește" și focalizarea pe un vehicul rămân neatinse: alea le ceri tu, deci au voie să mute camera.
+        // „Urmărește” și focalizarea pe un vehicul rămân neatinse: alea le ceri tu, deci au voie să mute camera.
         map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 60, maxZoom: 15, duration: 0, animate: false });
         fitted.current = true;
       }
@@ -400,7 +400,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
         style={'position:absolute;top:102px;left:10px;z-index:1000;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:' + (layer !== MAP_LAYER_DEFAULT ? 'var(--accent)' : 'var(--text-primary)') + ';font-size:16px;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer'}>
         {MTILES[layer]?.icon || '🗺️'}
       </button>
-      {/* „Unește mașinile apropiate" — doar în 2D (în 3D mașinile sunt modele, nu markere). Cât e activă o
+      {/* „Unește mașinile apropiate” — doar în 2D (în 3D mașinile sunt modele, nu markere). Cât e activă o
           alegere de vehicule, gruparea stă oprită, ca pe web; atingerea butonului spune de ce (mesaj pe ecran). */}
       {!use3d && (
         <button type="button" onClick={toggleGrupare}

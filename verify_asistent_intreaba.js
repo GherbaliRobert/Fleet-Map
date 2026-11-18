@@ -1,7 +1,7 @@
-// verify_asistent_intreaba.js — asistentul fondatorilor, etapa 1, pasul 2 (Alin, 30.10: „2. da" — caseta „Întreabă orice", ca în
-// macheta „tot un chat"). Sub „Azi la noi": trei întrebări gata făcute; jos, caseta cu „+" (Firma, Perioada). Întrebările obișnuite
-// primesc răspuns PE LOC, pe reguli (insigna „Instant": titlul, tabelul, fraza, butonul spre ecran, „✓ Cifrele le-am luat din…"),
-// fără model și fără cost; restul merg la model („Analiză"), cu unelte care citesc ACELEAȘI date. Doar fondatorii.
+// verify_asistent_intreaba.js — asistentul fondatorilor, etapa 1, pasul 2 (Alin, 30.10: „2. da” — caseta „Întreabă orice”, ca în
+// macheta „tot un chat”). Sub „Azi la noi”: trei întrebări gata făcute; jos, caseta cu „+” (Firma, Perioada). Întrebările obișnuite
+// primesc răspuns PE LOC, pe reguli (insigna „Instant”: titlul, tabelul, fraza, butonul spre ecran, „✓ Cifrele le-am luat din…”),
+// fără model și fără cost; restul merg la model („Analiză”), cu unelte care citesc ACELEAȘI date. Doar fondatorii.
 //
 //   node verify_asistent_intreaba.js                 (regula + pagina + culorile + serverul pornit, cu modelul simulat)
 //   node verify_asistent_intreaba.js --fara-server
@@ -46,7 +46,7 @@ if (process.argv.indexOf('--faza=seed') >= 0) {
     // Stocul: 2 × FMC130 în depozit, 1 la instalator, 1 × LV-CAN200 în depozit; stocul minim la FMC130 = 5.
     await db.pool.query("INSERT INTO stoc_echipamente (tip, serie, stare, proprietar, partener_id, created_at, stare_din) VALUES ('fmc130', '350612070000001', 'depozit', 'ra', NULL, $1, $1), ('fmc130', '350612070000002', 'depozit', 'ra', NULL, $1, $1), ('fmc130', '350612070000003', 'instalator', 'ra', $2, $1, $1), ('lvcan200', 'LV-PROBA-0001', 'depozit', 'ra', NULL, $1, $1)", [acum, pt]);
     await db.setSetting('stoc_praguri', JSON.stringify({ minim: { fmc130: 5 } }));
-    // O cerere de la Trans Expres („Nu transmite"), de acum 5 ore; o cerere de cont demo, de acum 2 ore (cu date personale).
+    // O cerere de la Trans Expres („Nu transmite”), de acum 5 ore; o cerere de cont demo, de acum 2 ore (cu date personale).
     await db.pool.query("INSERT INTO cereri_echipa (company_id, problema, titlu, stare, sursa, creat_la) VALUES ($1, 'semnal', 'Nu transmite', 'trimisa', 'azi', $2)", [te, acum - 5 * ORA - 60000]);
     await db.pool.query("INSERT INTO demo_requests (name, company, email, phone, wants_demo, consent, status, created_at) VALUES ('Maria Pop', 'Logistic Est SRL', 'maria.pop@proba.ro', '0722000111', true, true, 'new', $1)", [acum - 2 * ORA]);
     console.log('SEED ' + JSON.stringify({ te, agro, cv, an, start }));
@@ -85,7 +85,7 @@ T('regula e curată: fără bază de date, fără server, fără model, fără c
 T('întrebările gata făcute sunt cele din machetă (trei)', A.INTREBARI_GATA.map((x) => x.text).join(' | ') === 'Cine e restant? | Încasări luna asta | Montaje săptămâna asta');
 T('fiecare întrebare gata făcută se înțelege pe loc', A.INTREBARI_GATA.every((x) => !!A.intelege(x.trimite, { acum: ACUM })), A.INTREBARI_GATA.map((x) => JSON.stringify(A.intelege(x.trimite, { acum: ACUM }))).join(' | '));
 T('… și fiecare întrebare de rezervă (când modelul lipsește)', A.PE_LOC.length === 6 && A.PE_LOC.every((x) => !!A.intelege(x.trimite, { acum: ACUM })));
-T('fiecare perioadă din „+" e înțeleasă de calendar (montaje, contracte)', A.PERIOADE.length === 7 && A.PERIOADE.every((p) => !!A.perioadaCalendar(I.norm(p.pune), ACUM, false)),
+T('fiecare perioadă din „+” e înțeleasă de calendar (montaje, contracte)', A.PERIOADE.length === 7 && A.PERIOADE.every((p) => !!A.perioadaCalendar(I.norm(p.pune), ACUM, false)),
   A.PERIOADE.filter((p) => !A.perioadaCalendar(I.norm(p.pune), ACUM, false)).map((p) => p.pune).join(', '));
 const subiecte = [
   ['Cine e restant?', 'restanti'], ['Ce facturi sunt neplătite?', 'restanti'], ['Cine ne datorează bani?', 'restanti'],
@@ -97,55 +97,55 @@ const subiecte = [
 ];
 const gresite = subiecte.filter(([q, s]) => (A.intelege(q, { acum: ACUM }) || {}).s !== s);
 T('subiectele, pe ' + subiecte.length + ' întrebări scrise ca de oameni', gresite.length === 0, gresite.map(([q, s]) => q + ' → ' + JSON.stringify(A.intelege(q, { acum: ACUM })) + ' (trebuia ' + s + ')').join(' | '));
-T('„de ce", „compară", „ce să fac" sunt ale modelului, chiar dacă pomenesc un subiect', ['De ce au scăzut încasările?', 'Compară încasările cu luna trecută', 'Ce să fac cu restanții?'].every((q) => A.intelege(q, { acum: ACUM, analiza: I.esteAnaliza(q) }) === null) &&
+T('„de ce”, „compară”, „ce să fac” sunt ale modelului, chiar dacă pomenesc un subiect', ['De ce au scăzut încasările?', 'Compară încasările cu luna trecută', 'Ce să fac cu restanții?'].every((q) => A.intelege(q, { acum: ACUM, analiza: I.esteAnaliza(q) }) === null) &&
   ['De ce au scăzut încasările?', 'Compară încasările cu luna trecută', 'Ce să fac cu restanții?'].every((q) => I.esteAnaliza(q)));
 T('o întrebare lungă (peste ' + A.MAX_CUVINTE_PE_LOC + ' cuvinte) e a modelului', A.intelege('fă-mi te rog un rezumat al încasărilor pe ultimele trei luni comparat cu costurile și spune-mi ce observi la clienți', { acum: ACUM }) === null);
 T('o întrebare fără subiect cunoscut e a modelului', A.intelege('Ce părere ai despre piața GPS din România?', { acum: ACUM }) === null);
-// Continuările: „Și luna trecută?" pe subiectul de dinainte; fără discuție, nu se ghicește.
+// Continuările: „Și luna trecută?” pe subiectul de dinainte; fără discuție, nu se ghicește.
 const cInc = A.raspunde(A.intelege('Încasări luna asta', { acum: ACUM }), { plati: [] }, ACUM).context;
 const uT = A.intelege('Și luna trecută?', { acum: ACUM, ctx: cInc });
-T('„Și luna trecută?" după încasări = încasările din septembrie', uT && uT.s === 'incasari' && uT.eticheta === 'în septembrie 2026' && uT.de === Date.parse('2026-08-31T21:00:00Z') && uT.pana === Date.parse('2026-09-30T21:00:00Z'), JSON.stringify(uT));
+T('„Și luna trecută?” după încasări = încasările din septembrie', uT && uT.s === 'incasari' && uT.eticheta === 'în septembrie 2026' && uT.de === Date.parse('2026-08-31T21:00:00Z') && uT.pana === Date.parse('2026-09-30T21:00:00Z'), JSON.stringify(uT));
 T('… fără discuție, aceeași întrebare nu se ghicește (merge la model)', A.intelege('Și luna trecută?', { acum: ACUM }) === null);
 const uM = A.intelege('și mâine?', { acum: ACUM, ctx: { s: 'montaje' } });
-T('„și mâine?" după montaje = montajele de sâmbătă, 31.10 (ora României, după schimbarea orei)', uM && uM.s === 'montaje' && uM.eticheta === 'mâine' && uM.de === Date.parse('2026-10-30T22:00:00Z') && uM.pana === Date.parse('2026-10-31T22:00:00Z'), JSON.stringify(uM));
+T('„și mâine?” după montaje = montajele de sâmbătă, 31.10 (ora României, după schimbarea orei)', uM && uM.s === 'montaje' && uM.eticheta === 'mâine' && uM.de === Date.parse('2026-10-30T22:00:00Z') && uM.pana === Date.parse('2026-10-31T22:00:00Z'), JSON.stringify(uM));
 const FT = [{ id: 1, nume: 'Trans Expres SRL' }];
 const cTE = A.raspunde(A.intelege('Încasări de la Trans Expres', { acum: ACUM, firme: FT }), { plati: [] }, ACUM).context;
-T('firma rămâne la o continuare („Și luna trecută?" după încasările de la Trans Expres)', JSON.stringify((A.intelege('Și luna trecută?', { acum: ACUM, ctx: cTE, firme: FT }) || {}).firme) === JSON.stringify(FT));
+T('firma rămâne la o continuare („Și luna trecută?” după încasările de la Trans Expres)', JSON.stringify((A.intelege('Și luna trecută?', { acum: ACUM, ctx: cTE, firme: FT }) || {}).firme) === JSON.stringify(FT));
 T('… dar o întrebare întreagă e despre toate firmele', !(A.intelege('Încasări luna asta', { acum: ACUM, ctx: cTE, firme: FT }) || {}).firme);
-T('„Și la Trans Expres?" după restanți = restanțele firmei', JSON.stringify(A.intelege('Și la Trans Expres?', { acum: ACUM, ctx: { s: 'restanti' }, firme: FT })) === JSON.stringify({ s: 'restanti', firme: FT }));
+T('„Și la Trans Expres?” după restanți = restanțele firmei', JSON.stringify(A.intelege('Și la Trans Expres?', { acum: ACUM, ctx: { s: 'restanti' }, firme: FT })) === JSON.stringify({ s: 'restanti', firme: FT }));
 // Perioadele pe ora României (fără `setHours`).
 const sap = A.perioadaCalendar('saptamana asta', ACUM, false), sapV = A.perioadaCalendar('saptamana viitoare', ACUM, false);
-T('„săptămâna asta" = luni 26.10 – duminică 1.11, pe ora României (cu schimbarea orei din 25.10)', sap.de === Date.parse('2026-10-25T22:00:00Z') && sap.pana === Date.parse('2026-11-01T22:00:00Z'), JSON.stringify(sap));
-T('„săptămâna viitoare" = 2–8 noiembrie', sapV.de === Date.parse('2026-11-01T22:00:00Z') && sapV.pana === Date.parse('2026-11-08T22:00:00Z'), JSON.stringify(sapV));
-T('o lună trecută, cerută pentru contracte, e cea de anul viitor („în ianuarie" întrebat în octombrie)', A.perioadaCalendar('in ianuarie', ACUM, true).eticheta === 'în ianuarie 2027');
-T('„mai" singur nu e luna mai („mai avem"), „în mai" da', A.perioadaCalendar('mai avem montaje', ACUM, false) === null && A.perioadaCalendar('in mai', ACUM, false).eticheta === 'în mai');
-// Încasările: „luna asta" e luna de acum, chiar și pe 1 (rapoartele ar fi zis „azi"), comparată cu ACELEAȘI zile din luna dinainte.
+T('„săptămâna asta” = luni 26.10 – duminică 1.11, pe ora României (cu schimbarea orei din 25.10)', sap.de === Date.parse('2026-10-25T22:00:00Z') && sap.pana === Date.parse('2026-11-01T22:00:00Z'), JSON.stringify(sap));
+T('„săptămâna viitoare” = 2–8 noiembrie', sapV.de === Date.parse('2026-11-01T22:00:00Z') && sapV.pana === Date.parse('2026-11-08T22:00:00Z'), JSON.stringify(sapV));
+T('o lună trecută, cerută pentru contracte, e cea de anul viitor („în ianuarie” întrebat în octombrie)', A.perioadaCalendar('in ianuarie', ACUM, true).eticheta === 'în ianuarie 2027');
+T('„mai” singur nu e luna mai („mai avem”), „în mai” da', A.perioadaCalendar('mai avem montaje', ACUM, false) === null && A.perioadaCalendar('in mai', ACUM, false).eticheta === 'în mai');
+// Încasările: „luna asta” e luna de acum, chiar și pe 1 (rapoartele ar fi zis „azi”), comparată cu ACELEAȘI zile din luna dinainte.
 const ziUnu = Date.parse('2026-11-01T18:00:00Z');
 const uU = A.intelege('Încasări luna asta', { acum: ziUnu });
-T('pe 1 ale lunii, „Încasări luna asta" rămâne luna (nu „azi")', uU && uU.eticheta === 'luna asta (noiembrie, până azi)' && uU.lunaAsta === true, JSON.stringify(uU));
+T('pe 1 ale lunii, „Încasări luna asta” rămâne luna (nu „azi”)', uU && uU.eticheta === 'luna asta (noiembrie, până azi)' && uU.lunaAsta === true, JSON.stringify(uU));
 const cmpU = A.perioadaComparata(uU, ziUnu);
 T('… și se compară cu aceleași zile din octombrie (1 octombrie, până la aceeași oră)', cmpU.fraza === 'În aceleași zile din octombrie' && cmpU.de === Date.parse('2026-09-30T21:00:00Z') && cmpU.pana === cmpU.de + (ziUnu - uU.de), JSON.stringify(cmpU));
 const uS = A.intelege('Cât am încasat în septembrie?', { acum: ACUM }), cmpS = A.perioadaComparata(uS, ACUM);
 T('o lună întreagă se compară cu luna dinainte, întreagă', uS.eticheta === 'în septembrie 2026' && !uS.lunaAsta && cmpS.fraza === 'Perioada de dinainte (august 2026)', JSON.stringify([uS, cmpS]));
 // Firmele numite: numele fără SRL, cuvânt întreg; la două care se suprapun, cea mai lungă.
 const FIRME = [{ id: 1, nume: 'Trans Expres SRL' }, { id: 2, nume: 'Trans SRL' }, { id: 3, nume: 'Agro Nord S.R.L.' }, { id: 4, nume: 'AB SRL' }];
-T('firma din întrebare: „Trans Expres" (nu și „Trans"), „Agro Nord" cu S.R.L., un nume prea scurt nu', JSON.stringify(A.firmeDin(I.norm('Trans Expres e restant?'), FIRME)) === JSON.stringify([{ id: 1, nume: 'Trans Expres SRL' }]) &&
+T('firma din întrebare: „Trans Expres” (nu și „Trans”), „Agro Nord” cu S.R.L., un nume prea scurt nu', JSON.stringify(A.firmeDin(I.norm('Trans Expres e restant?'), FIRME)) === JSON.stringify([{ id: 1, nume: 'Trans Expres SRL' }]) &&
   A.firmeDin(I.norm('cât a plătit agro nord?'), FIRME).map((f) => f.id).join() === '3' && A.firmeDin(I.norm('ab'), FIRME).length === 0 && A.firmeDin(I.norm('transport'), FIRME).length === 0);
 // Răspunsurile pe loc.
 const fact = (i, o) => Object.assign({ companyId: i, firma: 'Firma ' + i, numar: 'RAT-2026-' + String(100 + i), totalRon: 100 * i, moneda: 'RON', zileIntarziere: i, zilePanaLaOprire: 15 - i }, o || {});
 let r = A.raspunde(A.intelege('Cine e restant?', { acum: ACUM }), { facturi: [fact(1), fact(2, { zilePanaLaOprire: 2 }), fact(3, { moneda: 'EUR', totalRon: 50 })] }, ACUM);
-T('restanții: insigna „Instant · din Facturare" și rândul „✓"', r.fel === 'instant' && r.insigna.eticheta === 'Instant' && r.insigna.detaliu === 'din Facturare' && r.verificat === 'Cifrele le-am luat din Facturare.', JSON.stringify(r.insigna));
+T('restanții: insigna „Instant · din Facturare” și rândul „✓”', r.fel === 'instant' && r.insigna.eticheta === 'Instant' && r.insigna.detaliu === 'din Facturare' && r.verificat === 'Cifrele le-am luat din Facturare.', JSON.stringify(r.insigna));
 T('… titlul: câte firme și suma în lei (cu cea în euro alături)', r.titlu === 'Facturi trecute de scadență: 3 firme, 300 lei (și 50 EUR).', r.titlu);
 T('… tabelul: cea mai întârziată sus, suma la dreapta', r.tabel.col.join('|') === 'Firma|Factura|Întârziere|Suma' && r.tabel.rand[0][0] === 'Firma 3' && r.tabel.rand[1][3] === '200 lei' && r.tabel.dr.join() === '3', JSON.stringify(r.tabel));
 T('… fraza: unde se oprește accesul cel mai curând', r.text === 'La **Firma 2** accesul se oprește singur în 2 zile.', r.text);
 T('… butoanele: firma cea mai urgentă (fila Facturi) și Facturare', r.butoane[0].tinta.fel === 'firma' && r.butoane[0].tinta.id === 2 && r.butoane[0].tinta.fila === 'facturi' && r.butoane[1].tinta.fel === 'facturare', JSON.stringify(r.butoane));
 T('… contextul pentru întrebarea următoare', r.context.s === 'restanti');
 r = A.raspunde({ s: 'restanti' }, { facturi: Array.from({ length: 12 }, (_, i) => fact(i + 1)) }, ACUM);
-T('un tabel lung: 10 rânduri, iar restul îl spune serverul („… și încă 2 rânduri.")', r.tabel.rand.length === 10 && r.tabel.inca === 2 && r.tabel.incaText === '… și încă 2 rânduri.', JSON.stringify([r.tabel.rand.length, r.tabel.incaText]));
+T('un tabel lung: 10 rânduri, iar restul îl spune serverul („… și încă 2 rânduri.”)', r.tabel.rand.length === 10 && r.tabel.inca === 2 && r.tabel.incaText === '… și încă 2 rânduri.', JSON.stringify([r.tabel.rand.length, r.tabel.incaText]));
 T('textul simplu (Copiază, istoricul pentru model): fără steluțe, cu tabelul pe rânduri', !/\*\*/.test(A.textSimplu(r)) && A.textSimplu(r).split('\n')[1] === 'Firma | Factura | Întârziere | Suma' && /… și încă 2 rânduri\./.test(A.textSimplu(r)));
 r = A.raspunde({ s: 'restanti', firme: [{ id: 9, nume: 'Agro Nord SRL' }] }, { facturi: [fact(1)] }, ACUM);
-T('o firmă fără restanțe: „Agro Nord SRL: nicio factură trecută de scadență."', r.titlu === 'Agro Nord SRL: nicio factură trecută de scadență.' && !r.tabel, r.titlu);
-T('sumele românește: „1.240,84 lei", „2.915 lei", „−5,50 lei"', A.lei(1240.84) === '1.240,84 lei' && A.lei(2915) === '2.915 lei' && A.lei(-5.5) === '−5,50 lei');
+T('o firmă fără restanțe: „Agro Nord SRL: nicio factură trecută de scadență.”', r.titlu === 'Agro Nord SRL: nicio factură trecută de scadență.' && !r.tabel, r.titlu);
+T('sumele românește: „1.240,84 lei”, „2.915 lei”, „−5,50 lei”', A.lei(1240.84) === '1.240,84 lei' && A.lei(2915) === '2.915 lei' && A.lei(-5.5) === '−5,50 lei');
 const uI = A.intelege('Încasări luna asta', { acum: ACUM });
 r = A.raspunde(uI, { plati: [{ companyId: 1, firma: 'Trans Expres SRL', suma: 500 }, { companyId: 1, firma: 'Trans Expres SRL', suma: 240.5 }, { companyId: 2, firma: 'Agro Nord SRL', suma: 300 }],
   inainte: { fraza: 'În aceleași zile din septembrie', plati: [{ companyId: 1, suma: 1000 }] } }, ACUM);
@@ -169,9 +169,9 @@ T('dacă nimic nu e de facturat, o spune', A.raspunde({ s: 'de_facturat' }, { mo
 // Modelul: ce vede și ce primește înapoi.
 T('uneltele modelului doar citesc (zece), fiecare cu sursa ei', A.UNELTE.length === 10 && A.UNELTE.every((u) => A.SURSA_UNELTE[u.name] && u.input_schema && u.input_schema.type === 'object'), A.UNELTE.map((u) => u.name).join(', '));
 const dm = A.dupaModel(['restante', 'firme', 'restante', 'necunoscuta']);
-T('după model: insigna „Analiză · din Facturare și Companii" și butoanele uneltelor rulate (fără dubluri)', dm.insigna.fel === 'ai' && dm.insigna.eticheta === 'Analiză' && dm.insigna.detaliu === 'din Facturare și Companii' &&
+T('după model: insigna „Analiză · din Facturare și Companii” și butoanele uneltelor rulate (fără dubluri)', dm.insigna.fel === 'ai' && dm.insigna.eticheta === 'Analiză' && dm.insigna.detaliu === 'din Facturare și Companii' &&
   dm.butoane.map((b) => b.text).join('|') === 'Facturare|Companii', JSON.stringify(dm));
-T('… fără nicio unealtă rulată: „din aplicație", fără butoane', A.dupaModel([]).insigna.detaliu === 'din aplicație' && A.dupaModel([]).butoane.length === 0);
+T('… fără nicio unealtă rulată: „din aplicație”, fără butoane', A.dupaModel([]).insigna.detaliu === 'din aplicație' && A.dupaModel([]).butoane.length === 0);
 const instr = A.instructiuni('SCRISUL');
 T('instrucțiunile fixe: doar fondatorii, cifrele doar din unelte, lei românește, nicio acțiune promisă', /Vorbești DOAR cu fondatorii/.test(instr) && /Cifrele DOAR din unelte/.test(instr) &&
   /2\.915,40 lei/.test(instr) && /Nu promite acțiuni/.test(instr) && /SCRISUL$/.test(instr) && !/\d{2}\.\d{2}\.\d{4}.*azi/i.test(instr.replace('30.10.2026', '')));
@@ -180,20 +180,20 @@ T('fără model: spune de ce și dă întrebările pe loc', /cheia lui nu e pus�
 
 // ─── 1b. Pasul 3: cifrele verificate și analiza atentă ──────────────────────────────────────────────────────────────────────
 sect('1b. Pasul 3: cifrele verificate și analiza atentă (asistent_fondatori.js)');
-T('după model: `surse` = ecranele uneltelor rulate, fără dubluri (pentru rândul „✓")', JSON.stringify(dm.surse) === JSON.stringify(['Facturare', 'Companii']), JSON.stringify(dm.surse));
+T('după model: `surse` = ecranele uneltelor rulate, fără dubluri (pentru rândul „✓”)', JSON.stringify(dm.surse) === JSON.stringify(['Facturare', 'Companii']), JSON.stringify(dm.surse));
 const dateRest = [{ facturi: [{ firma: 'Trans Expres SRL', factura: 'RAT-2026-00950', suma: 1240.84, moneda: 'RON', zile_intarziere: 12 }] }];
-T('toate cifrele de verificat se regăsesc → „✓ Cifrele le-am luat din Facturare."', JSON.stringify(A.verificare('Trans Expres are de plată **1.240,84 lei**.', [], dateRest, ['Facturare'])) === JSON.stringify({ verificat: 'Cifrele le-am luat din Facturare.' }));
-T('… din două ecrane: „din Facturare și Contracte"', A.verificare('**1.240,84 lei**', [], dateRest, ['Facturare', 'Contracte']).verificat === 'Cifrele le-am luat din Facturare și Contracte.');
+T('toate cifrele de verificat se regăsesc → „✓ Cifrele le-am luat din Facturare.”', JSON.stringify(A.verificare('Trans Expres are de plată **1.240,84 lei**.', [], dateRest, ['Facturare'])) === JSON.stringify({ verificat: 'Cifrele le-am luat din Facturare.' }));
+T('… din două ecrane: „din Facturare și Contracte”', A.verificare('**1.240,84 lei**', [], dateRest, ['Facturare', 'Contracte']).verificat === 'Cifrele le-am luat din Facturare și Contracte.');
 T('fără cifre de verificat (doar cifre mici, fără unitate) → nimic sub răspuns', JSON.stringify(A.verificare('Sunt 3 firme cu 2 facturi.', [], dateRest, ['Facturare'])) === '{}');
-T('fără nimic citit → niciun „✓" (n-ar avea de unde)', JSON.stringify(A.verificare('**1.240,84 lei**', [], [], [])) === '{}');
+T('fără nimic citit → niciun „✓” (n-ar avea de unde)', JSON.stringify(A.verificare('**1.240,84 lei**', [], [], [])) === '{}');
 const pv = A.verificare('Total **2.000 lei**', ['2.000 lei'], dateRest, ['Facturare']);
-T('o cifră rămasă negăsită → problema galbenă „Nu am găsit în datele aplicației: …", fără „✓"', !pv.verificat && pv.probleme.length === 1 && pv.probleme[0].grav === 'galben' &&
+T('o cifră rămasă negăsită → problema galbenă „Nu am găsit în datele aplicației: …”, fără „✓”', !pv.verificat && pv.probleme.length === 1 && pv.probleme[0].grav === 'galben' &&
   pv.probleme[0].titlu === 'Nu am găsit în datele aplicației: 2.000 lei' && pv.probleme[0].dovada === A.TEXT_NEGASIT && !pv.probleme[0].butoane, JSON.stringify(pv));
 T('cererea de rescriere numește cifrele și cere doar cifre din unelte, fără să pomenească verificarea', /cifrele 1\.300 lei, 7% nu se regăsesc/.test(A.cerereRescriere(['1.300 lei', '7%'])) &&
   /doar cu cifre din unelte/.test(A.cerereRescriere(['x'])) && /Nu pomeni verificarea\.$/.test(A.cerereRescriere(['x'])));
 // Analiza atentă: forma fixă și zilele date de aplicație, pe ora României (și la trecerea dintre ani).
 const an1 = A.analizaAtenta(ACUM);
-T('analiza atentă: forma „Ce s-a întâmplat → De ce → Ce poți face", cifrele doar din unelte, perioada dinainte', /^ÎNTREBARE DE ANALIZĂ/.test(an1) && /\*\*Ce s-a întâmplat\*\*/.test(an1) &&
+T('analiza atentă: forma „Ce s-a întâmplat → De ce → Ce poți face”, cifrele doar din unelte, perioada dinainte', /^ÎNTREBARE DE ANALIZĂ/.test(an1) && /\*\*Ce s-a întâmplat\*\*/.test(an1) &&
   /\*\*De ce\*\*/.test(an1) && /\*\*Ce poți face\*\*/.test(an1) && /numai din ce au întors uneltele/.test(an1) && /perioada dinainte/.test(an1) && /tu doar arăți unde, nu faci nimic/.test(an1));
 T('… zilele pe 30.10.2026 (vineri): luna, aceleași zile din septembrie, septembrie întreg, săptămâna și cea trecută', an1.indexOf('luna asta până azi = 2026-10-01 – 2026-10-30; aceleași zile din luna trecută = 2026-09-01 – 2026-09-30; ' +
   'luna trecută întreagă = 2026-09-01 – 2026-09-30; săptămâna asta = 2026-10-26 – 2026-10-30; săptămâna trecută = 2026-10-19 – 2026-10-25.') > 0, an1);
@@ -207,30 +207,30 @@ T('analiza atentă nu stă în partea fixă din cache (are ziua în ea)', A.inst
 // ─── 2. Pagina ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 sect('2. Pagina: caseta, întrebările gata făcute, răspunsurile');
 const html = citeste('public/index.html');
-const i0 = html.indexOf('// ── începe „asistentul fondatorilor" ──'), i1 = html.indexOf('// ── sfârșit „asistentul fondatorilor" ──');
+const i0 = html.indexOf('// ── începe „asistentul fondatorilor” ──'), i1 = html.indexOf('// ── sfârșit „asistentul fondatorilor” ──');
 const bloc = i0 > 0 && i1 > i0 ? html.slice(i0, i1) : '';
 T('blocul paginii se găsește', !!bloc);
-T('caseta: textul din machetă, „+" și butonul rotund', /<textarea id="asf-input" rows="1" placeholder="Întreabă orice despre firmă: clienți, contracte, bani, montaj…"/.test(bloc) &&
+T('caseta: textul din machetă, „+” și butonul rotund', /<textarea id="asf-input" rows="1" placeholder="Întreabă orice despre firmă: clienți, contracte, bani, montaj…"/.test(bloc) &&
   /class="chat-un chat-plus" onclick="asfPlus\(this\)"/.test(bloc) && /id="asf-trimite" class="chat-trimite gol" onclick="asfTrimite\(\)"/.test(bloc) && /<div class="insp-scrie"><div class="chat-caseta">/.test(bloc));
-T('pe telefon, textul scurt al casetei din machetă („Întreabă orice despre firmă…")', /TEXT_SCURT = 'Întreabă orice despre firmă…'/.test(bloc) && /window\.matchMedia\('\(max-width: 600px\)'\)\.addEventListener\('change', textCaseta\)/.test(bloc));
+T('pe telefon, textul scurt al casetei din machetă („Întreabă orice despre firmă…”)', /TEXT_SCURT = 'Întreabă orice despre firmă…'/.test(bloc) && /window\.matchMedia\('\(max-width: 600px\)'\)\.addEventListener\('change', textCaseta\)/.test(bloc));
 T('butonul ↓ stă deasupra casetei, oricât de înaltă (se mută cu ea)', /j\.style\.bottom = \(sc\.offsetHeight \+ 10\) \+ 'px'/.test(bloc) && /window\.asfCreste = function \(t\) \{[\s\S]{0,400}arataJos\(\);/.test(bloc));
 T('Enter trimite, Shift+Enter rând nou, caseta crește', /window\.asfTasta = function \(e\) \{ if \(e\.key === 'Enter' && !e\.shiftKey\)/.test(bloc) && /Math\.min\(t\.scrollHeight, 140\)/.test(bloc));
 T('o SINGURĂ cerere de întrebare, cu textul și conversația deschisă (contextul și istoricul le ține serverul — pasul 4)', (html.match(/fetch\('\/api\/admin\/asistent\/intreaba'/g) || []).length === 1 &&
   /body: JSON\.stringify\(\{ text: msg, conversatieId: S\.conv \? S\.conv\.id : null \}\)/.test(bloc) && !/S\.ctx/.test(bloc) && !/istoric: istoric/.test(bloc));
-T('„+": Firma și Perioada, cu listele de la server (o cerere)', (html.match(/fetch\('\/api\/admin\/asistent\/meta'/g) || []).length === 1 && /window\.asfPlus = function \(btn\)/.test(bloc) &&
+T('„+”: Firma și Perioada, cu listele de la server (o cerere)', (html.match(/fetch\('\/api\/admin\/asistent\/meta'/g) || []).length === 1 && /window\.asfPlus = function \(btn\)/.test(bloc) &&
   /'Alege firma', \(m\.firme \|\| \[\]\)/.test(bloc) && /'Alege perioada', \(m\.perioade \|\| \[\]\)/.test(bloc) && /window\._chatPuneInText\(\$i\('asf-input'\), y\.pune\)/.test(bloc));
 T('pagina nu-și scrie întrebările, perioadele sau răspunsurile (vin de la server)', A.INTREBARI_GATA.concat(A.PE_LOC).every((q) => bloc.indexOf("'" + q.text + "'") < 0) &&
   A.PERIOADE.every((p) => bloc.indexOf("'" + p.text + "'") < 0) && bloc.indexOf('Cifrele le-am luat') < 0 && bloc.indexOf('și încă') < 0);
-T('întrebările gata făcute stau sub „Azi la noi", cât discuția e goală (din răspunsul serverului)', /if \(j && !S\.mesaje\.length && Array\.isArray\(j\.intrebari\) && j\.intrebari\.length\) prim\.appendChild\(window\._chatUrmari\(j\.intrebari,/.test(bloc));
+T('întrebările gata făcute stau sub „Azi la noi”, cât discuția e goală (din răspunsul serverului)', /if \(j && !S\.mesaje\.length && Array\.isArray\(j\.intrebari\) && j\.intrebari\.length\) prim\.appendChild\(window\._chatUrmari\(j\.intrebari,/.test(bloc));
 T('continuările de sub răspuns, din răspuns; la o întrebare nouă, cele vechi pleacă', /window\._chatUrmari\(j\.urmari, function \(t\) \{ window\.asfTrimite\(t\); \}\)/.test(bloc) &&
   /box\.querySelectorAll\('\.chat-urm'\), function \(n\) \{ n\.remove\(\); \}/.test(bloc));
 T('piesele comune ale chatului se folosesc, nu se scriu a doua oară', ['_chatUrmari', '_chatAlege', '_chatActiuni', '_chatInsigna', '_chatPuneInText', '_chatStareTrimite', '_chatCopiaza'].every((n) => bloc.indexOf('window.' + n + '(') > 0 && bloc.indexOf('window.' + n + ' = ') < 0));
-T('„⋯": conversație nouă; cu una deschisă și Redenumește / Șterge; dedesubt nota păstrării, de la server (pasul 4)', /window\.asfMeniu = function \(btn\)/.test(bloc) && /'Redenumește conversația'/.test(bloc) &&
+T('„⋯”: conversație nouă; cu una deschisă și Redenumește / Șterge; dedesubt nota păstrării, de la server (pasul 4)', /window\.asfMeniu = function \(btn\)/.test(bloc) && /'Redenumește conversația'/.test(bloc) &&
   /'Șterge conversația'/.test(bloc) && /\[T\.aleTale, T\.pastrare\]\.filter\(Boolean\)\.join\(' '\)/.test(bloc) && /window\.asfNou = function \(\)/.test(bloc) && bloc.indexOf('Deocamdată discuția nu se păstrează') < 0);
-T('discuția rămâne când revii pe „Acasă": se reface doar primul mesaj (iar o conversație deschisă din listă rămâne cum era)', /window\.renderAsistentPage = async function \(\)/.test(bloc) && /if \(!S\.vechi\) await primulMesaj\(false\);/.test(bloc) &&
+T('discuția rămâne când revii pe „Acasă”: se reface doar primul mesaj (iar o conversație deschisă din listă rămâne cum era)', /window\.renderAsistentPage = async function \(\)/.test(bloc) && /if \(!S\.vechi\) await primulMesaj\(false\);/.test(bloc) &&
   /prim\.innerHTML = ''; prim\.appendChild\(b\.row\);/.test(bloc) && !/box\.innerHTML = ''/.test(bloc));
-// Pasul 4 (04.11): lista conversațiilor, după macheta „tot un chat".
-T('pasul 4: stânga = Asistent, „Conversație nouă", „Caută în conversații", lista, nota cu lacătul; ☰ în bara de sus; sertarul pe telefon (piesele lui RA Insight)',
+// Pasul 4 (04.11): lista conversațiilor, după macheta „tot un chat”.
+T('pasul 4: stânga = Asistent, „Conversație nouă”, „Caută în conversații”, lista, nota cu lacătul; ☰ în bara de sus; sertarul pe telefon (piesele lui RA Insight)',
   /class="insp asf" id="asf"/.test(bloc) && /class="insp-umbra" onclick="asfComutaStanga\(false\)"/.test(bloc) && /<aside class="insp-st" id="asf-st"/.test(bloc) &&
   /class="insp-nou" type="button" onclick="asfNou\(\)"><i class="fas fa-plus"><\/i>Conversație nouă/.test(bloc) && /onclick="asfCautaArata\(\)"><i class="fas fa-magnifying-glass"><\/i>Caută în conversații/.test(bloc) &&
   /id="asf-cauta" type="search"/.test(bloc) && /id="asf-lista"/.test(bloc) && /class="insp-st-jos asf-st-jos"><i class="fas fa-lock"><\/i><span id="asf-st-nota">/.test(bloc) &&
@@ -241,7 +241,7 @@ T('pasul 4: o cerere pe fiecare rută a conversațiilor (lista, deschide, redenu
 T('pasul 4: grupele pe zile sunt ale lui RA Insight (scrise o dată, date mai departe ca window._chatGrupZi / _chatCand)', /window\._chatGrupZi = grup; window\._chatCand = cand;/.test(html) &&
   /window\._chatGrupZi\(c\.actualizat_la\)/.test(bloc) && bloc.indexOf('function grup(') < 0);
 T('pasul 4: textele listei (nota, lista goală) vin de la server, nu din pagină', bloc.indexOf('Ceilalți fondatori nu le văd') < 0 && bloc.indexOf('Se păstrează') < 0 && /T\.golCautare/.test(bloc) && /T\.gol \|\|/.test(bloc));
-T('pasul 4: o conversație din listă se desenează întreagă (fără „Azi la noi" deasupra), cu răspunsurile prin ACEEAȘI bulaRaspuns', /window\.asfDeschide = async function \(id\)/.test(bloc) &&
+T('pasul 4: o conversație din listă se desenează întreagă (fără „Azi la noi” deasupra), cu răspunsurile prin ACEEAȘI bulaRaspuns', /window\.asfDeschide = async function \(id\)/.test(bloc) &&
   /if \(prim\) prim\.style\.display = 'none';/.test(bloc) && /box\.appendChild\(bulaRaspuns\(ultim\)\)/.test(bloc) && /S\.vechi = true/.test(bloc));
 T('pasul 4: o conversație ștearsă între timp → mesajul serverului, iar întrebarea următoare începe una nouă', /if \(r\.status === 404 && j && j\.stearsa\) S\.conv = null;/.test(bloc));
 const dreapta = []; bloc.replace(/\.innerHTML\s*=\s*([^;]+);/g, (_, x) => { dreapta.push(x.trim()); return _; });
@@ -280,30 +280,30 @@ if (D.bulaRaspuns) {
   raspPeLoc.copiere = A.textSimplu(raspPeLoc);
   const rand = D.bulaRaspuns(raspPeLoc), bub = rand.childNodes[1];
   T('rândul: avatarul verde, apoi bula', rand.className === 'insp-a' && rand.childNodes[0].className === 'av asf-av' && bub.className === 'bub');
-  T('ordinea din machetă: insigna, titlul, tabelul, fraza, butoanele, „✓", Copiază', bub.childNodes.map((n) => n.className).join(',') === 'chat-ins-cap,asf-tit,asf-tab,insp-txt asf-txt,asf-bt,chat-ok,chat-act',
+  T('ordinea din machetă: insigna, titlul, tabelul, fraza, butoanele, „✓”, Copiază', bub.childNodes.map((n) => n.className).join(',') === 'chat-ins-cap,asf-tit,asf-tab,insp-txt asf-txt,asf-bt,chat-ok,chat-act',
     bub.childNodes.map((n) => n.className).join(','));
-  T('tabelul: capul, 10 rânduri, suma la dreapta, „… și încă 1 rând." de la server, numele coloanei pe fiecare celulă (cartonașele de pe telefon)', (function () {
+  T('tabelul: capul, 10 rânduri, suma la dreapta, „… și încă 1 rând.” de la server, numele coloanei pe fiecare celulă (cartonașele de pe telefon)', (function () {
     const tab = bub.childNodes[2], t = tab.childNodes[0], cap = t.childNodes[0].childNodes[0], corp = t.childNodes[1];
     return cap.childNodes.map((c) => c.textContent).join('|') === 'Firma|Factura|Întârziere|Suma' && cap.childNodes[3].className === 'dr' && corp.childNodes.length === 10 &&
       corp.childNodes[0].childNodes[3].className === 'dr' && tab.childNodes[1].textContent === '… și încă 1 rând.' &&
       corp.childNodes.every((tr) => tr.childNodes.map((td) => td.attrs['data-col']).join('|') === 'Firma|Factura|Întârziere|Suma');
   })());
-  T('textul de la server rămâne TEXT: niciun element din „<img …>" (doar div, b, i, table…)', create.every((n) => ['DIV', 'B', 'I', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD', 'BUTTON', '#FRAG', 'SPAN'].indexOf(n.tagName) >= 0) &&
+  T('textul de la server rămâne TEXT: niciun element din „<img …>” (doar div, b, i, table…)', create.every((n) => ['DIV', 'B', 'I', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD', 'BUTTON', '#FRAG', 'SPAN'].indexOf(n.tagName) >= 0) &&
     JSON.stringify(rand).indexOf(RAU) > 0, create.map((n) => n.tagName).filter((x, i, a) => a.indexOf(x) === i).join(','));
-  T('titlul îngroșat se face cu <b> din „**…**"', (function () { const d = D.textRaspuns('La **Firma 2** accesul se oprește.\n- unu\n- **doi**'); return d.childNodes.length === 3 && d.childNodes[0].className === 'asf-p' && d.childNodes[0].childNodes[1].tagName === 'B' && d.childNodes[1].className === 'rax-md-li' && d.childNodes[2].textContent === 'doi'; })());
+  T('titlul îngroșat se face cu <b> din „**…**”', (function () { const d = D.textRaspuns('La **Firma 2** accesul se oprește.\n- unu\n- **doi**'); return d.childNodes.length === 3 && d.childNodes[0].className === 'asf-p' && d.childNodes[0].childNodes[1].tagName === 'B' && d.childNodes[1].className === 'rax-md-li' && d.childNodes[2].textContent === 'doi'; })());
   const bt = bub.childNodes[4].childNodes[0];
   bt.onclick();
   T('un buton duce unde spune serverul (prin `_asfDu`)', duse.length === 1 && duse[0].fel === 'firma' && bt.childNodes[0].className === 'fas fa-building', JSON.stringify(duse));
   T('Copiază primește textul simplu de la server', bub.childNodes[6]._copie === raspPeLoc.copiere);
   const raspModel = D.bulaRaspuns({ fel: 'ai', insigna: A.dupaModel([]).insigna, text: 'Un rând.', butoane: [], copiere: 'Un rând.' });
-  T('răspunsul modelului fără cifre de verificat: insigna, textul, Copiază (fără „✓")', raspModel.childNodes[1].childNodes.map((n) => n.className).join(',') === 'chat-ins-cap,insp-txt asf-txt,chat-act');
+  T('răspunsul modelului fără cifre de verificat: insigna, textul, Copiază (fără „✓”)', raspModel.childNodes[1].childNodes.map((n) => n.className).join(',') === 'chat-ins-cap,insp-txt asf-txt,chat-act');
   const rmOk = D.bulaRaspuns({ fel: 'ai', insigna: A.dupaModel(['restante']).insigna, text: '**1.240,84 lei**', butoane: [], verificat: 'Cifrele le-am luat din Facturare.', copiere: 'x' });
-  T('pasul 3: cu cifrele verificate, rândul „✓" de la server, sub text', rmOk.childNodes[1].childNodes.map((n) => n.className).join(',') === 'chat-ins-cap,insp-txt asf-txt,chat-ok,chat-act' &&
+  T('pasul 3: cu cifrele verificate, rândul „✓” de la server, sub text', rmOk.childNodes[1].childNodes.map((n) => n.className).join(',') === 'chat-ins-cap,insp-txt asf-txt,chat-ok,chat-act' &&
     rmOk.childNodes[1].childNodes[2].textContent === 'Cifrele le-am luat din Facturare.');
   const rmPb = D.bulaRaspuns({ fel: 'ai', insigna: A.dupaModel([]).insigna, text: 'Total **2.000 lei**', butoane: [], copiere: 'x',
     probleme: [{ fel: 'cifra', grav: 'galben', titlu: 'Nu am găsit în datele aplicației: 2.000 lei', dovada: A.TEXT_NEGASIT, butoane: [{ fel: 'raport', text: 'Deschide' }] }] });
   const pbL = (rmPb.childNodes[1].childNodes[2] || {})._lista || [];
-  T('… o cifră negăsită: caseta comună „Am găsit o problemă" (de la RA Insight), fără „✓" și fără butoane (nu duc nicăieri aici)', rmPb.childNodes[1].childNodes.map((n) => n.className).join(',') === 'chat-ins-cap,insp-txt asf-txt,chat-probs,chat-act' &&
+  T('… o cifră negăsită: caseta comună „Am găsit o problemă” (de la RA Insight), fără „✓” și fără butoane (nu duc nicăieri aici)', rmPb.childNodes[1].childNodes.map((n) => n.className).join(',') === 'chat-ins-cap,insp-txt asf-txt,chat-probs,chat-act' &&
     pbL.length === 1 && pbL[0].titlu === 'Nu am găsit în datele aplicației: 2.000 lei' && pbL[0].grav === 'galben' && !pbL[0].butoane, JSON.stringify(pbL));
   const bIc = D.bulaRaspuns({ butoane: [{ text: 'X', ic: 'fa-x" onclick="rau', tinta: {} }] }).childNodes[1].childNodes[0].childNodes[0].childNodes[0];
   T('o iconiță ciudată de la server nu trece (doar fa-…)', bIc.className === 'fas fa-arrow-right', bIc.className);
@@ -329,9 +329,9 @@ if (D.bulaRaspuns) {
     const nCreate = create.length;
     lumeL.f.deseneazaLista();
     const ls = noduri['asf-lista'], cop = ls.childNodes;
-    T('pasul 4: grupele pe zile, apoi rândurile, cea mai nouă întâi; rândul deschis = „act"', cop.map((n) => n.className).join(',') === 'insp-zi,insp-conv,insp-conv act,insp-zi,insp-conv' &&
+    T('pasul 4: grupele pe zile, apoi rândurile, cea mai nouă întâi; rândul deschis = „act”', cop.map((n) => n.className).join(',') === 'insp-zi,insp-conv,insp-conv act,insp-zi,insp-conv' &&
       cop[0].textContent === 'Azi' && cop[3].textContent === 'Mai demult', cop.map((n) => n.className + ':' + n.textContent).join(' | '));
-    T('pasul 4: un titlu ciudat rămâne TEXT (niciun element din „<img …>")', cop[2].childNodes[0].textContent === RAU && create.slice(nCreate).every((n) => ['DIV', 'SPAN', 'BUTTON'].indexOf(n.tagName) >= 0));
+    T('pasul 4: un titlu ciudat rămâne TEXT (niciun element din „<img …>”)', cop[2].childNodes[0].textContent === RAU && create.slice(nCreate).every((n) => ['DIV', 'SPAN', 'BUTTON'].indexOf(n.tagName) >= 0));
     T('pasul 4: nota de jos și explicația ei vin de la server', noduri['asf-st-nota'].textContent === 'Conversațiile tale.' && noduri['asf-st-nota'].title === 'Se păstrează 12 luni.');
     cop[4].onclick();
     T('pasul 4: un clic pe rând deschide conversația lui; rândul se poate folosi și cu tastatura (Enter)', deschise.join() === '3' && cop[4].tabIndex === 0 && cop[4].attrs.role === 'button');
@@ -352,7 +352,7 @@ const culoare = (sel) => { const m = new RegExp('(?:^|\\n)' + sel.replace(/[.*+?
 const perechi = [
   ['capul tabelului (text-secondary pe panou), tema deschisă', tok('text-secondary', 0), tok('bg-panel', 0)], ['capul tabelului, tema întunecată', tok('text-secondary', 1), tok('bg-panel', 1)],
   ['rândurile tabelului (text-primary pe panou), tema deschisă', tok('text-primary', 0), tok('bg-panel', 0)], ['rândurile tabelului, tema întunecată', tok('text-primary', 1), tok('bg-panel', 1)],
-  ['rândul „✓" pe fundalul discuției, tema deschisă', culoare('.asf .chat-ok'), tok('bg-darkest', 0)], ['rândul „✓", tema întunecată', culoare('body.dark .asf .chat-ok'), tok('bg-darkest', 1)],
+  ['rândul „✓” pe fundalul discuției, tema deschisă', culoare('.asf .chat-ok'), tok('bg-darkest', 0)], ['rândul „✓”, tema întunecată', culoare('body.dark .asf .chat-ok'), tok('bg-darkest', 1)],
   ['titlul pe fundalul discuției, tema deschisă', tok('text-primary', 0), tok('bg-darkest', 0)], ['titlul, tema întunecată', tok('text-primary', 1), tok('bg-darkest', 1)]
 ];
 perechi.forEach(([n, a, b]) => T(n + (a && b ? ' (' + contrast(a, b).toFixed(2) + ')' : ''), !!(a && b) && contrast(a, b) >= 4.5, a + ' pe ' + b));
@@ -369,23 +369,23 @@ T('pe telefon un rând de tabel = un cartonaș, cu numele coloanei în fața val
 const serverSrc = citeste('server.js');
 T('plafonul de întrebări AI pe minut cuprinde și caseta asistentului', /p === '\/api\/admin\/asistent\/intreaba'/.test(serverSrc));
 T('rutele asistentului sunt doar ale fondatorilor', /app\.post\('\/api\/admin\/asistent\/intreaba', requireAuth, requireSuperadmin,/.test(serverSrc) && /app\.get\('\/api\/admin\/asistent\/meta', requireAuth, requireSuperadmin,/.test(serverSrc));
-T('consumul modelului se scrie pe noi (fel „asistent", fără firmă), nu se facturează nimănui', /db\.recordAiUsage\(null, 'asistent', _agg, userId, model\)/.test(serverSrc) &&
+T('consumul modelului se scrie pe noi (fel „asistent”, fără firmă), nu se facturează nimănui', /db\.recordAiUsage\(null, 'asistent', _agg, userId, model\)/.test(serverSrc) &&
   !/'asistent'/.test((citeste('db.js').match(/const AI_BILLABLE_KINDS = [^;]+;/) || [''])[0]));
 T('literele: răspunsul modelului trece prin aceeași curățare ca RA Insight', /reply = insight\.litereRomanesti\(reply\);\s*const v = asistentF\.verificare\(reply, lipsa, citite, dm\.surse\);/.test(serverSrc));
 T('pasul 3: cifrele se caută în ce au întors uneltele (aceeași regulă ca RA Insight), cu O rescriere, apoi `verificare`', /try \{ lipsa = cifre\.negasite\(reply, citite, text\); \}/.test(serverSrc) &&
   /asistentF\.cerereRescriere\(lipsa\)/.test(serverSrc) && /if \(l2\.length < lipsa\.length\) \{ reply = r2\.text; lipsa = l2; \}/.test(serverSrc) && /verificat: v\.verificat, probleme: v\.probleme/.test(serverSrc));
 T('… uneltele țin minte ce au întors (`citite`), pentru verificare', /function _asfUnelte\(acum, folosite, citite\)/.test(serverSrc) && /if \(Array\.isArray\(citite\)\) citite\.push\(r\);/.test(serverSrc));
-T('pasul 3: analiza atentă = insight.esteAnaliza → instrucțiunea fondatorilor în context, efortul „medium", loc mai mult', /const analiza = insight\.esteAnaliza\(text\);\s*if \(analiza\) system\.push\(\{ type: 'text', text: asistentF\.analizaAtenta\(acum\) \}\);/.test(serverSrc) &&
+T('pasul 3: analiza atentă = insight.esteAnaliza → instrucțiunea fondatorilor în context, efortul „medium”, loc mai mult', /const analiza = insight\.esteAnaliza\(text\);\s*if \(analiza\) system\.push\(\{ type: 'text', text: asistentF\.analizaAtenta\(acum\) \}\);/.test(serverSrc) &&
   /const efort = analiza \? 'medium' : undefined, maxTokens = analiza \? 1100 : 900;/.test(serverSrc) && /onUsage: onUsage, efort: efort \}\)/.test(serverSrc));
 T('pagina nu scrie textul cifrei negăsite (vine de la server)', bloc.indexOf('Nu am găsit') < 0 && bloc.indexOf('N-o lua drept sigură') < 0);
-T('starea firmelor are O socoteală, a cifrelor de sub „Companii" (`_stareFirmeToate`), folosită și de asistent', /if \(u\.s === 'firme'\) return \{ firme: await _stareFirmeToate\(acum\) \};/.test(serverSrc) && (serverSrc.match(/contracte\.faraContract\(/g) || []).length === 1);
-T('restanțele au O socoteală (`_restanteAcum`), pentru „Azi la noi" și pentru asistent', /d\.facturi = await _restanteAcum\(acum\);/.test(serverSrc) && /if \(u\.s === 'restanti'\) return \{ facturi: await _restanteAcum\(acum\) \};/.test(serverSrc));
+T('starea firmelor are O socoteală, a cifrelor de sub „Companii” (`_stareFirmeToate`), folosită și de asistent', /if \(u\.s === 'firme'\) return \{ firme: await _stareFirmeToate\(acum\) \};/.test(serverSrc) && (serverSrc.match(/contracte\.faraContract\(/g) || []).length === 1);
+T('restanțele au O socoteală (`_restanteAcum`), pentru „Azi la noi” și pentru asistent', /d\.facturi = await _restanteAcum\(acum\);/.test(serverSrc) && /if \(u\.s === 'restanti'\) return \{ facturi: await _restanteAcum\(acum\) \};/.test(serverSrc));
 // Pasul 4 (04.11): conversațiile păstrate.
 const rutaIntreaba = serverSrc.slice(serverSrc.indexOf("app.post('/api/admin/asistent/intreaba'"), serverSrc.indexOf('// ─── Conversațiile asistentului (pasul 4, 04.11)'));
 T('pasul 4: rutele conversațiilor sunt doar ale fondatorilor', /app\.get\('\/api\/admin\/asistent\/conversatii', requireAuth, requireSuperadmin,/.test(serverSrc) &&
   /app\.get\('\/api\/admin\/asistent\/conversatii\/:id', requireAuth, requireSuperadmin,/.test(serverSrc) && /app\.put\('\/api\/admin\/asistent\/conversatii\/:id', requireAuth, requireSuperadmin,/.test(serverSrc) &&
   /app\.delete\('\/api\/admin\/asistent\/conversatii\/:id', requireAuth, requireSuperadmin,/.test(serverSrc));
-T('pasul 4: contextul („Și luna trecută?") și istoricul pentru model vin din conversația păstrată, nu din pagină', /const ctx = conv \? _asfCtxCurat\(conv\.context, firme\) : null;/.test(rutaIntreaba) &&
+T('pasul 4: contextul („Și luna trecută?”) și istoricul pentru model vin din conversația păstrată, nu din pagină', /const ctx = conv \? _asfCtxCurat\(conv\.context, firme\) : null;/.test(rutaIntreaba) &&
   /_asfIstoric\(salvate\)/.test(rutaIntreaba) && !/b\.context|b\.istoric/.test(rutaIntreaba));
 T('pasul 4: fiecare răspuns trece prin `trimite` (întâi se păstrează în conversație, apoi pleacă)', (rutaIntreaba.match(/res\.json\(/g) || []).length === 1 &&
   /return res\.json\(Object\.assign\(\{\}, r, conv \?/.test(rutaIntreaba) && (rutaIntreaba.match(/return trimite\(/g) || []).length === 4);
@@ -469,77 +469,77 @@ async function peServer() {
     T('fără cont: 401', (await cere('POST', '/api/admin/asistent/intreaba', null, { text: 'Cine e restant?' })).s === 401);
     T('o întrebare goală: 400, cu mesaj', (await intreaba('   ')).s === 400);
 
-    // Listele din „+".
+    // Listele din „+”.
     const meta = await cere('GET', '/api/admin/asistent/meta', S);
     const numeF = (meta.j.firme || []).map((f) => f.nume);
-    T('„+": perioadele din regulă și firmele, alfabetic, fără demo', meta.s === 200 && JSON.stringify(meta.j.perioade) === JSON.stringify(A.PERIOADE) &&
+    T('„+”: perioadele din regulă și firmele, alfabetic, fără demo', meta.s === 200 && JSON.stringify(meta.j.perioade) === JSON.stringify(A.PERIOADE) &&
       ['Agro Nord SRL', 'Cargo Vest SRL', 'Trans Expres SRL'].every((n) => numeF.indexOf(n) >= 0) && numeF.join('|') === numeF.slice().sort((a, b) => a.localeCompare(b, 'ro')).join('|') &&
       !numeF.some((n) => /demo/i.test(n)), JSON.stringify(meta.j).slice(0, 300));
-    // „Azi la noi" aduce întrebările gata făcute.
+    // „Azi la noi” aduce întrebările gata făcute.
     const azi = await cere('GET', '/api/admin/azi-la-noi?proaspat=1', S);
-    T('„Azi la noi" aduce cele trei întrebări gata făcute', JSON.stringify(azi.j.intrebari) === JSON.stringify(A.INTREBARI_GATA));
+    T('„Azi la noi” aduce cele trei întrebări gata făcute', JSON.stringify(azi.j.intrebari) === JSON.stringify(A.INTREBARI_GATA));
 
     // Răspunsurile pe loc, pe datele pregătite — fără nicio cerere la model.
     let r = await intreaba('Cine e restant?');
-    T('„Cine e restant?": factura întârziată, pe loc', r.s === 200 && r.j.fel === 'instant' && r.j.titlu === 'Facturi trecute de scadență: 1 firmă, 1.240,84 lei.' &&
+    T('„Cine e restant?”: factura întârziată, pe loc', r.s === 200 && r.j.fel === 'instant' && r.j.titlu === 'Facturi trecute de scadență: 1 firmă, 1.240,84 lei.' &&
       JSON.stringify(r.j.tabel.rand[0]) === JSON.stringify(['Trans Expres SRL', 'RAT-' + SD.an + '-00950', '12 zile', '1.240,84 lei']), JSON.stringify(r.j).slice(0, 400));
-    T('… insigna, „✓", butonul spre fișa firmei (fila Facturi), textul de copiat', r.j.insigna && r.j.insigna.detaliu === 'din Facturare' && r.j.verificat === 'Cifrele le-am luat din Facturare.' &&
+    T('… insigna, „✓”, butonul spre fișa firmei (fila Facturi), textul de copiat', r.j.insigna && r.j.insigna.detaliu === 'din Facturare' && r.j.verificat === 'Cifrele le-am luat din Facturare.' &&
       r.j.butoane[0].tinta.fel === 'firma' && r.j.butoane[0].tinta.id === SD.te && r.j.butoane[0].tinta.fila === 'facturi' && /Trans Expres SRL \| RAT-/.test(r.j.copiere || ''), JSON.stringify(r.j.butoane));
-    T('… fraza: în câte zile se oprește accesul (aceeași regulă ca „Azi la noi")', /^La \*\*Trans Expres SRL\*\* accesul se oprește singur în \d+ zile?\.$/.test(r.j.text || ''), r.j.text);
+    T('… fraza: în câte zile se oprește accesul (aceeași regulă ca „Azi la noi”)', /^La \*\*Trans Expres SRL\*\* accesul se oprește singur în \d+ zile?\.$/.test(r.j.text || ''), r.j.text);
     r = await intreaba('Agro Nord e restant?');
-    T('pe o firmă anume: „Agro Nord SRL: nicio factură trecută de scadență."', r.j.titlu === 'Agro Nord SRL: nicio factură trecută de scadență.', r.j.titlu);
+    T('pe o firmă anume: „Agro Nord SRL: nicio factură trecută de scadență.”', r.j.titlu === 'Agro Nord SRL: nicio factură trecută de scadență.', r.j.titlu);
     r = await intreaba('Încasări luna asta');
     const lAsta = lunaRO(acum), lDinainte = lunaRO(Date.parse(I.perioada({ period: 'last_month' }, acum).from));
-    T('„Încasări luna asta": plata de 500 lei, comparată cu aceleași zile din luna dinainte', r.j.titlu === 'Încasări luna asta (' + lAsta + ', până azi): 500 lei, din 1 plată.' &&
+    T('„Încasări luna asta”: plata de 500 lei, comparată cu aceleași zile din luna dinainte', r.j.titlu === 'Încasări luna asta (' + lAsta + ', până azi): 500 lei, din 1 plată.' &&
       new RegExp('^În aceleași zile din ' + lDinainte + ': (0|300) lei\\.').test(r.j.text || '') && r.j.urmari[0].trimite === 'Încasări luna trecută', JSON.stringify([r.j.titlu, r.j.text]));
     const convInc = r.j.conversatieId;
     T('pasul 4: prima întrebare începe o conversație, cu titlul întrebării', Number(convInc) > 0 && r.j.conversatie && r.j.conversatie.titlu === 'Încasări luna asta', JSON.stringify([convInc, r.j.conversatie]));
     r = await intreaba('Și luna trecută?', { conversatieId: convInc });
-    T('„Și luna trecută?" (în aceeași conversație: contextul îl ține serverul): plata de 300 lei de la Agro Nord', r.j.fel === 'instant' && /: 300 lei, din 1 plată\.$/.test(r.j.titlu || '') && r.j.titlu.indexOf(lDinainte) > 0 &&
+    T('„Și luna trecută?” (în aceeași conversație: contextul îl ține serverul): plata de 300 lei de la Agro Nord', r.j.fel === 'instant' && /: 300 lei, din 1 plată\.$/.test(r.j.titlu || '') && r.j.titlu.indexOf(lDinainte) > 0 &&
       r.j.tabel.rand[0][0] === 'Agro Nord SRL' && r.j.conversatieId === convInc, JSON.stringify([r.j.titlu, r.j.tabel, r.j.conversatieId]));
     r = await intreaba('Montaje mâine');
-    T('„Montaje mâine": lucrarea programată, fără cea anulată', r.j.titlu === 'Montaje mâine: 1 lucrare în 1 zi, 3 mașini.' && r.j.tabel.rand[0][1] === 'Agro Nord SRL' &&
+    T('„Montaje mâine”: lucrarea programată, fără cea anulată', r.j.titlu === 'Montaje mâine: 1 lucrare în 1 zi, 3 mașini.' && r.j.tabel.rand[0][1] === 'Agro Nord SRL' &&
       r.j.tabel.rand[0][2] === 'Instal Pro SRL' && r.j.tabel.rand[0][4] === 'de confirmat: instalatorul' && r.j.text === 'Lucrarea de la **Agro Nord SRL** nu e confirmată încă.', JSON.stringify([r.j.titlu, r.j.tabel, r.j.text]));
     r = await intreaba('Montaje săptămâna asta');
-    T('întrebarea gata făcută „Montaje săptămâna asta" primește răspuns pe loc', r.j.fel === 'instant' && r.j.context.s === 'montaje' && /^(Montaje|Niciun montaj) /.test(r.j.titlu || ''), r.j.titlu);
+    T('întrebarea gata făcută „Montaje săptămâna asta” primește răspuns pe loc', r.j.fel === 'instant' && r.j.context.s === 'montaje' && /^(Montaje|Niciun montaj) /.test(r.j.titlu || ''), r.j.titlu);
     r = await intreaba('Contracte care expiră');
-    T('„Contracte care expiră": Agro Nord, cu ziua și preavizul', r.j.titlu === 'Contracte care expiră în următoarele 90 de zile: 1.' && r.j.tabel.rand[0][0] === 'Agro Nord SRL' &&
+    T('„Contracte care expiră”: Agro Nord, cu ziua și preavizul', r.j.titlu === 'Contracte care expiră în următoarele 90 de zile: 1.' && r.j.tabel.rand[0][0] === 'Agro Nord SRL' &&
       r.j.tabel.rand[0][1] === 'RAT-C-2024-0007' && r.j.tabel.rand[0][4] === 'nu' && /^Primul preaviz: \*\*Agro Nord SRL\*\*, până pe \d{2}\.\d{2}\.\d{4}\.$/.test(r.j.text || ''), JSON.stringify([r.j.titlu, r.j.tabel && r.j.tabel.rand, r.j.text]));
     r = await intreaba('Contracte nesemnate');
-    T('„Contracte nesemnate": Cargo Vest, trimis la semnat de 3 zile', r.j.titlu === 'Contracte nesemnate: 1 (1 trimis la semnat).' && r.j.tabel.rand[0][0] === 'Cargo Vest SRL' && r.j.tabel.rand[0][3] === 'trimis de 3 zile', JSON.stringify([r.j.titlu, r.j.tabel && r.j.tabel.rand]));
+    T('„Contracte nesemnate”: Cargo Vest, trimis la semnat de 3 zile', r.j.titlu === 'Contracte nesemnate: 1 (1 trimis la semnat).' && r.j.tabel.rand[0][0] === 'Cargo Vest SRL' && r.j.tabel.rand[0][3] === 'trimis de 3 zile', JSON.stringify([r.j.titlu, r.j.tabel && r.j.tabel.rand]));
     r = await intreaba('Câte FMC130 mai avem în stoc?');
-    T('„Câte FMC130…": 2 în depozit, 1 la instalator, sub pragul de 5', r.j.titlu === 'FMC130: 2 bucăți în depozit, 1 la instalatori.' && r.j.text === '**FMC130** e sub stocul minim (5).', JSON.stringify([r.j.titlu, r.j.text]));
+    T('„Câte FMC130…”: 2 în depozit, 1 la instalator, sub pragul de 5', r.j.titlu === 'FMC130: 2 bucăți în depozit, 1 la instalatori.' && r.j.text === '**FMC130** e sub stocul minim (5).', JSON.stringify([r.j.titlu, r.j.text]));
     r = await intreaba('Stocul de aparate');
-    T('„Stocul de aparate": toate modelele', r.j.titlu === 'Stocul: 3 bucăți în depozit, 1 la instalatori.' && r.j.tabel.rand.map((x) => x[0]).sort().join() === 'FMC130,LV-CAN200', JSON.stringify([r.j.titlu, r.j.tabel && r.j.tabel.rand]));
+    T('„Stocul de aparate”: toate modelele', r.j.titlu === 'Stocul: 3 bucăți în depozit, 1 la instalatori.' && r.j.tabel.rand.map((x) => x[0]).sort().join() === 'FMC130,LV-CAN200', JSON.stringify([r.j.titlu, r.j.tabel && r.j.tabel.rand]));
     r = await intreaba('Cereri de la clienți');
-    T('„Cereri de la clienți": cererea Trans Expres, nepreluată, de 5 ore', r.j.titlu === 'Cereri deschise de la clienți: 1 (1 nepreluată).' && r.j.tabel.rand[0][1] === 'Trans Expres SRL' &&
+    T('„Cereri de la clienți”: cererea Trans Expres, nepreluată, de 5 ore', r.j.titlu === 'Cereri deschise de la clienți: 1 (1 nepreluată).' && r.j.tabel.rand[0][1] === 'Trans Expres SRL' &&
       r.j.tabel.rand[0][2] === 'Nu transmite' && r.j.tabel.rand[0][4] === 'de 5 ore', JSON.stringify([r.j.titlu, r.j.tabel && r.j.tabel.rand]));
     r = await intreaba('Cereri demo');
-    T('„Cereri demo": firma și ce cere — fără numele, emailul sau telefonul omului', r.j.titlu === 'Cereri noi de cont demo: 1.' && r.j.tabel.rand[0][0] === 'Logistic Est SRL' &&
+    T('„Cereri demo”: firma și ce cere — fără numele, emailul sau telefonul omului', r.j.titlu === 'Cereri noi de cont demo: 1.' && r.j.tabel.rand[0][0] === 'Logistic Est SRL' &&
       !/Maria|maria\.pop|0722/.test(JSON.stringify(r.j)), JSON.stringify(r.j).slice(0, 300));
     r = await intreaba('Aparate fără firmă');
-    T('„Aparate fără firmă": cele două care transmit, cu butonul spre Neasignate (bifate)', r.j.titlu === '2 aparate transmit și n-au firmă.' && r.j.butoane[0].tinta.fel === 'neasignate' &&
+    T('„Aparate fără firmă”: cele două care transmit, cu butonul spre Neasignate (bifate)', r.j.titlu === '2 aparate transmit și n-au firmă.' && r.j.butoane[0].tinta.fel === 'neasignate' &&
       ['TEST111', 'TEST222'].every((x) => r.j.butoane[0].tinta.imeis.indexOf(x) >= 0), JSON.stringify([r.j.titlu, r.j.butoane]));
     r = await intreaba('Câte firme avem?');
     const cnt = (await cere('GET', '/api/admin/counts', S)).j || {};
     const mf = /^(\d+) firme: (\d+) fără contract, (\d+) (?:restanță|restanțe), (\d+) (?:suspendată|suspendate)\.$/.exec(r.j.titlu || '');
-    T('„Câte firme avem?": aceleași cifre ca sub „Companii" (o singură socoteală)', !!mf && +mf[1] === Number(cnt.companies) && +mf[2] === Number(cnt.companies_fara_contract) &&
+    T('„Câte firme avem?”: aceleași cifre ca sub „Companii” (o singură socoteală)', !!mf && +mf[1] === Number(cnt.companies) && +mf[2] === Number(cnt.companies_fara_contract) &&
       +mf[3] === Number(cnt.companies_restante) && +mf[4] === Number(cnt.companies_suspendate), JSON.stringify([r.j.titlu, cnt]));
     r = await intreaba('Ce am de facturat?');
-    T('„Ce am de facturat?": nimic (nicio firmă cu ofertă, niciun montaj gata)', r.j.titlu === 'Nimic de facturat acum.', r.j.titlu);
+    T('„Ce am de facturat?”: nimic (nicio firmă cu ofertă, niciun montaj gata)', r.j.titlu === 'Nimic de facturat acum.', r.j.titlu);
     r = await intreaba('Venitul lunar');
-    T('„Venitul lunar": niciun venit încă (nicio mașină pornită pe o ofertă)', /^Niciun venit lunar încă/.test(r.j.titlu || ''), r.j.titlu);
+    T('„Venitul lunar”: niciun venit încă (nicio mașină pornită pe o ofertă)', /^Niciun venit lunar încă/.test(r.j.titlu || ''), r.j.titlu);
     // Contextul îl ține serverul, pe conversație (pasul 4): ce trimite pagina nu mai contează.
     r = await intreaba('Și luna trecută?', { context: { s: 'restanti', firme: [{ id: 999999, nume: 'Inventată SRL' }] } });
-    T('pasul 4: contextul trimis de pagină nu mai contează (îl ține serverul) — fără conversație, „Și luna trecută?" nu are subiect', r.s === 200 && !r.j.titlu &&
+    T('pasul 4: contextul trimis de pagină nu mai contează (îl ține serverul) — fără conversație, „Și luna trecută?” nu are subiect', r.s === 200 && !r.j.titlu &&
       /cheia lui nu e pusă/.test(r.j.text || ''), JSON.stringify(r.j).slice(0, 200));
     T('până aici, nicio cerere la model', cereri().length === 0, cereri().length);
 
     // Fără cheia modelului: răspunsul spune de ce și dă întrebările pe loc.
     r = await intreaba('Ce părere ai despre piața GPS din România?');
-    T('fără cheie: „răspunde modelul, iar cheia lui nu e pusă" + întrebările pe loc', r.s === 200 && /cheia lui nu e pusă pe server/.test(r.j.text || '') && (r.j.urmari || []).length === 6, JSON.stringify(r.j).slice(0, 300));
+    T('fără cheie: „răspunde modelul, iar cheia lui nu e pusă” + întrebările pe loc', r.s === 200 && /cheia lui nu e pusă pe server/.test(r.j.text || '') && (r.j.urmari || []).length === 6, JSON.stringify(r.j).slice(0, 300));
     r = await intreaba('De ce au scăzut încasările?');
-    T('„De ce…" nu primește răspuns pe loc (e analiză), nici fără cheie', /cheia lui nu e pusă/.test(r.j.text || '') && !r.j.titlu);
+    T('„De ce…” nu primește răspuns pe loc (e analiză), nici fără cheie', /cheia lui nu e pusă/.test(r.j.text || '') && !r.j.titlu);
     r = await intreaba('Și luna trecută?', { context: { s: 'hack' } });
     T('un subiect inventat în context e aruncat (întrebarea merge mai departe ca una fără subiect)', /cheia lui nu e pusă/.test(r.j.text || ''));
     T('… și tot nicio cerere la model', cereri().length === 0);
@@ -550,7 +550,7 @@ async function peServer() {
     r = await intreaba('De ce n-a plătit Trans Expres?');
     intrebariModel++;
     const c1 = cereri();
-    T('„De ce…": la model, cu răspunsul lui și insigna „Analiză · din Facturare"', r.j.fel === 'ai' && r.j.text === 'Trans Expres are o factură întârziată de **1.240,84 lei**; accesul se oprește în câteva zile.' &&
+    T('„De ce…”: la model, cu răspunsul lui și insigna „Analiză · din Facturare”', r.j.fel === 'ai' && r.j.text === 'Trans Expres are o factură întârziată de **1.240,84 lei**; accesul se oprește în câteva zile.' &&
       r.j.insigna.eticheta === 'Analiză' && r.j.insigna.detaliu === 'din Facturare' && r.j.butoane.map((b) => b.text).join() === 'Facturare' && r.j.copiere === r.j.text, JSON.stringify(r.j).slice(0, 400));
     T('… două cereri: întrebarea, apoi rezultatul uneltei', c1.length === 2, c1.length);
     const q1 = c1[0] || {}, q2 = c1[1] || {};
@@ -561,8 +561,8 @@ async function peServer() {
     T('… unealta a citit restanțele adevărate (factura, suma, zilele)', /tool_result/.test(rez) && /Trans Expres SRL/.test(rez) && /1240\.84/.test(rez) && /zile_intarziere/.test(rez), rez.slice(0, 400));
     // Pasul 3: cifrele verificate și analiza atentă.
     const aziIso = new Date(acum).toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' });
-    T('pasul 3: cifra (1.240,84 lei) se regăsește în ce a citit unealta → „✓ Cifrele le-am luat din Facturare.", fără rescriere', r.j.verificat === 'Cifrele le-am luat din Facturare.' && !r.j.probleme && c1.length === 2, JSON.stringify([r.j.verificat, r.j.probleme, c1.length]));
-    T('pasul 3: „De ce…" = analiză atentă — instrucțiunea ei în context (după ziua de azi), cu zilele de azi', q1.system && q1.system.length === 3 && /^ÎNTREBARE DE ANALIZĂ/.test(q1.system[2].text) && !q1.system[2].cache_control &&
+    T('pasul 3: cifra (1.240,84 lei) se regăsește în ce a citit unealta → „✓ Cifrele le-am luat din Facturare.”, fără rescriere', r.j.verificat === 'Cifrele le-am luat din Facturare.' && !r.j.probleme && c1.length === 2, JSON.stringify([r.j.verificat, r.j.probleme, c1.length]));
+    T('pasul 3: „De ce…” = analiză atentă — instrucțiunea ei în context (după ziua de azi), cu zilele de azi', q1.system && q1.system.length === 3 && /^ÎNTREBARE DE ANALIZĂ/.test(q1.system[2].text) && !q1.system[2].cache_control &&
       q1.system[2].text.indexOf('până azi = ' + aziIso.slice(0, 8) + '01 – ' + aziIso) > 0, JSON.stringify((q1.system || []).map((s) => String(s.text).slice(0, 60))));
     // Istoricul pentru model vine din conversația păstrată (pasul 4): ultimele 6 mesaje, întâi omul, rolurile alternează, apoi
     // întrebarea; ce trimite pagina (`istoric`) nu mai contează.
@@ -581,8 +581,8 @@ async function peServer() {
     const qObisnuit = cereri().slice(-1)[0] || {};
     T('o întrebare care nu e analiză: fără instrucțiunea analizei și cu mai puțin loc decât analiza (efortul obișnuit)', (qObisnuit.system || []).length === 2 &&
       Number(qObisnuit.max_tokens) > 0 && Number(qObisnuit.max_tokens) < Number(q1.max_tokens), JSON.stringify([(qObisnuit.system || []).length, qObisnuit.max_tokens, q1.max_tokens]));
-    T('… și fără cifre în răspuns („Bine."): nimic sub el', !r.j.verificat && !r.j.probleme);
-    // O cifră pe care uneltele n-au dat-o (1.300 lei) → O rescriere, cu cifra numită; rescrierea are cifra adevărată (500 lei) → „✓".
+    T('… și fără cifre în răspuns („Bine.”): nimic sub el', !r.j.verificat && !r.j.probleme);
+    // O cifră pe care uneltele n-au dat-o (1.300 lei) → O rescriere, cu cifra numită; rescrierea are cifra adevărată (500 lei) → „✓”.
     coada([unealta('incasari', {}), text('Luna asta am încasat **1.300 lei**.'), text('Luna asta am încasat **500 lei**, de la Trans Expres SRL.')]);
     const nRes = cereri().length;
     r = await intreaba('Rezumă-mi te rog încasările lunii acesteia și spune-mi pe scurt ce firme au plătit și cât');
@@ -591,7 +591,7 @@ async function peServer() {
     T('pasul 3: o cifră negăsită (1.300 lei) → modelul își rescrie O DATĂ răspunsul, cu cifra numită în cerere', cRes.length === 3 && ultMsg.length >= 3 &&
       ultMsg[ultMsg.length - 2].role === 'assistant' && ultMsg[ultMsg.length - 2].content === 'Luna asta am încasat **1.300 lei**.' &&
       /^Verificarea aplicației: cifrele 1\.300 lei nu se regăsesc/.test(String(ultMsg[ultMsg.length - 1].content)), JSON.stringify([cRes.length, ultMsg.slice(-2)]).slice(0, 500));
-    T('… răspunsul rescris (500 lei, cât a citit unealta) ajunge pe ecran, cu „✓ Cifrele le-am luat din Facturare."', r.j.text === 'Luna asta am încasat **500 lei**, de la Trans Expres SRL.' &&
+    T('… răspunsul rescris (500 lei, cât a citit unealta) ajunge pe ecran, cu „✓ Cifrele le-am luat din Facturare.”', r.j.text === 'Luna asta am încasat **500 lei**, de la Trans Expres SRL.' &&
       r.j.verificat === 'Cifrele le-am luat din Facturare.' && !r.j.probleme && r.j.copiere === r.j.text, JSON.stringify([r.j.text, r.j.verificat, r.j.probleme]));
     coada([text('Răspuns lung.')]);
     const nCereri = cereri().length;
@@ -600,12 +600,12 @@ async function peServer() {
     T('o întrebare lungă, chiar cu un subiect cunoscut, merge la model', r.j.fel === 'ai' && cereri().length === nCereri + 1);
     coada([{ status: 500 }]);
     r = await intreaba('Ce crezi despre luna asta?');
-    T('modelul cade: „n-a răspuns acum" + întrebările pe loc (fără eroare pe ecran)', r.s === 200 && /Modelul n-a răspuns acum/.test(r.j.text || '') && (r.j.urmari || []).length === 6, JSON.stringify(r.j).slice(0, 300));
+    T('modelul cade: „n-a răspuns acum” + întrebările pe loc (fără eroare pe ecran)', r.s === 200 && /Modelul n-a răspuns acum/.test(r.j.text || '') && (r.j.urmari || []).length === 6, JSON.stringify(r.j).slice(0, 300));
     coada([text('În октомбрie am încasat 500 lei.'), text('În октомбрie am încasat 500 lei.')]);
     r = await intreaba('Ce s-a mai întâmplat?');
     intrebariModel++;
     T('literele din alt alfabet nu ajung pe ecran', r.j.fel === 'ai' && !/[Ѐ-ӿ]/.test(r.j.text || '') && /500 lei/.test(r.j.text || ''), r.j.text);
-    T('pasul 3: fără nimic citit, cifra (500 lei) rămâne negăsită și după rescriere → „Nu am găsit în datele aplicației: 500 lei", fără „✓"', !r.j.verificat &&
+    T('pasul 3: fără nimic citit, cifra (500 lei) rămâne negăsită și după rescriere → „Nu am găsit în datele aplicației: 500 lei”, fără „✓”', !r.j.verificat &&
       Array.isArray(r.j.probleme) && r.j.probleme.length === 1 && r.j.probleme[0].titlu === 'Nu am găsit în datele aplicației: 500 lei' && r.j.probleme[0].dovada === A.TEXT_NEGASIT, JSON.stringify(r.j.probleme));
     const nInainte = cereri().length;
     r = await intreaba('Cine e restant?');
@@ -637,13 +637,13 @@ async function peServer() {
       (await cere('PUT', '/api/admin/asistent/conversatii/' + convInc, S, { titlu: 'Încasări — luna asta și cea trecută' })).s === 200 &&
       ((await cere('GET', '/api/admin/asistent/conversatii', S)).j.conversatii || []).some((c) => c.id === convInc && c.titlu === 'Încasări — luna asta și cea trecută'));
     const cauta = await cere('GET', '/api/admin/asistent/conversatii?q=' + encodeURIComponent('Agro Nord'), S);
-    T('pasul 4: căutarea găsește și în textul răspunsurilor („Agro Nord" e în tabelul celui de-al doilea); un cuvânt străin = listă goală', (cauta.j.conversatii || []).some((c) => c.id === convInc) &&
+    T('pasul 4: căutarea găsește și în textul răspunsurilor („Agro Nord” e în tabelul celui de-al doilea); un cuvânt străin = listă goală', (cauta.j.conversatii || []).some((c) => c.id === convInc) &&
       ((await cere('GET', '/api/admin/asistent/conversatii?q=zzz-nimic', S)).j.conversatii || []).length === 0);
     const x1 = await intreaba('Câte firme avem?');
     T('pasul 4: ștergerea (doar a ta): conversația pleacă, cu mesajele ei', Number(x1.j.conversatieId) > 0 && (await cere('DELETE', '/api/admin/asistent/conversatii/' + x1.j.conversatieId, S)).s === 200 &&
       (await cere('GET', '/api/admin/asistent/conversatii/' + x1.j.conversatieId, S)).s === 404);
     const dupa = await intreaba('Cine e restant?', { conversatieId: x1.j.conversatieId });
-    T('… o întrebare trimisă în conversația ștearsă: 404 cu „ștearsă" (pagina începe atunci una nouă), fără să facă alta pe tăcute', dupa.s === 404 && dupa.j.stearsa === true &&
+    T('… o întrebare trimisă în conversația ștearsă: 404 cu „ștearsă” (pagina începe atunci una nouă), fără să facă alta pe tăcute', dupa.s === 404 && dupa.j.stearsa === true &&
       /nu mai există/.test(dupa.j.error || ''), JSON.stringify(dupa));
     // La 12 luni fără mesaje noi: aceeași trecere zilnică ca RA Insight (de mână: /api/admin/insight/sterge-vechi).
     const v13 = (await intreaba('Montaje mâine')).j.conversatieId, v11 = (await intreaba('Stocul de aparate')).j.conversatieId;
@@ -659,7 +659,7 @@ async function peServer() {
     const cons = spawnSync(process.execPath, [__filename, '--faza=consum'], { cwd: __dirname, env, encoding: 'utf8', timeout: 120000 });
     const mc = /CONSUM (\[.*\])/.exec(cons.stdout || '');
     const rows = mc ? JSON.parse(mc[1]) : null;
-    T('consumul: un rând „asistent" pe întrebare la model, pe noi (fără firmă), cu modelul scris', !!rows && rows.length === intrebariModel && rows.every((x) => x.company_id == null && x.kind === 'asistent' && x.model && Number(x.input_tokens) > 0),
+    T('consumul: un rând „asistent” pe întrebare la model, pe noi (fără firmă), cu modelul scris', !!rows && rows.length === intrebariModel && rows.every((x) => x.company_id == null && x.kind === 'asistent' && x.model && Number(x.input_tokens) > 0),
       mc ? mc[1] : String(cons.stdout || '').slice(-300) + String(cons.stderr || '').slice(-300));
     curata();
   }

@@ -1,5 +1,5 @@
-// Piesele comune ecranelor „Contracte" (fondatori): pastila, butoanele Vezi / Descarcă pentru hârtiile
-// serverului, foaia „Reînnoiește" și alegerea unui fișier semnat (poză sau PDF).
+// Piesele comune ecranelor „Contracte” (fondatori): pastila, butoanele Vezi / Descarcă pentru hârtiile
+// serverului, foaia „Reînnoiește” și alegerea unui fișier semnat (poză sau PDF).
 //
 // Nimic de aici nu socotește ceva despre un contract: hârtia (contract, act adițional, scan) vine din
 // generatorul serverului prin `salveazaDeLaServer` (lib/export.ts, numele din antetul răspunsului), iar
@@ -21,10 +21,10 @@ export function Pill({ fel, children }: { fel?: string; children: any }) {
   return <span class={'ctr-pill' + (fel ? ' ' + fel : '')}>{children}</span>;
 }
 
-// „Vezi" deschide hârtia în vizualizatorul telefonului (fără s-o salveze tu undeva); „Descarcă" o dă
+// „Vezi” deschide hârtia în vizualizatorul telefonului (fără s-o salveze tu undeva); „Descarcă” o dă
 // foii de partajare, de unde se salvează sau se trimite. Aceleași mesaje ca pe web (raxHartie).
 //
-// „… s-a descărcat ✓" apare DOAR unde chiar s-a descărcat (browserul). Pe telefon, `salveazaDeLaServer` se
+// „… s-a descărcat ✓” apare DOAR unde chiar s-a descărcat (browserul). Pe telefon, `salveazaDeLaServer` se
 // întoarce la fel și când omul a închis foaia de partajare fără să salveze (anularea nu e o eroare), deci
 // n-avem de unde ști că fișierul a ajuns undeva — foaia sistemului (Fișiere / Drive) confirmă singură.
 // Erorile (rețea, server, disc plin) apar în continuare, pe ambele.
@@ -72,7 +72,7 @@ export function DescarcaFisier({ path, ce, eticheta }: { path: string; ce: strin
   );
 }
 
-// Alegerea scanului semnat: „Fotografiază" (camera, direct) sau „Alege fișier" (PDF / poză). Pozele de
+// Alegerea scanului semnat: „Fotografiază” (camera, direct) sau „Alege fișier” (PDF / poză). Pozele de
 // telefon au 5-12 MB, iar limita serverului e 4: trec prin aceeași micșorare ca actele mașinilor.
 export type FisierAles = { name: string; b64: string };
 export function AlegeFisier({ busy, onFile, etFoto, etFisier }: {
@@ -103,7 +103,7 @@ export function AlegeFisier({ busy, onFile, etFoto, etFisier }: {
   );
 }
 
-// „Reînnoiește": foaia cu câte luni, apoi actul adițional de prelungire, scris de server (ca ciornă).
+// „Reînnoiește”: foaia cu câte luni, apoi actul adițional de prelungire, scris de server (ca ciornă).
 // Serverul răspunde 409 dacă există deja o prelungire în lucru — mesajul lui apare ca atare.
 export function useReinnoire(onGata: (companyId: number) => void) {
   const [cer, setCer] = useState<{ id: number; companyId: number; luni: number; capat: string } | null>(null);

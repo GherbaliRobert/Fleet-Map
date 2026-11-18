@@ -1,6 +1,6 @@
-/* RA Insight — telefonul de prezentare (16.11; Alin: „2. închis"). Stilul pentru public/js/ra-insight-demo.js, folosit pe prima
-   pagină, pe /pachete-ra-insight și în aplicație („Vezi pachetele"). Ecranul telefonului are culorile chatului RA Insight pe tema
-   ÎNCHISĂ a aplicației (app.css: body.dark …) — verify_ra_insight_demo.js le compară. Totul e pe clase „ri-", ca să nu se bată cu
+/* RA Insight — telefonul de prezentare (16.11; Alin: „2. închis”). Stilul pentru public/js/ra-insight-demo.js, folosit pe prima
+   pagină, pe /pachete-ra-insight și în aplicație („Vezi pachetele”). Ecranul telefonului are culorile chatului RA Insight pe tema
+   ÎNCHISĂ a aplicației (app.css: body.dark …) — verify_ra_insight_demo.js le compară. Totul e pe clase „ri-”, ca să nu se bată cu
    foaia de stil a paginii în care stă. Fontul se moștenește (Nunito). */
 .ri-tel, .ri-ecran {
   --ri-bg: #0E1217; --ri-dark: #0E1217; --ri-darkest: #0B0E11; --ri-panel: #15181D; --ri-line: #242A31; --ri-line2: #313842;
@@ -59,7 +59,7 @@
 .ri-azi-r { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 2px; border-top: 1px solid var(--ri-line); font-size: 11.5px; line-height: 1.4; }
 .ri-azi-cp + .ri-azi-r { border-top: 0; }
 .ri-azi-st { width: 8px; height: 8px; border-radius: 50%; background: var(--ri-g); }
-.ri-azi-st.ri-st-r { background: var(--ri-r); } .ri-azi-st.ri-st-w { background: var(--ri-w); }   /* NU „ri-w": e clasa cuvintelor care se aprind treptat (opacity 0) */
+.ri-azi-st.ri-st-r { background: var(--ri-r); } .ri-azi-st.ri-st-w { background: var(--ri-w); }   /* NU „ri-w”: e clasa cuvintelor care se aprind treptat (opacity 0) */
 .ri-azi-sg { color: var(--ri-fg3); font-size: 10px; }
 .ri-pu { align-self: flex-end; max-width: 84%; background: var(--ri-ub); border-radius: 18px 18px 6px 18px; padding: 8px 12px; font-weight: 600; font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; color: var(--ri-fg); }
 .ri-pa { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; }
@@ -145,7 +145,7 @@
 .ri-ecran::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: linear-gradient(transparent, var(--ri-bg)); pointer-events: none; }
 .ri-ecran-in { padding: 12px 11px; display: flex; flex-direction: column; gap: 12px; }
 
-/* Comenzile din jurul telefonului: butoanele de sub telefonul din primul ecran, comutatorul pachetelor, rândul „Exemplu…".
+/* Comenzile din jurul telefonului: butoanele de sub telefonul din primul ecran, comutatorul pachetelor, rândul „Exemplu…”.
    Culorile din variabile (--ri-c-fg / --ri-c-mut / --ri-c-line): pe site (închis) valorile de rezervă de aici; în aplicație le
    dă app.css (.insp-pk-demo), pe tema ei. NU le defini pe elementele de aici: ar acoperi tema aplicației. */
 .ri-taburi { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
@@ -159,7 +159,7 @@
 .ri-pk-sel { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.03); border: 1px solid var(--ri-c-line, #313842); }
 .ri-pk-b { font: inherit; font-size: 13px; font-weight: 800; color: var(--ri-c-mut, #C2CAD6); background: transparent; border: 0; border-radius: 999px; padding: 6px 16px; cursor: pointer; line-height: 1.3; }
 .ri-pk-b[aria-pressed="true"] { background: #3FE07D; color: #06210F; }
-/* „Start" în comutator: doar pe telefon (≤ 720 px), unde coloana Start de alături se ascunde (18.11; ra-insight-demo.js → platit). */
+/* „Start” în comutator: doar pe telefon (≤ 720 px), unde coloana Start de alături se ascunde (18.11; ra-insight-demo.js → platit). */
 .ri-pk-sel .ri-pk-start { display: none; }
 @media (max-width: 720px) { .ri-pk-sel .ri-pk-start { display: inline-block; } }
 .ri-pk-info { max-width: 34ch; text-align: center; font-size: 13.5px; line-height: 1.5; color: var(--ri-c-mut, #C2CAD6); min-height: 60px; }

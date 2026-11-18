@@ -1,14 +1,14 @@
-// verify_aparate.js — „Aparate GPS" (Setări → Evidență), pe server pornit.
+// verify_aparate.js — „Aparate GPS” (Setări → Evidență), pe server pornit.
 //
 //   node verify_aparate.js
 //
-// Ecranul ăsta răspunde la o întrebare pe care harta NU o poate răspunde: „mai transmite aparatul?".
+// Ecranul ăsta răspunde la o întrebare pe care harta NU o poate răspunde: „mai transmite aparatul?”.
 // Pe hartă, o mașină tăcută arată exact ca una parcată — omul află că i-a murit un GPS abia când are
 // nevoie de traseu, adică prea târziu. De aceea se apără aici două lucruri:
 //   • ce trimite serverul: fără parametru → doar aparatele din flotă; cu ?arhivate=1 → și cele scoase,
 //     marcate ca atare. Dacă cele arhivate ar intra tăcut în lista principală, omul ar suna
 //     instalatorul pentru un aparat pe care l-a demontat singur acum trei luni;
-//   • ce scrie pe ecran: pragurile „comunică / tăcut / fără semnal" și textul lor. Un „tăcut de 3 h"
+//   • ce scrie pe ecran: pragurile „comunică / tăcut / fără semnal” și textul lor. Un „tăcut de 3 h”
 //     afișat pentru 3 zile de tăcere e mai rău decât nimic.
 
 const { spawn } = require('child_process');
@@ -58,7 +58,7 @@ function gata(code) {
   await PUT('/api/devices/7711000000001', { gps_model: 'Teltonika FMB920', sim_number: '0740111222' });
 
   // Capcana găsită chiar aici: PUT-ul care scrie modelul GPS trimitea și name/vehicle_type/plate ca
-  // „nedefinite", iar interogarea le scria oricum → un update parțial ȘTERGEA numărul de înmatriculare.
+  // „nedefinite”, iar interogarea le scria oricum → un update parțial ȘTERGEA numărul de înmatriculare.
   // Pe ecran ar fi apărut un aparat fără mașină, fără ca cineva să fi șters ceva.
   const r0 = await GET('/api/device-inventory');
   T('ruta răspunde', r0.status === 200, r0.status);
@@ -93,8 +93,8 @@ function gata(code) {
 
   sect('4. Ce scrie pe ecran despre starea aparatului');
   const html = fs.readFileSync('./public/index.html', 'utf8');
-  const i = html.indexOf('    // ── începe „Aparate GPS"');
-  const j = html.indexOf('    // ── sfârșit „Aparate GPS" ──', i);
+  const i = html.indexOf('    // ── începe „Aparate GPS”');
+  const j = html.indexOf('    // ── sfârșit „Aparate GPS” ──', i);
   T('găsesc codul ecranului între repere', i > 0 && j > i, 'i=' + i + ' j=' + j);
   if (i > 0 && j > i) {
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -105,22 +105,22 @@ function gata(code) {
     const ACUM = Date.parse('2026-09-01T12:00:00Z');
     const acu = (min) => new Date(ACUM - min * 60000).toISOString();
 
-    T('un aparat care a transmis acum 5 min „comunică"', F.stare(acu(5), ACUM).k === 'ok', F.stare(acu(5), ACUM).t);
+    T('un aparat care a transmis acum 5 min „comunică”', F.stare(acu(5), ACUM).k === 'ok', F.stare(acu(5), ACUM).t);
     T('la 29 de minute tot comunică', F.stare(acu(29), ACUM).k === 'ok', F.stare(acu(29), ACUM).t);
     T('la 31 de minute e tăcut', F.stare(acu(31), ACUM).k === 'tacut', F.stare(acu(31), ACUM).t);
     T('și spune de cât timp', /31 min/.test(F.stare(acu(31), ACUM).t), F.stare(acu(31), ACUM).t);
-    T('la 23 de ore e tot „tăcut"', F.stare(acu(23 * 60), ACUM).k === 'tacut', F.stare(acu(23 * 60), ACUM).t);
+    T('la 23 de ore e tot „tăcut”', F.stare(acu(23 * 60), ACUM).k === 'tacut', F.stare(acu(23 * 60), ACUM).t);
     // Pragul de o zi e cel care schimbă vorba: peste el, omul trebuie să sune pe cineva.
-    T('la 25 de ore devine „fără semnal"', F.stare(acu(25 * 60), ACUM).k === 'mut', F.stare(acu(25 * 60), ACUM).t);
+    T('la 25 de ore devine „fără semnal”', F.stare(acu(25 * 60), ACUM).k === 'mut', F.stare(acu(25 * 60), ACUM).t);
     T('și numără în zile, nu în ore', /1 zi/.test(F.stare(acu(25 * 60), ACUM).t), F.stare(acu(25 * 60), ACUM).t);
-    T('trei zile se scriu „3 zile"', /3 zile/.test(F.stare(acu(74 * 60), ACUM).t), F.stare(acu(74 * 60), ACUM).t);
+    T('trei zile se scriu „3 zile”', /3 zile/.test(F.stare(acu(74 * 60), ACUM).t), F.stare(acu(74 * 60), ACUM).t);
     T('un aparat care n-a transmis NICIODATĂ o spune limpede', F.stare(null, ACUM).k === 'niciodata', F.stare(null, ACUM).t);
-    // Ceasul unui tracker o poate lua înainte. Fără paza asta ar scrie „tăcut de -5 min".
-    T('o oră „din viitor" nu produce timp negativ', F.stare(new Date(ACUM + 3600000).toISOString(), ACUM).k === 'ok',
+    // Ceasul unui tracker o poate lua înainte. Fără paza asta ar scrie „tăcut de -5 min”.
+    T('o oră „din viitor” nu produce timp negativ', F.stare(new Date(ACUM + 3600000).toISOString(), ACUM).k === 'ok',
       F.stare(new Date(ACUM + 3600000).toISOString(), ACUM).t);
 
-    T('90 de minute se scriu „1 oră", nu „1.5 ore"', F.deCand(90 * 60000) === '1 oră', F.deCand(90 * 60000));
-    T('două zile se scriu „2 zile"', F.deCand(49 * 3600000) === '2 zile', F.deCand(49 * 3600000));
+    T('90 de minute se scriu „1 oră”, nu „1.5 ore”', F.deCand(90 * 60000) === '1 oră', F.deCand(90 * 60000));
+    T('două zile se scriu „2 zile”', F.deCand(49 * 3600000) === '2 zile', F.deCand(49 * 3600000));
 
     const rnd = { plate: 'CJ 33 GPS', imei: '7711000000001', gps_model: 'Teltonika FMB920', sim_number: '0740111222', status: 'active' };
     T('căutarea prinde numărul de înmatriculare', F.potrivit(rnd, 'cj 33'));
@@ -142,9 +142,9 @@ function gata(code) {
   }
 
   sect('5. Ecranul arhivelor nu se dublează');
-  // Arhivele au deja un ecran cu istoric, restaurare și ștergere definitivă. Fila „Arhivate" din
+  // Arhivele au deja un ecran cu istoric, restaurare și ștergere definitivă. Fila „Arhivate” din
   // Aparate GPS îl ÎMPRUMUTĂ; dacă cineva l-ar rescrie de mână, butoanele alea ar rămâne pe drum.
-  T('fila „Arhivate" împrumută ecranul existent', /setImprumuta\('admin-tab-archived'/.test(html));
+  T('fila „Arhivate” împrumută ecranul existent', /setImprumuta\('admin-tab-archived'/.test(html));
   T('și îl cheamă pe cel care îl umple', /loadArchivedDevices\(\)/.test(html.slice(i, j)));
   // Redesenarea ștergea nodul împrumutat dacă nu-l trimiteam acasă întâi.
   T('înainte de redesenare, nodul se dă înapoi', /function agpsRender\(\)[\s\S]{0,220}setDaInapoi\(\)/.test(html));

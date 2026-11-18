@@ -91,7 +91,7 @@ export function Hotspot() {
     setLoading(true); setErr('');
     const { from, to } = computeRange(preset, customFrom, customTo);
     Api.hotspot(from, to, selImei ? [selImei] : undefined, mode, 5).then((pts: any[]) => {
-      const arr = (pts || []).slice(0, 4000); // cap de siguranță pt. densitate mare (modul „poziții")
+      const arr = (pts || []).slice(0, 4000); // cap de siguranță pt. densitate mare (modul „poziții”)
       setCount(pts?.length || 0);
       const map = mapRef.current;
       if (map) {

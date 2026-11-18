@@ -1,4 +1,4 @@
-// verify_istoric.js — „Istoric activitate" (Setări → Evidență), pe server pornit.
+// verify_istoric.js — „Istoric activitate” (Setări → Evidență), pe server pornit.
 //
 //   node verify_istoric.js
 //
@@ -9,8 +9,8 @@
 //   • MINCIUNA PRIN OMISIUNE: autentificările se scriau fără companie, deci într-un istoric de firmă
 //     nu apărea nimeni conectându-se — se vedea doar ce s-a modificat. Ecranul ar fi arătat complet
 //     fără să fie.
-// Plus partea de limbaj: în bază scrie „update / device / 350317...". Pe ecran trebuie să scrie
-// „Ion a modificat mașina CJ 12 ABC", altfel nimeni nu-l citește.
+// Plus partea de limbaj: în bază scrie „update / device / 350317...”. Pe ecran trebuie să scrie
+// „Ion a modificat mașina CJ 12 ABC”, altfel nimeni nu-l citește.
 
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -63,7 +63,7 @@ const login = async (u, p) => {
   T('are ce arăta după două acțiuni', d0.total >= 2, d0.total);
 
   sect('2. Numărul mașinii vine odată cu rândul');
-  // Fără el, ecranul ar scrie „a modificat mașina 8811000000001" — adică nimic pentru un om.
+  // Fără el, ecranul ar scrie „a modificat mașina 8811000000001” — adică nimic pentru un om.
   const rDev = (d0.randuri || []).find(x => x.entity === 'device' && x.entity_id === '8811000000001');
   T('rândul despre mașină există', !!rDev, (d0.randuri || []).map(x => x.action + '/' + x.entity).join(', '));
   T('și aduce numărul de înmatriculare, nu doar IMEI-ul', rDev && rDev.device_plate === 'IS 10 IST', rDev && rDev.device_plate);
@@ -71,20 +71,20 @@ const login = async (u, p) => {
   sect('3. Autentificările intră în istoricul FIRMEI');
   // Aici era gaura: login-ul se scria fără companie, deci nu apărea în istoricul niciunei firme.
   const conect = await (await GET('/api/activity?zile=30&familie=conectari')).json();
-  T('filtrul „Conectări" răspunde', Array.isArray(conect.randuri), JSON.stringify(conect).slice(0, 100));
+  T('filtrul „Conectări” răspunde', Array.isArray(conect.randuri), JSON.stringify(conect).slice(0, 100));
   T('și conține DOAR conectări/ieșiri', (conect.randuri || []).every(x => x.action === 'login' || x.action === 'logout'),
     (conect.randuri || []).map(x => x.action).join(', '));
   T('autentificarea de adineauri e acolo', (conect.randuri || []).some(x => x.action === 'login'), conect.total);
 
   sect('4. Filtrele nu se contrazic cu ce cer');
   const mod = await (await GET('/api/activity?zile=30&familie=modificari')).json();
-  T('„Modificări" nu întoarce conectări', (mod.randuri || []).every(x => x.action !== 'login' && x.action !== 'logout'),
+  T('„Modificări” nu întoarce conectări', (mod.randuri || []).every(x => x.action !== 'login' && x.action !== 'logout'),
     (mod.randuri || []).map(x => x.action).join(', '));
   const nimic = await (await GET('/api/activity?zile=30&familie=descarcari')).json();
-  T('„Descărcări" e goală cât timp nimeni n-a descărcat', nimic.total === 0, nimic.total);
+  T('„Descărcări” e goală cât timp nimeni n-a descărcat', nimic.total === 0, nimic.total);
   await GET('/api/device-inventory/export?format=xlsx').catch(() => {});
   const dupa = await (await GET('/api/activity?zile=30&familie=descarcari')).json();
-  T('după un export, apare în „Descărcări"', dupa.total >= 1, dupa.total);
+  T('după un export, apare în „Descărcări”', dupa.total >= 1, dupa.total);
 
   sect('5. Un om fără drept de administrare NU vede istoricul');
   // Un cont de firmă are nevoie de firmă: super-adminul e cont de platformă, nu aparține niciuneia.
@@ -121,7 +121,7 @@ const login = async (u, p) => {
   }
 
   sect('5c. Cât stau oamenii în aplicație');
-  // Măsurăm PREZENȚA, nu „cât e logat": semnalul vine doar cât timp fereastra e în față, iar ora o
+  // Măsurăm PREZENȚA, nu „cât e logat”: semnalul vine doar cât timp fereastra e în față, iar ora o
   // pune serverul. Două semnale în același interval de 5 minute NU trebuie să dea 10 minute.
   const p1 = await POST('/api/presence', {});
   T('semnalul de prezență e primit', p1.status === 200, p1.status);
@@ -150,8 +150,8 @@ const login = async (u, p) => {
 
   sect('6. Limbajul de pe ecran');
   const html = fs.readFileSync('./public/index.html', 'utf8');
-  const i = html.indexOf('    // ── începe „Istoric activitate"');
-  const j = html.indexOf('    // ── sfârșit „Istoric activitate" ──', i);
+  const i = html.indexOf('    // ── începe „Istoric activitate”');
+  const j = html.indexOf('    // ── sfârșit „Istoric activitate” ──', i);
   T('găsesc codul ecranului între repere', i > 0 && j > i, 'i=' + i + ' j=' + j);
   if (i > 0 && j > i) {
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -160,11 +160,11 @@ const login = async (u, p) => {
       esc, {}, { getElementById: () => null }, () => Promise.resolve({ json: () => ({}) }));
 
     const f1 = F.fapta({ action: 'update', entity: 'device', entity_id: '8811000000001', device_plate: 'IS 10 IST' });
-    T('„update/device" devine „a modificat mașina"', f1.verb === 'a modificat' && f1.obiect === 'mașina', f1.verb + ' ' + f1.obiect);
+    T('„update/device” devine „a modificat mașina”', f1.verb === 'a modificat' && f1.obiect === 'mașina', f1.verb + ' ' + f1.obiect);
     T('și ținta e numărul, nu IMEI-ul', f1.tinta === 'IS 10 IST', f1.tinta);
 
     const f2 = F.fapta({ action: 'login', entity: 'session' });
-    T('„login" devine „s-a conectat"', f2.verb === 's-a conectat', f2.verb);
+    T('„login” devine „s-a conectat”', f2.verb === 's-a conectat', f2.verb);
     T('și nu inventează un obiect', !f2.obiect && !f2.tinta, f2.obiect + '/' + f2.tinta);
 
     const f3 = F.fapta({ action: 'delete', entity: 'driver', entity_id: '7', details: { name: 'Ion Popescu' } });
@@ -181,8 +181,8 @@ const login = async (u, p) => {
     T('o acțiune necunoscută tot apare pe ecran', !!f5.verb && /ceva_nou/.test(f5.verb), f5.verb);
 
     const ACUM = Date.parse('2026-09-01T12:00:00Z');
-    T('ziua de azi scrie „Azi"', F.zi(ACUM - 3600000, ACUM) === 'Azi', F.zi(ACUM - 3600000, ACUM));
-    T('ziua de ieri scrie „Ieri"', F.zi(ACUM - 26 * 3600000, ACUM) === 'Ieri', F.zi(ACUM - 26 * 3600000, ACUM));
+    T('ziua de azi scrie „Azi”', F.zi(ACUM - 3600000, ACUM) === 'Azi', F.zi(ACUM - 3600000, ACUM));
+    T('ziua de ieri scrie „Ieri”', F.zi(ACUM - 26 * 3600000, ACUM) === 'Ieri', F.zi(ACUM - 26 * 3600000, ACUM));
     T('mai vechi de-atât scrie data', /august/.test(F.zi(Date.parse('2026-08-12T09:00:00Z'), ACUM)), F.zi(Date.parse('2026-08-12T09:00:00Z'), ACUM));
 
     const rand = F.rand({ action: 'update', entity: 'device', device_plate: 'IS 10 IST', username: 'ion@firma.ro',
@@ -195,7 +195,7 @@ const login = async (u, p) => {
     T('nouă, super-admini, ni se arată', /86\.120\.1\.2/.test(randSuper));
 
     // `let currentUser` nu ajunge pe window de la sine. Fără linia din showApp, TOATE verificările de
-    // super-admin din fișierele separate erau mereu false — inclusiv butonul „Salvează în fișă" de la
+    // super-admin din fișierele separate erau mereu false — inclusiv butonul „Salvează în fișă” de la
     // Taxa de drum, care nu apărea niciodată.
     T('currentUser e pus și pe window, pentru restul aplicației', /window\.currentUser = currentUser;/.test(html));
   }

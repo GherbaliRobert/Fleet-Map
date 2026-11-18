@@ -7,15 +7,15 @@
 //   • Totalul din formular e doar informativ, cât scrii; adevărul îl socotește serverul la salvare.
 //   • Prețul propus pentru client: întâi cel din Anexa nr. 2 a contractului (ce s-a convenit cu clientul
 //     ăsta), apoi tariful casei — pe care îl dă SERVERUL: `tarife_montaj` din /overview dacă vine, altfel
-//     „Prețurile noastre" din calculatorul de pe server (`/api/admin/offers/calc` cu `preturi`, cerut o
+//     „Prețurile noastre” din calculatorul de pe server (`/api/admin/offers/calc` cu `preturi`, cerut o
 //     singură dată, la prima deschidere a formularului). Telefonul nu ține o copie a tarifelor.
 //     Costul partenerului se propune din tarifele scrise la partener.
-//   • „Salvează lucrarea" nu pleacă cu un rând care are bucăți, dar n-are preț pentru client: la un contract
-//     nesemnat, serverul reface Anexa nr. 2 din lucrări și rândul ar ajunge pe hârtie „3 buc × 0,00 lei".
-//   • Butonul „înapoi" de pe Android închide foaia (întreabă dacă s-a scris ceva), nu pleacă din fișă.
+//   • „Salvează lucrarea” nu pleacă cu un rând care are bucăți, dar n-are preț pentru client: la un contract
+//     nesemnat, serverul reface Anexa nr. 2 din lucrări și rândul ar ajunge pe hârtie „3 buc × 0,00 lei”.
+//   • Butonul „înapoi” de pe Android închide foaia (întreabă dacă s-a scris ceva), nu pleacă din fișă.
 //   • Contract SEMNAT (30.09, ca pe web — raxMontajRandeaza): o lucrare nouă se programează în CALENDAR, nu aici
-//     („Programează în calendar"). Nesemnat: lucrările de aici scriu încă Anexa nr. 2, deci formularul rămâne.
-//     „Modifică" pe o lucrare rămâne în ambele cazuri.
+//     („Programează în calendar”). Nesemnat: lucrările de aici scriu încă Anexa nr. 2, deci formularul rămâne.
+//     „Modifică” pe o lucrare rămâne în ambele cazuri.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
@@ -55,10 +55,10 @@ export function Anexa2({ m }: { m: any }) {
 }
 
 type Linie = { buc: string; pc: string; cp: string };
-// `p0` = partenerul salvat pe lucrare când s-a deschis foaia: un partener „inactiv" rămâne în listă DOAR pe ea.
+// `p0` = partenerul salvat pe lucrare când s-a deschis foaia: un partener „inactiv” rămâne în listă DOAR pe ea.
 type Edit = { id: number; partener: string; p0: string; data: string; stare: string; factura: string; linii: Record<string, Linie> };
 const s = (v: any) => (v == null || v === '' ? '' : String(v));
-// Butonul de sub lucrări: la un contract în vigoare („activ"), „Programează în calendar"; altfel „Lucrare de montaj"
+// Butonul de sub lucrări: la un contract în vigoare („activ”), „Programează în calendar”; altfel „Lucrare de montaj”
 // (formularul). Aceeași condiție ca pe web (raxMontajRandeaza: `_raxCtr.contract.status === 'activ'`) — legate printr-o
 // probă. Un contract încheiat păstrează formularul, ca pe web.
 export const programeazaInCalendar = (contract: any): boolean => !!contract && contract.status === 'activ';
@@ -76,7 +76,7 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
   const [deschid, setDeschid] = useState(false); // se aduc tarifele casei, înainte de formular
   // Tarifele casei aduse de la calculatorul serverului (când /overview nu le are). undefined = necerute încă.
   const [casa, setCasa] = useState<Record<string, number | null> | null | undefined>(undefined);
-  const start = useRef(''); // formularul cum s-a deschis — „înapoi" întreabă doar dacă s-a schimbat ceva
+  const start = useRef(''); // formularul cum s-a deschis — „înapoi” întreabă doar dacă s-a schimbat ceva
 
   function incarca() {
     Promise.all([Api.companyMontaje(companyId).catch(() => []), Api.montajParteneri().catch(() => [])]).then(([l, p]) => {
@@ -131,7 +131,7 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
     setMsg('');
     setEdit(e);
   }
-  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi" de pe Android.
+  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi” de pe Android.
   function inchide(): boolean {
     if (!edit) return true;
     if (busy) return false;
@@ -202,7 +202,7 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
       const j: any = await Api.deleteMontaj(Number(del.id));
       showToast((j && j.mesaj) || 'Lucrare ștearsă ✓');
       setDel(null);
-      onSalvat(); // anexa poate s-a schimbat: fișa se reîncarcă toată, ca după „Salvează"
+      onSalvat(); // anexa poate s-a schimbat: fișa se reîncarcă toată, ca după „Salvează”
     } catch (e: any) { showToast(e?.message || 'Nu s-a putut șterge.', true); }
     finally { setBusy(false); }
   }
@@ -261,7 +261,7 @@ export function ContractMontaj({ companyId, contract, tarifeCasa, onSalvat }: {
                 <div class="fld"><label>Cine execută</label>
                   <select value={edit.partener} onChange={(e: any) => schimbaPartener(e.target.value)}>
                     <option value="">— fără partener ales —</option>
-                    {/* Un partener „inactiv" (nu mai lucrăm cu el) nu se mai propune; rămâne doar pe lucrările lui (ca pe
+                    {/* Un partener „inactiv” (nu mai lucrăm cu el) nu se mai propune; rămâne doar pe lucrările lui (ca pe
                         web). Filtrul stă aici, nu în listă: tarifeLui() citește tarifele și pe o lucrare veche. */}
                     {parteneri.filter((p) => p.active !== false || String(p.id) === edit.p0).map((p) => (
                       <option value={String(p.id)}>{p.name + (p.active === false ? ' — inactiv' : '')}</option>

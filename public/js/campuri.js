@@ -1,5 +1,5 @@
-/* Listele derulante desenate de aplicație (Alin, 06.11: „1 da, 2 da").
-   În Chrome și Edge, foaia de stil (app.css, blocul „Casetele și listele derulante") pune listele pe „appearance:
+/* Listele derulante desenate de aplicație (Alin, 06.11: „1 da, 2 da”).
+   În Chrome și Edge, foaia de stil (app.css, blocul „Casetele și listele derulante”) pune listele pe „appearance:
    base-select": lista care se deschide e a aplicației (culorile ei, Nunito, bifa verde), nu lista albastră a sistemului.
 
    Browserul scrie atunci textul ales într-o cutie a lui, care NU se taie: într-o listă îngustă un nume lung ieșea din
@@ -12,12 +12,12 @@
    ⚠ Butonul se pune O DATĂ pe listă și se ține minte (`_campSel`). Când codul reface opțiunile cu innerHTML, butonul e scos
    odată cu ele, iar Chrome nu mai umple un <selectedcontent> NOU pus în aceeași listă (rămâne gol); ACELAȘI buton, pus la
    loc, merge. Măsurat 06.11, Chromium 141.
-   Pe browserele fără „base-select" (Safari, Firefox) nu face nimic: lista care se deschide rămâne a sistemului. */
+   Pe browserele fără „base-select” (Safari, Firefox) nu face nimic: lista care se deschide rămâne a sistemului. */
 (function () {
   'use strict';
   if (!(window.CSS && CSS.supports && CSS.supports('appearance', 'base-select')) || !window.MutationObserver || !window.Set) return;
 
-  // Aceleași liste pe care foaia de stil le pune pe „base-select" (fără cele cu mai multe rânduri și fără două ale altora).
+  // Aceleași liste pe care foaia de stil le pune pe „base-select” (fără cele cu mai multe rânduri și fără două ale altora).
   function potrivita(s) {
     return !s.multiple && !(s.size > 1) && !s.classList.contains('ss-native') && !s.classList.contains('flatpickr-monthDropdown-months');
   }

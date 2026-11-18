@@ -1,9 +1,9 @@
 // sold_ai.js — banii pentru AI, la zi, pentru NOI (fondatorii). Alin, 04.11: „aveți sold de x bani, la zi, cât avem și când ajung
-// clienții să consume 80% din plafon… să avem control total pe tokeni și bani, după ce schimbă Robert cheile" + „1. da" (anunțurile la
-// 14 / 7 / 3 zile, alarma pe loc, un singur loc pentru sold) + „2. da" (reîncărcarea automată la Anthropic).
+// clienții să consume 80% din plafon… să avem control total pe tokeni și bani, după ce schimbă Robert cheile" + „1. da” (anunțurile la
+// 14 / 7 / 3 zile, alarma pe loc, un singur loc pentru sold) + „2. da” (reîncărcarea automată la Anthropic).
 //
 // Trei lucruri:
-//   1. SOLDUL de la Anthropic, scris de noi într-un singur loc („RA Insight · control"; Anthropic nu-l dă printr-o cerere). Aplicația
+//   1. SOLDUL de la Anthropic, scris de noi într-un singur loc („RA Insight · control”; Anthropic nu-l dă printr-o cerere). Aplicația
 //      scade singură ce s-a cheltuit de atunci: pe fiecare zi încheiată, cea mai mare dintre cifra Anthropic (cheia de administrare) și
 //      socoteala aplicației — soldul nu iese niciodată mai mare decât e —, iar azi socoteala aplicației (Anthropic dă cifra doar pe zile
 //      încheiate). Cu reîncărcarea automată pornită la Anthropic („sub 5 $ cumpără 20 $"), aplicația pune și ea cei 20 $ când soldul ar
@@ -21,14 +21,14 @@ const { lei, dolari, ora, zz } = require('./azi_la_noi');
 const PRAGURI_ZILE = [14, 7, 3];      // anunțul dinainte: când soldul mai ajunge atâtea zile (o dată pe prag și pe soldul scris)
 const ZILE_ROSU = 3;                  // de la 3 zile în jos, roșu; până la 14, portocaliu
 const PROCENT_INTREBARI = 80;         // firma care a folosit atât din întrebările lunii ne anunță (și la 100%)
-const PAUZA_ALARMA_MS = 6 * 3600000;  // „Anthropic refuză": cel mult un anunț la 6 ore pe același fel
+const PAUZA_ALARMA_MS = 6 * 3600000;  // „Anthropic refuză”: cel mult un anunț la 6 ore pe același fel
 const RITM_ZILE = 7;                  // cheltuiala pe zi = media ultimelor 7 zile
 const ZI_MS = 86400000;
 
 // ─── Refuzul: ce a spus Anthropic ─────────────────────────────────────────────────────────────────────────────────────
 // Felul refuzului, după răspunsul API-ului (codul + textul). null = altceva (prea multe cereri, serverul lor ocupat, o cerere
-// greșită) — astea trec singure și nu ne anunță. Creditul terminat vine ca 400 „Your credit balance is too low…", limita de
-// cheltuieli ca „You have reached your specified API usage limits…", cheia greșită ca 401.
+// greșită) — astea trec singure și nu ne anunță. Creditul terminat vine ca 400 „Your credit balance is too low…”, limita de
+// cheltuieli ca „You have reached your specified API usage limits…”, cheia greșită ca 401.
 function felRefuz(status, text) {
   const t = String(text || '');
   if (/credit balance (is )?too low|insufficient (credit|balance|funds)|purchase (more )?credits/i.test(t)) return 'credit';
@@ -56,9 +56,9 @@ const TEXT_CLIENT = 'Întrebările libere nu merg acum; echipa RA Track a fost a
 const TEXT_REZUMAT = 'Rezumatul cu RA Insight nu merge acum; echipa RA Track a fost anunțată. Iată cifrele de bază ale raportului:';
 const TEXT_POZA = 'Citirea pozelor nu merge acum; echipa RA Track a fost anunțată. Completează câmpurile de mână sau încarcă actul ca PDF cu text.';
 
-// „azi, 14:20" / „3 noiembrie, 14:20": când a început ceva, pe ora României (formatatoarele ținute minte de azi_la_noi).
+// „azi, 14:20” / „3 noiembrie, 14:20”: când a început ceva, pe ora României (formatatoarele ținute minte de azi_la_noi).
 function _cand(ms, acum) { return (zz(ms) === zz(acum) ? 'azi' : zz(ms)) + ', ' + ora(ms); }
-// „~5 zile" / „mai puțin de o zi".
+// „~5 zile” / „mai puțin de o zi”.
 function _catZile(z) { return Number(z) > 0 ? '~' + numar(z, 'zi', 'zile') : 'mai puțin de o zi'; }
 
 // ─── Soldul: ce s-a cheltuit de la scrierea lui ───────────────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ function pragSold(s) {
   return null;
 }
 // Cheile anunțurilor deja trimise pentru soldul scris acum (`la`): pragul atins și cele de deasupra lui (o scădere direct la 3 zile
-// nu mai anunță după aceea „14 zile", când cheltuiala scade).
+// nu mai anunță după aceea „14 zile”, când cheltuiala scade).
 function cheiSold(s, prag) {
   const toate = [0].concat(PRAGURI_ZILE.slice().reverse());   // 0, 3, 7, 14
   return toate.filter(function (p) { return prag === 0 ? true : (p >= prag); }).map(function (p) { return s.la + '|' + p; });
@@ -147,7 +147,7 @@ function anuntIntrebari(f) {
   return { nivel: 'info', titlu: 'RA Insight: ' + f.name + ' a folosit ' + f.pct + '% din întrebările lunii',
     text: _dinCate(f) + ' (pachet ' + f.nume + '). La 100%, RA Insight trece pe butoane până pe 1.' };
 }
-// Rândurile din „Ce cere atenție" (RA Insight · control): firmele între 80% și 99% (cele de la 100% le arată deja rândul „întrebările
+// Rândurile din „Ce cere atenție” (RA Insight · control): firmele între 80% și 99% (cele de la 100% le arată deja rândul „întrebările
 // lunii s-au terminat").
 function atentieIntrebari(lista) {
   return firmeAproape(lista).filter(function (f) { return f.pct < 100; }).map(function (f) {
@@ -166,9 +166,9 @@ function anuntRevenire(r, acum) {
     text: 'Anthropic primește iar cererile (de la ' + _cand(acum, acum) + '). Refuzate între timp: ' + numar(r.refuzate || 0, 'cerere', 'cereri') + ', de la ' + _cand(r.la, acum) + '.' };
 }
 
-// ─── Banda de pe „Acasă" (sub cele patru cifre) ───────────────────────────────────────────────────────────────────────
+// ─── Banda de pe „Acasă” (sub cele patru cifre) ───────────────────────────────────────────────────────────────────────
 // o = { cheie: bool, refuz, sold, firme (din firmeAproape), leiPeDolar, acum }. Mereu la vedere; roșie / portocalie când e ceva de
-// făcut. Un clic duce în „RA Insight · control".
+// făcut. Un clic duce în „RA Insight · control”.
 const _NIV = { ok: 0, b: 1, w: 2, r: 3 };
 function _maiRau(a, b) { return (_NIV[b] || 0) > (_NIV[a] || 0) ? b : a; }
 function randSold(o) {
@@ -206,14 +206,14 @@ function banda(o) {
   return { nivel: nivel, randuri: r, buton: 'RA Insight · control', tinta: { fel: 'sectiune', tab: 'agents' } };
 }
 
-// ─── „RA Insight · control": cartonașul soldului și blocul „Anthropic, la zi" ─────────────────────────────────────────
+// ─── „RA Insight · control”: cartonașul soldului și blocul „Anthropic, la zi” ─────────────────────────────────────────
 function cartonas(s) {
   if (!s) return { cifra: '—', sub: 'nescris' };
   const din = s.la ? 'din ' + dolari(s.scris) + ' scriși pe ' + zz(s.la) : '';
   const cat = s.reincarcare ? 'se reîncarcă singur' : (!(Number(s.usd) > 0) ? 's-a terminat' : (s.zile != null ? 'ajunge ' + _catZile(s.zile) : 'fără cheltuieli în ultimele ' + numar(s.ritmZile || RITM_ZILE, 'zi', 'zile')));
   return { cifra: '~' + dolari(s.usd), sub: [cat, din].filter(Boolean).join(' · ') };
 }
-// Tokenii: „1,2 mil." / „180.000".
+// Tokenii: „1,2 mil.” / „180.000”.
 function tokeni(n) {
   const x = Math.max(0, Math.round(Number(n) || 0));
   if (x >= 1e6) return (Math.round(x / 1e5) / 10).toString().replace('.', ',') + ' mil.';

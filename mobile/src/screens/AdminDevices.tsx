@@ -5,23 +5,23 @@ import { api } from '../api/client';
 import { showToast } from '../app/store';
 import { Icon } from '../components/Icon';
 import { Confirma } from '../components/FlotaUi';
-import { SchimbaAparat } from '../components/SchimbaAparat';   // „Schimbă aparatul" (29.10), ca în fișa mașinii de pe web
+import { SchimbaAparat } from '../components/SchimbaAparat';   // „Schimbă aparatul” (29.10), ca în fișa mașinii de pe web
 import { raCauta } from '../lib/format';
 import { nrDe } from '../lib/numar';
-import { anuntDinAdresa, adresaFaraAnunt } from '../lib/push';   // anunțul „aparate noi transmit", din adresă
+import { anuntDinAdresa, adresaFaraAnunt } from '../lib/push';   // anunțul „aparate noi transmit”, din adresă
 import { stareAparat, momentMs, type StareAparat } from '../lib/semnal';
 import { AntetFondator, Banda, GrupFirma, adresaFirmei } from '../components/FondatorUi';
 import './admin.css';
 import './detail.css'; // .sheet*, .btn*
 import './fondator.css';
-import './aparate.css'; // bara „Trece pe firmă" din Neasignate + ziua abonamentului (lotul 4, 29.09)
+import './aparate.css'; // bara „Trece pe firmă” din Neasignate + ziua abonamentului (lotul 4, 29.09)
 
-// Super-admin: „Dispozitive" — ca pe web (raxRenderDevices): aparatele STAU PE FIRME. Întâi „Neasignate" (mereu
-// deschis), apoi fiecare firmă, alfabetic, la final „Arhivate" (închis). Pastile cu număr, banda de adopție, modul
+// Super-admin: „Dispozitive” — ca pe web (raxRenderDevices): aparatele STAU PE FIRME. Întâi „Neasignate” (mereu
+// deschis), apoi fiecare firmă, alfabetic, la final „Arhivate” (închis). Pastile cu număr, banda de adopție, modul
 // strict cu aparatele neînregistrate care bat la ușă, iar din fișa aparatului: firma, interfața CAN, montajul,
-// „Arhivează" / „Respinge". Din 29.09 (lotul 4): în „Neasignate", bife + bara „Trece pe firmă" (mai multe deodată), iar
+// „Arhivează” / „Respinge”. Din 29.09 (lotul 4): în „Neasignate”, bife + bara „Trece pe firmă” (mai multe deodată), iar
 // pe rândul unui aparat de pe firmă, ziua din care plătește clientul, cu corectura noastră. Din 30.09 (lotul 5):
-// anunțul „aparate noi transmit" deschide ecranul pe Neasignate cu aparatele lui bifate și firma propusă aleasă în bară
+// anunțul „aparate noi transmit” deschide ecranul pe Neasignate cu aparatele lui bifate și firma propusă aleasă în bară
 // (adresa: lib/push.ts → adresaAnunt). Toate apelurile sunt requireSuperadmin pe server (ruta e păzită și în App.tsx).
 const CAN_OPTS = [
   { value: '', label: 'Auto (implicit)' },
@@ -37,7 +37,7 @@ const TYPE_OPTS = [
   { value: 'bus', label: 'Autobuz' },
 ];
 
-// Semnalul: cuvintele și pragurile NU se scriu aici — vin din lib/semnal.ts, aceleași ca „Aparate GPS" și ca
+// Semnalul: cuvintele și pragurile NU se scriu aici — vin din lib/semnal.ts, aceleași ca „Aparate GPS” și ca
 // agpsStare de pe web (30 min → tăcut, 24 h → fără semnal). Doar culoarea: pe tema luminoasă, scrisul mic verde
 // sau portocaliu se citește greu, deci folosim nuanțele mai închise din fondator.css.
 const semnal = (d: any): StareAparat => stareAparat(d.last_position_time || d.last_seen);
@@ -53,7 +53,7 @@ const deRezolvat = (d: any) => { if (arhivat(d)) return false; const s = semnal(
 type Filtru = 'all' | 'unassigned' | 'active' | 'nosignal' | 'archived';
 // `?filtru=neasignate` — banda de pe Companii trimite direct aici (ca raxDevDeschideNeasignate pe web).
 const DIN_ADRESA: Record<string, Filtru> = { neasignate: 'unassigned', active: 'active', 'fara-semnal': 'nosignal', arhivate: 'archived', toate: 'all' };
-// Câte rânduri desenează un grup deschis înainte de „și încă N". Grupurile închise nu desenează nimic.
+// Câte rânduri desenează un grup deschis înainte de „și încă N”. Grupurile închise nu desenează nimic.
 const PAS = 150;
 
 type Grup = { k: string; nume: string; coId: number | null; dev: any[] };
@@ -70,13 +70,13 @@ function grupuri(rows: any[]): Grup[] {
 }
 const nApar = (n: number) => n + (n === 1 ? ' aparat' : ' aparate');
 
-// ── începe „trecerea în bloc și ziua abonamentului" ──
+// ── începe „trecerea în bloc și ziua abonamentului” ──
 // Bucata e fără JSX și fără stare: proba o decupează, o rulează și o pune lângă pagina web (aceleași cuvinte) și lângă
 // serverul pornit (aceleași rute). Nu scrie aici nicio regulă de bani — ziua abonamentului o socotește serverul.
 //
-// Trecerea mai multor aparate pe firmă (Alin, 28.09) — DOAR din grupul „Neasignate": adopția rămâne într-un singur loc.
+// Trecerea mai multor aparate pe firmă (Alin, 28.09) — DOAR din grupul „Neasignate”: adopția rămâne într-un singur loc.
 // Aceeași rută ca pe web: PUT /api/devices/company-bulk → pe server, `_trecePeFirma` pentru fiecare IMEI (firma,
-// ziua abonamentului uitată, stocul, auditul). Pleacă DOAR ce se vede bifat: „Toate" bifează rândurile de pe ecran, nu
+// ziua abonamentului uitată, stocul, auditul). Pleacă DOAR ce se vede bifat: „Toate” bifează rândurile de pe ecran, nu
 // și pe cele ascunse de căutare, iar o bifă rămasă în urma unei căutări nu pleacă (pe web, raxDevBifaToate le bifa pe
 // toate și le trimitea — greșeala din revizia din 29.09, necopiată aici).
 type RezBloc = { ok?: boolean; trecute?: number; sarite?: string[] };
@@ -89,7 +89,7 @@ function bifeazaVazute(bife: Record<string, boolean>, vazute: any[], on: boolean
 function bifateVazute(bife: Record<string, boolean>, vazute: any[]): string[] {
   return vazute.filter((d) => neasignatViu(d) && bife[String(d.imei)]).map((d) => String(d.imei));
 }
-// Bifate, încă neasignate, dar ascunse acum (căutarea, pastila de sus, „și încă N"): se spun, nu se trimit.
+// Bifate, încă neasignate, dar ascunse acum (căutarea, pastila de sus, „și încă N”): se spun, nu se trimit.
 function bifateAscunse(bife: Record<string, boolean>, toate: any[], vazute: any[]): number {
   const v = new Set(vazute.map((d) => String(d.imei)));
   return toate.filter((d) => neasignatViu(d) && bife[String(d.imei)] && !v.has(String(d.imei))).length;
@@ -101,7 +101,7 @@ function treceInBloc(companyId: number, imeis: string[]): Promise<RezBloc> {
   return api<RezBloc>('/api/devices/company-bulk', { method: 'PUT', body: { company_id: companyId, imeis } });
 }
 // De ce a sărit serverul un aparat: el sare doar aparatele inexistente, arhivate sau simulate (demo). Motivul se citește
-// din lista proaspătă — un aparat demo nu apare niciodată în ea, deci cade la „nu mai există".
+// din lista proaspătă — un aparat demo nu apare niciodată în ea, deci cade la „nu mai există”.
 function motivSarit(imei: string, lista: any[] | null): string {
   if (!Array.isArray(lista)) return 'arhivat sau inexistent';
   const d = lista.filter((x) => String(x && x.imei) === String(imei))[0];
@@ -130,20 +130,20 @@ function aboText(d: any): string { return d && d.abonament_de_la ? 'abonament di
 function intrebareAbo(d: any): string {
   return 'Din ce zi plătește clientul abonamentul pentru ' + ((d && (d.plate || d.name || d.imei)) || '') + '?\n\nDe regulă e ziua montajului — o pune singură prima transmisie pe firmă. Golește câmpul ca să pornească din nou la următoarea transmisie.';
 }
-// Serverul refuză o zi din viitor („Abonamentul nu poate porni în viitor."); o oprim înainte, pe ziua telefonului.
+// Serverul refuză o zi din viitor („Abonamentul nu poate porni în viitor.”); o oprim înainte, pe ziua telefonului.
 function inViitor(v: string, azi?: string): boolean { return !!v && v > (azi || ziInput(Date.now())); }
 function puneAbonament(imei: string, deLa: string | null): Promise<{ ok?: boolean; abonament_de_la?: number | null }> {
   return api('/api/devices/' + encodeURIComponent(imei) + '/abonament', { method: 'PUT', body: { de_la: deLa || null } });
 }
 function mesajAbo(v: string | null): string { return v ? 'Abonament din ' + v.split('-').reverse().join('.') : 'Pornește la următoarea transmisie'; }
-// ── sfârșit „trecerea în bloc și ziua abonamentului" ──
+// ── sfârșit „trecerea în bloc și ziua abonamentului” ──
 
-// ── începe „aparatele noi, bifate din anunț" ──
-// Atingerea anunțului „aparate noi transmit" (în Notificări, în detaliu sau pe push) deschide ecranul pe Neasignate,
+// ── începe „aparatele noi, bifate din anunț” ──
+// Atingerea anunțului „aparate noi transmit” (în Notificări, în detaliu sau pe push) deschide ecranul pe Neasignate,
 // cu adresa făcută de adresaAnunt (lib/push.ts). Ca _raxDevPuneAnuntul pe web: se bifează aparatele din anunț și TOATE
 // cele încă neasignate propuse aceleiași firme (`anuntat_firma`, de la server — montajul unei zile poate veni în mai
 // multe anunțuri); ce a fost între timp trecut pe firmă sau arhivat nu se mai bifează. Firma propusă se alege în bară.
-// Trecerea rămâne apăsarea TA („Trece pe firmă", cu întrebarea ei): din bifare nu pleacă nicio cerere spre server.
+// Trecerea rămâne apăsarea TA („Trece pe firmă”, cu întrebarea ei): din bifare nu pleacă nicio cerere spre server.
 // Bucata e fără JSX și fără stare (folosește doar neasignatViu, de mai sus): proba o rulează lângă pagina web.
 type Anunt = { imeis: string[]; firma: number | null };
 function bifeDinAnunt(lista: any[], p: Anunt | null): Record<string, boolean> {
@@ -156,7 +156,7 @@ function bifeDinAnunt(lista: any[], p: Anunt | null): Record<string, boolean> {
   });
   return m;
 }
-// Banda „Firma e propusă de montajul din calendar" (web: rax-dev-propus) → numele firmei, sau null. DOAR cât în bară e
+// Banda „Firma e propusă de montajul din calendar” (web: rax-dev-propus) → numele firmei, sau null. DOAR cât în bară e
 // aleasă firma propusă de anunț și printre aparatele bifate pe ecran e măcar unul din anunț. Pe web banda apare la
 // orice firmă din bară, și aleasă de mână, și la aparate bifate de mână — acolo calendarul n-a propus nimic.
 function firmaPropusa(p: Anunt | null, firmaBloc: string, alese: string[], dinAnunt: Record<string, boolean>, firme: { value: string; label: string }[]): string | null {
@@ -165,7 +165,7 @@ function firmaPropusa(p: Anunt | null, firmaBloc: string, alese: string[], dinAn
   const co = firme.filter((c) => c.value === firmaBloc)[0];
   return co ? co.label : null;
 }
-// ── sfârșit „aparatele noi, bifate din anunț" ──
+// ── sfârșit „aparatele noi, bifate din anunț” ──
 
 export function AdminDevices() {
   const loc = useLocation();
@@ -189,7 +189,7 @@ export function AdminDevices() {
   const GOL = { imei: '', name: '', plate: '', company_id: '', vehicle_type: '', can_interface: '', gps_model: '', sim_number: '', issue: false, issue_note: '' };
   const [f, setF] = useState<any>(GOL);
   const [issueNote, setIssueNote] = useState('');
-  // Anunțul „aparate noi transmit" (30.09), venit prin adresă: citit O dată, la deschidere. Firma propusă pornește
+  // Anunțul „aparate noi transmit” (30.09), venit prin adresă: citit O dată, la deschidere. Firma propusă pornește
   // aleasă în bară; bifele se pun după prima încărcare (le trebuie lista, cu `anuntat_firma`).
   const [anunt] = useState(() => anuntDinAdresa(loc.query));
   const anuntDePus = useRef(!!anunt);
@@ -248,19 +248,19 @@ export function AdminDevices() {
   }).sort((a, b) => (momentMs(b.last_position_time || b.last_seen) || 0) - (momentMs(a.last_position_time || a.last_seen) || 0)), [items, filtru, q]);
   const grup = useMemo(() => grupuri(rows), [rows]);
 
-  // Deschis sau închis: „Neasignate" mereu deschis, „Arhivate" închis; o firmă e deschisă dacă ai căutat ceva,
+  // Deschis sau închis: „Neasignate” mereu deschis, „Arhivate” închis; o firmă e deschisă dacă ai căutat ceva,
   // dacă are ceva de rezolvat sau dacă sunt cel mult 5 grupuri. O problemă nu stă ascunsă după un rând închis.
   function deschis(g: Grup, pb: number): boolean {
     if (manual[g.k] != null) return manual[g.k];
     if (g.k === '_neas') return true;
-    // „Arhivate" stă închis — dar nu când chiar le cauți (pastila „Arhivate" sau o căutare), altfel ecranul ar arăta un singur rând închis.
+    // „Arhivate” stă închis — dar nu când chiar le cauți (pastila „Arhivate” sau o căutare), altfel ecranul ar arăta un singur rând închis.
     if (g.k === '_arh') return filtru === 'archived' || !!q.trim();
     return !!q.trim() || pb > 0 || grup.length <= 5;
   }
 
   function open(d: any) { setSel(d); setCompanyId(d.company_id != null ? String(d.company_id) : ''); setCanIface(d.can_interface || ''); setIssueNote(''); }
 
-  // Semnalare / anulare „problemă la montaj" (reversibilă) — direct din foaia aparatului
+  // Semnalare / anulare „problemă la montaj” (reversibilă) — direct din foaia aparatului
   async function toggleIssue(flagged: boolean) {
     if (!sel) return;
     setSaving(true);
@@ -282,7 +282,7 @@ export function AdminDevices() {
       const altCan = (sel.can_interface || '') !== canIface;
       if (!mutat && !altCan) { showToast('Nimic de salvat — n-ai schimbat nimic'); setSel(null); return; }
       // Mesajul spune CE s-a salvat, cu vorbele web-ului (raxDevSetCompany / raxDevSetIface): mai ales când
-      // aparatul tocmai a ieșit din flota unui client, fondatorul trebuie să vadă asta, nu un „Salvat".
+      // aparatul tocmai a ieșit din flota unui client, fondatorul trebuie să vadă asta, nu un „Salvat”.
       const spus: string[] = [];
       if (mutat) { await Api.moveDevice(sel.imei, newCo); spus.push(newCo == null ? 'Dispozitiv dezasignat' : 'Asignat la companie'); }
       if (altCan) {
@@ -298,7 +298,7 @@ export function AdminDevices() {
     } catch (e: any) { showToast(e?.message || 'Eroare la salvare', true); } finally { setSaving(false); }
   }
 
-  // „Arhivează" (aparat activ) / „Respinge" (aparat neasignat) — același drum pe server: întâi se copiază
+  // „Arhivează” (aparat activ) / „Respinge” (aparat neasignat) — același drum pe server: întâi se copiază
   // istoricul, apoi se taie conexiunea și IMEI-ul iese din lista celor acceptate. Reversibil din Arhivate.
   async function arhiveaza() {
     if (!sel) return;
@@ -309,7 +309,7 @@ export function AdminDevices() {
     catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setSaving(false); }
   }
 
-  // Mod strict: un aparat neînregistrat bate la ușă. „Aprobă" îl trece în lista celor acceptate (neasignat).
+  // Mod strict: un aparat neînregistrat bate la ușă. „Aprobă” îl trece în lista celor acceptate (neasignat).
   async function aproba(imei: string) {
     setBusyImei(imei);
     try { await Api.createDevice({ imei }); showToast('IMEI aprobat — se va conecta la următoarea încercare'); reload(); }
@@ -439,15 +439,15 @@ export function AdminDevices() {
     );
   }
 
-  // Bara din capul grupului „Neasignate". `vazute` = rândurile desenate acum pe ecran (după căutare, pastilă și „și încă N").
+  // Bara din capul grupului „Neasignate”. `vazute` = rândurile desenate acum pe ecran (după căutare, pastilă și „și încă N”).
   function baraBloc(vazute: any[]) {
     const vii = vazute.filter(neasignatViu);
     const alese = bifateVazute(bife, vii);
     const toateBifate = vii.length > 0 && alese.length === vii.length;
     const ascunse = bifateAscunse(bife, toate, vii);
     const propusa = firmaPropusa(anunt, firmaBloc, alese, dinAnunt, companies);
-    // Firma aleasă se arată doar cât e în listă (ștearsă între timp, încă neîncărcată sau firma demo → „— alege firma —",
-    // exact ce hotărăște și „Trece pe firmă"); altfel lista ar rămâne goală pe ecran.
+    // Firma aleasă se arată doar cât e în listă (ștearsă între timp, încă neîncărcată sau firma demo → „— alege firma —”,
+    // exact ce hotărăște și „Trece pe firmă”); altfel lista ar rămâne goală pe ecran.
     const firmaVazuta = companies.some((c) => c.value === firmaBloc) ? firmaBloc : '';
     return (
       <div class="ap-bloc">
@@ -467,16 +467,16 @@ export function AdminDevices() {
             <Icon name="arrowRight" size={14} /> Trece pe firmă
           </button>
         </div>
-        {/* Anunțul „aparate noi transmit" a ales firma: o spunem pe față (web: rax-dev-propus), aceleași cuvinte. */}
+        {/* Anunțul „aparate noi transmit” a ales firma: o spunem pe față (web: rax-dev-propus), aceleași cuvinte. */}
         {propusa && (
           <div class="ap-propus">
             <Icon name="calendar" size={14} />
-            <span>Firma e propusă de montajul din calendar: <b>{propusa}</b>. Verifică aparatele bifate și apasă „Trece pe firmă".</span>
+            <span>Firma e propusă de montajul din calendar: <b>{propusa}</b>. Verifică aparatele bifate și apasă „Trece pe firmă”.</span>
           </div>
         )}
         {ascunse > 0 && (
           <div class="ap-bloc-nota">
-            Încă {nrDe(ascunse, 'aparat bifat nu se vede', 'aparate bifate nu se văd')} acum pe ecran, deci nu {ascunse === 1 ? 'trece' : 'trec'} pe firmă. Ca {ascunse === 1 ? 'să-l vezi' : 'să le vezi'}, golește căutarea sau alege „Neasignate" sus.
+            Încă {nrDe(ascunse, 'aparat bifat nu se vede', 'aparate bifate nu se văd')} acum pe ecran, deci nu {ascunse === 1 ? 'trece' : 'trec'} pe firmă. Ca {ascunse === 1 ? 'să-l vezi' : 'să le vezi'}, golește căutarea sau alege „Neasignate” sus.
           </div>
         )}
       </div>
@@ -511,7 +511,7 @@ export function AdminDevices() {
             ))}
           </div>
         )}
-        {/* Ce a ieșit după „Trece pe firmă": stă aici până îl închizi (grupul „Neasignate" poate să fi dispărut). */}
+        {/* Ce a ieșit după „Trece pe firmă”: stă aici până îl închizi (grupul „Neasignate” poate să fi dispărut). */}
         {rezBloc && (
           <div class={'fd-band ap-rez ' + (rezBloc.sarite.length ? 'warn' : 'ok')} role="status">
             <Icon name={rezBloc.sarite.length ? 'alert' : 'check'} size={16} />
@@ -523,10 +523,10 @@ export function AdminDevices() {
             <button type="button" class="ap-inchide" onClick={() => setRezBloc(null)} aria-label="Închide"><Icon name="x" size={14} /></button>
           </div>
         )}
-        {/* Adopția stă doar aici: bifele din „Neasignate" (mai multe deodată) sau fișa aparatului (unul). O spunem. */}
+        {/* Adopția stă doar aici: bifele din „Neasignate” (mai multe deodată) sau fișa aparatului (unul). O spunem. */}
         {counts.unassigned > 0 && (
           <Banda ton="warn" icon="bell" onClick={() => setFiltru('unassigned')}>
-            {nrDe(counts.unassigned, 'aparat neasignat s-a conectat', 'aparate neasignate s-au conectat')}. {counts.unassigned === 1 ? 'Ca să-l adopți: bifează-l' : 'Ca să le adopți: bifează-le'} mai jos, în grupul Neasignate, alege firma și apasă „Trece pe firmă". Un singur aparat îl poți adopta și din fișa lui, unde „Respinge" îl arhivează.
+            {nrDe(counts.unassigned, 'aparat neasignat s-a conectat', 'aparate neasignate s-au conectat')}. {counts.unassigned === 1 ? 'Ca să-l adopți: bifează-l' : 'Ca să le adopți: bifează-le'} mai jos, în grupul Neasignate, alege firma și apasă „Trece pe firmă”. Un singur aparat îl poți adopta și din fișa lui, unde „Respinge” îl arhivează.
           </Banda>
         )}
 
@@ -552,7 +552,7 @@ export function AdminDevices() {
               onToggle={() => setManual((m) => ({ ...m, [g.k]: !e }))}
               onFirma={g.coId != null ? () => loc.route(adresaFirmei(g.coId as number)) : undefined}
               sumar={<>{nApar(g.dev.length)}{pb ? <> · <b>{pb} de rezolvat</b></> : null}</>}>
-              {/* Trecerea în bloc stă DOAR în „Neasignate" (adopția într-un singur loc, ca pe web). */}
+              {/* Trecerea în bloc stă DOAR în „Neasignate” (adopția într-un singur loc, ca pe web). */}
               {g.k === '_neas' && baraBloc(vazute)}
               {vazute.map((d) => (g.k === '_neas' ? randCuBifa(d) : galeata(d) === 'active' ? randPeFirma(d) : rand(d)))}
               {g.dev.length > lim && (
@@ -588,7 +588,7 @@ export function AdminDevices() {
                       <option value="">— Neasignat —</option>
                       {companies.map((c) => <option value={c.value}>{c.label}</option>)}
                     </select>
-                    {sel.company_id == null && <span style="font-size:11.5px;color:var(--text-muted)">Alege firma și apasă „Salvează" ca să-l adopți. Abonamentul pornește la prima transmisie pe firmă.</span>}
+                    {sel.company_id == null && <span style="font-size:11.5px;color:var(--text-muted)">Alege firma și apasă „Salvează” ca să-l adopți. Abonamentul pornește la prima transmisie pe firmă.</span>}
                     {sel.company_id != null && companyId !== '' && companyId !== String(sel.company_id) && <span style="font-size:11.5px;color:var(--text-muted)">Pe firma nouă, abonamentul pornește din nou la prima transmisie.</span>}
                   </div>
                 )}

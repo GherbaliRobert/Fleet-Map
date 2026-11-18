@@ -1,4 +1,4 @@
-// FollowScreen — „merg după mașina X". Ecran de urmărit în trafic, cu telefonul în suport.
+// FollowScreen — „merg după mașina X”. Ecran de urmărit în trafic, cu telefonul în suport.
 //
 // ─── De ce ecranul ăsta și nu Android Auto ───────────────────────────────────────────────────────
 // Android Auto acceptă doar patru categorii (navigație, puncte de interes, dispozitive inteligente,
@@ -13,7 +13,7 @@
 // ─── Reguli de proiectare, pentru că se citește din mers ─────────────────────────────────────────
 // Cifre mari, fără derulare, fără decizii. Trei lucruri: cât mai e, încotro, și dacă te apropii.
 // Nimic nu clipește, nimic nu cere atins. Săgeata e relativă la direcția TA de mers, nu la nord —
-// „ia-o la dreapta" e util, „azimut 273°" nu e.
+// „ia-o la dreapta” e util, „azimut 273°” nu e.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
 import { Geolocation } from '@capacitor/geolocation';
@@ -41,7 +41,7 @@ function distText(m: number) {
   if (m < 1000) return { v: String(Math.round(m / 10) * 10), u: 'm' };
   return { v: (m / 1000).toFixed(m < 10000 ? 1 : 0), u: 'km' };
 }
-// Ceasul: „acum", „acum 40 s", „acum 3 min" — vechimea informației contează cât informația însăși.
+// Ceasul: „acum”, „acum 40 s”, „acum 3 min” — vechimea informației contează cât informația însăși.
 function vechime(ms: number) {
   const s = Math.max(0, Math.round(ms / 1000));
   if (s < 15) return 'acum';
@@ -64,7 +64,7 @@ export function FollowScreen() {
   const [, tick] = useState(0);
 
   // Reîmprospătăm afișajul o dată pe secundă: vechimea datelor trebuie să se vadă cum crește, chiar
-  // dacă nu vine nicio poziție nouă. Un ecran care arată „acum" de trei minute e mai rău decât unul gol.
+  // dacă nu vine nicio poziție nouă. Un ecran care arată „acum” de trei minute e mai rău decât unul gol.
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 1000); return () => clearInterval(t); }, []);
 
   // Poziția mea, urmărită continuu.

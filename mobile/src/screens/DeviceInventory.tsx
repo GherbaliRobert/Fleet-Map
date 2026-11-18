@@ -11,9 +11,9 @@ import './admin.css';
 import './detail.css'; // .sheet*
 import './fondator.css';
 
-// „Inventar dispozitive" (Gestiune) — registrul aparatelor NOASTRE, din toate firmele, ca pe web (_invRender):
+// „Inventar dispozitive” (Gestiune) — registrul aparatelor NOASTRE, din toate firmele, ca pe web (_invRender):
 // firmă, număr, IMEI, model, cartelă SIM, semnal, ultima transmisie. Căutare, ordonare, contor, avertismentul
-// „⚠ N fără model/SIM" care lasă pe ecran doar aparatele incomplete, și exportul făcut de SERVER cu exact
+// „⚠ N fără model/SIM” care lasă pe ecran doar aparatele incomplete, și exportul făcut de SERVER cu exact
 // rândurile de pe ecran (nume brandat + logo, trecut prin sendReport). Pe fiecare rând, creionul deschide o foaie
 // cu modelul și cartela — salvate pe /details, care schimbă doar câmpurile trimise (NU pe PUT /devices/:imei,
 // care rescrie numele și numărul). Ruta e doar pentru super-admin; serverul scrie modelul/SIM-ul doar de la noi.
@@ -32,7 +32,7 @@ const culoare = (s: StareAparat) => (s.k === 'ok' ? 'var(--fd-ok)' : s.k === 'ta
 const data = (t: any) => { const ms = momentMs(t); return isFinite(ms) ? new Date(ms).toLocaleString('ro-RO') : '—'; };
 function val(r: any, k: string): string {
   if (k === 'plate') return r.plate || r.name || '';
-  if (k === 'imei') return r.aparat_imei || r.imei || '';   // aparatul montat acum („Schimbă aparatul", 29.10), ca pe web
+  if (k === 'imei') return r.aparat_imei || r.imei || '';   // aparatul montat acum („Schimbă aparatul”, 29.10), ca pe web
   if (k === 'semnal') return semnal(r).t;
   if (k === 'last_tx') return data(r.last_tx);
   return r[k] == null ? '' : String(r[k]);
@@ -83,7 +83,7 @@ export function DeviceInventory() {
     });
     const { k, dir } = sort;
     return out.sort((a, b) => {
-      // „Semnal" se ordonează după ultima transmisie, nu după cuvinte („3 zile" lângă „8 luni").
+      // „Semnal” se ordonează după ultima transmisie, nu după cuvinte („3 zile” lângă „8 luni”).
       if (k === 'last_tx' || k === 'semnal') return dir * ((momentMs(a.last_tx) || 0) - (momentMs(b.last_tx) || 0));
       return dir * val(a, k).localeCompare(val(b, k), 'ro', { numeric: true });
     });
@@ -178,7 +178,7 @@ export function DeviceInventory() {
         )}
         <div class="fd-note" style="margin-top:12px">
           Modelul dispozitivului și cartela SIM le completăm NOI — nu vin de la aparat. Apasă creionul de pe un rând ca să le scrii.
-          Semnalul și lista se împrospătează la 60 de secunde; „Exportă" descarcă exact rândurile de pe ecran.
+          Semnalul și lista se împrospătează la 60 de secunde; „Exportă” descarcă exact rândurile de pe ecran.
         </div>
       </div>
 

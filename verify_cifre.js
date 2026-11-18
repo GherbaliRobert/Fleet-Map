@@ -1,4 +1,4 @@
-// verify_cifre.js — cifrele în care omul trebuie să aibă încredere (etapa B+, Alin, 08.10: „da").
+// verify_cifre.js — cifrele în care omul trebuie să aibă încredere (etapa B+, Alin, 08.10: „da”).
 //
 //   node verify_cifre.js
 //
@@ -6,11 +6,11 @@
 //   1. regula (cifre.js), rulată: cifrele din răspunsul lui RA Insight se regăsesc în datele citite (ca atare sau socotite:
 //      totaluri, diferențe și procente între perioade, litri la 100 km); una inventată e prinsă; datele, orele și numerele de
 //      înmatriculare nu se socotesc cifre ale flotei;
-//   2. perioada: „1–7 octombrie" e 1–7, în AI Raport ȘI în RA Insight; perioada citită ≠ cea cerută e spusă;
-//   3. cifrele greu de crezut (consum, preț pe litru) — „de verificat", cu pragurile din cifre.js;
-//   4. pe server pornit, cu modelul simulat (nu se cheltuie nimic): banda „De verificat" sub răspuns (perioada, cifra
+//   2. perioada: „1–7 octombrie” e 1–7, în AI Raport ȘI în RA Insight; perioada citită ≠ cea cerută e spusă;
+//   3. cifrele greu de crezut (consum, preț pe litru) — „de verificat”, cu pragurile din cifre.js;
+//   4. pe server pornit, cu modelul simulat (nu se cheltuie nimic): banda „De verificat” sub răspuns (perioada, cifra
 //      inventată, consumul greu de crezut), păstrată în conversație; unealta combustibil citește intervalul exact; aceeași
-//      mașină e „de verificat" în ramura Combustibil, în raportul Consum (legenda) și în AI Raport;
+//      mașină e „de verificat” în ramura Combustibil, în raportul Consum (legenda) și în AI Raport;
 //   5. pagina: banda și nota din ramură, cu textul pus ca text și culorile cu pereche pe tema deschisă.
 'use strict';
 const fs = require('fs');
@@ -42,30 +42,30 @@ const inventat = C.negasite(RASP.replace('702 km', '734 km').replace('42,3 litri
 T('o cifră inventată e prinsă (734 km, 47,9 litri)', inventat.includes('734 km') && inventat.includes('47,9 litri'), JSON.stringify(inventat));
 const DOUA = [{ type: 'utilization', columns: ['Vehicul', 'Șofer', 'Km'], rows: [['B 154 UIP', 'Ion', '538']] }, { type: 'utilization', columns: ['Vehicul', 'Șofer', 'Km'], rows: [['B 154 UIP', 'Ion', '472']] }];
 T('o comparație între două perioade: +66 km și +14% se regăsesc', C.negasite('Săptămâna trecută: 538 km, cu 66 km mai mult (+14%) decât în cea dinainte (472 km).', DOUA).length === 0, JSON.stringify(C.negasite('cu 66 km mai mult (+14%)', DOUA)));
-T('…dar „+70 km" nu', C.negasite('cu 70 km mai mult', DOUA).includes('70 km'));
+T('…dar „+70 km” nu', C.negasite('cu 70 km mai mult', DOUA).includes('70 km'));
 T('datele, orele, duratele și numerele de înmatriculare nu se verifică (duratele se scriu în prea multe feluri)', C.negasite('Pe 08.10.2026, la 13:42, B112RFG a stat 45 de minute; B 154 UIP pe 15 septembrie.', DATE).length === 0, JSON.stringify(C.negasite('Pe 08.10.2026, la 13:42, B112RFG a stat 45 de minute', DATE)));
-T('prețul pe litru („pret_litru_lei") e preț, nu litri: totalul de litri al listei e 57,6, nu 83,2', C.negasite('57,6 litri', DATE).length === 0 && C.negasite('83,2 litri', DATE).includes('83,2 litri'), JSON.stringify([C.negasite('57,6 litri', DATE), C.negasite('83,2 litri', DATE)]));
-T('cifrele mici (până la 12) nu se verifică: „3 mașini", „2 opriri"', C.negasite('3 mașini, 2 opriri, 7 km', []).length === 0);
-T('„la 100 km" e mereu pe voie', C.negasite('6,8 L la 100 km', [{ l: 6.8 }]).length === 0);
-T('semnele de îngroșare nu ascund cifra și nu se lipesc de unitate („**734** km", „**734 km**" → „734 km")',
+T('prețul pe litru („pret_litru_lei”) e preț, nu litri: totalul de litri al listei e 57,6, nu 83,2', C.negasite('57,6 litri', DATE).length === 0 && C.negasite('83,2 litri', DATE).includes('83,2 litri'), JSON.stringify([C.negasite('57,6 litri', DATE), C.negasite('83,2 litri', DATE)]));
+T('cifrele mici (până la 12) nu se verifică: „3 mașini”, „2 opriri”', C.negasite('3 mașini, 2 opriri, 7 km', []).length === 0);
+T('„la 100 km” e mereu pe voie', C.negasite('6,8 L la 100 km', [{ l: 6.8 }]).length === 0);
+T('semnele de îngroșare nu ascund cifra și nu se lipesc de unitate („**734** km”, „**734 km**” → „734 km”)',
   JSON.stringify(C.negasite('**734** km și **734 km**.', DATE)) === '["734 km"]', JSON.stringify(C.negasite('**734** km și **734 km**.', DATE)));
 T('cifrele cu unitate se recunosc: km, l/100 km, litri, lei, %', C.cifreleRaspunsului('8,5 l/100 km, 42,3 litri, 199 lei, +14%, 1.234,5 km').map((c) => c.fel).join(',') === 'l100,litri,lei,pct,km');
 // Scrisoarea de luni (care citea cifrele cu același cititor) a ieșit pe 04.11: paza ei (ramuri.textulTrece) a plecat odată cu ea.
 T('Scrisoarea de luni nu mai e: nici paza ei în ramuri.js', typeof R.textulTrece === 'undefined' && !/require\('\.\/cifre'\)/.test(fs.readFileSync(path.join(__dirname, 'ramuri.js'), 'utf8')));
 
 // ─── 2. Perioada ───────────────────────────────────────────────────────────────────────────────────
-console.log('\n2. Perioada: „1–7 octombrie" e 1–7');
+console.log('\n2. Perioada: „1–7 octombrie” e 1–7');
 const ACUM = Date.parse('2026-10-08T10:00:00Z');
 const per = (q) => { const p = A.perioadaDin(I.norm(q), ACUM); return p ? p.eticheta : null; };
 [['pe intervalul 01.10.2026-07.10.2026', '1–7 octombrie'], ['consumul din 1-7 octombrie', '1–7 octombrie'], ['consumul din 1–7 octombrie', '1–7 octombrie'],
  ['de pe 1 până pe 7 octombrie', '1–7 octombrie'], ['între 1 și 7 octombrie', '1–7 octombrie'], ['din 28 septembrie până pe 4 octombrie', '28 septembrie – 4 octombrie'],
  ['de pe 1 octombrie până azi', 'octombrie 2026 (până azi)'], ['km 28.12-03.01', '28 decembrie – 3 ianuarie'],
  ['săptămâna trecută', '28 septembrie – 4 octombrie'], ['pe 15.09', '15 septembrie'], ['în septembrie', 'septembrie 2026']].forEach(([q, e]) => {
-  T('„' + q + '" → ' + e, per(q) === e, per(q));
+  T('„' + q + '” → ' + e, per(q) === e, per(q));
 });
-T('„1-7 octombrie" nu mai iese „1 iulie" (citit ca o zi: 1.7)', per('consumul din 1-7 octombrie') !== '1 iulie');
+T('„1-7 octombrie” nu mai iese „1 iulie” (citit ca o zi: 1.7)', per('consumul din 1-7 octombrie') !== '1 iulie');
 const zile = I.perioada({ from: '2026-10-01', to: '2026-10-07' }, ACUM);
-T('o perioadă dată pe zile („2026-10-01" … „2026-10-07"): ultima zi intră întreagă', I.etichetaPerioadei(zile.from, zile.to, ACUM) === '1–7 octombrie', JSON.stringify(zile));
+T('o perioadă dată pe zile („2026-10-01” … „2026-10-07”): ultima zi intră întreagă', I.etichetaPerioadei(zile.from, zile.to, ACUM) === '1–7 octombrie', JSON.stringify(zile));
 const ceruta = A.perioadaDin(I.norm('consumul din 1-7 octombrie'), ACUM);
 const luna = I.perioada({ month: '2026-10' }, ACUM);
 T('a cerut 1–7, s-a citit toată luna → spus', C.perioadaDiferita(ceruta, [{ from: luna.from, to: luna.to, eticheta: 'octombrie 2026 (până azi)' }], ACUM) === 'Ai cerut 1–7 octombrie; cifrele sunt pentru octombrie 2026 (până azi).');
@@ -74,40 +74,40 @@ T('a cerut luna asta, s-a citit luna asta (până acum) → nimic de spus', C.pe
 T('fără perioadă în întrebare → nimic de spus', C.perioadaDiferita(null, [{ from: luna.from, to: luna.to, eticheta: 'x' }], ACUM) === null);
 
 // ─── 3. Cifrele greu de crezut ─────────────────────────────────────────────────────────────────────
-console.log('\n3. Cifrele greu de crezut — „de verificat"');
+console.log('\n3. Cifrele greu de crezut — „de verificat”');
 const dv = (o) => C.consumDeVerificat(o);
-T('1,2 l/100 km pe 13 km → „prea puțin drum"', /1,2 l\/100 km pe doar 13 km — prea puțin drum/.test(dv({ l100: 1.2, km: 13 }).join()), dv({ l100: 1.2, km: 13 }).join());
-// Fără „senzorul, contorul" (22.10): aparatul e treaba noastră; clientul poate verifica doar fișa.
-T('1,2 l/100 km pe 200 km → „neobișnuit de mic", cu ce poate verifica omul singur (fișa)', /^1,2 l\/100 km — neobișnuit de mic; verifică consumul trecut în fișa mașinii$/.test(dv({ l100: 1.2, km: 200 }).join()), dv({ l100: 1.2, km: 200 }).join());
-T('45 l/100 km la un autoturism → „neobișnuit de mare"; la un camion e în regulă', /neobișnuit de mare/.test(dv({ l100: 45, km: 300 }).join()) && dv({ l100: 45, km: 300, camion: true }).length === 0);
-T('75 l/100 km la un camion → „de verificat"', dv({ l100: 75, km: 300, camion: true }).length === 1);
+T('1,2 l/100 km pe 13 km → „prea puțin drum”', /1,2 l\/100 km pe doar 13 km — prea puțin drum/.test(dv({ l100: 1.2, km: 13 }).join()), dv({ l100: 1.2, km: 13 }).join());
+// Fără „senzorul, contorul” (22.10): aparatul e treaba noastră; clientul poate verifica doar fișa.
+T('1,2 l/100 km pe 200 km → „neobișnuit de mic”, cu ce poate verifica omul singur (fișa)', /^1,2 l\/100 km — neobișnuit de mic; verifică consumul trecut în fișa mașinii$/.test(dv({ l100: 1.2, km: 200 }).join()), dv({ l100: 1.2, km: 200 }).join());
+T('45 l/100 km la un autoturism → „neobișnuit de mare”; la un camion e în regulă', /neobișnuit de mare/.test(dv({ l100: 45, km: 300 }).join()) && dv({ l100: 45, km: 300, camion: true }).length === 0);
+T('75 l/100 km la un camion → „de verificat”', dv({ l100: 75, km: 300, camion: true }).length === 1);
 T('8,5 l/100 km → nimic', dv({ l100: 8.5, km: 496, pret: 7.3 }).length === 0);
-T('prețul pe litru 25 lei sau 2 lei → „pare greșit"; 4,70 (GPL) și 7,30 → în regulă', /pare greșit/.test(dv({ pret: 25 }).join()) && /pare greșit/.test(dv({ pret: 2 }).join()) && dv({ pret: 4.7 }).length === 0 && dv({ pret: 7.3 }).length === 0);
+T('prețul pe litru 25 lei sau 2 lei → „pare greșit”; 4,70 (GPL) și 7,30 → în regulă', /pare greșit/.test(dv({ pret: 25 }).join()) && /pare greșit/.test(dv({ pret: 2 }).join()) && dv({ pret: 4.7 }).length === 0 && dv({ pret: 7.3 }).length === 0);
 T('o mașină electrică nu se măsoară în litri', dv({ l100: 0.5, km: 300, pret: 1.2, electric: true }).length === 0);
 T('pragurile stau într-un singur loc (cifre.js): 3 / 40, camion 10 / 70, preț 3 / 12 lei', C.CONSUM.min === 3 && C.CONSUM.max === 40 && C.CONSUM_CAMION.min === 10 && C.CONSUM_CAMION.max === 70 && C.PRET.min === 3 && C.PRET.max === 12);
 const REP = fs.readFileSync(path.join(__dirname, 'reports.js'), 'utf8');
-T('rapoartele de consum, costuri și emisii pun „De verificat" în legendă (ecran, Excel, PDF) — din același calcul',
+T('rapoartele de consum, costuri și emisii pun „De verificat” în legendă (ecran, Excel, PDF) — din același calcul',
   /cifre\.consumDeVerificat\(\{ l100: per100, km: dist, pret: price, camion: tacho\.vehiculAreTahograf\(c\.vtype\)/.test(REP) &&
   (REP.match(/_legendaCuDeVerificat\(/g) || []).length === 4);
 
 // ─── 5. Pagina ─────────────────────────────────────────────────────────────────────────────────────
 // Din 15.10 (Alin: „de verificat… păi pe bune, ce să verific? Am AI… îmi zice clar dacă e greșit ceva sau nu… mă duce exact unde
-// e problema") banda „De verificat" a plecat din chat. În locul ei: „Am găsit o problemă" (probleme.js, pe server), o notă scurtă
-// când s-a citit altă perioadă, „✓ Cifrele le-am luat din rapoarte" când toate se regăsesc. Ramura Combustibil își păstrează rândul.
-console.log('\n5. Pagina: problemele în locul benzii „De verificat", nota perioadei, confirmarea');
+// e problema") banda „De verificat” a plecat din chat. În locul ei: „Am găsit o problemă” (probleme.js, pe server), o notă scurtă
+// când s-a citit altă perioadă, „✓ Cifrele le-am luat din rapoarte” când toate se regăsesc. Ramura Combustibil își păstrează rândul.
+console.log('\n5. Pagina: problemele în locul benzii „De verificat”, nota perioadei, confirmarea');
 const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
 const CSS = fs.readFileSync(path.join(__dirname, 'public', 'css', 'app.css'), 'utf8');
-T('chatul nu mai scrie „De verificat" și nu-i mai cere omului să verifice cifrele', PAG.indexOf("tt.textContent = 'De verificat';") < 0 && PAG.indexOf('Verifică-le în raport') < 0);
+T('chatul nu mai scrie „De verificat” și nu-i mai cere omului să verifice cifrele', PAG.indexOf("tt.textContent = 'De verificat';") < 0 && PAG.indexOf('Verifică-le în raport') < 0);
 T('problemele sunt O piesă (_chatProbleme), cu textul pus ca text, iar butoanele duc la locul exact (Traseu, fișa, raportul)',
   /window\._chatProbleme = function \(lista\)/.test(PAG) && /h\.appendChild\(document\.createTextNode\(String\(p\.titlu \|\| ''\)\)\)/.test(PAG) && /d\.textContent = String\(p\.dovada\)/.test(PAG) &&
   /if \(b\.fel === 'traseu'\) return window\.insightLaTraseu\(b\);/.test(PAG) && /switchEditTab\(b\.fila, t\)/.test(PAG) && /rinOpenReport\(b\.tip, b\.imei \|\| '', b\.de, b\.pana\)/.test(PAG));
 T('o folosește secțiunea RA Insight — singurul chat din pagină (bula duce acolo; pe verticala Fondator, în chatul asistentului — 30.10); nota perioadei tot prin _insightExtra',
   (PAG.match(/window\._chatProbleme\(x\.probleme\)/g) || []).length === 1 && /_insightExtra\(\{ verificare: x\.verificare, nota: x\.nota \}, null, 'verificare'\)/.test(PAG) && (PAG.match(/, 'verificare'\)/g) || []).length === 1 && /window\.raxToggleAI = function \(\) \{ showView\(window\._asfVerticalaNoastra && window\._asfVerticalaNoastra\(\) \? 'asistent' : 'insight'\); \};/.test(PAG));
-// Din 28.10 răspunsul proaspăt poartă și sursele „Sursei externe" (`sursa`), după insignă.
-// 30.10: și textul rândului „✓" (de unde au venit cifrele — verificatText, de la server) pleacă pe răspunsul proaspăt.
+// Din 28.10 răspunsul proaspăt poartă și sursele „Sursei externe” (`sursa`), după insignă.
+// 30.10: și textul rândului „✓” (de unde au venit cifrele — verificatText, de la server) pleacă pe răspunsul proaspăt.
 T('…și pe răspunsul PROASPĂT din secțiune, nu doar la redeschiderea conversației', /probleme: j\.probleme,\s*verificat: j\.verificat, verificatText: j\.verificatText, nota: j\.nota, insigna: j\.insigna, sursa: j\.sursa(, faraModel: j\.faraModel)?(, recomandat: j\.recomandat)? \}/.test(PAG));
-T('„✓ Cifrele le-am luat din rapoarte" doar când serverul spune `verificat`', /if \(x\.verificat\) \{ var ok = el\('div', 'chat-ok'\);/.test(PAG) && /Cifrele le-am luat din rapoarte\./.test(PAG));
-T('ramura Combustibil spune „De verificat" sub mașină', /' De verificat: ' \+ m\.deVerificat\.join\('; '\)/.test(PAG));
+T('„✓ Cifrele le-am luat din rapoarte” doar când serverul spune `verificat`', /if \(x\.verificat\) \{ var ok = el\('div', 'chat-ok'\);/.test(PAG) && /Cifrele le-am luat din rapoarte\./.test(PAG));
+T('ramura Combustibil spune „De verificat” sub mașină', /' De verificat: ' \+ m\.deVerificat\.join\('; '\)/.test(PAG));
 T('textul problemei are culoarea textului (contrast sigur pe ambele teme); roșul și chihlimbarul doar pe chenar și iconiță, cu pereche pe tema întunecată',
   /\.chat-prob-t \{[^}]*color: var\(--text-primary\)/.test(CSS) && /\.chat-prob-t i \{ margin-top: 2px; color: #b91c1c; \}/.test(CSS) && /body\.dark \.chat-prob-t i \{ color: #f87171; \}/.test(CSS) &&
   /\.chat-prob\.galben \.chat-prob-t i \{ color: #b45309; \}/.test(CSS) && /body\.dark \.chat-prob\.galben \.chat-prob-t i \{ color: #fbbf24; \}/.test(CSS) && CSS.indexOf('.chat-verif') < 0);
@@ -168,7 +168,7 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   await puneParola(u, 'Str4da-Verde-2026', B);
   await json('PUT', '/api/users/' + u.id + '/ai-seat', S, { on: true });
   const ck = await login('sef@cifre.ro', 'Str4da-Verde-2026');
-  // Două mașini: un Logan cu fișa obișnuită și o dubă cu „consum afară" de 1 l/100 km trecut din greșeală în fișă.
+  // Două mașini: un Logan cu fișa obișnuită și o dubă cu „consum afară” de 1 l/100 km trecut din greșeală în fișă.
   const LOGAN = '862129084930001', DUBA = '862129084930002';
   await json('POST', '/api/devices/import', S, { rows: [{ imei: LOGAN, nume: 'Dacia Logan 3', nr_inmatriculare: 'B 154 UIP', consum_afara: '6.5', consum_oras: '8' },
     { imei: DUBA, nume: 'Duba depozit', nr_inmatriculare: 'B 999 TST', consum_afara: '1', consum_oras: '1' }] });
@@ -189,7 +189,7 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   const etCeruta = A.perioadaDin(I.norm(intreb), Date.now()).eticheta;
 
   // a) RA Insight citește toată luna (greșit) și scrie o cifră inventată. Din 15.10: aplicația îi cere O rescriere; dacă și a
-  //    doua oară cifra lipsește, se spune pe față, ca problemă („Nu am găsit în rapoarte: 734 km") — nu „verifică tu".
+  //    doua oară cifra lipsește, se spune pe față, ca problemă („Nu am găsit în rapoarte: 734 km”) — nu „verifică tu”.
   //    Luna = cea a zilei de luni, ca drumurile dubei să fie în ce citește (săptămâna trecută poate începe în luna dinainte).
   const n0 = cereri().length;
   coada([unealta('combustibil', { month: fmt(luni).slice(0, 7) }), text('Consumul pe ' + etCeruta + ': flota a mers 734 km.'), text('Consumul pe ' + etCeruta + ': flota a mers 734 km.')]);
@@ -198,9 +198,9 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   T('cifra inventată → aplicația îi cere lui RA Insight O rescriere, cu cifrele care nu se găsesc', c1.length === 3 && /Verificarea aplicației: cifrele 734 km nu se regăsesc/.test(JSON.stringify(c1[2].messages.slice(-1))), c1.length);
   T('nota spune că s-a citit altă perioadă decât cea cerută', /^Ai cerut .+; cifrele sunt pentru .+\.$/.test(q1.j.nota || '') && (q1.j.nota || '').indexOf(etCeruta) > 0, q1.j.nota);
   const pr1 = q1.j.probleme || [];
-  T('…cifra rămasă negăsită e spusă pe față: „Nu am găsit în rapoarte: 734 km"', pr1.some((p) => p.fel === 'cifra' && /734 km/.test(p.titlu)), JSON.stringify(pr1.map((p) => p.titlu)));
+  T('…cifra rămasă negăsită e spusă pe față: „Nu am găsit în rapoarte: 734 km”', pr1.some((p) => p.fel === 'cifra' && /734 km/.test(p.titlu)), JSON.stringify(pr1.map((p) => p.titlu)));
   T('…și consumul greu de crezut al dubei e o problemă, cu motivul și butonul spre raport', pr1.some((p) => p.fel === 'consum' && /B 999 TST/.test(p.titlu) && /neobișnuit de mic/.test(p.dovada) && (p.butoane || []).some((b) => b.fel === 'raport' && b.tip === 'consumption')), JSON.stringify(pr1));
-  T('…nicio bandă „De verificat" în răspuns', !q1.j.verificare && !/De verificat/.test(JSON.stringify(pr1)));
+  T('…nicio bandă „De verificat” în răspuns', !q1.j.verificare && !/De verificat/.test(JSON.stringify(pr1)));
   T('insigna (antetul): ANALIZĂ, analiza lui RA Insight, care se numără', (q1.j.insigna || {}).fel === 'ai' && (q1.j.insigna || {}).eticheta === 'Analiză' && (q1.j.insigna || {}).detaliu === '1 întrebare' && (q1.j.insigna || {}).text === 'RA Insight · Analiză · 1 întrebare', JSON.stringify(q1.j.insigna));
   const conv = await json('GET', '/api/insight/conversatii/' + q1.j.conversatieId, ck);
   const ultimul = ((conv.j.mesaje || []).filter((m) => m.rol === 'ai' || m.rol === 'assistant').slice(-1)[0]) || {};
@@ -217,33 +217,33 @@ const text = (t) => ({ content: [{ type: 'text', text: t }], stop_reason: 'end_t
   const msg2 = (cereri().slice(-1)[0].messages || []).slice(-1)[0] || {};
   const tr2 = (Array.isArray(msg2.content) ? msg2.content : []).filter((c) => c.type === 'tool_result')[0] || {};
   let rez2 = {}; try { rez2 = JSON.parse(typeof tr2.content === 'string' ? tr2.content : JSON.stringify(tr2.content)); } catch (e) {}
-  T('unealta combustibil citește exact intervalul cerut („' + etCeruta + '"), nu luna', rez2.perioada === etCeruta, JSON.stringify(rez2).slice(0, 220));
+  T('unealta combustibil citește exact intervalul cerut („' + etCeruta + '”), nu luna', rez2.perioada === etCeruta, JSON.stringify(rez2).slice(0, 220));
   T('…deci nu mai e nicio notă despre perioadă', !q2.j.nota, q2.j.nota);
   const m2 = rez2.masini || [];
-  T('unealta spune modelului prețul pe litru și sursa pe înțelesul omului: „NU e măsurat; socotit din consumul trecut în fișa mașinii (X l/100 km)" — fără vină pe echipament (probleme.js)', m2.length === 2 && m2.every((m) => typeof m.pret_litru_lei === 'number') &&
+  T('unealta spune modelului prețul pe litru și sursa pe înțelesul omului: „NU e măsurat; socotit din consumul trecut în fișa mașinii (X l/100 km)” — fără vină pe echipament (probleme.js)', m2.length === 2 && m2.every((m) => typeof m.pret_litru_lei === 'number') &&
     m2.every((m) => /^NU e măsurat; socotit din consumul trecut în fișa mașinii \(\d+,\d l\/100 km\)$/.test(m.sursa || '')), JSON.stringify(m2.map((m) => [m.masina, m.pret_litru_lei, m.sursa])));
   T('…și cifra greu de crezut a dubei, lângă mașina ei (de_verificat)', m2.some((m) => /B 999 TST/.test(m.masina) && (m.de_verificat || []).some((t) => /neobișnuit de mic/.test(t))) &&
     !m2.some((m) => /B 154 UIP/.test(m.masina) && m.de_verificat), JSON.stringify(m2.map((m) => [m.masina, m.de_verificat])));
-  T('instrucțiunile cer perioada exactă, cifrele „de_verificat" spuse lângă cifra lor și nu-i cer omului să verifice', /\(8\) Perioada: citește EXACT perioada cerută/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /de_verificat/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /Nu-i cere omului să verifice cifre/.test(JSON.stringify(cereri().slice(-1)[0].system)));
-  // b2) o cifră care chiar e în date → „✓ Cifrele le-am luat din rapoarte" (verificat), fără rescriere
+  T('instrucțiunile cer perioada exactă, cifrele „de_verificat” spuse lângă cifra lor și nu-i cer omului să verifice', /\(8\) Perioada: citește EXACT perioada cerută/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /de_verificat/.test(JSON.stringify(cereri().slice(-1)[0].system)) && /Nu-i cere omului să verifice cifre/.test(JSON.stringify(cereri().slice(-1)[0].system)));
+  // b2) o cifră care chiar e în date → „✓ Cifrele le-am luat din rapoarte” (verificat), fără rescriere
   const loganKm = (m2.filter((m) => /B 154 UIP/.test(m.masina))[0] || {}).km;
   const n2 = cereri().length;
   coada([unealta('combustibil', { from: fmt(luni), to: fmt(luni + 2 * zi) }), text('B 154 UIP a mers ' + Number(loganKm).toLocaleString('ro-RO') + ' km.')]);
   const q3 = await json('POST', '/api/insight/intreaba', ck, { message: intreb, nou: true });
-  T('o cifră găsită în date → „verificat" și nicio rescriere', q3.j.verificat === true && cereri().length - n2 === 2 && !(q3.j.probleme || []).some((p) => p.fel === 'cifra'), JSON.stringify({ v: q3.j.verificat, n: cereri().length - n2, km: loganKm }));
+  T('o cifră găsită în date → „verificat” și nicio rescriere', q3.j.verificat === true && cereri().length - n2 === 2 && !(q3.j.probleme || []).some((p) => p.fel === 'cifra'), JSON.stringify({ v: q3.j.verificat, n: cereri().length - n2, km: loganKm }));
 
-  // c) aceeași dubă, „de verificat" peste tot: ramura, raportul Consum, AI Raport
+  // c) aceeași dubă, „de verificat” peste tot: ramura, raportul Consum, AI Raport
   const cb = await json('GET', '/api/insight/combustibil?luna=' + fmt(luni).slice(0, 7), ck);
   const duba = (cb.j.masini || []).filter((m) => /B 999 TST/.test(m.eticheta))[0] || {};
-  T('ramura Combustibil: duba are „de verificat"', (duba.deVerificat || []).some((t) => /neobișnuit de mic/.test(t)), JSON.stringify(duba.deVerificat));
+  T('ramura Combustibil: duba are „de verificat”', (duba.deVerificat || []).some((t) => /neobișnuit de mic/.test(t)), JSON.stringify(duba.deVerificat));
   const rc = await json('GET', '/api/reports/consumption?from=' + encodeURIComponent(new Date(luni).toISOString()) + '&to=' + encodeURIComponent(new Date(luni + 3 * zi).toISOString()), ck);
   const leg = ((rc.j.legend || {}).items || []).filter((x) => x[0] === 'De verificat');
-  T('raportul Consum: „De verificat" în legendă (ecran, Excel, PDF), pe dubă', leg.length === 1 && /B 999 TST/.test(leg[0][1]), JSON.stringify(leg));
+  T('raportul Consum: „De verificat” în legendă (ecran, Excel, PDF), pe dubă', leg.length === 1 && /B 999 TST/.test(leg[0][1]), JSON.stringify(leg));
   const rcLogan = ((rc.j.legend || {}).items || []).some((x) => x[0] === 'De verificat' && /B 154 UIP/.test(x[1]));
   T('…Loganul (8 l/100 km) nu e marcat', !rcLogan);
   const ar = await json('POST', '/api/reports/ai-raport', ck, { text: 'consumul pe intervalul ' + dd(luni) + '-' + dd(luni + 2 * zi) });
-  T('AI Raport înțelege intervalul („' + etCeruta + '")', ((ar.j.inteles || []).some((x) => x.text === etCeruta)), JSON.stringify(ar.j.inteles));
-  T('AI Raport spune „De verificat" la dubă', ((ar.j.raspuns || ar.j).sugestii || []).some((x) => /^De verificat — .*B 999 TST/.test(x.text)), JSON.stringify((ar.j.raspuns || ar.j).sugestii));
+  T('AI Raport înțelege intervalul („' + etCeruta + '”)', ((ar.j.inteles || []).some((x) => x.text === etCeruta)), JSON.stringify(ar.j.inteles));
+  T('AI Raport spune „De verificat” la dubă', ((ar.j.raspuns || ar.j).sugestii || []).some((x) => /^De verificat — .*B 999 TST/.test(x.text)), JSON.stringify((ar.j.raspuns || ar.j).sugestii));
 
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

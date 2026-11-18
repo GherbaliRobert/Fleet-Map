@@ -1,10 +1,10 @@
-// verify_io_modal.js — fereastra „Ce înseamnă?" (catalogul IO), pe vehiculul deschis.
+// verify_io_modal.js — fereastra „Ce înseamnă?” (catalogul IO), pe vehiculul deschis.
 // Rulează `raxRenderIoDetails` REAL din pagină, cu un DOM fals, pe catalogul REAL din io_catalog.js.
 //
 //   node verify_io_modal.js
 //
-// Ce apără: filtrul „doar ce trimite mașina asta", valoarea de acum lângă fiecare cod, codurile
-// pe care mașina le trimite dar nu sunt în catalog (marcate „necatalogat"), strângerea ID-urilor
+// Ce apără: filtrul „doar ce trimite mașina asta”, valoarea de acum lângă fiecare cod, codurile
+// pe care mașina le trimite dar nu sunt în catalog (marcate „necatalogat”), strângerea ID-urilor
 // care duc la același semnal (io_35/85/88 = turația) și căutarea fără diacritice.
 const fs = require('fs');
 const src = fs.readFileSync(require('path').join(__dirname, 'public', 'index.html'), 'utf8');
@@ -48,7 +48,7 @@ const nrDin = h => { const m = /^<div [^>]*>(\d+) IO-uri/.exec(h); return m ? +m
 // ── Mașina lui Alin: CAN cu cifre, fără steaguri ──
 // io_9999 = un ID inventat, garantat NEcatalogat. Era io_1148, dar din 26.08 catalogul acoperă
 // TOATĂ lista oficială Teltonika (io_catalog_extra generat din spec), deci 1148 are acum nume —
-// iar testul de „necatalogat" trebuie să folosească ceva ce chiar nu există.
+// iar testul de „necatalogat” trebuie să folosească ceva ce chiar nu există.
 const masina = {
   nume: 'B 112 RFG',
   chei: { ignition: 0, movement: 0, can_engine_rpm: 679, can_fuel_level_liters: 51.1,
@@ -63,10 +63,10 @@ sect('1. Fără vehicul deschis — dicționarul întreg, ca înainte');
   render();
   const h = els['rax-io-details-body'].innerHTML;
   T('arată tot catalogul', nrDin(h) === catalog.length, nrDin(h) + ' / ' + catalog.length);
-  T('nicio valoare „acum"', !h.includes('>acum<'));
+  T('nicio valoare „acum”', !h.includes('>acum<'));
 }
 
-sect('2. Cu vehicul deschis, bifat „doar ce trimite"');
+sect('2. Cu vehicul deschis, bifat „doar ce trimite”');
 {
   win._raxIoVeh = masina; els['rax-io-doar'].checked = true;
   els['rax-io-details-search'].value = ''; els['rax-io-details-cat'].value = '';
@@ -93,7 +93,7 @@ sect('3. Debifat — tot catalogul, dar cu valorile marcate');
   render();
   const h = els['rax-io-details-body'].innerHTML;
   T('revine la catalogul întreg', nrDin(h) === catalog.length, nrDin(h) + '');
-  T('păstrează valorile „acum" pe cele trimise', h.includes('>acum<'));
+  T('păstrează valorile „acum” pe cele trimise', h.includes('>acum<'));
   T('are și intrări fără valoare', h.includes('border:1px solid var(--border)'));
 }
 

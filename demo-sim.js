@@ -1,5 +1,5 @@
 // demo-sim.js — simulează vehicule care se mișcă pe hartă pentru COMPANIA DEMO.
-// Generează poziții live periodice (fără hardware), ca prospecții să vadă aplicația „vie".
+// Generează poziții live periodice (fără hardware), ca prospecții să vadă aplicația „vie”.
 const DEMO_IMEIS = ['DEMO0001', 'DEMO0002', 'DEMO0003', 'DEMO0004', 'DEMO0005'];
 // bucle simple în jurul unor orașe din România
 const ROUTES = [

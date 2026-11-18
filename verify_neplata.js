@@ -50,7 +50,7 @@ T('o factură anulată nu mai trage', N.stareNeplata([fact(30, { status: 'cancel
 T('o proformă nu e o obligație de plată', N.stareNeplata([fact(30, { type: 'proforma' })], ACUM).faza === 'ok');
 T('un storno nu se cere la plată', N.stareNeplata([fact(30, { type: 'credit_note' })], ACUM).faza === 'ok');
 T('o factură fără scadență nu poate porni ceasul', N.stareNeplata([fact(30, { due_date: null })], ACUM).faza === 'ok');
-T('„trimisă" și „restantă" se cer la plată la fel ca „emisă"',
+T('„trimisă” și „restantă” se cer la plată la fel ca „emisă”',
   N.stareNeplata([fact(20, { status: 'sent' })], ACUM).faza === 'suspendat' &&
   N.stareNeplata([fact(20, { status: 'overdue' })], ACUM).faza === 'suspendat');
 // Miezul: dacă mai vine o factură, ceasul NU se resetează. Altfel un rău-platnic ar câștiga
@@ -62,27 +62,27 @@ T('fără nicio factură, nimic de făcut', N.stareNeplata([], ACUM).faza === 'o
 
 sect('3. Accesul se taie cu adevărat');
 // Verificarea e într-un SINGUR loc (`stareAcces`) și acoperă AMBELE cauze; altfel ar exista o ușă din dos.
-// Din 28.09 sunt doar două: neplata și oprirea de mână. Al treilea ceas, „acces până la" (perioada plătită +
+// Din 28.09 sunt doar două: neplata și oprirea de mână. Al treilea ceas, „acces până la” (perioada plătită +
 // 15 zile), a fost SCOS: bloca un client care plătise tot (factură pe o lună trecută, plătită → blocat pe loc).
 const fnAcces = server.slice(server.indexOf('function stareAcces('), server.indexOf('// +n luni calendaristice'));
 T('regula accesului e într-un singur loc, `stareAcces`', fnAcces.length > 100, fnAcces.length);
 T('verificarea de acces se uită la neplată', /const np = neplata\.stareNeplata\(facturi \|\| \[\], acum \|\| Date\.now\(\)\);[\s\S]{0,400}if \(np\.faza === 'suspendat'\)/.test(fnAcces));
 T('și la suspendarea pusă de noi', /if \(co && co\.suspended_at != null\) \{\s*return \{ status: 'expired', motiv: 'manual'/.test(fnAcces));
-T('amândouă ies ca „expired", ca restul aplicației să nu aibă de învățat altceva',
+T('amândouă ies ca „expired”, ca restul aplicației să nu aibă de învățat altceva',
   (fnAcces.match(/status: 'expired', motiv:/g) || []).length === 2);
-T('„acces până la" NU mai taie nimic: regula nu citește `access_until`', !/access_until/.test(fnAcces));
+T('„acces până la” NU mai taie nimic: regula nu citește `access_until`', !/access_until/.test(fnAcces));
 T('și cererea din cache trece tot prin ea', /return stareAcces\(e\.co, e\.facturi, Date\.now\(\)\);/.test(server));
 T('ceasul vechi nu mai există nicăieri în server', !/function companyAccessStatus\(/.test(server) && !/companyAccessStatus\(/.test(server));
-T('nici anunțul lui („abonamentul a expirat, 15 zile de grație")', !/billingReminderTick/.test(server));
-T('plata unei facturi nu mai scrie „acces până la"', !/setCompanyAccessUntil/.test(dbjs));
+T('nici anunțul lui („abonamentul a expirat, 15 zile de grație”)', !/billingReminderTick/.test(server));
+T('plata unei facturi nu mai scrie „acces până la”', !/setCompanyAccessUntil/.test(dbjs));
 // Login-ul e ușa cea mai importantă: dacă acolo se uită doar la abonament, tot restul e degeaba.
 const loginuri = [...server.matchAll(/access = await _accessStatusCached\(co\.id\);/g)];
 T('și autentificarea (web + telefon) trece prin aceeași verificare', loginuri.length === 2, loginuri.length + ' locuri');
 T('nu mai există o verificare de login care se uită doar la abonament',
   !/access = companyAccessStatus\(co\);\s*\n\s*if \(!isSuper/.test(server));
 // Din 01.10 (lista lui Robert, pct. 26, hotărâtă de Alin): o singură formulare pentru suspendare, cu vorbele benzii de sus —
-// „Abonament suspendat pentru neplată" se spunea și la o oprire făcută de noi.
-T('mesajul e unul singur, cu vorbele benzii (nu „pentru neplată" și la o oprire de-a noastră), scris o singură dată',
+// „Abonament suspendat pentru neplată” se spunea și la o oprire făcută de noi.
+T('mesajul e unul singur, cu vorbele benzii (nu „pentru neplată” și la o oprire de-a noastră), scris o singură dată',
   /const MESAJ_SUSPENDAT = 'Accesul este suspendat\. Contactați furnizorul pentru reactivare\.';/.test(server) && !/suspendat pentru neplată\. Contactați/.test(server));
 T('și se folosește peste tot, nu copiat de mână',
   (server.match(/error: MESAJ_SUSPENDAT/g) || []).length >= 4, (server.match(/error: MESAJ_SUSPENDAT/g) || []).length + ' locuri');
@@ -96,11 +96,11 @@ T('la fel și suspendarea/reactivarea manuală',
 sect('4. Avertismentele: patru, nu mai multe, și nu de două ori');
 T('treptele sunt 0, 5, 10 și 13 zile', N.TREPTE.map(t => t.zi).join(',') === '0,5,10,13', N.TREPTE.map(t => t.zi).join(','));
 T('ultimul avertisment e cel mai apăsat', N.TREPTE[N.TREPTE.length - 1].fel === 'critical');
-// Titlul și textul aceluiași anunț spun ACEEAȘI cifră (29.09: titlul zicea „10 zile", textul „11 zile").
+// Titlul și textul aceluiași anunț spun ACEEAȘI cifră (29.09: titlul zicea „10 zile”, textul „11 zile”).
 N.TREPTE.filter(t => t.zi > 0).forEach(function (t) {
   [0.05, 0.5, 0.95].forEach(function (f) {
     const s = st(t.zi + f), m = N.mesajClient(s, t), n = (m.match(/achitați în (\d+) zi/) || [])[1];
-    T('ziua ' + (t.zi + f) + ': titlul „' + t.titlu + '" spune aceeași cifră ca textul (' + n + ')',
+    T('ziua ' + (t.zi + f) + ': titlul „' + t.titlu + '” spune aceeași cifră ca textul (' + n + ')',
       n && new RegExp('\\b' + n + ' (de )?zi').test(t.titlu), m);
   });
 });
@@ -126,9 +126,9 @@ T('ceasul rulează de mai multe ori pe zi, ca ziua 16 să însemne ziua 16',
   /setInterval\(\(\) => neplataTick\(\)\.catch\(\(\) => \{\}\), 6 \* 60 \* 60 \* 1000\)/.test(server));
 T('se poate rula și cu mâna', /app\.post\('\/api\/admin\/billing\/check-neplata', requireAuth, requireSuperadmin/.test(server));
 
-sect('4b. Termenul de plată de ZERO zile („plata la emitere")');
+sect('4b. Termenul de plată de ZERO zile („plata la emitere”)');
 // Defect găsit probând suspendarea: `parseInt(0) || 15` dă 15, fiindcă zero e o valoare FALSĂ în
-// JavaScript. Adică o firmă cu „plata la emitere" primea în tăcere 15 zile de termen — și ceasul
+// JavaScript. Adică o firmă cu „plata la emitere” primea în tăcere 15 zile de termen — și ceasul
 // de neplată pornea cu două săptămâni mai târziu decât trebuia. Era în TREI locuri.
 T('nu mai există nicăieri capcana `parseInt(...) || 15`',
   !/parseInt\(co\.payment_term_days\) \|\| 15/.test(server) && !/parseInt\(b\.payment_term_days\) \|\| 15/.test(server));
@@ -147,7 +147,7 @@ T('și data exactă', /până la \d{2}\.\d{2}\.\d{4}/.test(mAvert), mAvert);
 const mSusp = N.mesajClient(st(20), null);
 T('mesajul de suspendare spune că accesul e oprit', /suspendat pentru neplată/.test(mSusp), mSusp);
 T('și că se reia imediat ce plătește', /se reia imediat ce plata e înregistrată/.test(mSusp), mSusp);
-T('nicăieri nu se cere clientului să sune „furnizorul" în avertisment', !/furnizorul/i.test(mAvert));
+T('nicăieri nu se cere clientului să sune „furnizorul” în avertisment', !/furnizorul/i.test(mAvert));
 
 T('suspendarea manuală cere OBLIGATORIU un motiv',
   /if \(pornit && !motiv\) return res\.status\(400\)[\s\S]{0,120}Scrie motivul suspendării/.test(server));
@@ -158,11 +158,11 @@ T('compania demo nu se suspendă de aici', /Compania demo nu se suspendă de aic
 T('doar fondatorii pot suspenda', /app\.put\('\/api\/companies\/:id\/suspend', requireAuth, requireSuperadmin/.test(server));
 
 sect('6. Ce se vede pe ecran');
-T('rândul firmei arată SUSPENDAT, cu motivul, nu doar „expirat"',
+T('rândul firmei arată SUSPENDAT, cu motivul, nu doar „expirat”',
   /oprit de noi/.test(html) && /suspendat — neplată/.test(html));
-T('și nu mai există „suspendat — abonament" (ceasul vechi, scos pe 28.09)', !/suspendat — abonament/.test(html) && !/abonament expirat/i.test(html));
+T('și nu mai există „suspendat — abonament” (ceasul vechi, scos pe 28.09)', !/suspendat — abonament/.test(html) && !/abonament expirat/i.test(html));
 T('o restanță în derulare arată numărătoarea inversă', /restanță · ' \+ np\.zilePanaLaSuspendare \+ ' zile/.test(html));
-T('în fila „Abonament & plăți" e starea și butonul de suspendare', /function _raxSuspendHtml\(\)/.test(html));
+T('în fila „Abonament & plăți” e starea și butonul de suspendare', /function _raxSuspendHtml\(\)/.test(html));
 T('motivul se scrie în pagină, nu în fereastra gri a browserului',
   /id="rax-susp-motiv"/.test(html) && !/prompt\('De ce/.test(html));
 T('scrie limpede că aparatele transmit mai departe',

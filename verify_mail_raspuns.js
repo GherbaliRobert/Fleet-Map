@@ -8,11 +8,11 @@
 //   1. chenarul casei (mailer.js): sigla pe bandă închisă + linia verde + rândul cu ratrack.ro, pe TOATE emailurile care pleacă
 //      din aplicație (text sau HTML); emailul care își are deja sigla (factura) nu-l primește a doua oară; la Brevo sigla se
 //      cere de pe site (nu cid, nu ca atașament);
-//   2. semnătura: numele și telefonul din fișa omului (pe adresa personală), „Echipa RA Track" pe cea comună; pusă sub textul
+//   2. semnătura: numele și telefonul din fișa omului (pe adresa personală), „Echipa RA Track” pe cea comună; pusă sub textul
 //      omului și DEASUPRA mesajului citat / redirecționat;
-//   3. „Răspunde tuturor": Cc = toți din „Către" și „Cc", fără adresele noastre, fără expeditor, fără dubluri;
-//   4. „Redirecționează": un email primit (cu atașamentele lui păstrate) sau unul trimis (doar textul), „Fwd:" o dată;
-//   5. „Șterge" în „Trimise": doar emailurile scrise de mână (merg în Coș — vezi verify_mail_dosare.js); facturile,
+//   3. „Răspunde tuturor”: Cc = toți din „Către” și „Cc”, fără adresele noastre, fără expeditor, fără dubluri;
+//   4. „Redirecționează”: un email primit (cu atașamentele lui păstrate) sau unul trimis (doar textul), „Fwd:” o dată;
+//   5. „Șterge” în „Trimise”: doar emailurile scrise de mână (merg în Coș — vezi verify_mail_dosare.js); facturile,
 //      contractele, invitațiile rămân; ale altuia — 404;
 //   6. pagina și telefonul: aceleași rute, butoanele, semnătura arătată sub mesaj.
 // Nu pleacă niciun email adevărat: totul ajunge la un Brevo FALS, local; emailurile primite sunt făcute aici, ca de la Cloudflare.
@@ -53,12 +53,12 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
     /src="https:\/\/ratrack\.ro\/logo\.png"/.test(pb.htmlContent) && !/cid:/.test(pb.htmlContent) && pb.attachment.map((a) => a.name).join(',') === 'f.pdf' &&
     JSON.stringify(pb.cc) === JSON.stringify([{ email: 'c@d.ro' }, { email: 'e@f.ro' }]), JSON.stringify({ cc: pb.cc, at: pb.attachment.map((a) => a.name) }));
   let s = mailer.semnatura({ nume: 'Robert Gherbali', functie: 'Director general', telefon: '0729699847', email: 'Robert.Gherbali@ratrack.ro' });
-  T('semnătura pe adresa personală (Robert, 13.10: „și funcția și adresa de mail"): numele; funcția · RA Track; adresa · ratrack.ro; telefonul pe grupe',
+  T('semnătura pe adresa personală (Robert, 13.10: „și funcția și adresa de mail”): numele; funcția · RA Track; adresa · ratrack.ro; telefonul pe grupe',
     s.text === '\n\n--\nRobert Gherbali\nDirector general · RA Track\nrobert.gherbali@ratrack.ro · ratrack.ro\nTel. 0729 699 847' &&
     s.rand === 'Robert Gherbali · Director general · RA Track · robert.gherbali@ratrack.ro · ratrack.ro · Tel. 0729 699 847' &&
     /<b style="color:#1a2235;">Robert Gherbali<\/b><br>Director general · RA Track<br><a href="mailto:robert\.gherbali@ratrack\.ro"/.test(s.html) && /Tel\. 0729 699 847/.test(s.html), JSON.stringify(s));
   s = mailer.semnatura({ nume: 'Echipa RA Track', email: 'contact@ratrack.ro' });
-  T('pe adresa comună: „Echipa RA Track · contact@ratrack.ro · ratrack.ro", fără funcție și fără telefon',
+  T('pe adresa comună: „Echipa RA Track · contact@ratrack.ro · ratrack.ro”, fără funcție și fără telefon',
     s.rand === 'Echipa RA Track · contact@ratrack.ro · ratrack.ro' && !/Tel\./.test(s.text), s.rand);
   T('fără funcție / telefon în fișă: rândurile lor lipsesc; un telefon scris altfel rămâne cum e',
     mailer.semnatura({ nume: 'Alin Tîlvar', email: 'alin.tilvar@ratrack.ro' }).rand === 'Alin Tîlvar · RA Track · alin.tilvar@ratrack.ro · ratrack.ro' &&
@@ -74,7 +74,7 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
   cs = mailer.cuSemnatura('Mulțumim.\n\n(am scurtat citatul)', citatX, semn);
   T('citatul schimbat de om: semnătura merge la capăt', cs.text === 'Mulțumim.\n\n(am scurtat citatul)' + semn.text, JSON.stringify(cs.text));
 
-  console.log('\n2. „Răspunde tuturor" și „Redirecționează" (mail_primit.js)');
+  console.log('\n2. „Răspunde tuturor” și „Redirecționează” (mail_primit.js)');
   T('adresele dintr-un antet', JSON.stringify(mp.adreseDin('"Ion Pop" <Ion@X.ro>, b@y.ro; Contact <contact@ratrack.ro>')) === JSON.stringify(['ion@x.ro', 'b@y.ro', 'contact@ratrack.ro']));
   const primit = { catre: 'contact@ratrack.ro', de_la: 'sef@client.ro', de_nume: 'Șef', subiect: 'Oferta', text: 'Bună ziua', primit_la: new Date(Date.UTC(2026, 9, 12, 8, 30)),
     antet_catre: 'contact@ratrack.ro, Ana <ana@client.ro>', antet_cc: 'robert.gherbali@ratrack.ro, ana@client.ro, sef@client.ro, contabil@client.ro' };
@@ -83,7 +83,7 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
     rt.catre === 'sef@client.ro' && rt.cc === 'ana@client.ro, contabil@client.ro' && rt.de_la === 'contact@ratrack.ro' && rt.subiect === 'Re: Oferta' && /a scris:\n> Bună ziua/.test(rt.text), JSON.stringify(rt));
   T('…cu adresa de răspuns a omului, dacă a pus una', mp.pentruRaspunsTuturor(Object.assign({}, primit, { raspuns_catre: 'birou@client.ro' }), ['contact@ratrack.ro']).catre === 'birou@client.ro');
   T('…și fără nimeni în plus: Cc gol (ecranul nu arată butonul)', mp.pentruRaspunsTuturor({ catre: 'contact@ratrack.ro', de_la: 'a@b.ro', antet_catre: 'contact@ratrack.ro', text: 'x' }, ['contact@ratrack.ro']).cc === '');
-  T('„Fwd:" o singură dată', mp.subiectRedirectionare('Oferta') === 'Fwd: Oferta' && mp.subiectRedirectionare('Fwd: Oferta') === 'Fwd: Oferta' && mp.subiectRedirectionare('FW: x') === 'FW: x' && mp.subiectRedirectionare('') === 'Fwd: (fără subiect)');
+  T('„Fwd:” o singură dată', mp.subiectRedirectionare('Oferta') === 'Fwd: Oferta' && mp.subiectRedirectionare('Fwd: Oferta') === 'Fwd: Oferta' && mp.subiectRedirectionare('FW: x') === 'FW: x' && mp.subiectRedirectionare('') === 'Fwd: (fără subiect)');
   const rd = mp.pentruRedirectionare(primit);
   T('redirecționarea unui email primit: de pe adresa pe care a venit, cu antetul mesajului și textul lui',
     rd.de_la === 'contact@ratrack.ro' && rd.catre === '' && rd.subiect === 'Fwd: Oferta' &&
@@ -95,7 +95,7 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
   // ─── 5. Pagina și telefonul ────────────────────────────────────────────────────────────────────────
   console.log('\n3. Pagina și telefonul');
   const PAG = citeste('public/index.html');
-  const a = PAG.indexOf('// ── începe „Panoul Mail"'), b = PAG.indexOf('// ── sfârșit „Panoul Mail" ──');
+  const a = PAG.indexOf('// ── începe „Panoul Mail”'), b = PAG.indexOf('// ── sfârșit „Panoul Mail” ──');
   const BLOC = a > 0 && b > a ? PAG.slice(a, b) : '';
   T('pagina: butoanele noi pe emailul primit (Răspunde tuturor doar cu cineva în plus) și pe cel trimis (Șterge doar unde spune serverul)',
     /m\.pentruRaspunsTuturor && m\.pentruRaspunsTuturor\.cc \? '<button class="rax-btn" onclick="raxMailRaspundeTuturor\(\)"/.test(BLOC) &&
@@ -104,7 +104,7 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
   T('pagina: Cc, redirecționarea și semnătura (scrisă de server) în fereastra de scris',
     /corp\.redirectioneazaPrimit = _mail\.redir\.primit/.test(BLOC) && /corp\.redirectioneazaTrimis = _mail\.redir\.trimis/.test(BLOC) && /cc: \$\('mail-cc'\)\.value/.test(BLOC) &&
     /Semnătura se adaugă singură: <b>' \+ esc\(a\.semnatura/.test(BLOC) && /window\.raxMailStergeTrimis = function \(id\) \{ raxMailActiune\('sterge', \[\{ sursa: 'trimis', id: Number\(id\) \}\]\); \};/.test(BLOC));
-  T('pagina nu-și scrie nici semnătura, nici „Fwd:" (le dă serverul)', !/'Fwd: '|Echipa RA Track|0729/.test(BLOC));
+  T('pagina nu-și scrie nici semnătura, nici „Fwd:” (le dă serverul)', !/'Fwd: '|Echipa RA Track|0729/.test(BLOC));
   const MOB = citeste('mobile/src/screens/Mail.tsx'), EP = citeste('mobile/src/api/endpoints.ts');
   T('telefonul: aceleași butoane și aceeași fereastră de scris (Cc, redirecționarea, semnătura)',
     /deschis\.pentruRaspunsTuturor\?\.cc \? <button/.test(MOB) && /onClick=\{\(\) => redirectioneaza\(\)\}/.test(MOB) &&
@@ -112,8 +112,8 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
     /redirectioneazaPrimit: redir\.primit/.test(MOB) && /redirectioneazaTrimis: redir\.trimis/.test(MOB) && /Semnătura se adaugă singură: <b/.test(MOB) && /a\.semnatura/.test(MOB));
   T('telefonul: ștergerea unui email trimis trece prin ruta acțiunilor (în Coș), ca pe web',
     /mailActiune: \(actiune: string, elemente: \{ sursa: string; id: number \}\[\]\) => api<[^>]*>\('\/api\/mail\/actiune', \{ method: 'POST', body: \{ actiune, elemente \} \}\)/.test(EP) && !/mailStergeTrimis/.test(EP + MOB));
-  T('telefonul nu-și scrie nici semnătura, nici „Fwd:"', !/'Fwd: '|Echipa RA Track|0729/.test(MOB));
-  T('serverul: ce se poate șterge din „Trimise" stă într-o singură listă (rândul, ruta veche, acțiunea)', /const MAIL_TRIMISE_STERGIBILE = \['mesaj', 'raspuns', 'redirectionat'\];/.test(srvSrc) &&
+  T('telefonul nu-și scrie nici semnătura, nici „Fwd:”', !/'Fwd: '|Echipa RA Track|0729/.test(MOB));
+  T('serverul: ce se poate șterge din „Trimise” stă într-o singură listă (rândul, ruta veche, acțiunea)', /const MAIL_TRIMISE_STERGIBILE = \['mesaj', 'raspuns', 'redirectionat'\];/.test(srvSrc) &&
     (srvSrc.match(/MAIL_TRIMISE_STERGIBILE\.indexOf/g) || []).length === 3 && (srvSrc.match(/\['mesaj', 'raspuns'/g) || []).length === 1);
 
   // ─── Server pornit ─────────────────────────────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
     T('Robert își pune funcția din Contul meu', fR.status === 200 && fR.j.functie === 'Director general', JSON.stringify(fR.j));
     const adrR = (await json('GET', '/api/mail/adrese', R)).j.adrese || [], adrA = (await json('GET', '/api/mail/adrese', A)).j.adrese || [];
     const per = (l, e) => l.filter((x) => x.adresa === e)[0] || {};
-    T('panoul arată semnătura fiecărei adrese: Robert cu funcția, adresa și telefonul din fișă, comuna „Echipa RA Track · contact@…"; Alin fără funcție și telefon — i se spune de unde le pune',
+    T('panoul arată semnătura fiecărei adrese: Robert cu funcția, adresa și telefonul din fișă, comuna „Echipa RA Track · contact@…”; Alin fără funcție și telefon — i se spune de unde le pune',
       per(adrR, 'robert.gherbali@ratrack.ro').semnatura === 'Robert Gherbali · Director general · RA Track · robert.gherbali@ratrack.ro · ratrack.ro · Tel. 0729 699 847' &&
       per(adrR, 'robert.gherbali@ratrack.ro').faraTelefon === false && per(adrR, 'robert.gherbali@ratrack.ro').faraFunctie === false &&
       per(adrR, 'contact@ratrack.ro').semnatura === 'Echipa RA Track · contact@ratrack.ro · ratrack.ro' &&
@@ -212,43 +212,43 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
       subiect: 'Comanda semnata', text: 'Vă trimit comanda semnată.', atas: ['Comanda.pdf'] }), 'contact@ratrack.ro');
     const dP = await json('GET', '/api/mail/primite/' + pr.j.id, A);
     const prt = dP.j.pentruRaspunsTuturor || {}, prd = dP.j.pentruRedirectionare || {};
-    T('emailul primit, deschis: „Răspunde tuturor" la expeditor, cu Ana și contabilul în Cc (fără noi și fără expeditor)',
+    T('emailul primit, deschis: „Răspunde tuturor” la expeditor, cu Ana și contabilul în Cc (fără noi și fără expeditor)',
       pr.status === 200 && dP.status === 200 && prt.catre === 'sef@client.ro' && prt.cc === 'ana@client.ro, contabil@client.ro' && prt.subiect === 'Re: Comanda semnata', JSON.stringify(prt).slice(0, 300));
-    T('…și „Redirecționează", cu atașamentul care merge mai departe', prd.subiect === 'Fwd: Comanda semnata' && prd.de_la === 'contact@ratrack.ro' &&
+    T('…și „Redirecționează”, cu atașamentul care merge mai departe', prd.subiect === 'Fwd: Comanda semnata' && prd.de_la === 'contact@ratrack.ro' &&
       JSON.stringify((prd.atasamente || []).map((x) => x.nume)) === '["Comanda.pdf"]' && /---------- Mesaj redirecționat ----------\nDe la: Șef Client <sef@client.ro>/.test(prd.text || ''), JSON.stringify(prd).slice(0, 300));
 
     n0 = primite.length;
     const rt2 = await json('POST', '/api/mail/trimite', A, { de_la: 'contact@ratrack.ro', catre: prt.catre, cc: prt.cc, subiect: prt.subiect, text: 'Am primit-o, mulțumim!' + prt.text, raspunsLa: pr.j.id });
     const e2 = (primite[n0] || {}).corp || {};
     const t2 = String(e2.textContent || '');
-    T('„Răspunde tuturor" pleacă: la expeditor, cu Cc-ul, semnătura echipei DEASUPRA mesajului citat',
+    T('„Răspunde tuturor” pleacă: la expeditor, cu Cc-ul, semnătura echipei DEASUPRA mesajului citat',
       rt2.status === 200 && e2.to && e2.to[0].email === 'sef@client.ro' && JSON.stringify(e2.cc) === JSON.stringify([{ email: 'ana@client.ro' }, { email: 'contabil@client.ro' }]) &&
       t2.indexOf('Am primit-o, mulțumim!\n\n--\nEchipa RA Track\ncontact@ratrack.ro · ratrack.ro') === 0 && t2.indexOf('Echipa RA Track') < t2.indexOf('a scris:') &&
       (e2.htmlContent || '').indexOf('Echipa RA Track') < (e2.htmlContent || '').indexOf('a scris:'), JSON.stringify({ st: rt2.status, j: rt2.j, cc: e2.cc, t: t2.slice(0, 160) }));
     const lista = (await json('GET', '/api/mail/trimise', A)).j.mailuri || [];
     const rand2 = lista.filter((x) => x.subiect === 'Re: Comanda semnata')[0] || {};
-    T('în „Trimise": răspunsul cu Cc-ul lui', rand2.fel === 'raspuns' && rand2.cc === 'ana@client.ro, contabil@client.ro', JSON.stringify(rand2).slice(0, 250));
+    T('în „Trimise”: răspunsul cu Cc-ul lui', rand2.fel === 'raspuns' && rand2.cc === 'ana@client.ro, contabil@client.ro', JSON.stringify(rand2).slice(0, 250));
 
     n0 = primite.length;
     const fw = await json('POST', '/api/mail/trimite', A, { de_la: 'contact@ratrack.ro', catre: 'contabilitate@noi.ro', subiect: prd.subiect, text: 'Pentru dosar.' + prd.text, redirectioneazaPrimit: pr.j.id });
     const e3 = (primite[n0] || {}).corp || {};
-    T('„Redirecționează" un email primit: pleacă cu atașamentul lui, „Fwd:", semnătura deasupra mesajului redirecționat',
+    T('„Redirecționează” un email primit: pleacă cu atașamentul lui, „Fwd:”, semnătura deasupra mesajului redirecționat',
       fw.status === 200 && e3.subject === 'Fwd: Comanda semnata' && JSON.stringify((e3.attachment || []).map((x) => x.name)) === '["Comanda.pdf"]' &&
       Buffer.from((e3.attachment || [{}])[0].content || '', 'base64').toString() === '%PDF-1.4 comanda semnata' &&
       String(e3.textContent || '').indexOf('Echipa RA Track') < String(e3.textContent || '').indexOf('Mesaj redirecționat'), JSON.stringify({ st: fw.status, j: fw.j, s: e3.subject }));
     const lista2 = (await json('GET', '/api/mail/trimise', A)).j.mailuri || [];
     const rand3 = lista2.filter((x) => x.subiect === 'Fwd: Comanda semnata')[0] || {};
-    T('în „Trimise": felul „Redirecționat", cu atașamentul (numele)', rand3.fel === 'redirectionat' && rand3.felText === 'Redirecționat' && (rand3.atasamente || [])[0].nume === 'Comanda.pdf', JSON.stringify(rand3).slice(0, 250));
+    T('în „Trimise”: felul „Redirecționat”, cu atașamentul (numele)', rand3.fel === 'redirectionat' && rand3.felText === 'Redirecționat' && (rand3.atasamente || [])[0].nume === 'Comanda.pdf', JSON.stringify(rand3).slice(0, 250));
 
     const mesajR = ((await json('GET', '/api/mail/trimise', R)).j.mailuri || []).filter((x) => x.subiect === 'Oferta RA Track')[0] || {};
     const dT = await json('GET', '/api/mail/trimise/' + mesajR.id, R);
-    T('emailul trimis, deschis: „Redirecționează" (doar textul — atașamentele trimise nu se păstrează) și „Șterge" (e scris de mână)',
+    T('emailul trimis, deschis: „Redirecționează” (doar textul — atașamentele trimise nu se păstrează) și „Șterge” (e scris de mână)',
       dT.j.pentruRedirectionare && dT.j.pentruRedirectionare.subiect === 'Fwd: Oferta RA Track' && dT.j.pentruRedirectionare.faraAtasamente === true && dT.j.sePoateSterge === true &&
       /\nDe la: robert\.gherbali@ratrack\.ro\n/.test(dT.j.pentruRedirectionare.text || ''), JSON.stringify(dT.j.pentruRedirectionare || {}).slice(0, 250));
     n0 = primite.length;
     const fw2 = await json('POST', '/api/mail/trimite', R, { de_la: 'robert.gherbali@ratrack.ro', catre: 'alt@client.ro', subiect: dT.j.pentruRedirectionare.subiect, text: dT.j.pentruRedirectionare.text, redirectioneazaTrimis: mesajR.id });
     const e4 = (primite[n0] || {}).corp || {};
-    T('„Redirecționează" un email trimis: pleacă fără atașamente, cu textul lui și semnătura', fw2.status === 200 && !(e4.attachment || []).length && /vă trimit oferta/.test(e4.textContent || '') &&
+    T('„Redirecționează” un email trimis: pleacă fără atașamente, cu textul lui și semnătura', fw2.status === 200 && !(e4.attachment || []).length && /vă trimit oferta/.test(e4.textContent || '') &&
       /^--\nRobert Gherbali/.test(String(e4.textContent || '').trim()), JSON.stringify({ st: fw2.status, j: fw2.j, t: String(e4.textContent || '').slice(0, 120) }));
     const nuR = [await json('POST', '/api/mail/trimite', A, { de_la: 'contact@ratrack.ro', catre: 'x@y.ro', subiect: 's', text: 't', redirectioneazaTrimis: mesajR.id }),
       await json('POST', '/api/mail/trimite', A, { de_la: 'contact@ratrack.ro', catre: 'x@y.ro', subiect: 's', text: 't', redirectioneazaPrimit: 999999 })];
@@ -258,7 +258,7 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
       await json('POST', '/api/mail/trimite', A, { de_la: 'contact@ratrack.ro', catre: 'x@y.ro', cc: Array.from({ length: 20 }, (_, i) => 'om' + i + '@x.ro').join(','), subiect: 's', text: 't' })];
     T('refuzuri pe față: răspuns ȘI redirecționare deodată, Cc greșit, peste 20 de destinatari cu tot cu Cc (400)', refuzuri.every((x) => x.status === 400 && x.j.error), refuzuri.map((x) => x.status + ' ' + (x.j.error || '')).join(' | '));
 
-    // „Șterge" în „Trimise".
+    // „Șterge” în „Trimise”.
     const invitatie = ((await json('GET', '/api/mail/trimise', R)).j.mailuri || []).filter((x) => x.fel === 'invitatie')[0] || {};
     const sI = await json('DELETE', '/api/mail/trimise/' + invitatie.id, R);
     const sStrain = await json('DELETE', '/api/mail/trimise/' + mesajR.id, A);
@@ -267,10 +267,10 @@ const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(
     const sR = await json('DELETE', '/api/mail/trimise/' + mesajR.id, R);
     const dinCos = (await json('GET', '/api/mail/trimise/' + mesajR.id, R)).j;
     const inTrimise = ((await json('GET', '/api/mail/trimise', R)).j.mailuri || []).some((x) => x.id === mesajR.id);
-    T('Robert își șterge emailul scris de mână: pleacă din „Trimise" în Coș (se poate recupera)',
+    T('Robert își șterge emailul scris de mână: pleacă din „Trimise” în Coș (se poate recupera)',
       sR.status === 200 && dinCos.dosar === 'cos' && !inTrimise && /mutat în Coș/.test(sR.j.text || ''), JSON.stringify(sR.j) + ' ' + dinCos.dosar);
     const sDef = await json('DELETE', '/api/mail/trimise/' + mesajR.id + '?definitiv=1', R);
-    T('…iar din Coș, „Șterge definitiv": nu mai există', sDef.status === 200 && (await json('GET', '/api/mail/trimise/' + mesajR.id, R)).status === 404, JSON.stringify(sDef.j));
+    T('…iar din Coș, „Șterge definitiv”: nu mai există', sDef.status === 200 && (await json('GET', '/api/mail/trimise/' + mesajR.id, R)).status === 404, JSON.stringify(sDef.j));
     const sRasp = await json('DELETE', '/api/mail/trimise/' + rand2.id, A);
     const sRaspDef = await json('DELETE', '/api/mail/trimise/' + rand2.id + '?definitiv=1', A);
     const dupa = ((await json('GET', '/api/mail/primite', A)).j.mailuri || []).filter((x) => x.id === pr.j.id)[0] || {};

@@ -1,4 +1,4 @@
-// Markerele de hartă „Realist top-down" (varianta A, stil AROBS) — ACELEAȘI desene ca pe web
+// Markerele de hartă „Realist top-down” (varianta A, stil AROBS) — ACELEAȘI desene ca pe web
 // (public/index.html → VEH_TOP). Vedere de sus, fața în sus; culorile prin token-uri __C__/__D__/__L__.
 // Dacă schimbi desenele, schimbă-le în AMBELE locuri.
 import type { VehCat } from './VehicleArt';

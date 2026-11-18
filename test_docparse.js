@@ -41,7 +41,7 @@ t('masa maximă (F.1)', r1.campuri.max_weight_legal === 1980, String(r1.campuri.
 t('cilindree (P.1)', r1.campuri.displacement === 1461, String(r1.campuri.displacement));
 t('putere kW (P.2)', r1.campuri.power_kw === 70, String(r1.campuri.power_kw));
 t('locuri (S.1)', r1.campuri.passenger_seats === 5, String(r1.campuri.passenger_seats));
-t('categoria J=N1 → propune „autoutilitara"', r1.campuri.vehicle_type === 'autoutilitara', r1.campuri.vehicle_type);
+t('categoria J=N1 → propune „autoutilitara”', r1.campuri.vehicle_type === 'autoutilitara', r1.campuri.vehicle_type);
 t('categoria brută păstrată la vedere', r1.campuri.vehicle_type_raw === 'N1', r1.campuri.vehicle_type_raw);
 t('fiecare câmp are grad de încredere', Object.keys(r1.campuri).every(k => typeof r1.incredere[k] === 'number'));
 
@@ -58,8 +58,8 @@ F.1) 18 000
 const r2 = dp.parse(TALON_MURDAR, 'talon');
 t('VIN reparat: O devine 0 (litera O nu există în VIN)', r2.campuri.vin === 'YV2AS02A8KB054321', r2.campuri.vin);
 t('marca VOLVO rămâne cu O (contextul contează)', r2.campuri.brand === 'VOLVO', r2.campuri.brand);
-t('„B 123 XYZ" acceptat (Bucureștiul are un singur B)', r2.campuri.plate === 'B 123 XYZ', r2.campuri.plate);
-t('„DIESEL" → tot Motorina', r2.campuri.fuel_type === 'Motorina', r2.campuri.fuel_type);
+t('„B 123 XYZ” acceptat (Bucureștiul are un singur B)', r2.campuri.plate === 'B 123 XYZ', r2.campuri.plate);
+t('„DIESEL” → tot Motorina', r2.campuri.fuel_type === 'Motorina', r2.campuri.fuel_type);
 t('mase cu spații în cifre: 7 500 → 7500', r2.campuri.tare_weight === 7500, String(r2.campuri.tare_weight));
 
 // ── 3. RCA — perioadă de valabilitate + asigurător + serie ──
@@ -98,9 +98,9 @@ t('text fără sens → nu inventează câmpuri', Object.keys(GOL.campuri).filte
 const seriiNuVin = dp.parse('E) 12345678901234567', 'talon');   // 17 cifre — serie de document, nu VIN
 t('17 cifre pure NU devin VIN (VIN-ul are și litere)', seriiNuVin.campuri.vin == null, seriiNuVin.campuri.vin);
 // Anul din două cifre
-t('data „15.03.19" → 2019', dp.ziLunaAn('15', '03', '19') === '2019-03-15');
-t('data „15.03.98" → 1998', dp.ziLunaAn('15', '03', '98') === '1998-03-15');
-t('data invalidă „32.13.2020" → respinsă', dp.ziLunaAn('32', '13', '2020') === null);
+t('data „15.03.19” → 2019', dp.ziLunaAn('15', '03', '19') === '2019-03-15');
+t('data „15.03.98” → 1998', dp.ziLunaAn('15', '03', '98') === '1998-03-15');
+t('data invalidă „32.13.2020” → respinsă', dp.ziLunaAn('32', '13', '2020') === null);
 
 console.log('\n' + ok + '/' + (ok + fail) + ' verificări trecute\n');
 process.exit(fail ? 1 : 0);

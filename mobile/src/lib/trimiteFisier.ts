@@ -14,7 +14,7 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { API_BASE, APP_VERSIUNE, ApiError, getAuthToken } from '../api/client';
 
-// Conținutul unui fișier, ca base64 (fără prefixul „data:…;base64,").
+// Conținutul unui fișier, ca base64 (fără prefixul „data:…;base64,”).
 export function fisierB64(f: Blob): Promise<string> {
   return new Promise((res, rej) => {
     const fr = new FileReader();

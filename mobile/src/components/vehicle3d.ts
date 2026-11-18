@@ -1,5 +1,5 @@
 // Modele 3D REALE de vehicule pe hartă (Three.js + strat custom MapLibre).
-// Folosim modele elegante „Free Low Poly Vehicles Pack" de Rgsdev (licență CC0 — domeniu public,
+// Folosim modele elegante „Free Low Poly Vehicles Pack” de Rgsdev (licență CC0 — domeniu public,
 // opengameart.org, culori pe materiale). Fiecare vehicul e un .glb așezat pe planul hărții cu
 // direcția lui de mers → la rotirea/înclinarea hărții se văd spatele și lateralul. Starea
 // (mișcare/ralanti/oprit/offline) e redată printr-un inel colorat la sol.
@@ -18,7 +18,7 @@ const HEX: Record<string, string> = { moving: '#22c55e', idle: '#eab308', stoppe
 // Mărime CONSTANTĂ PE ECRAN (ca un marker): mașina ~CAR_TARGET_PX px lungime la orice zoom.
 // Mic & discret — modelele mari, înclinate, se aglomerau și arătau grosolan.
 const CAR_TARGET_PX = 40;
-const CAR_LEN_M = 4.7; // lungimea de referință (mașina) în „metri"-model; restul cresc proporțional
+const CAR_LEN_M = 4.7; // lungimea de referință (mașina) în „metri”-model; restul cresc proporțional
 
 // Metri reali per pixel la zoom/latitudine (MapLibre = tile-uri 512px)
 function metersPerPixel(zoom: number, lat: number): number {
@@ -73,14 +73,14 @@ function trailSegments(buf: number[][], color: string): any[] {
 
 // ─── Încărcarea + normalizarea modelelor .glb (o singură dată, cache la nivel de modul) ───
 const MODEL_URL: Record<string, string> = { car: sedanUrl, truck: truckUrl, van: vanUrl, bus: busUrl };
-const MODEL_LEN: Record<string, number> = { car: 4.7, van: 5.6, truck: 6.8, bus: 11.0 }; // lungimi „reale" (m) → scară relativă
+const MODEL_LEN: Record<string, number> = { car: 4.7, van: 5.6, truck: 6.8, bus: 11.0 }; // lungimi „reale” (m) → scară relativă
 const MODEL_YAW = Math.PI / 2; // rotim modelul (bot pe +Z în pachetul Rgsdev) astfel încât botul să fie pe +X
 const TEMPLATES: Record<string, THREE.Group> = {};
 let modelsReady = false;
 let loadStarted = false;
 const readyCbs: Array<() => void> = [];
 
-// Normalizează un model: centrat pe X/Z, roțile pe y=0, botul pe +X, lungime = MODEL_LEN[cat] „metri".
+// Normalizează un model: centrat pe X/Z, roțile pe y=0, botul pe +X, lungime = MODEL_LEN[cat] „metri”.
 function normalize(root: THREE.Object3D, cat: string): THREE.Group {
   const box0 = new THREE.Box3().setFromObject(root);
   const size = new THREE.Vector3(); box0.getSize(size);
@@ -99,7 +99,7 @@ function startLoading() {
   const loader = new GLTFLoader();
   const load = (cat: string) => new Promise<void>((resolve) => {
     loader.load(MODEL_URL[cat], (g) => {
-      // Detectăm materialul „vopsea" (caroseria) = cel cu cei mai mulți vertecși, EXCLUZÂND roțile
+      // Detectăm materialul „vopsea” (caroseria) = cel cu cei mai mulți vertecși, EXCLUZÂND roțile
       // (jante/anvelope). Îl vom re-colora per-vehicul în culoarea stării (paleta Rgsdev e prea închisă).
       const vByMat = new Map<any, number>(); const wheelMats = new Set<any>();
       g.scene.traverse((o: any) => {
@@ -112,7 +112,7 @@ function startLoading() {
         const mats = Array.isArray(o.material) ? o.material : [o.material];
         for (const m of mats) {
           if (!m) continue;
-          // Conversia FBX→GLB lasă fețe cu winding inconsecvent → back-face culling face „găuri" (model rupt).
+          // Conversia FBX→GLB lasă fețe cu winding inconsecvent → back-face culling face „găuri” (model rupt).
           // DoubleSide le desenează pe toate; forțăm opac + depth ca să nu se vadă prin ele.
           m.side = THREE.DoubleSide; m.transparent = false; m.opacity = 1; m.depthWrite = true; m.depthTest = true;
           m.needsUpdate = true;
@@ -268,7 +268,7 @@ export function createVehicleLayer(): VehicleLayer {
       const mat = Array.isArray(args) ? args : (args && args.defaultProjectionData && args.defaultProjectionData.mainMatrix);
       if (!mat) return;
       // Reper-de-precizie: la zoom mare, coordonatele mercator absolute (~0.57) + extinderea minusculă a
-      // modelului depășesc precizia float32 pe GPU → geometria se „strică". Așezăm modelele RELATIV la o
+      // modelului depășesc precizia float32 pe GPU → geometria se „strică”. Așezăm modelele RELATIV la o
       // ancoră (centrul hărții) astfel încât GPU-ul să primească doar numere mici, și compensăm ancora în
       // matricea de proiecție (calcul în float64 pe CPU). Rezultat identic, dar stabil la orice zoom.
       const c = mapRef.getCenter();

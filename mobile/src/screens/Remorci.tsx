@@ -230,7 +230,7 @@ export function Remorci() {
       )}
       {del && form && (
         <Confirma title="Confirmare ștergere" okLabel="Șterge" danger busy={busy}
-          text={'Ștergi ' + (form.fel === 'remorca' ? 'remorca' : 'semiremorca') + ' ' + form.plate + ' din flotă?\n\nVehiculele care o aveau ca „obișnuită" rămân fără ea.'}
+          text={'Ștergi ' + (form.fel === 'remorca' ? 'remorca' : 'semiremorca') + ' ' + form.plate + ' din flotă?\n\nVehiculele care o aveau ca „obișnuită” rămân fără ea.'}
           onCancel={() => setDel(false)} onOk={sterge} />
       )}
     </div>

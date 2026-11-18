@@ -615,6 +615,21 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-18
 
+### AMÂNDOI · Ghilimelele din aplicație: „…”, nu „…" (punctul 7 găsit pe drum)
+*Alin, 18.11: „cele găsite pe drum, toate, fă-le cum le-ai propus” — la 7: într-un lot separat.*
+
+**Ce am schimbat:** în toată aplicația, ghilimelele românești se închid acum cu ”, ca pe site: butoane și îndemnuri („apasă
+„Salvează””), mesajele de eroare, anunțurile, emailurile, hârtiile (contracte, facturi, oferte, rapoarte), ghidul lui RA Insight și
+ecranele telefonului. Am schimbat la fel și comentariile din cod, ca reperele după care se caută bucăți de cod să rămână aceleași.
+Unde o ghilimea stătea într-un atribut HTML (de exemplu titlul unui buton din „Dispozitive”), textul se tăia; acum se vede întreg.
+
+**Ce vede fondatorul:** aceleași texte, cu „…” peste tot. Nicio funcție nu s-a schimbat.
+
+**Ce vede clientul:** la fel. Pe telefon, textele scrise de server se văd de acum; cele scrise în telefon vin cu APK-ul următor.
+
+Reper: 420 de fișiere (pagina, serverul, modulele, probele, telefonul); unealta de schimbat nu e în depozit (citea codul cu analizorul
+TypeScript, ca să nu atingă expresiile de căutare). Probă nouă: `verify_ghilimele.js` (în `npm test`).
+
 ### AMÂNDOI · Prima pagină pe telefon și pe tabletă: agenții pe cartonașe, un singur telefon la pachete
 *Alin, 18.11, la macheta „Agenții pe telefon”: „1. da, 2. da, 3. da (iar când intri la compară, să nu mai apară telefon, ci doar comparația)”.*
 

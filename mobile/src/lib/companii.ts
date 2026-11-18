@@ -10,7 +10,7 @@ import { DOSAR_FEL, de } from './contracte';
 import { adresaFirmei } from '../components/FondatorUi';
 
 // Adresa dosarului juridic al unei firme (ecranele Contracte). UN SINGUR loc, ca toate intrările
-// (pastila din registru, fila Contract, „Deschide dosarul" după Client nou, oferta care a devenit client)
+// (pastila din registru, fila Contract, „Deschide dosarul” după Client nou, oferta care a devenit client)
 // să ducă în același loc.
 export const rutaDosar = (companyId: any) => '/admin/contracts/' + encodeURIComponent(String(companyId));
 // Fișa firmei, cu fila de deschis (detalii / utilizatori / vehicule / facturi / abonament / contract).
@@ -36,14 +36,14 @@ export function dataOraRo(v: any): string {
   const t = ms(v);
   return t ? new Date(t).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }) : '—';
 }
-// „1.234 lei" — sumă întreagă, cum o arată web-ul în registru.
+// „1.234 lei” — sumă întreagă, cum o arată web-ul în registru.
 export function leiScurt(v: any): string { return (Number(v) || 0).toLocaleString('ro-RO') + ' lei'; }
 export function nrVeh(n: any): string { const x = Number(n) || 0; return x === 1 ? '1 vehicul' : x + de(x) + 'vehicule'; }
 export function nrUseri(n: any): string { const x = Number(n) || 0; return x === 1 ? '1 utilizator' : x + de(x) + 'utilizatori'; }
 export function nrPlati(n: any): string { const x = Number(n) || 0; return x === 1 ? '1 plată' : x + de(x) + 'plăți'; }
 
 // ── Filtrele registrului (CO_FILTRE). Numărătoarea se face pe TOATĂ lista, nu pe rezultatul căutării. ──
-// „Fără contract" = nicio hârtie în vigoare sau pe drum: niciun contract, SAU unul încheiat la o firmă care
+// „Fără contract” = nicio hârtie în vigoare sau pe drum: niciun contract, SAU unul încheiat la o firmă care
 // intră în continuare. Același înțeles ca banda roșie din Contracte.
 export function faraContract(c: any): boolean {
   if (c.is_demo || !c.dosar) return false;
@@ -68,7 +68,7 @@ export const CO_FILTRE: { id: string; et: string; f: (c: any) => boolean; ton?: 
 ];
 
 // Căutarea se uită în tot ce ai putea avea în mână când sună telefonul (fără diacritice, fără spații:
-// „0722 123 456" găsește și „0722123456").
+// „0722 123 456” găsește și „0722123456”).
 export function cautaFirma(c: any, q: string): boolean {
   if (!q) return true;
   const ad = c.admin || {};
@@ -108,7 +108,7 @@ export type Fel = '' | 'ok' | 'warn' | 'bad';
 
 // Accesul, ca pe web (_raxAccessCell): un client suspendat se vede SUSPENDAT, cu motivul — două cauze
 // (neplată, oprit de noi), care se rezolvă altfel fiecare — iar o restanță în derulare arată câte zile mai
-// are. Fără „nelimitat" și fără „până la": ceasul pe perioade plătite a plecat pe 29.09 (bloca clienți
+// are. Fără „nelimitat” și fără „până la”: ceasul pe perioade plătite a plecat pe 29.09 (bloca clienți
 // care plătiseră tot) — accesul ține doar de facturile neplătite.
 export function accesPastila(c: any): { et: string; fel: Fel; sub: string } {
   const a = (c && c.access) || {};
@@ -124,7 +124,7 @@ export function accesPastila(c: any): { et: string; fel: Fel; sub: string } {
   return { et: '—', fel: '', sub: '' };
 }
 
-// „Ultima activitate": liniștea prea lungă e un client care se stinge.
+// „Ultima activitate”: liniștea prea lungă e un client care se stinge.
 export function activitate(c: any, acum = Date.now()): { t: string; cald: boolean; muted: boolean } {
   if (c.is_demo) return { t: '—', cald: false, muted: true };
   if (!(Number(c.device_count) > 0)) return { t: 'fără vehicule', cald: false, muted: true };
@@ -135,7 +135,7 @@ export function activitate(c: any, acum = Date.now()): { t: string; cald: boolea
   return { t, cald: z >= ZILE_LINISTE, muted: false };
 }
 
-// „Lunar": suma vine de la server (motorul facturii). Fără preț pus → „0 lei", cu portocaliu.
+// „Lunar”: suma vine de la server (motorul facturii). Fără preț pus → „0 lei”, cu portocaliu.
 export function lunar(c: any, mrr: any): { t: string; cald: boolean; muted: boolean; bold: boolean } {
   if (c.is_demo) return { t: '—', cald: false, muted: true, bold: false };
   if (!mrr) return { t: '…', cald: false, muted: true, bold: false };
@@ -182,8 +182,8 @@ export function contacte(v: any): Contact[] {
 // Emailul, verificat ca pe web (raxCoAddAdmin) — serverul îl verifică oricum din nou.
 export const EMAIL_OK = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
-// ─── Fișa firmei, filele „Stare" și „Acces" (12.10, Robert: „un dashboard pentru fiecare companie… prin taburi") ───
-// Modulele firmei, în ordinea și cu vorbele de pe web (_RAX_MODS). Le citesc fila „Acces" (comutatoarele) și „Stare"
+// ─── Fișa firmei, filele „Stare” și „Acces” (12.10, Robert: „un dashboard pentru fiecare companie… prin taburi”) ───
+// Modulele firmei, în ordinea și cu vorbele de pe web (_RAX_MODS). Le citesc fila „Acces” (comutatoarele) și „Stare”
 // (modulele pornite). Legate de web prin verify_firma_stare.js.
 export const MODULE_FIRMA = [
   { key: 'agents', label: 'Agenți AI', sub: 'Master — permite rularea agenților AI de mai jos' },
@@ -193,14 +193,14 @@ export const MODULE_FIRMA = [
   { key: 'incarcare', label: 'Simulator încărcare', sub: 'Planul de încărcare, semiremorcile și remorcile, fila „Încărcare” din fișa vehiculului — inclus în abonament' },
 ];
 // Sub modulul care merge DUPĂ FLOTĂ (simulatorul): ales de noi sau automat, și de ce — vorbele web-ului (_raxModAuto).
-// Ce e „după flotă" și dacă firma are vehicule care cară marfă le spune serverul (dupa_flota, flota_grea).
+// Ce e „după flotă” și dacă firma are vehicule care cară marfă le spune serverul (dupa_flota, flota_grea).
 export const MOD_ALES = 'Ales de noi, de mână.';
 export const MOD_INAPOI = 'Înapoi la automat';
 export function modulAutoText(flotaGrea: boolean): string {
   return 'Automat, după flotă: ' + (flotaGrea ? 'pornit — firma are camioane, dube sau remorci.' : 'oprit — firma n-are camioane, dube sau remorci.');
 }
 
-// Cartonașele filei „Stare": relația NOASTRĂ cu firma (acces, contract, bani, aparate, RA Insight, module) — nu ce face
+// Cartonașele filei „Stare”: relația NOASTRĂ cu firma (acces, contract, bani, aparate, RA Insight, module) — nu ce face
 // firma în aplicație. Perechea lui _raxStareCartonase din pagină, rulată de probă pe aceleași firme: schimbi una, o
 // schimbi și pe cealaltă. `dep` = regulile celelalte (stările contractului, semnalul aparatului, modulele).
 export type Cartonas = { k: string; v: string; d: string; ton: '' | 'ok' | 'warn' | 'bad' | 'mut'; fila: string };
@@ -247,7 +247,7 @@ export function cartonaseStare(o: any, acum: number, dep: StareDep): Cartonas[] 
     (pl ? 'ultima plată: ' + lei(pl.amount_ron) + ', pe ' + zi(pl.paid_at || pl.created_at) : 'nicio plată încă');
   out.push({ k: 'Facturi și plăți', v: n ? (n === 1 ? '1 document de plată' : n + deN(n) + 'documente de plată') : 'Totul e plătit',
     d: fD.charAt(0).toUpperCase() + fD.slice(1), ton: trecute ? 'warn' : (n ? '' : 'ok'), fila: 'facturi' });
-  // 4. Aparatele (semnalul: stareAparat, ca „Aparate GPS" — legat de agpsStare de pe web)
+  // 4. Aparatele (semnalul: stareAparat, ca „Aparate GPS” — legat de agpsStare de pe web)
   const veh: any[] = (o && o.vehicles) || [];
   const nr: Record<string, number> = { ok: 0, tacut: 0, mut: 0, niciodata: 0 };
   const probl: string[] = [];
@@ -259,7 +259,7 @@ export function cartonaseStare(o: any, acum: number, dep: StareDep): Cartonas[] 
   out.push({ k: 'Aparatele', fila: 'vehicule',
     v: veh.length ? veh.length + (veh.length === 1 ? ' aparat' : deN(veh.length) + 'aparate') + ' · ' + nr.ok + ' comunică' : 'Niciun aparat',
     d: probl.length ? probl.slice(0, 3).join('; ') + (probl.length > 3 ? ' · și încă ' + (probl.length - 3) : '')
-      : (veh.length ? (nr.tacut ? nr.tacut + (nr.tacut === 1 ? ' tăcut' : ' tăcute') + ' de câteva ore; restul comunică.' : 'Toate comunică.') : 'Aparatele le dăm firmei din „Dispozitive".'),
+      : (veh.length ? (nr.tacut ? nr.tacut + (nr.tacut === 1 ? ' tăcut' : ' tăcute') + ' de câteva ore; restul comunică.' : 'Toate comunică.') : 'Aparatele le dăm firmei din „Dispozitive”.'),
     ton: probl.length ? 'bad' : (nr.tacut ? 'warn' : (veh.length ? 'ok' : '')) });
   // 5. RA Insight (doar numere — nu cine ce a întrebat)
   const ri = (o && o.insight) || null;
@@ -268,7 +268,7 @@ export function cartonaseStare(o: any, acum: number, dep: StareDep): Cartonas[] 
     v: ri.conturi + (ri.conturi === 1 ? ' cont' : deN(ri.conturi) + 'conturi'),
     d: ri.fond ? Number(ri.used || 0).toLocaleString('ro-RO') + ' din ' + Number(ri.fond).toLocaleString('ro-RO') + deN(ri.fond) + 'întrebări luna asta' + (ri.epuizat ? ' — fondul s-a terminat' : '')
       : ri.used + deN(ri.used) + 'întrebări luna asta · fără plafon' });
-  // 6. Modulele (aceeași listă ca fila „Acces")
+  // 6. Modulele (aceeași listă ca fila „Acces”)
   const f = (o && o.features) || {};
   const pornite = (dep.module || []).filter((m) => f[m.k]).map((m) => m.et);
   out.push({ k: 'Modulele', fila: 'acces', ton: '', d: pornite.join(', '),

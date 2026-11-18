@@ -1,6 +1,6 @@
 // VehicleDocs — actele vehiculului, în foaia de editare. ACELEAȘI rânduri ca în ecranul „Documente
-// vehicule" (web: loadVehicleDocuments → docSlotCard): ordinea fixă din „Acte cerute", actele lipsă cu
-// „Încarcă", cele existente cu Vezi / Editează / Nou / Șterge, iar jos „Acte înlocuite", pliabil.
+// vehicule" (web: loadVehicleDocuments → docSlotCard): ordinea fixă din „Acte cerute”, actele lipsă cu
+// „Încarcă”, cele existente cu Vezi / Editează / Nou / Șterge, iar jos „Acte înlocuite”, pliabil.
 // Citirea actului completează și fișa deschisă (setFisa); aplicația PROPUNE, omul confirmă.
 import { useEffect, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
@@ -11,7 +11,7 @@ import { DocIstRand, DocRand, nevoiDe, ordoneazaActe, sloturi, tipuriActe, useDo
 import { type Catalog, catalog, flota, vehDe } from './flotaCommon';
 import '../screens/flota.css';
 
-// Folosite și de alte ecrane (detaliul notificării: „Vezi actul"; contractele: micșorarea scanului).
+// Folosite și de alte ecrane (detaliul notificării: „Vezi actul”; contractele: micșorarea scanului).
 // Stau în ActeVehicul.tsx; le dăm mai departe de aici, ca importurile existente să nu se schimbe.
 export { shrink, aduActul, deschideInAfara, type ActAdus } from './ActeVehicul';
 

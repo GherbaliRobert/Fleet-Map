@@ -1,7 +1,7 @@
 // Categoriile de vehicul și pictogramele — ACELEAȘI ca în fișa de pe web (public/index.html →
 // #edit-vehicle-type, ICON_OPTIONS, iconFromType, TIPURI_CU_AXE). Dacă schimbi o listă, schimb-o în
 // AMBELE locuri: valorile sunt cele stocate în bază, iar o valoare scrisă altfel aici ar face ca lista
-// de pe telefon să arate gol la vehiculele trecute pe web (cum era înainte cu „Autotractor" sau „TIR").
+// de pe telefon să arate gol la vehiculele trecute pe web (cum era înainte cu „Autotractor” sau „TIR”).
 import { vehCatOf, type VehCat } from './VehicleArt';
 
 export const CATEGORII: { v: string; l: string }[] = [
@@ -28,7 +28,7 @@ export const PICTOGRAME: { v: string; l: string }[] = [
   { v: 'phev', l: 'Plug-in hibrid' }, { v: 'hybrid', l: 'Hibrid' }, { v: 'cng', l: 'CNG/GPL' },
 ];
 
-// Categoria → pictograma implicită (web: iconFromType). Alegi „Autotractor", pictograma se leagă singură.
+// Categoria → pictograma implicită (web: iconFromType). Alegi „Autotractor”, pictograma se leagă singură.
 const ICON_DIN_TIP: Record<string, string> = {
   'Auto': 'car', 'Camion': 'truck', 'TIR': 'tir', 'Duba': 'van', 'Dubă': 'van',
   'Motocicleta': 'motorcycle', 'Motocicletă': 'motorcycle', 'Autobuz': 'bus',
@@ -46,5 +46,5 @@ export function vehCatDin(v: { icon?: string | null; vehicle_type?: string | nul
   return vehCatOf({ icon: (v && v.icon) || iconDinTip(v && v.vehicle_type), vehicle_type: v && v.vehicle_type });
 }
 
-// Categoriile cu axe: la ele apare „Config Camion" (web: TIPURI_CU_AXE).
+// Categoriile cu axe: la ele apare „Config Camion” (web: TIPURI_CU_AXE).
 export const TIPURI_CU_AXE = ['Autotractor', 'Camion', 'TIR', 'Remorca', 'Remorcă tehnologică', 'Automixt', 'Utilaj', 'Tractor', 'Buldoexcavator', 'Combină agricolă'];

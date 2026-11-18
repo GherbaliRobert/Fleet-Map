@@ -6,8 +6,8 @@ import { Icon } from '../components/Icon';
 import './admin.css';
 import './detail.css'; // .sheet*, .btn*
 
-// Super-admin: Control costuri — 2 sub-view-uri: „Cash-flow" (venituri vs cheltuieli → profit, paritate cu web)
-// + „Costuri" (panouri provider Railway/Cloudflare/Anthropic, token-uri DOAR env pe server, + registru costuri).
+// Super-admin: Control costuri — 2 sub-view-uri: „Cash-flow” (venituri vs cheltuieli → profit, paritate cu web)
+// + „Costuri” (panouri provider Railway/Cloudflare/Anthropic, token-uri DOAR env pe server, + registru costuri).
 function n(v: any, d = 0) { return (v == null || isNaN(Number(v))) ? d : Number(v); }
 function nf(v: any) { return Math.round(n(v)).toLocaleString('ro-RO'); }
 function fmtBytes(b: any) { const x = n(b); if (x > 1e9) return (x / 1e9).toFixed(1) + ' GB'; if (x > 1e6) return (x / 1e6).toFixed(0) + ' MB'; return (x / 1e3).toFixed(0) + ' KB'; }
@@ -53,7 +53,7 @@ export function CostControl() {
     catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setSaving(false); }
   }
   async function markPaid(c: any) { setSaving(true); try { await Api.markCostPaid(c.id); showToast('Marcat plătit'); setSel(null); reload(); loadFin(); } catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setSaving(false); } }
-  async function del(c: any) { if (!confirm('Ștergi „' + (c.description || c.provider) + '"?')) return; setSaving(true); try { await Api.deleteCost(c.id); showToast('Șters'); setSel(null); reload(); } catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setSaving(false); } }
+  async function del(c: any) { if (!confirm('Ștergi „' + (c.description || c.provider) + '”?')) return; setSaving(true); try { await Api.deleteCost(c.id); showToast('Șters'); setSel(null); reload(); } catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setSaving(false); } }
 
   const costs = (data && data.costs) || [];
 

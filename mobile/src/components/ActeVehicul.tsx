@@ -1,6 +1,6 @@
-// Actele mașinilor pe telefon — ACELEAȘI rânduri în ecranul „Documente vehicule" și în fișa mașinii, ca pe
-// web (docSlotCard): fiecare act cerut are rândul lui, plin sau gol („RCA — obligatoriu, nu e încărcat"),
-// cu „Încarcă" pe cel gol și Vezi / Editează / Nou / Șterge pe cel plin. O singură fereastră de act, cu
+// Actele mașinilor pe telefon — ACELEAȘI rânduri în ecranul „Documente vehicule” și în fișa mașinii, ca pe
+// web (docSlotCard): fiecare act cerut are rândul lui, plin sau gol („RCA — obligatoriu, nu e încărcat”),
+// cu „Încarcă” pe cel gol și Vezi / Editează / Nou / Șterge pe cel plin. O singură fereastră de act, cu
 // citirea actului (poză sau PDF), verificarea numărului de pe act și întrebarea la reînnoire.
 //
 // Decizie (păstrată de la VehicleDocs): FĂRĂ plugin nativ de cameră. Un <input type="file" capture>
@@ -124,11 +124,11 @@ export async function deschideInAfara(act: ActAdus, nume: string) {
   setTimeout(() => { try { URL.revokeObjectURL(act.url); } catch { /* */ } }, 60000);
 }
 
-// ─── Ce acte trebuie să aibă mașina („Acte cerute") și rândurile ei ────────────────────────────
+// ─── Ce acte trebuie să aibă mașina („Acte cerute”) și rândurile ei ────────────────────────────
 export type Nevoie = { type: string; need: 'req' | 'opt' };
 export type Slot = { d?: any; tip?: string; need?: string; imei: string };
 
-// Lista de tipuri pentru alegerea actului: din „Acte cerute" (sursa unică, maint_types.js), plus „Altul".
+// Lista de tipuri pentru alegerea actului: din „Acte cerute” (sursa unică, maint_types.js), plus „Altul”.
 export function tipuriActe(req: any | null, cat: Catalog | null): string[] {
   const din = (req && Array.isArray(req.rows) && req.rows.length) ? req.rows.map((r: any) => String(r.type)) : (cat ? cat.docs : []);
   return din.concat(din.indexOf('Altul') < 0 ? ['Altul'] : []);
@@ -138,13 +138,13 @@ export function metaAct(req: any | null, type: string): { icon: IconName; fam: s
   return r ? { icon: iconFa(r.icon, 'fileBar'), fam: r.fam || 'f-neutral' } : { icon: 'fileBar', fam: 'f-neutral' };
 }
 // Actele pe care mașina ar TREBUI să le aibă, după felul ei. Fără clasă (catalog necitit) → nimic,
-// ca aplicația să nu strige „lipsește" pe ghicite.
+// ca aplicația să nu strige „lipsește” pe ghicite.
 export function nevoiDe(dev: any, req: any | null, cat: Catalog | null): Nevoie[] {
   const cls = dev ? clasaServis(dev, cat) : null;
   if (!cls || !req || !Array.isArray(req.rows)) return [];
   return req.rows.map((r: any) => ({ type: String(r.type), need: r[cls] })).filter((r: any) => r.need === 'req' || r.need === 'opt');
 }
-// Toate actele unei mașini, într-o ordine STABILĂ: cele cerute (în ordinea din „Acte cerute"), pline sau
+// Toate actele unei mașini, într-o ordine STABILĂ: cele cerute (în ordinea din „Acte cerute”), pline sau
 // goale, plus orice act în plus. Înveți unde e ITP-ul și rămâne acolo; urgența o spune culoarea.
 export function sloturi(imei: string, acte: any[], nevoi: Nevoie[]): Slot[] {
   const luate: Record<string, 1> = {};
@@ -275,7 +275,7 @@ export function DocForm({ imei0, tip0, edit, lockImei, devs, tipuri, ctxImei, fi
   const [renew, setRenew] = useState<{ vechi: any; f: any; patch: Record<string, any>; inFisa: number } | null>(null);
   const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
-  // Câmpurile de fișă se pot pune: în formularul mașinii deschise (se salvează cu „Salvează"-ul ei) sau
+  // Câmpurile de fișă se pot pune: în formularul mașinii deschise (se salvează cu „Salvează”-ul ei) sau
   // direct pe mașină, dacă rolul are voie să modifice fișa.
   const inFormular = (t: string) => !!onFisa && !!ctxImei && t === ctxImei;
   const fisaPosibila = (t: string) => inFormular(t) || poateFisa;
@@ -323,7 +323,7 @@ export function DocForm({ imei0, tip0, edit, lockImei, devs, tipuri, ctxImei, fi
     if (prop) setBife(bifeImplicite(prop.campuri, nou, p));
   }
 
-  // „Validează și adaugă actul": ce e bifat la act intră în formular, ce e bifat la fișă merge la mașină,
+  // „Validează și adaugă actul”: ce e bifat la act intră în formular, ce e bifat la fișă merge la mașină,
   // iar actul se salvează pe loc (fluxul e unul: încarci → vezi ce s-a citit → confirmi → e în listă).
   async function aplica() {
     const c = (prop && prop.campuri) || {};
@@ -343,8 +343,8 @@ export function DocForm({ imei0, tip0, edit, lockImei, devs, tipuri, ctxImei, fi
     if (n && inFormular(imei)) { onFisa!(patch); inFisa = n; deScris = {}; }
     setF(f2); setProp(null); setFisaPending(deScris);
     if (f2.doc_type && imei) await salveaza(f2, deScris, false, inFisa);
-    else showToast((inFisa ? 'Completat: ' + inFisa + (inFisa === 1 ? ' câmp' : ' câmpuri') + ' în fișă — apasă „Salvează" pentru ele. ' : 'Completat în formular. ')
-      + 'Pentru act, alege ' + (!imei ? 'vehiculul' : 'tipul actului') + ' și apasă „Adaugă actul".');
+    else showToast((inFisa ? 'Completat: ' + inFisa + (inFisa === 1 ? ' câmp' : ' câmpuri') + ' în fișă — apasă „Salvează” pentru ele. ' : 'Completat în formular. ')
+      + 'Pentru act, alege ' + (!imei ? 'vehiculul' : 'tipul actului') + ' și apasă „Adaugă actul”.');
   }
 
   async function salveaza(date?: any, patch?: Record<string, any>, reinnoireConfirmata?: boolean, dejaInFisa = 0) {
@@ -366,10 +366,10 @@ export function DocForm({ imei0, tip0, edit, lockImei, devs, tipuri, ctxImei, fi
         if (vechi) { setRenew({ vechi, f: x, patch: pf, inFisa: dejaInFisa }); return; }
       }
       if (edit) await Api.updateDocument(edit.id, body); else await Api.createDocument(body);
-      let coada = dejaInFisa ? ' · ' + dejaInFisa + (dejaInFisa === 1 ? ' câmp completat' : ' câmpuri completate') + ' în fișă — apasă „Salvează" pentru ele' : '';
+      let coada = dejaInFisa ? ' · ' + dejaInFisa + (dejaInFisa === 1 ? ' câmp completat' : ' câmpuri completate') + ' în fișă — apasă „Salvează” pentru ele' : '';
       const n = Object.keys(pf || {}).length;
       if (n) {
-        if (inFormular(imei)) { onFisa!(pf); coada = ' · ' + n + (n === 1 ? ' câmp completat' : ' câmpuri completate') + ' în fișă — apasă „Salvează" pentru ele'; }
+        if (inFormular(imei)) { onFisa!(pf); coada = ' · ' + n + (n === 1 ? ' câmp completat' : ' câmpuri completate') + ' în fișă — apasă „Salvează” pentru ele'; }
         else if (poateFisa) {
           // Ruta face actualizare PARȚIALĂ: atinge doar coloanele trimise, restul fișei rămâne neatins.
           try { await Api.updateDeviceDetails(imei, pf); uitaFlota(); coada = ' · am completat și fișa mașinii (' + n + (n === 1 ? ' câmp)' : ' câmpuri)'); }
@@ -450,7 +450,7 @@ export function DocForm({ imei0, tip0, edit, lockImei, devs, tipuri, ctxImei, fi
                       <button class="btn fl-btn2" disabled={busy} onClick={() => { setProp(null); setFisier(null); setPot(null); }}>Renunță</button>
                     </div>
                     <div class="fl-hint" style="margin-top:6px">La validare actul se salvează și apare în listă, cu fișierul atașat.
-                      {inFormular(imei) ? ' Câmpurile pentru fișă se completează în formularul mașinii — pe alea le salvezi cu „Salvează".' : (poateFisa ? ' Câmpurile bifate pentru fișă se scriu direct pe mașină.' : '')}</div>
+                      {inFormular(imei) ? ' Câmpurile pentru fișă se completează în formularul mașinii — pe alea le salvezi cu „Salvează”.' : (poateFisa ? ' Câmpurile bifate pentru fișă se scriu direct pe mașină.' : '')}</div>
                   </>
                 ) : (
                   <div class="fl-hint">N-am putut citi nimic utilizabil din act ({prop.sursa || '?'}). Completează manual — sau încearcă o poză mai dreaptă, fără reflexii.</div>
@@ -545,7 +545,7 @@ export function useDocOps({ devs, tipuri, reload, ctxImei, fisa, onFisa }: {
       {del && (
         <Confirma title="Confirmare ștergere" okLabel="Șterge" danger busy={busy}
           text={'Ștergi „' + del.doc_type + '” de la ' + numar(devs, del.imei) + '?'
-            + (del.doc_type !== 'Altul' ? '\n\nDacă vrei doar să pui unul nou în locul lui, folosește butonul „Nou" — atunci ăsta rămâne în istoric.' : '')
+            + (del.doc_type !== 'Altul' ? '\n\nDacă vrei doar să pui unul nou în locul lui, folosește butonul „Nou” — atunci ăsta rămâne în istoric.' : '')
             + (del.has_file ? '\n\nSe șterge și poza sau PDF-ul atașat.' : '')}
           onCancel={() => setDel(null)} onOk={() => sterge(del)} />
       )}

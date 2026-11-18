@@ -24,7 +24,7 @@ t('masă lipsă → fără încadrare', T.categorieDupaMasa(null) === null && T.
 console.log('\n══ Norma de poluare, scrisă cum vrea omul ══\n');
 [['Euro 6', 'euro6'], ['EURO6', 'euro6'], ['euro VI', 'euro6'], ['6', 'euro6'], ['Euro 5', 'euro5'],
  ['Euro 4', 'euro4'], ['Euro 3', 'euro3'], ['Euro 2', 'euro3'], ['euro-ii', 'euro3'], ['Euro 7', 'euro6']]
-  .forEach(([intrare, astept]) => t('„' + intrare + '" → ' + astept, T.euroNormalizat(intrare) === astept, String(T.euroNormalizat(intrare))));
+  .forEach(([intrare, astept]) => t('„' + intrare + '” → ' + astept, T.euroNormalizat(intrare) === astept, String(T.euroNormalizat(intrare))));
 t('text fără sens → necunoscut', T.euroNormalizat('n/a') === null && T.euroNormalizat('') === null);
 
 console.log('\n══ Tarifele PUBLICATE ies exact ══\n');
@@ -77,7 +77,7 @@ const g = T.grilaValida({ aplicabilDin: '2027-01-01', tarife: { c3: { euro6: { a
 t('valorile scrise de om se păstrează', g.tarife.c3.euro6.autostrada === 0.55 && g.tarife.c3.euro6.national === 0.30, JSON.stringify(g.tarife.c3.euro6));
 t('data se păstrează', g.aplicabilDin === '2027-01-01', g.aplicabilDin);
 t('restul grilei rămâne implicit', g.tarife.c1.euro6.autostrada === 0.17, String(g.tarife.c1.euro6.autostrada));
-t('valoarea scrisă de om nu mai e „presupusă"', g.tarife.c3.euro6.presupus === false);
+t('valoarea scrisă de om nu mai e „presupusă”', g.tarife.c3.euro6.presupus === false);
 
 // Valori absurde: mai bine implicitul decât o taxă de 900 lei/km salvată din greșeală.
 const gr = T.grilaValida({ tarife: { c3: { euro6: { autostrada: 900, national: -5 } } } });

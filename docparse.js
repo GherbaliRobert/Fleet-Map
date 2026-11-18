@@ -44,7 +44,7 @@ const COMBUSTIBIL = [
   [/\bG\.?P\.?L\b|GAZ PETROL/i,   'GPL'],
   [/\bELECTRIC/i,                 'Electric'],
   [/\bHIBRID|\bHYBRID/i,          'Hibrid'],
-  [/\bG\.?N\.?C\b|METAN/i,        'Altul'],  // selectorul n-are GNC — mai bine „Altul" decât o valoare orfană
+  [/\bG\.?N\.?C\b|METAN/i,        'Altul'],  // selectorul n-are GNC — mai bine „Altul” decât o valoare orfană
 ];
 
 // Categoria europeană de pe talon (codul J) → propunerea de tip din aplicație. Se PROPUNE, nu se
@@ -63,9 +63,9 @@ const ASIGURATORI = [
 ];
 
 // ─── Curățarea textului venit de la OCR ───────────────────────────────────────────────────────────
-// OCR-ul confundă mereu aceleași perechi. Reparația NU se poate face global: „0" și „O" trebuie
+// OCR-ul confundă mereu aceleași perechi. Reparația NU se poate face global: „0” și „O” trebuie
 // tratate diferit după CONTEXT. Într-un VIN, litera O nu există niciodată — deci orice O e 0. Într-o
-// marcă („VOLVO"), invers. De asta există două funcții, nu una.
+// marcă („VOLVO”), invers. De asta există două funcții, nu una.
 function normNumeric(s) {
   return String(s || '')
     .replace(/[OoQ]/g, '0').replace(/[Il|]/g, '1')
@@ -76,7 +76,7 @@ function normVin(s) {
   return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
     .replace(/[IO]/g, (c) => (c === 'I' ? '1' : '0')).replace(/Q/g, '0');
 }
-// Unele PDF-uri scriu titlurile cu litere spațiate („O R I G I N A L", „P O L I T A"). Dacă
+// Unele PDF-uri scriu titlurile cu litere spațiate („O R I G I N A L”, „P O L I T A”). Dacă
 // reconstrucția din pagină n-a prins cazul, îl reparăm aici: patru sau mai multe litere singure,
 // despărțite de câte un spațiu, sunt UN cuvânt, nu opt. Fără asta, nicio regulă nu se potrivește.
 function lipesteLitereRazlete(linie) {
@@ -93,14 +93,14 @@ function curataText(t) {
 // ─── Cărămizile ───────────────────────────────────────────────────────────────────────────────────
 const RE_VIN_BRUT = /\b[A-HJ-NPR-Z0-9IOQ]{17}\b/g;   // acceptăm I/O/Q la căutare, le reparăm după
 const RE_DATA = /\b(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{2,4})\b/g;
-// Numărul de înmatriculare din România: 1-2 litere de județ, 2-3 cifre, 3 litere. Bucureștiul are „B".
+// Numărul de înmatriculare din România: 1-2 litere de județ, 2-3 cifre, 3 litere. Bucureștiul are „B”.
 const RE_NUMAR = /\b([A-Z]{1,2})\s?-?\s?(\d{2,3})\s?-?\s?([A-Z]{3})\b/g;
 
 function ziLunaAn(zi, luna, an) {
   let z = parseInt(zi, 10), l = parseInt(luna, 10), a = parseInt(an, 10);
-  if (a < 100) a += a < 70 ? 2000 : 1900;   // „26" = 2026, „98" = 1998
+  if (a < 100) a += a < 70 ? 2000 : 1900;   // „26” = 2026, „98” = 1998
   if (!(z >= 1 && l >= 1 && l <= 12 && a >= 1900 && a <= 2100)) return null;
-  // Ziua se verifică pe LUNA ei, nu pe un plafon de 31: altfel „31.02.2027" trecea ca dată bună,
+  // Ziua se verifică pe LUNA ei, nu pe un plafon de 31: altfel „31.02.2027” trecea ca dată bună,
   // iar o dată de expirare GREȘITĂ e mai rea decât una lipsă — alertele s-ar declanșa aiurea, iar
   // omul ar crede că e acoperit. Verificarea prin Date prinde și 29 februarie în ani nebisecți.
   const dt = new Date(Date.UTC(a, l - 1, z));
@@ -134,14 +134,14 @@ function gasesteNumar(text) {
   let m; RE_NUMAR.lastIndex = 0;
   while ((m = RE_NUMAR.exec(T))) {
     const jud = m[1], cifre = m[2], lit = m[3];
-    // Filtrează potriviri accidentale din alte coduri: județul are 1-2 litere, iar „B" e doar București.
+    // Filtrează potriviri accidentale din alte coduri: județul are 1-2 litere, iar „B” e doar București.
     if (jud.length === 1 && jud !== 'B') continue;
     return `${jud} ${cifre} ${lit}`;
   }
   return null;
 }
 
-// Valoarea care urmează după un cod de câmp. Codurile apar ca „E)", „E.", „E ", „(E)" etc., iar
+// Valoarea care urmează după un cod de câmp. Codurile apar ca „E)”, „E.”, „E ”, „(E)” etc., iar
 // valoarea poate fi pe același rând sau pe următorul — depinde de cum a citit OCR-ul coloanele.
 function valoareDupaCod(text, cod) {
   const c = cod.replace('.', '\\.');
@@ -167,7 +167,7 @@ function primulNumar(s) {
 // etichete în română. Până acum le ignoram complet, deci un client care încărca doar polița rămânea
 // cu fișa goală, deși informația era acolo, sub ochii noștri.
 //
-// Fiecare tipar cere eticheta, apoi valoarea. Unitățile („cm3", „kW", „kg") se acceptă dar nu se cer:
+// Fiecare tipar cere eticheta, apoi valoarea. Unitățile („cm3”, „kW”, „kg”) se acceptă dar nu se cer:
 // unele acte le scriu, altele nu.
 const CAMP_ETICHETA = [
   // [câmp, tipar, cum se transformă valoarea, încredere]
@@ -183,7 +183,7 @@ const CAMP_ETICHETA = [
 
 // Culege în `pune` tot ce găsește. Verificările de plauzibilitate există pentru că un tipar prea
 // îngăduitor produce valori absurde, iar o cilindree de 7 cmc în fișa clientului e mai rea decât
-// un câmp gol: nimeni n-o mai verifică după ce a fost „completată automat".
+// un câmp gol: nimeni n-o mai verifică după ce a fost „completată automat”.
 function culegeCampuriVehicul(T, pune) {
   for (const [camp, re, conv, inc] of CAMP_ETICHETA) {
     const m = T.match(re);
@@ -228,7 +228,7 @@ function parseTalon(textBrut) {
     if (!brut) continue;
     switch (def.camp) {
       // Aceeași gardă ca la căutarea liberă: un VIN adevărat are și litere, și cifre. Fără ea, o
-      // serie de document din 17 cifre pure ar fi trecut drept VIN doar pentru că stătea după „E)".
+      // serie de document din 17 cifre pure ar fi trecut drept VIN doar pentru că stătea după „E)”.
       case 'vin': { const v = normVin(brut); if (v.length === 17 && /[A-Z]/.test(v) && /[0-9]/.test(v)) pune('vin', v, 0.95); break; }
       case 'plate': { const p = gasesteNumar(brut.toUpperCase()); if (p) pune('plate', p, 0.95); break; }
       case 'brand': pune('brand', brut.replace(/[^A-Za-zĂÂÎȘȚăâîșț0-9 \-]/g, '').trim().slice(0, 40), 0.8); break;
@@ -313,13 +313,13 @@ function parseDocument(textBrut, tipCerut) {
 
   // Emitentul. Lista de nume cunoscute e o scurtătură, nu o barieră: piața se schimbă, iar un act
   // de la un asigurător care nu e în listă nu are voie să rămână fără emitent. Deci, dacă nu se
-  // potrivește niciun nume, căutăm tiparul unei firme românești (…S.A. / …SRL / „ASIGURARI").
+  // potrivește niciun nume, căutăm tiparul unei firme românești (…S.A. / …SRL / „ASIGURARI”).
   const as = ASIGURATORI.find((a) => T.includes(a));
   if (as) pune('issuer', as, 0.85);
   else {
-    // Un formular de poliță e plin de ETICHETE scrise cu majuscule („9. NUMELE ȘI ADRESA",
-    // „ASIGURATUL", „PROPRIETAR"). Fără filtrul de mai jos, ele arată exact ca un nume de firmă
-    // și ajung în fișa clientului ca emitent. Prima poliță reală ne-a dat „9. NUMELE SI ADRESA".
+    // Un formular de poliță e plin de ETICHETE scrise cu majuscule („9. NUMELE ȘI ADRESA”,
+    // „ASIGURATUL”, „PROPRIETAR”). Fără filtrul de mai jos, ele arată exact ca un nume de firmă
+    // și ajung în fișa clientului ca emitent. Prima poliță reală ne-a dat „9. NUMELE SI ADRESA”.
     const ETICHETA_FORMULAR = /(NUMELE|ADRESA|ASIGURAT|PROPRIETAR|UTILIZATOR|DEȚIN[ĂA]TOR|DETIN[ĂA]TOR|CONTRACTANT|VALABIL|PERIOAD|OBIECT|ORIGINAL|COPIE|EXEMPLAR|SERIA|POLI[ȚT]|VEHICUL|AUTOVEHICUL|DATE\b|RUBRIC)/;
     const candidati = [];
     const re = /([A-ZĂÂÎȘȚ][A-ZĂÂÎȘȚ0-9 .&\-]{3,40}?(?:ASIGUR[ĂA]RI|INSURANCE|S\.?A\.?|S\.?R\.?L\.?))(?:\s|$)/g;
@@ -327,9 +327,9 @@ function parseDocument(textBrut, tipCerut) {
     while ((m = re.exec(T))) candidati.push(m[1]);
     for (const brut of candidati) {
       const nume = brut.trim().replace(/\s+/g, ' ')
-        // Cuvintele-etichetă din față se taie („ASIGURATOR: X SA" → „X SA").
+        // Cuvintele-etichetă din față se taie („ASIGURATOR: X SA” → „X SA”).
         .replace(/^(?:ASIGUR[ĂA]TOR(?:UL)?|EMITENT(?:UL)?|SOCIETATEA|COMPANIA|FIRMA)\s*[:\-]?\s*/i, '')
-        // Numerotarea de rubrică din față („9. X SA" → „X SA").
+        // Numerotarea de rubrică din față („9. X SA” → „X SA”).
         .replace(/^\d+\s*[.)]\s*/, '')
         .trim();
       if (nume.length < 6) continue;
@@ -347,12 +347,12 @@ function parseDocument(textBrut, tipCerut) {
     if (m) pune('issuer', m[1].trim().slice(0, 60), 0.6);
   }
 
-  // Numărul actului. Forma românească uzuală e „Seria XX Nr. 1234567" — seria și numărul sunt
-  // despărțite de cuvântul „Nr.", deci un tipar care le cere lipite pierde seria.
+  // Numărul actului. Forma românească uzuală e „Seria XX Nr. 1234567” — seria și numărul sunt
+  // despărțite de cuvântul „Nr.”, deci un tipar care le cere lipite pierde seria.
   // Cuvinte care NU pot fi o serie, oricât de bine s-ar potrivi tiparul. Fără lista asta, „Nr.
-  // înmatriculare" ajungea serie de act, iar „Seria RO/22/H22 Nr 123..." dădea seria „NR".
+  // înmatriculare" ajungea serie de act, iar „Seria RO/22/H22 Nr 123...” dădea seria „NR”.
   const NU_E_SERIE = /^(NR|SERIA|SERIE|NUMAR|NUMĂR|POLITA|POLIȚA|INMATRICULARE|ÎNMATRICULARE|VALABIL|DATA|CNP|CUI|TOTAL|LEI|RON)$/;
-  // Seria poate conține cifre și bare („RO/22/H22"), deci nu se poate cere doar litere.
+  // Seria poate conține cifre și bare („RO/22/H22”), deci nu se poate cere doar litere.
   const serieNr = T.match(/SERIA\s*[:.]?\s*([A-Z][A-Z0-9\/\-]{0,11})\s*(?:NR\.?|NUM[ĂA]RUL?)?\s*[:.]?\s*(\d{5,12})\b/);
   if (serieNr && !NU_E_SERIE.test(serieNr[1])) pune('number', serieNr[1] + '/' + serieNr[2], 0.85);
   else {

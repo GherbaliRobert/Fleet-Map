@@ -7,11 +7,11 @@ import { useInapoiInchide } from '../lib/inapoiFoaie';
 import './detail.css'; // .sheet*
 import './admin.css';  // .sw (comutatorul), .fld, .frm-actions
 
-// „Roluri" (web: Setări → Conturi și roluri), pentru adminul firmei. Firma își BOTEAZĂ rolurile („Dispecer" →
-// „Operator depou") și TAIE din ce are voie fiecare; poate face și roluri proprii, pornite dintr-unul standard.
+// „Roluri” (web: Setări → Conturi și roluri), pentru adminul firmei. Firma își BOTEAZĂ rolurile („Dispecer” →
+// „Operator depou”) și TAIE din ce are voie fiecare; poate face și roluri proprii, pornite dintr-unul standard.
 // Nu poate adăuga drepturi: serverul primește lista de TĂIERI și o cerne prin ce are rolul oricum. Toate
-// regulile (limita de 20, „rolul e folosit de N persoane", numele de minim 2 litere) sunt ale serverului —
-// telefonul arată refuzul cu vorbele lui. Bifele se țin pe telefon până la „Salvează", ca pe web.
+// regulile (limita de 20, „rolul e folosit de N persoane”, numele de minim 2 litere) sunt ale serverului —
+// telefonul arată refuzul cu vorbele lui. Bifele se țin pe telefon până la „Salvează”, ca pe web.
 export function AdminRoles() {
   const p = poartaFirma('manageUsers', 'Roluri', 'Rolurile sunt ale unei firme');
   if (p) return p;
@@ -27,7 +27,7 @@ const FILE: [Camp, string, IconName][] = [
   ['rapoarte', 'Ce rapoarte scoate', 'report'],
 ];
 const CAMPURI: Camp[] = ['drepturi', 'ecrane', 'editari', 'rapoarte'];
-// Rolurile de pornire pentru „Rol nou", cu ce poate fiecare — aceleași cuvinte ca pe web (ROL_BAZE).
+// Rolurile de pornire pentru „Rol nou”, cu ce poate fiecare — aceleași cuvinte ca pe web (ROL_BAZE).
 const ROL_BAZE: [string, string, string][] = [
   ['manager', 'Manager', 'Vede toată flota și o modifică: mașini, șoferi, alerte, documente.'],
   ['dispatcher', 'Dispecer', 'Vede mașinile care i se dau, confirmă alerte și scoate rapoarte.'],
@@ -74,7 +74,7 @@ function AdminRolesEcran() {
   }
   const schimbat = (e: Edit) => (e.nume.trim() !== String(e.r.nume || '').trim())
     || CAMPURI.some((c) => e.draft[c].some((d, i) => { const o = (e.r[c] || [])[i]; return !o || !!o.are !== d.are; }));
-  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și butonul „înapoi" de pe Android.
+  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și butonul „înapoi” de pe Android.
   function inchide(): boolean {
     if (!ed) return true;
     if (ed.busy) return false;
@@ -88,7 +88,7 @@ function AdminRolesEcran() {
     setNou(null);
     return true;
   }
-  // „Înapoi" pe Android închide foaia (cu întrebarea de mai sus), nu pleacă de pe ecranul Roluri.
+  // „Înapoi” pe Android închide foaia (cu întrebarea de mai sus), nu pleacă de pe ecranul Roluri.
   useInapoiInchide(!!ed, inchide);
   useInapoiInchide(!!nou, inchideNou);
   function bifa(c: Camp, cheie: string, are: boolean) {
@@ -129,7 +129,7 @@ function AdminRolesEcran() {
       await load();
       refreshMe();
     } catch (x: any) {
-      // Ex. „Rolul e folosit de 2 persoane. Mută-i pe alt rol întâi."
+      // Ex. „Rolul e folosit de 2 persoane. Mută-i pe alt rol întâi.”
       setEd((p) => (p ? { ...p, busy: false, msg: { t: x?.message || 'Nu s-a putut.', rau: true } } : p));
     }
   }

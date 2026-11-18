@@ -2,8 +2,8 @@
 // Oglinda ecranului Localizare de pe web (public/index.html → vehMoving/vehPornit…, public/js/map-tools.js).
 //
 // DE CE un fișier separat de lib/status.ts: `statusOf` de acolo colorează markerele și cardurile (verde /
-// galben / roșu / gri, cu „ține minte mișcarea" 2,5 min). Cadranele de pe web numără ALTFEL (Pornit /
-// În mișcare / Staționat / Oprit, fără histerezis, iar „fără semnal" intră la „Oprit"). Fondatorii au cerut
+// galben / roșu / gri, cu „ține minte mișcarea” 2,5 min). Cadranele de pe web numără ALTFEL (Pornit /
+// În mișcare / Staționat / Oprit, fără histerezis, iar „fără semnal” intră la „Oprit”). Fondatorii au cerut
 // ca telefonul și web-ul să arate aceleași cifre — deci numărătoarea e nouă, iar culorile markerelor rămân.
 import { signal, effect } from '@preact/signals';
 import type { Position } from '../api/endpoints';
@@ -11,8 +11,8 @@ import { Api } from '../api/endpoints';
 import { token } from '../app/store';
 
 // ─── Stările, exact ca pe web ───
-// online = a transmis în fereastra „fără semnal" a firmei (offline_minutes, implicit 65)
-// proaspăt = a transmis în ultimele 3 minute (viteza unui pachet vechi nu mai înseamnă „în mișcare")
+// online = a transmis în fereastra „fără semnal” a firmei (offline_minutes, implicit 65)
+// proaspăt = a transmis în ultimele 3 minute (viteza unui pachet vechi nu mai înseamnă „în mișcare”)
 function varsta(p: Position): number {
   if (!p || !p.timestamp) return Infinity;
   const t = new Date(p.timestamp).getTime();
@@ -55,10 +55,10 @@ export const CADRANE: { k: Exclude<StareFiltru, 'all'>; label: string; culoare: 
   { k: 'oprit', label: 'Oprit', culoare: 'var(--red)' },
 ];
 // Legăturile venite din alte ecrane (/vehicles?status=…) — Statistici trimite numele de aici (moving /
-// stationat / oprit), iar „Fără semnal" / „Offline" își deschid acolo lista lor, pe nume.
-// NU traducem „offline" sau „stopped" în „oprit": „Oprit" de aici cuprinde și mașinile fără semnal (ca pe web),
-// deci cine apăsa „Fără semnal: 3" ar fi ajuns pe „Oprit: 12" — alt set, cu altă cifră, fără să i se spună.
-// Un nume necunoscut deschide lista întreagă, cu „Total vehicule" aprins: se vede că nu e filtrată.
+// stationat / oprit), iar „Fără semnal” / „Offline” își deschid acolo lista lor, pe nume.
+// NU traducem „offline” sau „stopped” în „oprit”: „Oprit” de aici cuprinde și mașinile fără semnal (ca pe web),
+// deci cine apăsa „Fără semnal: 3” ar fi ajuns pe „Oprit: 12” — alt set, cu altă cifră, fără să i se spună.
+// Un nume necunoscut deschide lista întreagă, cu „Total vehicule” aprins: se vede că nu e filtrată.
 export function stareDinAdresa(s: string): StareFiltru | null {
   switch (s) {
     case 'all': return 'all';
@@ -81,7 +81,7 @@ effect(() => {
   _tokAnterior = t;
 });
 export function eAles(imei: string): boolean { const s = mapSel.value; return !s || s.has(imei); }
-// Bifează/debifează câteva vehicule. `toate` = flota curentă (prima bifă pornește de la „toate alese").
+// Bifează/debifează câteva vehicule. `toate` = flota curentă (prima bifă pornește de la „toate alese”).
 export function schimbaAlegerea(imeis: string[], alese: boolean, toate: string[]) {
   const s = new Set(mapSel.value || toate);
   for (const i of imeis) { if (alese) s.add(i); else s.delete(i); }

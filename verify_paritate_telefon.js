@@ -10,17 +10,17 @@
 //      mai poate fi transformată în cerc de pe telefon;
 //   2. lista de utilizatori spune cine are rol PROPRIU, iar o salvare care nu schimbă rolul nu-l mai
 //      mută pe rolul standard (cu mai multe drepturi); o schimbare reală de rol merge ca înainte;
-//   3. RA Insight: omul fără acces primește motivul adevărat; „Asistent AI" (/api/ai/chat) respectă
+//   3. RA Insight: omul fără acces primește motivul adevărat; „Asistent AI” (/api/ai/chat) respectă
 //      fondul firmei exact ca RA Insight și nicio întrebare peste fond nu pleacă spre model fără acord;
 //   4. tokenii și modelul AI nu ajung la un client;
 //   5. găurile găsite la integrare: fișierul unui act al unei mașini la care omul NU are acces nu se mai
 //      deschide după număr; un agent live rulat singur (ca din APK-ul vechi) nu mai cumpără rezumat AI;
 //      un om creat direct pe un rol propriu îl primește; locurile RA Insight se numără în firma omului;
-//   6. revizia de integrare: un rol propriu fără „Vede toată flota" chiar vede doar mașinile atribuite; un om
+//   6. revizia de integrare: un rol propriu fără „Vede toată flota” chiar vede doar mașinile atribuite; un om
 //      promovat super-admin nu mai rămâne în firmă (adminul ei nu-i mai poate schimba parola); un acceptExtra
-//      trimis cu fond disponibil nu scrie acordul pe lună; „Rezumat raport" peste fond cere și el acordul.
+//      trimis cu fond disponibil nu scrie acordul pe lună; „Rezumat raport” peste fond cere și el acordul.
 //
-// Modelul AI NU e chemat de-adevăratelea: serverul pornește cu un mic „-r" care răspunde în locul
+// Modelul AI NU e chemat de-adevăratelea: serverul pornește cu un mic „-r” care răspunde în locul
 // api.anthropic.com și numără apelurile. Tot restul internetului e închis, ca proba să nu depindă de rețea.
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -48,7 +48,7 @@ fs.writeFileSync(PRELOAD, [
   "  if (!/^https?:\\/\\/(127\\.0\\.0\\.1|localhost)[:/]/.test(u)) throw new Error('proba: fara retea');",
   '  return orig.apply(this, arguments);',
   '};',
-  // Două „defecte" pornite dintr-un fișier-steag, doar în serverul probei:
+  // Două „defecte” pornite dintr-un fișier-steag, doar în serverul probei:
   //   cade:<funcție>  → citirea aceea din bază eșuează (ca o sughițare a bazei);
   //   mutare-veche    → mutarea unui om în altă firmă se face ca înainte de reparație (date VECHI).
   "const Module = require('module');",
@@ -102,7 +102,7 @@ async function login(u, p) {
   if (!r.ok) return null;
   return (r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie')]).filter(Boolean).map((c) => c.split(';')[0]).join('; ');
 }
-// Autentificarea telefonului: cheie „gpsk_…" trimisă ca Bearer.
+// Autentificarea telefonului: cheie „gpsk_…” trimisă ca Bearer.
 async function loginTelefon(u, p) {
   const r = await fetch(B + '/api/mobile/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p, device: 'proba' }) });
   const j = await r.json().catch(() => ({}));
@@ -204,7 +204,7 @@ function formularWeb(cookie, eSuper, proprii) {
   const cfg = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { ai_assistant: true }, ai_pachet: { cod: 'basic' } });
   T('firma are RA Insight, pachetul Basic (200 de întrebări pe lună, fără depășire)', cfg.status === 200 && cfg.j.ai_pachet && cfg.j.ai_pachet.cod === 'basic', cfg.status + ' ' + cfg.text.slice(0, 80));
   const cheie = await json('POST', '/api/ai/config', S, { key: 'sk-ant-proba-fara-retea' });
-  T('asistentul AI e „configurat" (cheie de probă)', cheie.status === 200 && cheie.j.enabled === true, cheie.text.slice(0, 80));
+  T('asistentul AI e „configurat” (cheie de probă)', cheie.status === 200 && cheie.j.enabled === true, cheie.text.slice(0, 80));
 
   // Contul se naște FĂRĂ parolă (CLAUDE.md): serverul întoarce linkul, iar omul își pune parola
   // singur. Proba trece pe același traseu ca un om adevărat.
@@ -220,7 +220,7 @@ function formularWeb(cookie, eSuper, proprii) {
   await om('sef@alta.ro', 'admin', co2.id);
   const ckAlt = await login('sef@alta.ro', PAROLA);
   T('administratorul altei firme intră pe web', !!ckAlt);
-  // Fără niciun vehicul, RA Insight se oprește înainte de model („n-am ce analiza") și proba n-ar
+  // Fără niciun vehicul, RA Insight se oprește înainte de model („n-am ce analiza”) și proba n-ar
   // mai vedea regula fondului pe calea aceea.
   //
   // ⚠ Aparatul îl înregistrăm NOI și îl dăm pe firmă (decizia lui Alin, 16.09 — GPS-ul e marfa
@@ -316,12 +316,12 @@ function formularWeb(cookie, eSuper, proprii) {
   T('rolul propriu se poate pune din nou', r.status === 200 && u.role_slug === rolNou.rol && u.role === 'dispatcher', u.role + ' / ' + u.role_slug);
   r = await json('PUT', '/api/users/' + disp.id, ckSef, { role: 'dispatcher', role_slug: null });
   u = await omul();
-  T('„înapoi pe rolul standard" (role_slug: null, cum trimite web-ul) merge', r.status === 200 && u.role === 'dispatcher' && u.role_slug == null, u.role + ' / ' + u.role_slug);
+  T('„înapoi pe rolul standard” (role_slug: null, cum trimite web-ul) merge', r.status === 200 && u.role === 'dispatcher' && u.role_slug == null, u.role + ' / ' + u.role_slug);
 
-  // Rol vechi, pe care adminul firmei nu-l mai poate da („client"): o salvare fără schimbare nu mai e refuzată…
+  // Rol vechi, pe care adminul firmei nu-l mai poate da („client”): o salvare fără schimbare nu mai e refuzată…
   const vechi = await om('client.vechi@paritate.ro', 'client', co.id);
   r = await json('PUT', '/api/users/' + vechi.id, ckSef, { role: 'client', phone: '0700000001' });
-  T('un om cu rol vechi („client") se poate salva fără „Rol invalid"', r.status === 200, r.status + ' ' + r.text.slice(0, 60));
+  T('un om cu rol vechi („client”) se poate salva fără „Rol invalid”', r.status === 200, r.status + ' ' + r.text.slice(0, 60));
   // …dar rolul nu poate fi DAT cuiva care nu-l are.
   r = await json('PUT', '/api/users/' + disp.id, ckSef, { role: 'client' });
   T('rolul acela nu poate fi dat altcuiva', r.status === 400, r.status);
@@ -387,7 +387,7 @@ function formularWeb(cookie, eSuper, proprii) {
   T('formularul nu mai alege un rol care nu există în firma omului', f.sel.value === 'dispatcher' && !f.sel.options.some((o) => o.value === rolNou.rol), f.sel.value + ' / ' + f.sel.options.map((o) => o.value).join(','));
   await f.ctx.saveUserEdit();
   u = await omul(S);
-  T('iar salvarea merge (fără „Rol invalid") și curăță rolul rămas', !f.alerte.length && u.role === 'dispatcher' && u.role_slug == null, f.alerte.join(' | ') + ' ' + u.role_slug);
+  T('iar salvarea merge (fără „Rol invalid”) și curăță rolul rămas', !f.alerte.length && u.role === 'dispatcher' && u.role_slug == null, f.alerte.join(' | ') + ' ' + u.role_slug);
   // Aceleași date vechi, trimise de o aplicație care pune rolul propriu în `role` (sau în `role_slug`).
   for (const corp of [{ role: rolNou.rol, phone: '0744000444' }, { role: 'dispatcher', role_slug: rolNou.rol, phone: '0744000555' }]) {
     await json('PUT', '/api/users/' + disp.id + '/company', S, { company_id: co.id });
@@ -397,13 +397,13 @@ function formularWeb(cookie, eSuper, proprii) {
     steag('');
     r = await json('PUT', '/api/users/' + disp.id, S, corp);
     u = await omul(S);
-    T('serverul: rolul rămas trimis înapoi (' + Object.keys(corp).join('+') + ') nu mai e „Rol invalid", se curăță', r.status === 200 && u.role === 'dispatcher' && u.role_slug == null && u.phone === corp.phone, r.status + ' ' + r.text.slice(0, 60) + ' ' + u.role_slug);
+    T('serverul: rolul rămas trimis înapoi (' + Object.keys(corp).join('+') + ') nu mai e „Rol invalid”, se curăță', r.status === 200 && u.role === 'dispatcher' && u.role_slug == null && u.phone === corp.phone, r.status + ' ' + r.text.slice(0, 60) + ' ' + u.role_slug);
   }
   r = await json('PUT', '/api/users/' + disp.id, S, { role: 'rnuexista123' });
-  T('un rol propriu care nu e al omului rămâne „Rol invalid"', r.status === 400, r.status);
+  T('un rol propriu care nu e al omului rămâne „Rol invalid”', r.status === 400, r.status);
 
   // ───────────────────────────────────────────────────────────────────────────────────────────────
-  console.log('\n3. RA Insight și „Asistent AI": aceleași reguli, pe web și pe telefon');
+  console.log('\n3. RA Insight și „Asistent AI”: aceleași reguli, pe web și pe telefon');
   const Q = 'Scrie o analiza despre eficienta echipei noastre';
   const fara = await om('fara.acces@paritate.ro', 'manager', co.id, ckSef);
   const ckFara = await login('fara.acces@paritate.ro', PAROLA);
@@ -415,15 +415,15 @@ function formularWeb(cookie, eSuper, proprii) {
       w.status === 403 && w.j.error === 'ai_seat_missing' && /contul tău nu are încă acces/.test(w.j.message || '') && /Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”/.test(w.j.message || '') && !/planul|Utilizatori/.test(w.text),
       w.status + ' ' + w.text.slice(0, 120));
     T(cale + ', mesajul nu spune de două ori același lucru', (w.j.message || '').split(/administrator/i).length === 2, w.j.message);
-    T(cale + ', web: textul e și în „reply" (web-ul îl afișează de acolo)', w.j.reply === w.j.message);
+    T(cale + ', web: textul e și în „reply” (web-ul îl afișează de acolo)', w.j.reply === w.j.message);
     const t = await json('POST', cale, telFara, { message: Q });
-    T(cale + ', telefon: motivul ajunge în „reply", singurul câmp citit de aplicația veche',
+    T(cale + ', telefon: motivul ajunge în „reply”, singurul câmp citit de aplicația veche',
       t.status === 200 && t.j.seatMissing === true && /Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”/.test(t.j.reply || ''), t.status + ' ' + t.text.slice(0, 120));
   }
-  // „Rezumă raportul" e tot o întrebare către RA Insight (se numără din întrebările firmei): până pe 14.10 o putea
-  // pune și omul fără cont, consumând din ce au plătit colegii (Alin, 14.10: „rezolvăm"). Același refuz ca la uși.
+  // „Rezumă raportul” e tot o întrebare către RA Insight (se numără din întrebările firmei): până pe 14.10 o putea
+  // pune și omul fără cont, consumând din ce au plătit colegii (Alin, 14.10: „rezolvăm”). Același refuz ca la uși.
   const rezFara = await json('POST', '/api/ai/report-summary', ckFara, { type: 'tabel', report: { columns: ['Vehicul', 'Km'], rows: [['AR-01-PAR', '120']] } });
-  T('„Rezumă raportul", omul fără cont: același refuz (contul, nu planul), fără model',
+  T('„Rezumă raportul”, omul fără cont: același refuz (contul, nu planul), fără model',
     rezFara.status === 403 && rezFara.j.error === 'ai_seat_missing' && rezFara.j.reply === rezFara.j.message && /Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”/.test(rezFara.j.reply || ''),
     rezFara.status + ' ' + rezFara.text.slice(0, 120));
   T('nimic nu a ajuns la model', apeluriAi() === 0, apeluriAi());
@@ -431,13 +431,13 @@ function formularWeb(cookie, eSuper, proprii) {
   const ion = await om('ion@paritate.ro', 'manager', co.id, ckSef);
   const loc = await json('PUT', '/api/users/' + ion.id + '/ai-seat', ckSef, { on: true });
   T('adminul îi dă RA Insight lui Ion (pachetul Basic: 200 de întrebări pe toată firma)', loc.status === 200 && loc.j.seats === 1, loc.text.slice(0, 80));
-  // 16.11 (Alin: „nu există fără limită"): un coleg are întrebări libere doar câte îi dă administratorul — aici, toate 200.
+  // 16.11 (Alin: „nu există fără limită”): un coleg are întrebări libere doar câte îi dă administratorul — aici, toate 200.
   const limIon = await json('PUT', '/api/users/' + ion.id + '/ai-limita', ckSef, { limita: 200 });
   T('…și îi dă toate cele 200 de întrebări ale lunii (fără cifră ar avea doar răspunsurile pe loc)', limIon.status === 200 && limIon.j.ai_limita === 200, limIon.text.slice(0, 120));
   const ckIon = await login('ion@paritate.ro', PAROLA);
   const telIon = await loginTelefon('ion@paritate.ro', PAROLA);
   const folosite = async () => (await json('GET', '/api/ai/quota', ckIon)).j.used;
-  // Regula veche, „pe cont" (cu 2 întrebări pe cont), a ieșit pe 11.11: firma e pe Basic. Ca să nu întrebăm modelul de 200 de
+  // Regula veche, „pe cont” (cu 2 întrebări pe cont), a ieșit pe 11.11: firma e pe Basic. Ca să nu întrebăm modelul de 200 de
   // ori, 198 de întrebări se scriu dinainte (ruta de probă), iar proba pune ea a 199-a și a 200-a.
   const BAZA = 198;
   for (let k = 0; k < BAZA; k++) await json('POST', '/api/test/ai-usage', S, { companyId: co.id, userId: null, kind: 'insight' });
@@ -445,24 +445,24 @@ function formularWeb(cookie, eSuper, proprii) {
 
   r = await json('POST', '/api/ai/chat', telIon, { message: Q });
   await sleep(400);
-  T('cu întrebări rămase, „Asistent AI" răspunde', r.status === 200 && r.j.reply === 'RASPUNS_DE_PROBA', r.status + ' ' + r.text.slice(0, 80));
+  T('cu întrebări rămase, „Asistent AI” răspunde', r.status === 200 && r.j.reply === 'RASPUNS_DE_PROBA', r.status + ' ' + r.text.slice(0, 80));
   T('și întrebarea se numără din întrebările firmei', apeluriAi() === 1 && (await folosite()) === BAZA + 1, apeluriAi() + ' / ' + (await folosite()));
 
   await json('POST', '/api/test/ai-usage', S, { companyId: co.id, userId: ion.id, kind: 'insight' });
   T('întrebările lunii s-au terminat (200 din 200)', (await folosite()) === 200, await folosite());
 
   // Firma NU are voie să depășească: RA Insight trece pe butoane (motorul pe reguli), cu explicația.
-  // 11.11 (Alin): clientul nu citește „fondul" — „Ați folosit cele 200 de întrebări…", reîncărcarea și ce merge mai departe.
+  // 11.11 (Alin): clientul nu citește „fondul” — „Ați folosit cele 200 de întrebări…”, reîncărcarea și ce merge mai departe.
   const opritChat = await json('POST', '/api/ai/chat', telIon, { message: Q });
   const opritInsight = await json('POST', '/api/ai/reports-agent', ckIon, { message: Q });
   const peButoane = (x) => x.j.source === 'reguli' && x.j.limita === true && /Ați folosit cele 200 de întrebări/.test(x.j.reply || '') && /fără niciun cost în plus/.test(x.j.reply || '') && /Până atunci răspund la întrebările de pe butoane/.test(x.j.reply || '') && !/fond/i.test(x.j.reply || '');
-  T('„Asistent AI" trece pe butoane la capătul întrebărilor, cu explicația (fără „fond")', peButoane(opritChat), opritChat.text.slice(0, 160));
+  T('„Asistent AI” trece pe butoane la capătul întrebărilor, cu explicația (fără „fond”)', peButoane(opritChat), opritChat.text.slice(0, 160));
   T('exact ca RA Insight (aceleași câmpuri)', chei(opritChat.j) === chei(opritInsight.j) && peButoane(opritInsight), chei(opritChat.j) + ' | ' + chei(opritInsight.j));
-  T('nu mai scrie „contactați administratorul platformei"', !/administratorul platformei/.test(opritChat.text));
+  T('nu mai scrie „contactați administratorul platformei”', !/administratorul platformei/.test(opritChat.text));
   T('nimic nu pleacă spre model, nimic nu se numără', apeluriAi() === 1 && (await folosite()) === 200, apeluriAi() + ' / ' + (await folosite()));
 
   // ── PESTE PACHET NU SE VINDE NIMIC (hotărât 11.09, rămâne pe pachete) ──────────────────────────
-  // Până atunci exista o casetă „mai vrei? costă atât pe întrebare", iar un `acceptExtra` trimis de
+  // Până atunci exista o casetă „mai vrei? costă atât pe întrebare”, iar un `acceptExtra` trimis de
   // ecran deschidea robinetul. A fost scoasă DELIBERAT: clientul nu trebuie să vadă prețuri pe
   // întrebare. Când întrebările se termină, RA Insight răspunde doar pe butoane până luna următoare. Atât.
   T('la capătul întrebărilor nu se mai cere niciun acord',
@@ -472,9 +472,9 @@ function formularWeb(cookie, eSuper, proprii) {
     !/pretLei|overagePrice|lei\/întrebare|€\/apel/i.test(JSON.stringify(opritChat.j) + JSON.stringify(opritInsight.j)),
     opritChat.text.slice(0, 140));
 
-  // 1. Comutatorul VECHI nu mai poate fi nici măcar SALVAT: tot ce era „pe cont" (`ai_quota`, cu `overage`) se aruncă.
+  // 1. Comutatorul VECHI nu mai poate fi nici măcar SALVAT: tot ce era „pe cont” (`ai_quota`, cu `overage`) se aruncă.
   const SRV = fs.readFileSync(require('path').join(__dirname, 'server.js'), 'utf8');
-  T('serverul aruncă tot ce era „pe cont" (`ai_quota`, cu comutatoarele de depășire)', /delete next\.ai_quota;/.test(SRV) && !/overage/.test(SRV));
+  T('serverul aruncă tot ce era „pe cont” (`ai_quota`, cu comutatoarele de depășire)', /delete next\.ai_quota;/.test(SRV) && !/overage/.test(SRV));
   await json('PUT', '/api/companies/' + co.id + '/settings', S, { ai_quota: { overage: true, overagePriceEur: 0.5 }, regula_veche: true });
   const dupaComutator = await json('POST', '/api/ai/chat', telIon, { message: Q });
   T('și, oricum ar fi trimis, ușa rămâne închisă',
@@ -485,7 +485,7 @@ function formularWeb(cookie, eSuper, proprii) {
   // întrebare pe care nimeni nu i-a cerut-o — exact ce am scos ca să nu se întâmple.
   const cuAcord = await json('POST', '/api/ai/chat', telIon, { message: Q, acceptExtra: true });
   await sleep(400);
-  T('`acceptExtra` e IGNORAT pe „Asistent AI" — întrebarea tot nu pleacă',
+  T('`acceptExtra` e IGNORAT pe „Asistent AI” — întrebarea tot nu pleacă',
     peButoane(cuAcord) && cuAcord.j.reply !== 'RASPUNS_DE_PROBA', cuAcord.text.slice(0, 140));
   const cuAcordIns = await json('POST', '/api/ai/reports-agent', ckIon, { message: Q, acceptExtra: true });
   await sleep(400);
@@ -505,10 +505,10 @@ function formularWeb(cookie, eSuper, proprii) {
 
   // 4. Nicio notificare despre bani în plus — fiindcă nu există bani în plus.
   const notif = await json('GET', '/api/notifications', ckSef);
-  T('nicio notificare de „cost suplimentar"', !/ai_cost_extra/.test(notif.text), notif.status);
+  T('nicio notificare de „cost suplimentar”', !/ai_cost_extra/.test(notif.text), notif.status);
 
-  // Baza nu răspunde când se citesc întrebările pachetului. Înainte, o citire eșuată arăta „fond gol = nelimitat" și
-  // întrebarea pleca spre model și pe factură. Pe pachete (_starePachet, citit „strict"), întrebarea NU pleacă.
+  // Baza nu răspunde când se citesc întrebările pachetului. Înainte, o citire eșuată arăta „fond gol = nelimitat” și
+  // întrebarea pleca spre model și pe factură. Pe pachete (_starePachet, citit „strict”), întrebarea NU pleacă.
   const inainte = await folosite();
   // ⚠ Câte apeluri s-au făcut până aici se CITEȘTE, nu se scrie de mână (23.09).
   const apelInainte = apeluriAi();
@@ -517,7 +517,7 @@ function formularWeb(cookie, eSuper, proprii) {
     const a = await json('POST', '/api/ai/chat', telIon, { message: Q });
     const b = await json('POST', '/api/ai/reports-agent', ckIon, { message: Q });
     steag('');
-    T('întrebările pachetului nu se pot citi (' + fn + ') → „încearcă din nou", pe ambele căi', a.status >= 500 && b.status >= 500 && /Încearcă din nou/.test(a.j.reply || '') && /Încearcă din nou/.test(b.j.reply || ''), a.status + ' ' + a.text.slice(0, 80) + ' / ' + b.status + ' ' + b.text.slice(0, 80));
+    T('întrebările pachetului nu se pot citi (' + fn + ') → „încearcă din nou”, pe ambele căi', a.status >= 500 && b.status >= 500 && /Încearcă din nou/.test(a.j.reply || '') && /Încearcă din nou/.test(b.j.reply || ''), a.status + ' ' + a.text.slice(0, 80) + ' / ' + b.status + ' ' + b.text.slice(0, 80));
   }
   await sleep(400);
   T('și întrebarea nu ajunge la model și nu se numără',
@@ -539,7 +539,7 @@ function formularWeb(cookie, eSuper, proprii) {
     const us = await json('GET', '/api/ai/usage-stats?days=30', cine);
     T(eticheta + ': /api/ai/usage-stats nu are tokeni, apeluri sau model', us.status === 200 && Array.isArray(us.j.usage) && us.j.usage.length === 0 &&
       !/tokens|calls/.test(us.text) && !('model' in us.j) && us.text.indexOf(modelSuper) < 0, us.status + ' ' + us.text.slice(0, 120));
-    T(eticheta + ': dar răspunde, ca ecranul vechi „Asistenți AI" să nu cadă (butonul spre Agenți AI rămâne)', typeof us.j.days === 'number');
+    T(eticheta + ': dar răspunde, ca ecranul vechi „Asistenți AI” să nu cadă (butonul spre Agenți AI rămâne)', typeof us.j.days === 'number');
   }
 
   // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -569,7 +569,7 @@ function formularWeb(cookie, eSuper, proprii) {
   T('adminul firmei îl deschide în continuare', fisSef.status === 200, fisSef.status);
   T('altă firmă nu-l găsește', (await cerere('GET', '/api/documents/' + act1.j.id + '/file', ckAlt)).status === 404);
 
-  // Agenții live: APK-ul vechi apasă „Rulează" pe unul singur → nu mai cumpără rezumat AI.
+  // Agenții live: APK-ul vechi apasă „Rulează” pe unul singur → nu mai cumpără rezumat AI.
   // ⚠ Firma și-a terminat întrebările Basic în probele de mai sus, iar peste pachet NU se vinde nimic: rezumatul agenților
   // n-ar avea din ce să se facă — și proba ar pica pe regula cea nouă, nu pe un defect. Deci firma trece pe Pro (600) înainte.
   const agSet = await json('PUT', '/api/companies/' + co.id + '/settings', S, { features: { agents: true, ai_assistant: true }, enabled_agents: ['care'], ai_pachet: { cod: 'pro' } });
@@ -587,7 +587,7 @@ function formularWeb(cookie, eSuper, proprii) {
   const peRol = await json('POST', '/api/users', ckSef, { username: 'depou@paritate.ro', password: PAROLA, full_name: 'Om Depou', role: rolNou.rol });
   const toti2 = lista((await json('GET', '/api/users', ckSef)).j);
   const peRolL = toti2.find((x) => x.id === peRol.j.id) || {};
-  T('omul creat pe rolul propriu îl primește (nu mai devine tăcut „viewer")', peRol.status === 200 && peRolL.role === 'dispatcher' && peRolL.role_slug === rolNou.rol, peRol.status + ' ' + peRolL.role + ' / ' + peRolL.role_slug);
+  T('omul creat pe rolul propriu îl primește (nu mai devine tăcut „viewer”)', peRol.status === 200 && peRolL.role === 'dispatcher' && peRolL.role_slug === rolNou.rol, peRol.status + ' ' + peRolL.role + ' / ' + peRolL.role_slug);
   const peStrain = await json('POST', '/api/users', ckSef, { username: 'strain@paritate.ro', password: PAROLA, full_name: 'Om Strain', role: rolStrain.rol });
   const peStrainL = lista((await json('GET', '/api/users', ckSef)).j).find((x) => x.id === peStrain.j.id) || {};
   T('rolul propriu al ALTEI firme nu se poate folosi la creare', peStrainL.role_slug == null && peStrainL.role === 'viewer', peStrainL.role + ' / ' + peStrainL.role_slug);
@@ -601,10 +601,10 @@ function formularWeb(cookie, eSuper, proprii) {
 
   // ───────────────────────────────────────────────────────────────────────────────────────────────
   console.log('\n6. Revizia de integrare: roluri proprii, conturi de platformă, acordul, rezumatul');
-  // Rol propriu din Manager, cu „Vede toată flota" tăiat: omul trebuie să vadă DOAR mașinile atribuite.
+  // Rol propriu din Manager, cu „Vede toată flota” tăiat: omul trebuie să vadă DOAR mașinile atribuite.
   const sefTura = (await json('POST', '/api/company-roles', ckSef, { nume: 'Sef tura', baza: 'manager' })).j;
   const taiere = await json('PUT', '/api/company-roles/' + sefTura.rol, ckSef, { nume: 'Sef tura', taiate: ['viewAll'] });
-  T('firma face rolul propriu „Sef tura" din Manager, fără „Vede toată flota"', !!sefTura.rol && taiere.status === 200 && lista(taiere.j.taiate).indexOf('viewAll') >= 0, taiere.status + ' ' + taiere.text.slice(0, 100));
+  T('firma face rolul propriu „Sef tura” din Manager, fără „Vede toată flota”', !!sefTura.rol && taiere.status === 200 && lista(taiere.j.taiate).indexOf('viewAll') >= 0, taiere.status + ' ' + taiere.text.slice(0, 100));
   const tura = await json('POST', '/api/users', ckSef, { username: 'tura@paritate.ro', full_name: 'Sef Tura', role: sefTura.rol });
   await puneParola(tura.j, PAROLA, B);
   const accTura = await json('PUT', '/api/users/' + tura.j.id + '/access', ckSef, { devices: ['350000000024702'], groups: [] });
@@ -619,7 +619,7 @@ function formularWeb(cookie, eSuper, proprii) {
   const turaSef = lista((await json('GET', '/api/users', ckSef)).j).find((x) => x.id === tura.j.id) || {};
   const turaSuper = lista((await json('GET', '/api/users?company=' + co.id, S)).j).find((x) => x.id === tura.j.id) || {};
   const ionSuper = lista((await json('GET', '/api/users?company=' + co.id, S)).j).find((x) => x.id === ion.id) || {};
-  T('lista de utilizatori spune „nu vede toată flota" (adminul firmei și super-adminul)', turaSef.sees_all === false && turaSuper.sees_all === false && ionSuper.sees_all === true, turaSef.sees_all + ' / ' + turaSuper.sees_all + ' / ' + ionSuper.sees_all);
+  T('lista de utilizatori spune „nu vede toată flota” (adminul firmei și super-adminul)', turaSef.sees_all === false && turaSuper.sees_all === false && ionSuper.sees_all === true, turaSef.sees_all + ' / ' + turaSuper.sees_all + ' / ' + ionSuper.sees_all);
 
   // Om al firmei promovat super-admin: iese din firmă, iar adminul firmei nu mai are putere asupra lui.
   const promovat = await om('promovat@paritate.ro', 'manager', co.id, ckSef);
@@ -660,7 +660,7 @@ function formularWeb(cookie, eSuper, proprii) {
   for (let k = 0; k < 199; k++) await json('POST', '/api/test/ai-usage', S, { companyId: co2.id, userId: null, kind: 'insight' });
   const sefAlt = lista((await json('GET', '/api/users', ckAlt)).j).find((x) => x.username === 'sef@alta.ro') || {};
   const locAlt = await json('PUT', '/api/users/' + sefAlt.id + '/ai-seat', ckAlt, { on: true });
-  // Din 02.10, „Asistent AI" de pe telefonul vechi trece prin RA Insight, care avea deja regula: fără nicio
+  // Din 02.10, „Asistent AI” de pe telefonul vechi trece prin RA Insight, care avea deja regula: fără nicio
   // mașină nu are ce analiza, deci întrebarea NU pleacă spre model și nu se numără. Firma a doua n-avea mașini;
   // întâi se verifică regula asta, apoi primește o mașină, ca bucata să probeze în continuare fondul.
   const inainteGol = apeluriAi();
@@ -679,7 +679,7 @@ function formularWeb(cookie, eSuper, proprii) {
     alDoilea.j.source === 'reguli' && alDoilea.j.limita === true && alDoilea.j.reply !== 'RASPUNS_DE_PROBA' && apeluriAi() === inainteB + 1,
     alDoilea.text.slice(0, 120));
 
-  // „Rezumat raport" se numără din aceleași întrebări: peste pachet nu pleacă spre model, orice i-ai trimite.
+  // „Rezumat raport” se numără din aceleași întrebări: peste pachet nu pleacă spre model, orice i-ai trimite.
   //
   // ⚠ Firma a trecut pe Pro mai sus, pentru rezumatul agenților. O punem înapoi pe Basic (200, deja folosite), ca bucata
   // asta să probeze chiar ce spune în titlu: PESTE pachet. Altfel trecea liniștită, cu întrebări rămase.
@@ -690,7 +690,7 @@ function formularWeb(cookie, eSuper, proprii) {
   const inainteR = apeluriAi();
   const rez = await json('POST', '/api/ai/report-summary', ckIon, RAP);
   await sleep(300);
-  T('„Rezumat raport" peste pachet se face pe butoane (din cifrele tabelului), fără model, ca întrebările',
+  T('„Rezumat raport” peste pachet se face pe butoane (din cifrele tabelului), fără model, ca întrebările',
     rez.j.reguli === true && !!rez.j.summary && rez.j.summary !== 'RASPUNS_DE_PROBA' && apeluriAi() === inainteR,
     rez.status + ' ' + rez.text.slice(0, 120));
   const rezOk = await json('POST', '/api/ai/report-summary', ckIon, Object.assign({ acceptExtra: true }, RAP));
@@ -704,7 +704,7 @@ function formularWeb(cookie, eSuper, proprii) {
   console.log('\n7. Aplicația veche (1.0.1) nu mai poate strica nimic');
   const telS = await loginTelefon('admin', 'test1234');
   T('super-adminul intră și pe telefon', !!telS);
-  // Firma: „Salvează datele" de pe telefonul vechi trimite doar numele, emailul și telefonul.
+  // Firma: „Salvează datele” de pe telefonul vechi trimite doar numele, emailul și telefonul.
   await json('PUT', '/api/companies/' + co.id, S, { name: 'Firma Paritate SRL', cui: 'RO123456', reg_com: 'J02/1/2020', address: 'Str. Probei 2, Arad', iban: 'RO49AAAA1B31007593840000', bank_name: 'Banca Probei', contact_email: 'contact@paritate.ro', phone: '0257000000' });
   const faraCampuri = await json('PUT', '/api/companies/' + co.id, telS, { name: 'Firma Paritate SRL', contact_email: 'nou@paritate.ro', phone: '0257111111' });
   const coDupa = lista((await json('GET', '/api/companies', S)).j).find((x) => x.id === co.id) || {};
@@ -727,7 +727,7 @@ function formularWeb(cookie, eSuper, proprii) {
 
   // Parola altcuiva nu se mai scrie: APK-ul vechi primește un mesaj, nu o eroare goală, și nu se schimbă nimic.
   const pw = await json('POST', '/api/users/' + ion.id + '/password', telSef, { password: 'Alta-Parola-Lunga-2026' });
-  T('„Parolă nouă" din APK-ul vechi: 404 cu explicație, nu „Eroare 404"', pw.status === 404 && /Trimite link de parolă/.test(pw.j.error || ''), pw.status + ' ' + pw.text.slice(0, 100));
+  T('„Parolă nouă” din APK-ul vechi: 404 cu explicație, nu „Eroare 404”', pw.status === 404 && /Trimite link de parolă/.test(pw.j.error || ''), pw.status + ' ' + pw.text.slice(0, 100));
   T('și parola omului a rămas cea veche', !!(await login('ion@paritate.ro', PAROLA)));
 
   // Cont nou cu parolă scrisă, din aplicația veche: refuzat cu explicație (serverul ar fi ignorat parola în tăcere).
@@ -751,19 +751,19 @@ function formularWeb(cookie, eSuper, proprii) {
   T('un aparat arhivat nu se mai mută în altă firmă', arh.status === 200 && mut.status === 409, arh.status + ' / ' + mut.status + ' ' + mut.text.slice(0, 80));
   await json('PUT', '/api/devices/350000000024702/status', S, { status: 'active' });
 
-  // Limita AI veche (APK-ul vechi o scria „tok/lună") a ieșit pe 11.11, cu regula veche „pe cont": ruta nu mai există.
+  // Limita AI veche (APK-ul vechi o scria „tok/lună”) a ieșit pe 11.11, cu regula veche „pe cont”: ruta nu mai există.
   const lim = await json('PUT', '/api/companies/' + co.id + '/ai-limit', telS, { limit: 1000000 });
   T('limita AI veche nu mai are rută (404): telefonul vechi nu mai poate scrie nimic acolo', lim.status === 404, lim.status + ' ' + lim.text.slice(0, 80));
 
-  // Agenții: fără cuvântul „plan" (planurile au fost scoase pe 15.09).
+  // Agenții: fără cuvântul „plan” (planurile au fost scoase pe 15.09).
   await json('PUT', '/api/companies/' + co.id + '/settings', S, { enabled_agents: [] });
   const agOff = await json('POST', '/api/agents/run', ckSef, { agent: 'all' });
   const agUnul = await json('POST', '/api/agents/run', ckSef, { agent: 'care' });
-  T('agenții opriți: mesajul nu mai vorbește de „plan"', !/plan/i.test(agOff.text) && !/plan/i.test(agUnul.text) && /opri/.test(agOff.text + agUnul.text), agOff.text.slice(0, 90) + ' | ' + agUnul.text.slice(0, 90));
+  T('agenții opriți: mesajul nu mai vorbește de „plan”', !/plan/i.test(agOff.text) && !/plan/i.test(agUnul.text) && /opri/.test(agOff.text + agUnul.text), agOff.text.slice(0, 90) + ' | ' + agUnul.text.slice(0, 90));
 
   // ───────────────────────────────────────────────────────────────────────────────────────────────
   console.log('\n8. Inventarul de aparate e al firmei (lotul 2, 24.09)');
-  // Rutele nu treceau prin withScope: firma omului era necunoscută, adică „toate firmele".
+  // Rutele nu treceau prin withScope: firma omului era necunoscută, adică „toate firmele”.
   await json('POST', '/api/devices/import', S, { rows: [{ imei: '350000000024799', name: 'Camion Alta Firma', plate: 'AR-99-ALT' }] });
   await json('PUT', '/api/devices/350000000024799/company', S, { company_id: co2.id });
   const invSef = await json('GET', '/api/device-inventory?arhivate=1', ckSef);
@@ -788,14 +788,14 @@ function formularWeb(cookie, eSuper, proprii) {
   const liteArh = await json('GET', '/api/devices/lite?includeArchived=1', telSef);
   T('nici din lista scurtă, de pe telefon', liteArh.status === 200 && !lista(liteArh.j).some((d) => d.imei === IM), liteArh.status);
   const arhCli = await json('GET', '/api/archived-devices', ckSef);
-  T('„Dispozitive arhivate" e doar a noastră', arhCli.status === 403, arhCli.status);
+  T('„Dispozitive arhivate” e doar a noastră', arhCli.status === 403, arhCli.status);
   const arhS = await json('GET', '/api/archived-devices', S);
   T('noi o vedem, cu aparatul arhivat', arhS.status === 200 && lista(arhS.j).some((d) => d.imei === IM), arhS.status);
   const devS = await json('GET', '/api/devices?includeArchived=1', S);
   T('noi primim arhivatele când le cerem', lista(devS.j).some((d) => d.imei === IM));
   const csvCli = await json('GET', '/api/devices/export.csv', ckSef);
   T('CSV-ul clientului nu conține arhivatul', csvCli.status === 200 && csvCli.text.length > 0 && csvCli.text.indexOf(IM) < 0, csvCli.status);
-  // Mutarea în lot avea regulile rutei de câte unul? Nu: „Bifează tot" muta și arhivatele.
+  // Mutarea în lot avea regulile rutei de câte unul? Nu: „Bifează tot” muta și arhivatele.
   const bulk = await json('PUT', '/api/devices/company/bulk', S, { imeis: [IM], company_id: co2.id });
   T('nici în lot nu se mută un aparat arhivat', bulk.status === 409 && (bulk.j.arhivate || []).indexOf(IM) >= 0, bulk.status + ' ' + bulk.text.slice(0, 80));
   const dupaBulk = lista((await json('GET', '/api/devices?includeArchived=1', S)).j).find((d) => d.imei === IM) || {};

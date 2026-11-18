@@ -1,17 +1,17 @@
 // verify_site_public.js — site-ul public de pe ratrack.ro: ce citește Google și ce vede un vizitator (02.10).
 //
 // Fără server: citește paginile din public/ și lista lor din server.js (PAGINI_PUBLICE, singura listă).
-// Cu server (BASE, cum îl pornește ci-smoke.js): harta site-ului, adresele „frumoase", redirecționările
-// de la vechile adrese cu „.html" și robots.txt.
+// Cu server (BASE, cum îl pornește ci-smoke.js): harta site-ului, adresele „frumoase”, redirecționările
+// de la vechile adrese cu „.html” și robots.txt.
 //
 // Ce păzește, pe scurt:
 //  - fiecare pagină are titlu, descriere, adresă canonică, un singur titlu mare (h1), fontul casei (Nunito),
 //    iconiță și bannerul de cookie-uri;
 //  - data din harta site-ului (`modificat`) se schimbă când se schimbă TEXTUL paginii (prin `amprenta`);
-//  - întrebările din datele pentru Google sunt IDENTICE cu cele de pe pagină (un răspuns „pentru Google"
+//  - întrebările din datele pentru Google sunt IDENTICE cu cele de pe pagină (un răspuns „pentru Google”
 //    diferit de cel pentru om e exact ce se sancționează);
-//  - nicio pagină nu mai trimite la adresa veche cu „.html", iar pagina principală le leagă pe toate;
-//  - textele au diacritice (titlurile paginii principale erau „Monitorizeaza-ti flota in timp real");
+//  - nicio pagină nu mai trimite la adresa veche cu „.html”, iar pagina principală le leagă pe toate;
+//  - textele au diacritice (titlurile paginii principale erau „Monitorizeaza-ti flota in timp real”);
 //  - cifra rapoartelor de pe pagina principală se NUMĂRĂ din catalog, ca pe hârtia ofertei.
 'use strict';
 const fs = require('fs');
@@ -43,7 +43,7 @@ function decodeaza(s) {
   });
 }
 // Textul pe care-l vede omul. Etichetele din interiorul rândului (b, a, span…) se scot fără spațiu, ca
-// „(<a>politica</a>)" să rămână „(politica)"; celelalte despart cuvinte.
+// „(<a>politica</a>)" să rămână „(politica)”; celelalte despart cuvinte.
 function faraMarcaj(html) {
   return decodeaza(String(html)
     .replace(/<!--[\s\S]*?-->/g, ' ')
@@ -60,7 +60,7 @@ const meta = (html, nume) => {
 };
 const canonica = (html) => (html.match(/<link rel="canonical" href="([^"]*)"/i) || [null, null])[1];
 // Amprenta textului: titlul, descrierea și ce se vede pe pagină. Marcajul și stilurile nu contează —
-// o culoare schimbată nu e „o pagină actualizată".
+// o culoare schimbată nu e „o pagină actualizată”.
 const amprenta = (html) => crypto.createHash('sha1')
   .update(titlul(html) + '\n' + (meta(html, 'description') || '') + '\n' + faraMarcaj(corpul(html)))
   .digest('hex').slice(0, 12);
@@ -91,10 +91,10 @@ function intrebariPePagina(body) {
 }
 
 // Cuvinte care, scrise fără diacritice, sunt greșite oricum le-ai citi. NU sunt aici cele care pot fi
-// corecte și fără (flota = „the fleet", sa = „his/her", oferta = „the offer", a intra, a verifica,
+// corecte și fără (flota = „the fleet”, sa = „his/her”, oferta = „the offer”, a intra, a verifica,
 // o notificare, pana de curent).
-// ⚠ Granița de cuvânt e scrisă de mână, cu litere Unicode: `\b` din JavaScript socotește „ș" și „ă"
-// semne de punctuație, deci ar fi găsit „in" în mijlocul lui „mașină".
+// ⚠ Granița de cuvânt e scrisă de mână, cu litere Unicode: `\b` din JavaScript socotește „ș” și „ă”
+// semne de punctuație, deci ar fi găsit „in” în mijlocul lui „mașină”.
 const LIT = '[\\p{L}\\p{N}_]';
 const cuvinte = (lista) => new RegExp('(?<!' + LIT + ')(' + lista + ')(?!' + LIT + ')', 'iu');
 const FARA_DIACRITICE = cuvinte('si|in|iti|intr|cand|fara|dupa|asa|cateva|catre|masina|masini|masinile|masinii|sofer|soferi|soferul|soferii|soferilor|aplicatie|aplicatia|aplicatii|functii|functie|agenti|agentii|notificari|integrari|alimentari|estimari|locatie|romania|mentenanta|evidenta|interfata|confidentialitate|detectie|tau|esti|primesti|urmareste|actualizeaza|saptamana|fisa|incarci|citeste|monitorizeaza|supravegheaza|lucreaza|conteaza|intrebi|raspunde|asteapta|livreaza|calculeaza|detecteaza|anunta|urmeaza|depasirile|bifeaza|incearca|intrerupta|verificam|contactam');
@@ -112,7 +112,7 @@ function siruriDinScripturi(html) {
 // ── Găsite pe drum și încă NEHOTĂRÂTE ──────────────────────────────────────────────────────────────
 // Regula casei (Alin, 01.10): ce găsesc pe drum NU repar pe tăcute și NU las deoparte pe tăcute — întreb.
 // Cât un rând stă aici, verificarea lui doarme, iar proba îl tipărește la fiecare rulare. Când se hotărăște,
-// scoate rândul: verificarea pornește. (Cele șase găsite pe 02.10: Robert, 03.10 — „da", corectate.)
+// scoate rândul: verificarea pornește. (Cele șase găsite pe 02.10: Robert, 03.10 — „da”, corectate.)
 // Forma unui rând: cheie: 'ce e greșit, pe scurt' — iar verificarea lui întreabă `if (!DE_HOTARAT.cheie)`.
 const DE_HOTARAT = {};
 for (const t of Object.values(DE_HOTARAT)) console.log('  ⓘ de hotărât (02.10): ' + t);
@@ -131,7 +131,7 @@ for (const p of PAGINI) {
 
   check(/<html lang="ro">/.test(html), p.cale + ': lipsește <html lang="ro">');
   const t = titlul(html);
-  check(t.length >= 20 && t.length <= 70, p.cale + ': titlul are ' + t.length + ' caractere (20–70): „' + t + '"');
+  check(t.length >= 20 && t.length <= 70, p.cale + ': titlul are ' + t.length + ' caractere (20–70): „' + t + '”');
   const d = meta(html, 'description') || '';
   check(d.length >= 70 && d.length <= 230, p.cale + ': descrierea are ' + d.length + ' caractere (70–230)');
   check(canonica(html) === canon, p.cale + ': adresa canonică e ' + canonica(html) + ', nu ' + canon);
@@ -151,12 +151,12 @@ for (const p of PAGINI) {
   check((p.modificat || '') <= azi, p.cale + ': `modificat` (' + p.modificat + ') e în viitor');
   const a = amprenta(html);
   check(p.amprenta === a, p.cale + ': textul paginii s-a schimbat. În PAGINI_PUBLICE (server.js) pune modificat: \'' + azi +
-    '\' și amprenta: \'' + a + '\'' + (/Ultima actualizare/.test(html) && !DE_HOTARAT.dataLegala ? ', iar pe pagină „Ultima actualizare" cu aceeași zi' : '') + '.');
+    '\' și amprenta: \'' + a + '\'' + (/Ultima actualizare/.test(html) && !DE_HOTARAT.dataLegala ? ', iar pe pagină „Ultima actualizare” cu aceeași zi' : '') + '.');
   const ua = html.match(/Ultima actualizare: <time datetime="(\d{4}-\d{2}-\d{2})">(\d{2})\.(\d{2})\.(\d{4})<\/time>/);
   if (/Ultima actualizare/.test(html) && !DE_HOTARAT.dataLegala) {
-    check(!!ua, p.cale + ': „Ultima actualizare" trebuie scrisă ca <time datetime="AAAA-LL-ZZ">ZZ.LL.AAAA</time> — nu ziua de azi, din browser');
+    check(!!ua, p.cale + ': „Ultima actualizare” trebuie scrisă ca <time datetime="AAAA-LL-ZZ">ZZ.LL.AAAA</time> — nu ziua de azi, din browser');
     if (ua) {
-      check(ua[1] === p.modificat, p.cale + ': „Ultima actualizare" (' + ua[1] + ') diferă de `modificat` din PAGINI_PUBLICE (' + p.modificat + ')');
+      check(ua[1] === p.modificat, p.cale + ': „Ultima actualizare” (' + ua[1] + ') diferă de `modificat` din PAGINI_PUBLICE (' + p.modificat + ')');
       check(ua[4] + '-' + ua[3] + '-' + ua[2] === ua[1], p.cale + ': data scrisă pe pagină diferă de cea din datetime');
     }
   }
@@ -170,27 +170,27 @@ for (const p of PAGINI) {
     // Până se hotărăște: măcar fiecare întrebare din date să fie, cuvânt cu cuvânt, pe pagină.
     const lista = faq[0] && Array.isArray(faq[0].mainEntity) ? faq[0].mainEntity : [];
     check(faq.length === 1 && lista.length > 0, p.cale + ': lipsesc datele întrebărilor pentru Google');
-    lista.forEach((q) => check(peP.some(x => x.q === q.name), p.cale + ': întrebarea „' + q.name + '" din datele pentru Google nu e pe pagină'));
+    lista.forEach((q) => check(peP.some(x => x.q === q.name), p.cale + ': întrebarea „' + q.name + '” din datele pentru Google nu e pe pagină'));
   } else if (peP.length || faq.length) {
     check(faq.length === 1, p.cale + ': are întrebări pe pagină, dar ' + faq.length + ' blocuri FAQPage (trebuie unul)');
     const lista = faq[0] && Array.isArray(faq[0].mainEntity) ? faq[0].mainEntity : [];
     check(lista.length === peP.length, p.cale + ': ' + peP.length + ' întrebări pe pagină, ' + lista.length + ' în datele pentru Google');
     lista.forEach((q, i) => {
       const pe = peP[i] || {};
-      check(q.name === pe.q, p.cale + ': întrebarea ' + (i + 1) + ' diferă: „' + q.name + '" ≠ „' + pe.q + '"');
+      check(q.name === pe.q, p.cale + ': întrebarea ' + (i + 1) + ' diferă: „' + q.name + '” ≠ „' + pe.q + '”');
       const r = q.acceptedAnswer && q.acceptedAnswer.text;
-      check(r === pe.a, p.cale + ': răspunsul ' + (i + 1) + ' („' + String(pe.q).slice(0, 40) + '…") diferă de cel de pe pagină');
+      check(r === pe.a, p.cale + ': răspunsul ' + (i + 1) + ' („' + String(pe.q).slice(0, 40) + '…”) diferă de cel de pe pagină');
     });
   }
 
   // Diacriticele.
   const vazut = faraMarcaj(body) + ' ' + t + ' ' + d + ' ' + atribute(html).join(' ');
   const g = vazut.match(FARA_DIACRITICE);
-  check(!g, p.cale + ': text fără diacritice („' + (g && g[0]) + '"): …' + (g ? vazut.slice(Math.max(0, g.index - 40), g.index + 40) : '') + '…');
+  check(!g, p.cale + ': text fără diacritice („' + (g && g[0]) + '”): …' + (g ? vazut.slice(Math.max(0, g.index - 40), g.index + 40) : '') + '…');
   for (const s of siruriDinScripturi(html)) {
-    // „in" e și cuvânt de JavaScript; în șirurile din scripturi nu-l căutăm.
+    // „in” e și cuvânt de JavaScript; în șirurile din scripturi nu-l căutăm.
     const gs = s.replace(new RegExp(CUVANTUL_IN.source, 'giu'), '').match(FARA_DIACRITICE);
-    check(!gs, p.cale + ': mesaj fără diacritice într-un script: „' + s + '"');
+    check(!gs, p.cale + ': mesaj fără diacritice într-un script: „' + s + '”');
   }
 
   // Legăturile: înapoi la pagina principală.
@@ -200,7 +200,7 @@ for (const p of PAGINI) {
 // ── 2. Legăturile între pagini ──────────────────────────────────────────────────────────────────────
 const acasa = HTML['/'] || '';
 for (const p of PAGINI) if (p.cale !== '/') check(acasa.includes('href="' + p.cale + '"'), 'pagina principală nu are legătură spre ' + p.cale + ' (Google o găsește mai greu, omul deloc)');
-// Nicio legătură nu mai duce la adresa veche cu „.html" (merge, dar prin redirecționare).
+// Nicio legătură nu mai duce la adresa veche cu „.html” (merge, dar prin redirecționare).
 const UNDE = ['public/js/consent.js', 'public/index.html', 'mobile/src/screens/Menu.tsx'].concat(PAGINI.map(p => 'public/' + p.fisier));
 for (const f of UNDE) {
   if (!fs.existsSync(f)) continue;
@@ -214,20 +214,20 @@ for (const f of UNDE) {
 
 // ── 3. Cifra rapoartelor de pe pagina principală se numără din catalog ──────────────────────────────
 // Aceeași regulă ca pe hârtia ofertei (report_export.js → _nRapoarte): rotunjit în JOS la zece. Cât prima
-// pagină e „de hotărât" (DE_HOTARAT.primaPagina: scrie „14+" și „32 de tipuri"), se cere doar să nu
+// pagină e „de hotărât” (DE_HOTARAT.primaPagina: scrie „14+” și „32 de tipuri”), se cere doar să nu
 // promită mai multe rapoarte decât are catalogul.
 const nRap = Object.keys(require('./reports.js').REPORTS || {}).length;
 const zeci = Math.floor(nRap / 10) * 10;
 const mErou = acasa.match(/<div class="num"><span>(\d+)\+<\/span><\/div>\s*<div class="lbl">tipuri de rapoarte<\/div>/);
-check(!!mErou, 'pagina principală: nu găsesc cifra „N+ tipuri de rapoarte"');
+check(!!mErou, 'pagina principală: nu găsesc cifra „N+ tipuri de rapoarte”');
 const mEticheta = acasa.match(/<span class="tag">(?:Peste )?(\d+) de tipuri<\/span>/);
-check(!!mEticheta, 'pagina principală: nu găsesc eticheta „… de tipuri" de la Rapoarte');
+check(!!mEticheta, 'pagina principală: nu găsesc eticheta „… de tipuri” de la Rapoarte');
 if (DE_HOTARAT.primaPagina) {
-  if (mErou) check(+mErou[1] <= nRap, 'pagina principală promite „' + mErou[1] + '+ tipuri de rapoarte"; catalogul are doar ' + nRap);
+  if (mErou) check(+mErou[1] <= nRap, 'pagina principală promite „' + mErou[1] + '+ tipuri de rapoarte”; catalogul are doar ' + nRap);
   if (mEticheta) check(+mEticheta[1] <= nRap, 'eticheta de la Rapoarte promite ' + mEticheta[1] + ' de tipuri; catalogul are doar ' + nRap);
 } else {
-  if (mErou) check(+mErou[1] === zeci, 'pagina principală scrie „' + mErou[1] + '+ tipuri de rapoarte"; catalogul are ' + nRap + ' → scrie „' + zeci + '+"');
-  if (mEticheta) check(/Peste \d+ de tipuri/.test(mEticheta[0]) && +mEticheta[1] === zeci, 'eticheta de la Rapoarte: catalogul are ' + nRap + ' → „Peste ' + zeci + ' de tipuri"');
+  if (mErou) check(+mErou[1] === zeci, 'pagina principală scrie „' + mErou[1] + '+ tipuri de rapoarte”; catalogul are ' + nRap + ' → scrie „' + zeci + '+”');
+  if (mEticheta) check(/Peste \d+ de tipuri/.test(mEticheta[0]) && +mEticheta[1] === zeci, 'eticheta de la Rapoarte: catalogul are ' + nRap + ' → „Peste ' + zeci + ' de tipuri”');
 }
 
 // ── 3b. Cifrele și faptele scrise pe pagini, legate de regula din cod ──────────────────────────────
@@ -253,7 +253,7 @@ const LEGATE = [
   ['/', '<span class="agd-b-n">RA Watch</span><span class="agd-b-d">Verifică flota în fiecare oră:', watchOrar, 'runAgentsWorker din server.js nu mai rulează din oră în oră', 'primaPagina'],
   ['/intrebari-frecvente', 'Istoricul pozițiilor se păstrează <b>12 luni</b>', C.LUNI_ISTORIC_INCLUSE === 12, 'LUNI_ISTORIC_INCLUSE din contracts.js e ' + C.LUNI_ISTORIC_INCLUSE, 'faqPastrare'],
   ['/intrebari-frecvente', 'ai <b>30 de zile</b> să ne ceri datele', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE, 'faqPastrare'],
-  // Termeni (11.11, Alin: „2. Da"): aceeași cifră ca în contract și în Confidențialitate, nu „un termen rezonabil".
+  // Termeni (11.11, Alin: „2. Da”): aceeași cifră ca în contract și în Confidențialitate, nu „un termen rezonabil”.
   ['/termeni', 'Clientul are <b>30 de zile</b> să ceară datele înapoi', C.ZILE_DATE_DUPA_INCETARE === 30, 'ZILE_DATE_DUPA_INCETARE din contracts.js e ' + C.ZILE_DATE_DUPA_INCETARE],
   ['/alerte-itp-rca-rovinieta', 'implicit cu <b>30 de zile</b> înainte de expirare', num(PREAVIZ, /const ACTE_ZILE = (\d+);/) === 30, 'ACTE_ZILE din preaviz.js'],
   ['/alerte-itp-rca-rovinieta', 'implicit e de 30 de zile', num(PREAVIZ, /const ACTE_ZILE = (\d+);/) === 30, 'ACTE_ZILE din preaviz.js'],
@@ -275,84 +275,84 @@ const LEGATE = [
   ['/pachete-ra-insight', '<b>Un pachet mai mare</b> se aplică din ziua confirmării, iar luna aceea se facturează pe zile', /const deLa = inceputZi\(acum\)/.test(PKJS) && /function liniiFactura\(o\)/.test(PKJS), 'trecerea la un pachet mai mare din pachete.js (din ziua confirmării, pe zile)'],
   ['/pachete-ra-insight', '<b>Un pachet mai mic</b> se aplică din prima zi a lunii următoare', /const deLa = inceputLunaUrm\(acum\)/.test(PKJS), 'trecerea la un pachet mai mic din pachete.js (din prima zi a lunii următoare)'],
   ['/pachete-ra-insight', 'confirmarea vine pe email, în PDF', /_trimiteConfirmarePachet\(rand, r\.co, u\)/.test(SRV), 'emailul confirmării (server.js)'],
-  // RA Insight în prim-plan (16.11, Alin: „1. A … 3. da"): cifrele scrise lângă telefoane.
-  ['/', 'și se poate anula în următoarele 10 minute', require('./soferi_masini.js').ANULARE_MIN === 10, 'ANULARE_MIN din soferi_masini.js (cât ține „Anulează" după „Da")'],
-  // Pachetele pe prima pagină = telefoanele de pe /pachete-ra-insight (17.11, Alin: „2. da").
+  // RA Insight în prim-plan (16.11, Alin: „1. A … 3. da”): cifrele scrise lângă telefoane.
+  ['/', 'și se poate anula în următoarele 10 minute', require('./soferi_masini.js').ANULARE_MIN === 10, 'ANULARE_MIN din soferi_masini.js (cât ține „Anulează” după „Da”)'],
+  // Pachetele pe prima pagină = telefoanele de pe /pachete-ra-insight (17.11, Alin: „2. da”).
   ['/', 'răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
-  // Suportul, în „Despre" (17.11, Alin: „1. da"): promisiunea și pașii lui „Anunță echipa RA Track" (cereri_echipa.js).
-  ['/', 'te sunăm în cel mult o zi lucrătoare', CE.TERMEN === 'Te sunăm în cel mult o zi lucrătoare.', 'TERMEN din cereri_echipa.js e „' + CE.TERMEN + '"'],
+  // Suportul, în „Despre” (17.11, Alin: „1. da”): promisiunea și pașii lui „Anunță echipa RA Track” (cereri_echipa.js).
+  ['/', 'te sunăm în cel mult o zi lucrătoare', CE.TERMEN === 'Te sunăm în cel mult o zi lucrătoare.', 'TERMEN din cereri_echipa.js e „' + CE.TERMEN + '”'],
   ['/', 'o urmărești pas cu pas: preluată, programată, rezolvată', ['preluata', 'programata', 'rezolvata'].map((k) => (CE.ETICHETE[k] || '').toLowerCase()).join(', ') === 'preluată, programată, rezolvată', 'pașii cererii (ETICHETE din cereri_echipa.js)'],
 ];
 for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
   if (doarme && DE_HOTARAT[doarme]) continue;
   const html = HTML[cale] || '';
-  check(html.includes(t), cale + ': nu mai găsesc pe pagină „' + t + '" — dacă ai schimbat textul, schimbă-l și în verify_site_public.js');
-  check(adevarat, cale + ': pagina scrie „' + t.replace(/<[^>]+>/g, '') + '", dar regula din cod s-a schimbat (' + unde + '). Schimbă textul paginii.');
+  check(html.includes(t), cale + ': nu mai găsesc pe pagină „' + t + '” — dacă ai schimbat textul, schimbă-l și în verify_site_public.js');
+  check(adevarat, cale + ': pagina scrie „' + t.replace(/<[^>]+>/g, '') + '”, dar regula din cod s-a schimbat (' + unde + '). Schimbă textul paginii.');
 }
 
 // ── 3c. Pachetele RA Insight pe site: aceleași texte ca în aplicație, fără prețuri (14.10) ──────────────
 // Ce primește fiecare pachet stă O DATĂ în pachete.js (DESCRIERE → publice). Pagina îl copiază; aici se compară cuvânt cu
 // cuvânt cu publice({ cuPret: false }) — schimbi un rând într-o parte, proba pică până îl schimbi și în cealaltă.
-// Alin, 14.10: „nu afișăm prețurile, sub fiecare plan, «cere ofertă»".
+// Alin, 14.10: „nu afișăm prețurile, sub fiecare plan, «cere ofertă»”.
 {
   const html = HTML['/pachete-ra-insight'] || '';
   const vazut = faraMarcaj(corpul(html));
   const pub = PK.publice({ cuPret: false });
   for (const p of pub) {
     const bucati = [p.nume, p.titlu, p.pentru, p.subPret, p.plus].concat(p.include, p.eticheta ? [p.eticheta] : [], p.cifre.map((c) => c.et), p.cifre.filter((c) => c.val != null).map((c) => c.val));
-    for (const b of bucati) check(vazut.includes(b), '/pachete-ra-insight: pachetul ' + p.nume + ' — lipsește pe pagină „' + b + '" (din pachete.js)');
+    for (const b of bucati) check(vazut.includes(b), '/pachete-ra-insight: pachetul ' + p.nume + ' — lipsește pe pagină „' + b + '” (din pachete.js)');
   }
   // Comparația rând cu rând (27.10): fiecare rând, explicația lui și fiecare celulă, din pachete.comparatie({ cuPret: false }),
   // în ordinea din cod; fără rândul cu prețul pe întrebare (acela stă doar în aplicație).
   const comp = PK.comparatie({ cuPret: false });
   let dupa = 0;
   for (const g of comp) {
-    check(vazut.includes(g.grup), '/pachete-ra-insight: comparația — lipsește grupul „' + g.grup + '" (din pachete.js)');
+    check(vazut.includes(g.grup), '/pachete-ra-insight: comparația — lipsește grupul „' + g.grup + '” (din pachete.js)');
     for (const r of g.randuri) {
       const la = vazut.indexOf(r.t, dupa);
-      check(la >= 0, '/pachete-ra-insight: comparația — lipsește rândul „' + r.t + '" (sau nu e în ordinea din pachete.js)');
+      check(la >= 0, '/pachete-ra-insight: comparația — lipsește rândul „' + r.t + '” (sau nu e în ordinea din pachete.js)');
       if (la >= 0) dupa = la;
-      if (r.d) check(vazut.includes(r.d), '/pachete-ra-insight: comparația — la „' + r.t + '" lipsește explicația „' + r.d + '"');
+      if (r.d) check(vazut.includes(r.d), '/pachete-ra-insight: comparația — la „' + r.t + '” lipsește explicația „' + r.d + '”');
       for (const x of r.v) {
-        if (x.text) check(vazut.includes(x.text), '/pachete-ra-insight: comparația — la „' + r.t + '" lipsește „' + x.text + '"');
-        if (x.mic) check(vazut.includes(x.mic), '/pachete-ra-insight: comparația — la „' + r.t + '" lipsește „' + x.mic + '"');
+        if (x.text) check(vazut.includes(x.text), '/pachete-ra-insight: comparația — la „' + r.t + '” lipsește „' + x.text + '”');
+        if (x.mic) check(vazut.includes(x.mic), '/pachete-ra-insight: comparația — la „' + r.t + '” lipsește „' + x.mic + '”');
       }
     }
   }
   check(!/Preț pe o întrebare/.test(vazut), '/pachete-ra-insight: rândul cu prețul pe întrebare e doar pentru aplicație');
-  for (const x of PK.IN_TOATE) check(vazut.includes(x.t) && vazut.includes(x.d), '/pachete-ra-insight: lipsește din „În toate pachetele" „' + x.t + '" (din pachete.js)');
-  check(!/\d\s*(de\s+)?lei\b|\blei\s*\//i.test(vazut) && !/€/.test(vazut), '/pachete-ra-insight: pe pagină apare un preț — pe site nu se afișează prețuri, doar „Cere ofertă"');
-  check((html.match(/>Cere ofertă</g) || []).length >= 3, '/pachete-ra-insight: sub fiecare pachet plătit trebuie „Cere ofertă"');
-  // Nicio pagină nu mai spune că RA Insight se plătește „pe cont" (regula veche, până pe 14.10).
+  for (const x of PK.IN_TOATE) check(vazut.includes(x.t) && vazut.includes(x.d), '/pachete-ra-insight: lipsește din „În toate pachetele” „' + x.t + '” (din pachete.js)');
+  check(!/\d\s*(de\s+)?lei\b|\blei\s*\//i.test(vazut) && !/€/.test(vazut), '/pachete-ra-insight: pe pagină apare un preț — pe site nu se afișează prețuri, doar „Cere ofertă”');
+  check((html.match(/>Cere ofertă</g) || []).length >= 3, '/pachete-ra-insight: sub fiecare pachet plătit trebuie „Cere ofertă”');
+  // Nicio pagină nu mai spune că RA Insight se plătește „pe cont” (regula veche, până pe 14.10).
   for (const p of PAGINI) {
     const v = faraMarcaj(corpul(HTML[p.cale] || ''));
-    check(!/pentru fiecare cont care îl folosește|Se activează pe cont|fiecare loc aduce/.test(v), p.cale + ': pagina spune încă regula veche, „RA Insight pe cont" — din 14.10 se vinde în pachete pe firmă');
+    check(!/pentru fiecare cont care îl folosește|Se activează pe cont|fiecare loc aduce/.test(v), p.cale + ': pagina spune încă regula veche, „RA Insight pe cont” — din 14.10 se vinde în pachete pe firmă');
   }
 }
 
-// ── 3d. Pachetele pe prima pagină (27.10, Alin: „fără preț în pagina publică, pe home page"; 17.11: „2. da") ──────────────
+// ── 3d. Pachetele pe prima pagină (27.10, Alin: „fără preț în pagina publică, pe home page”; 17.11: „2. da”) ──────────────
 // Din 17.11 = cele două telefoane de pe /pachete-ra-insight: Start (cu textele lui, din pachete.js) și Basic / Pro / Business (le desenează
 // ra-insight-demo.js, cu textele din pachete.js — verify_ra_insight_demo.js). Comparația scrisă stă DOAR pe /pachete-ra-insight, la butonul
-// „Compară pachetele RA Insight". Fără prețuri. Până pe 17.11: patru cartonașe cu text (.ri-pachete), copia lui pachete.publice.
+// „Compară pachetele RA Insight”. Fără prețuri. Până pe 17.11: patru cartonașe cu text (.ri-pachete), copia lui pachete.publice.
 {
   const html = HTML['/'] || '';
   const iS = html.indexOf('id="ra-insight"');
   const sec = iS > 0 ? html.slice(iS, html.indexOf('</section>', iS)) : '';
   const i = sec.indexOf('class="tel-doi"');
-  check(i > 0, '/: lipsesc telefoanele pachetelor RA Insight din capitolul „Inteligență artificială" (#ra-insight)');
+  check(i > 0, '/: lipsesc telefoanele pachetelor RA Insight din capitolul „Inteligență artificială” (#ra-insight)');
   const bloc = i > 0 ? sec.slice(i, sec.indexOf('class="ri-cta"', i)) : '';
   check(/data-ri-demo="start"/.test(bloc) && /data-ri-demo="platit"/.test(bloc), '/: la pachete trebuie telefonul Start (data-ri-demo="start") și cel cu Basic / Pro / Business (data-ri-demo="platit")');
   const st = PK.publice({ cuPret: false }).find((p) => p.cod === 'start');
   const vazut = faraMarcaj(bloc);
-  for (const b of [st.titlu, st.pentru, 'Conturi: ' + st.cifre[0].val + ' · Răspunsuri pe loc: ' + st.cifre[2].val]) check(vazut.includes(b), '/: coloana Start — lipsește „' + b + '" (din pachete.js)');
+  for (const b of [st.titlu, st.pentru, 'Conturi: ' + st.cifre[0].val + ' · Răspunsuri pe loc: ' + st.cifre[2].val]) check(vazut.includes(b), '/: coloana Start — lipsește „' + b + '” (din pachete.js)');
   check(!/class="ri-pachete"/.test(html), '/: cartonașele cu text ale pachetelor au ieșit de pe prima pagină (comparația scrisă stă pe /pachete-ra-insight)');
   check(!/\d\s*(de\s+)?lei\b|\blei\s*\//i.test(vazut) && !/€/.test(vazut), '/: la pachete apare un preț — pe site nu se afișează prețuri');
-  check(/<a href="\/pachete-ra-insight" class="btn btn-ghost">Compară pachetele RA Insight /.test(sec), '/: lipsește butonul „Compară pachetele RA Insight" spre comparația scrisă (/pachete-ra-insight)');
+  check(/<a href="\/pachete-ra-insight" class="btn btn-ghost">Compară pachetele RA Insight /.test(sec), '/: lipsește butonul „Compară pachetele RA Insight” spre comparația scrisă (/pachete-ra-insight)');
 }
 
 // ── 3e. Numele furnizorilor și cuvintele de șablon (11.11, Alin) ─────────────────────────────────────────────────────
-// „Nu am văzut nicăieri să scrie cineva ce agent e folosit… e treaba noastră internă": numele furnizorului de AI stă DOAR în
-// Confidențialitate (acolo legea cere să spunem cui dăm datele). Și „pe unde mai sunt greșeli de genul acesta" („scopat"): pe paginile
+// „Nu am văzut nicăieri să scrie cineva ce agent e folosit… e treaba noastră internă”: numele furnizorului de AI stă DOAR în
+// Confidențialitate (acolo legea cere să spunem cui dăm datele). Și „pe unde mai sunt greșeli de genul acesta” („scopat”): pe paginile
 // legale nu rămân cuvintele englezești ale șablonului (procesator, DPA, SCC, bcrypt, multi-tenant, CDN / DNS / proxy, credențiale, retenție).
 {
   for (const p of PAGINI) {
@@ -364,23 +364,23 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
   for (const p of PAGINI) {
     const v = faraMarcaj(HTML[p.cale] || '');
     const m = v.match(SABLON);
-    check(!m, p.cale + ': cuvânt de șablon / din engleză pe pagină: „' + (m ? m[0] : '') + '"');
+    check(!m, p.cale + ': cuvânt de șablon / din engleză pe pagină: „' + (m ? m[0] : '') + '”');
   }
   check(/Anthropic/.test(faraMarcaj(HTML['/confidentialitate'] || '')), '/confidentialitate: trebuie să spună cui trimitem datele pentru AI (Anthropic) — legea o cere');
-  // Alin, 17.11: „îți răspunde în română… ce-i asta?" — limba nu e o calitate de lăudat pe un site românesc. Nici în text, nici în
-  // descrierile pentru Google (meta), de aceea se caută în tot HTML-ul. (Fără `\b`: JavaScript nu vede „î" ca literă.)
+  // Alin, 17.11: „îți răspunde în română… ce-i asta?” — limba nu e o calitate de lăudat pe un site românesc. Nici în text, nici în
+  // descrierile pentru Google (meta), de aceea se caută în tot HTML-ul. (Fără `\b`: JavaScript nu vede „î” ca literă.)
   const IN_ROMANA = /(răspund|întreb)[^.<"]{0,40}[\s,]în (limba )?român[ăa]/i;
   for (const p of PAGINI) {
     const m = (HTML[p.cale] || '').match(IN_ROMANA);
-    check(!m, p.cale + ': nu scriem că RA Insight răspunde / e întrebat „în română": „' + (m ? m[0] : '') + '"');
+    check(!m, p.cale + ': nu scriem că RA Insight răspunde / e întrebat „în română”: „' + (m ? m[0] : '') + '”');
   }
 }
 
-// ── 3f. Site-ul vorbește cu „tu”, cu ghilimele românești (17.11, Alin: „4. Tu", „1. Da") ───────────────────────────
+// ── 3f. Site-ul vorbește cu „tu”, cu ghilimele românești (17.11, Alin: „4. Tu”, „1. Da”) ───────────────────────────
 // Prima pagină și aplicația vorbeau cu „tu”, cinci pagini cu „dumneavoastră” — uneori în aceeași frază („Scrieți orice întrebare…” lângă
 // „Întreabă orice despre flota ta”). Acum „tu” peste tot, și în descrierile și întrebările pentru Google; Termenii rămân la persoana a treia
 // („Clientul”). Ghilimeaua de închidere e cea românească (”), nu semnul drept ("). Granițele de cuvânt sunt scrise cu litere: `\b` din
-// JavaScript nu vede „ă" ca literă.
+// JavaScript nu vede „ă” ca literă.
 {
   const L = 'A-Za-zĂÂÎȘȚăâîșț';
   const DUMNEAVOASTRA = new RegExp('(?<![' + L + '])(dumneavoastr[' + L + ']*|vă|vi|v-(?:am|ați|o|i|a|au)|sunteți|aveți|puteți|primiți|vreți|vedeți|cereți|alegeți|setați|' +
@@ -389,18 +389,18 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
     if (p.cale === '/termeni') continue;
     const html = (HTML[p.cale] || '').replace(/<!--[\s\S]*?-->/g, ' ');
     const m = html.match(DUMNEAVOASTRA);
-    check(!m, p.cale + ': site-ul vorbește cu „tu" — am găsit „' + (m ? m[0] : '') + '" (…' + (m ? html.slice(Math.max(0, m.index - 50), m.index + 30).replace(/\s+/g, ' ') : '') + '…)');
+    check(!m, p.cale + ': site-ul vorbește cu „tu” — am găsit „' + (m ? m[0] : '') + '” (…' + (m ? html.slice(Math.max(0, m.index - 50), m.index + 30).replace(/\s+/g, ' ') : '') + '…)');
   }
   for (const p of PAGINI) {
     const html = HTML[p.cale] || '';
     const ld = (html.match(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g) || []).join(' ');
     const m = faraMarcaj(html).match(/„[^”"„]{1,80}"/) || ld.match(/„[^”"„\\]{1,80}\\"/);
-    check(!m, p.cale + ': ghilimeaua de închidere e ” (cea românească), nu " — „' + (m ? m[0] : '') + '"');
+    check(!m, p.cale + ': ghilimeaua de închidere e ” (cea românească), nu " — „' + (m ? m[0] : '') + '”');
   }
-  // Cartela SIM e treaba NOASTRĂ (Alin, 18.11: „clientul nu are treabă cu cartela SIM. Nu o spunem nicăieri."): nici în costuri, nici la echipament.
+  // Cartela SIM e treaba NOASTRĂ (Alin, 18.11: „clientul nu are treabă cu cartela SIM. Nu o spunem nicăieri.”): nici în costuri, nici la echipament.
   for (const p of PAGINI) {
     const m = (HTML[p.cale] || '').replace(/<!--[\s\S]*?-->/g, ' ').match(/cartel[aăe]\s*SIM|(?<![A-Za-z])SIM(?![A-Za-z])/);
-    check(!m, p.cale + ': cartela SIM nu se pomenește pe site — „' + (m ? m[0] : '') + '"');
+    check(!m, p.cale + ': cartela SIM nu se pomenește pe site — „' + (m ? m[0] : '') + '”');
   }
 }
 

@@ -1,4 +1,4 @@
-// „Vezi pachetele", trecerea la alt pachet, „Pachet și conturi" și ce ține de pachet în Utilizatori și în fila „Acces" a firmei, pe
+// „Vezi pachetele”, trecerea la alt pachet, „Pachet și conturi” și ce ține de pachet în Utilizatori și în fila „Acces” a firmei, pe
 // telefon. Reguli curate, fără ecran: `verify_telefon_pachete.js` rulează funcțiile paginii web (insightPachete, arataConfirmarea,
 // deseneazaPachetConturi, _usrSeatsHtml, _raxRenderCfg, raxCfgPachet) lângă cele de aici, pe aceleași răspunsuri.
 //
@@ -6,15 +6,15 @@
 // `rezumat`, `nota`, `nuPoate` vin toate de la server. Aici stau doar cuvintele pe care le scrie și pagina web, cu aceleași litere.
 
 // Cine ajunge la paginile pachetului: administratorul firmei (web: esteAdmin). Noi, fondatorii, n-avem pachet; pachetul unei firme
-// îl punem din fila ei „Acces".
+// îl punem din fila ei „Acces”.
 export function esteAdminFirma(role: any): boolean { const r = String(role || ''); return r === 'company_admin' || r === 'admin'; }
-// Rândul din „⋯" (web: `esteAdmin() && (S.pachet || S.faraLoc)`): și administratorul fără cont RA Insight al lui ajunge acolo.
+// Rândul din „⋯” (web: `esteAdmin() && (S.pachet || S.faraLoc)`): și administratorul fără cont RA Insight al lui ajunge acolo.
 export function arataPachetConturi(admin: boolean, pachet: any, faraLoc: any): boolean { return !!(admin && (pachet || faraLoc)); }
 
-// Cartonașul „nu e pornit", la administrator (web: deseneazaMain).
+// Cartonașul „nu e pornit”, la administrator (web: deseneazaMain).
 export const TEXT_ADMIN_FARA_LOC = 'Ești administratorul firmei: îți poți da contul singur, din „Pachet și conturi”.';
 
-// ── „Vezi pachetele" (web: insightPachete, GET /api/insight/pachete) ──
+// ── „Vezi pachetele” (web: insightPachete, GET /api/insight/pachete) ──
 export type CelulaCmp = { da: boolean | null; text: string; mic: string };
 export function planPachete(j: any) {
   const urm = j && j.urmator;
@@ -69,13 +69,13 @@ export function dupaConfirmare(status: number, j: any):
   return { fel: 'gata', mesaj: String(x.mesaj || 'Gata.') };
 }
 
-// ── „Pachet și conturi" (web: deseneazaPachetConturi, GET /api/insight/pachet-conturi) ──
+// ── „Pachet și conturi” (web: deseneazaPachetConturi, GET /api/insight/pachet-conturi) ──
 export const TITLU_CONTURI = 'Pachet și conturi';
 export function coloaneConturi(j: any): string[] {
   const imp = !!(j && j.pachet && j.pachet.imparte);
   return ['Om', 'Rol', 'RA Insight'].concat(imp ? ['Întrebări pe lună'] : []).concat(['Folosite în ' + ((j && j.luna) || 'luna asta')]);
 }
-// Un buton „Treci la Pro" de la server (16.11): doar cu un cod de pachet curat; altfel nu se desenează nimic.
+// Un buton „Treci la Pro” de la server (16.11): doar cu un cod de pachet curat; altfel nu se desenează nimic.
 export function recomandareCurata(r: any): null | { cod: string; nume: string; buton: string; text: string } {
   if (!r || !/^[a-z]+$/.test(String(r.cod || ''))) return null;
   return { cod: String(r.cod), nume: String(r.nume || ''), buton: String(r.buton || ('Treci la ' + (r.nume || ''))), text: String(r.text || '') };
@@ -91,7 +91,7 @@ export function planConturi(j: any) {
     bara: p && p.intrebari ? Math.max(0, Math.min(100, Math.round((Number(p.ramase) || 0) / p.intrebari * 100))) : null,
     imparte: imp,
     coloane: coloaneConturi(j),
-    // Conturile pline: „Treci la Pro", sub rândul celui care nu poate primi cont (doar administratorului care poate schimba pachetul).
+    // Conturile pline: „Treci la Pro”, sub rândul celui care nu poate primi cont (doar administratorului care poate schimba pachetul).
     recomandatConturi: recomandareCurata(j && j.recomandatConturi),
     oameni: ((j && j.oameni) || []).map((o: any) => ({
       id: o.id, nume: String(o.nume || ''), rol: String(o.rol || ''), loc: !!o.loc,
@@ -110,14 +110,14 @@ export function planConturi(j: any) {
 // Cuvintele de sub apăsări, ca pe web (insightLoc, insightLimita, insightSursaFirma).
 export const TITLU_DAI_LOC = 'Dai RA Insight?';
 export const OK_DAI_LOC = 'Dă-i acces';
-export function textDaiLoc(nume: any): string { return '„' + nume + '" primește RA Insight. Prețul pachetului rămâne același, oricâte conturi dai.'; }
-export function textLocGata(on: boolean, nume: any): string { return on ? 'RA Insight pornit pentru „' + nume + '"' : 'RA Insight oprit pentru „' + nume + '"'; }
+export function textDaiLoc(nume: any): string { return '„' + nume + '” primește RA Insight. Prețul pachetului rămâne același, oricâte conturi dai.'; }
+export function textLocGata(on: boolean, nume: any): string { return on ? 'RA Insight pornit pentru „' + nume + '”' : 'RA Insight oprit pentru „' + nume + '”'; }
 export function textLimitaGata(v: any): string { const x = String(v == null ? '' : v).trim(); return x === '' || Number(x) === 0 ? 'S-a salvat: 0 pe lună — doar răspunsurile pe loc' : 'S-a salvat: ' + x + ' pe lună'; }
 export function textSursaGata(on: boolean): string { return on ? 'Sursa externă e pornită pentru toată firma.' : 'Sursa externă e oprită pentru toată firma.'; }
 // Ce pleacă la PUT /api/users/:id/ai-limita: 0 sau gol = fără întrebări libere (doar răspunsurile pe loc).
 export function corpLimita(val: any) { const v = String(val == null ? '' : val).trim(); return { limita: v === '' || Number(v) === 0 ? null : Number(v) }; }
 // Cifra care nu încape (web: S.nuIncape): serverul refuză cu 400 și `maxim` (cât mai încape) și, la administratorul care poate schimba
-// pachetul, `recomandat` („Treci la Pro"). Mesajul rămâne sub listă până îl închide omul sau schimbă ceva — nu o bulă de două secunde.
+// pachetul, `recomandat` („Treci la Pro”). Mesajul rămâne sub listă până îl închide omul sau schimbă ceva — nu o bulă de două secunde.
 export type NuIncape = { id: any; nume: string; valoare: string; text: string; maxim: number; rec: ReturnType<typeof recomandareCurata> };
 export function nuIncapeDin(data: any, id: any, nume: any, val: any): NuIncape | null {
   if (!data || data.maxim == null) return null;
@@ -125,7 +125,7 @@ export function nuIncapeDin(data: any, id: any, nume: any, val: any): NuIncape |
 }
 export function textPuneMaxim(ni: { maxim: number; nume: string }): string { return 'Pune ' + ni.maxim + ' pentru ' + ni.nume; }
 
-// ── Utilizatori (web: _usrSeatsHtml, rândul omului): pe un pachet, conturile se dau DOAR din „Pachet și conturi" ──
+// ── Utilizatori (web: _usrSeatsHtml, rândul omului): pe un pachet, conturile se dau DOAR din „Pachet și conturi” ──
 export const TITLU_RA = 'Are RA Insight. Se schimbă din „Pachet și conturi”.';
 export const LINK_CONTURI = 'Schimbă în Pachet și conturi →';
 // Pachetul de care ține seama ecranul: al firmei omului; la noi, nimic (noi nu avem o firmă a noastră aici).
@@ -139,16 +139,16 @@ export function randConturi(toti: any[], pk: any): null | { n: number; cat: stri
     link: !!pk,
   };
 }
-// Eticheta „RA Insight" de pe rândul omului (web: `_usrPachet && u.ai_seat`). Bagheta regulii vechi, „pe cont", a ieșit pe 11.11:
-// conturile se dau doar din „Pachet și conturi".
+// Eticheta „RA Insight” de pe rândul omului (web: `_usrPachet && u.ai_seat`). Bagheta regulii vechi, „pe cont”, a ieșit pe 11.11:
+// conturile se dau doar din „Pachet și conturi”.
 export function arataEticheta(u: any, pk: any): boolean { return !!(pk && u && u.ai_seat); }
 
-// ── Fila „Acces" a firmei, la noi (web: _raxRenderCfg, raxCfgPachet) ──
+// ── Fila „Acces” a firmei, la noi (web: _raxRenderCfg, raxCfgPachet) ──
 export const NOTA_PACHET_FIRMA = 'Start = doar administratorul, pe butoane (fără AI); Basic, Pro, Business = cu AI și ramuri. Pe factură: un rând fix pe lună; o trecere în cursul lunii se socotește pe zile. Administratorul firmei își schimbă singur pachetul, din „Vezi pachetele”.';
 export function butonPachetFirma(p: any): string {
   return p.nume + ' · ' + (p.pret ? p.pret + (p.pret % 100 >= 20 || p.pret % 100 === 0 ? ' de lei' : ' lei') : 'inclus');
 }
-// „Acum: …" (cu **îngroșat**); fără pachet scris, firma e pe Start (web: _raxRenderCfg). Ziua pe ora României: din 13.11 schimbarea
+// „Acum: …” (cu **îngroșat**); fără pachet scris, firma e pe Start (web: _raxRenderCfg). Ziua pe ora României: din 13.11 schimbarea
 // pusă de noi pornește de la miezul nopții de acolo, iar un telefon pe alt fus ar fi arătat ziua dinainte.
 export function acumPachetFirma(s: any): string {
   const a = s && s.ai_pachet;

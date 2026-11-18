@@ -3,7 +3,7 @@ import { usaCaseta } from './cereriEchipa';
 
 // Regulile ecranului RA Insight de pe telefon (02.11): ce arată un răspuns, în ce ordine, unde duce un buton, ce pleacă la
 // server. Fără JSX, fără stare, fără cereri: verify_telefon_insight.js le rulează lângă bucățile paginii (public/index.html,
-// blocul „secțiunea RA Insight" și piesele comune de deasupra lui), pe aceleași cazuri. Schimbi o regulă pe web → proba pică
+// blocul „secțiunea RA Insight” și piesele comune de deasupra lui), pe aceleași cazuri. Schimbi o regulă pe web → proba pică
 // până o schimbi și aici. Telefonul nu socotește nimic și nu scrie niciun text de-al serverului: aici stau doar etichetele pe
 // care și pagina le scrie de mână, cu aceleași cuvinte.
 
@@ -13,29 +13,29 @@ export const CARDURI = [
   { t: 'Km săptămâna trecută', q: 'Câți km a făcut fiecare mașină săptămâna trecută?' },
   { t: 'Ce acte expiră?', q: 'Ce acte expiră în următoarele 30 de zile?' },
 ];
-// Pe butoane (Start, sau luna oprită) primul e unul la care răspund regulile — „ce probleme are flota" cere AI.
+// Pe butoane (Start, sau luna oprită) primul e unul la care răspund regulile — „ce probleme are flota” cere AI.
 export const CARDURI_REGULI = [{ t: 'Ce a făcut flota ieri?', q: 'Ce a făcut flota ieri?' }].concat(CARDURI.slice(1));
 
-// Perioadele de ales din „+" — scrise cum le înțeleg regulile (window._CHAT_PERIOADE).
+// Perioadele de ales din „+” — scrise cum le înțeleg regulile (window._CHAT_PERIOADE).
 export const PERIOADE = [
   { text: 'Azi', pune: 'azi' }, { text: 'Ieri', pune: 'ieri' }, { text: 'Săptămâna asta', pune: 'săptămâna asta' },
   { text: 'Săptămâna trecută', pune: 'săptămâna trecută' }, { text: 'Luna asta', pune: 'luna asta' },
   { text: 'Luna trecută', pune: 'luna trecută' }, { text: 'Ultimele 30 de zile', pune: 'ultimele 30 de zile' },
 ];
 
-// Paginile din „Domenii" (ramurile) și ghidul, pe telefon: un `pagina` dintr-un răspuns, un buton `ramura` și un rând din „Azi la tine"
-// le deschid. O pagină încuiată (Start): „Actele" din „Azi la tine" pleacă drept întrebare, ca pe web.
-// „pachet" = „Pachet și conturi" (web: `S.ramura === 'pachet'`, doar administratorul firmei; ceilalți rămân pe discuție).
+// Paginile din „Domenii” (ramurile) și ghidul, pe telefon: un `pagina` dintr-un răspuns, un buton `ramura` și un rând din „Azi la tine”
+// le deschid. O pagină încuiată (Start): „Actele” din „Azi la tine” pleacă drept întrebare, ca pe web.
+// „pachet” = „Pachet și conturi” (web: `S.ramura === 'pachet'`, doar administratorul firmei; ceilalți rămân pe discuție).
 export const RAMURI_PE_TELEFON: string[] = RAMURI.map((r) => r.k).concat(['pachet']);
 
-// Salutul (05.11): prenumele îl dă serverul (/api/me → prenume, regula din prenume.js: „Tilvar Alin" → „Alin", fără nume din email),
+// Salutul (05.11): prenumele îl dă serverul (/api/me → prenume, regula din prenume.js: „Tilvar Alin” → „Alin”, fără nume din email),
 // ca pe web. Telefonul nu-l mai socotește din nume.
 export function textSalut(prenume: any): string {
   const p = String(prenume || '').trim();
   return (p ? 'Salut, ' + p + '! ' : 'Salut! ') + 'Cu ce te pot ajuta?';
 }
 
-// ── „azi, 12:56" / „ieri" / „28 sept." și grupele din sertar ──
+// ── „azi, 12:56” / „ieri” / „28 sept.” și grupele din sertar ──
 function zi0(d: any): number { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); }
 export function cand(ts: any, acum: number = Date.now()): string {
   const d = new Date(ts); if (isNaN(d.getTime())) return '';
@@ -51,7 +51,7 @@ export function grup(ts: any, acum: number = Date.now()): string {
 
 // ── Pachetul și contorul, din GET /api/ai/quota (web: incarcaPachet, textContor, deseneazaPachet) ──
 // Orice firmă are un pachet (Start, dacă nu i-am pus altul): contorul e al pachetului. Fără pachet suntem doar noi, fondatorii.
-// Regula veche, „pe cont", a fost scoasă pe 11.11 (Alin: „Scoate").
+// Regula veche, „pe cont”, a fost scoasă pe 11.11 (Alin: „Scoate”).
 export function textContor(q: any, pachet: any, fondator: boolean): string {
   if (pachet) return String(pachet.scurt || '');
   if (fondator && q && !q.error && q.unlimited) return 'Fondator · fără limită';
@@ -66,7 +66,7 @@ export function randFond(q: any, pachet: any, contor: string): { text: string; d
 export function stareDinQuota(q: any, fondator: boolean) {
   const bun = !!(q && !q.error);
   const pachet = (bun && q.pachet) || null;
-  // „Sursă externă": fără voie (noi, firma, pachetul), nu apare.
+  // „Sursă externă”: fără voie (noi, firma, pachetul), nu apare.
   const sursaInfo = (bun && q.sursa && q.sursa.vede) ? q.sursa : null;
   const peReguli = !!(pachet && (!pachet.ai || q.blocked));
   const contor = textContor(q, pachet, fondator);
@@ -75,8 +75,8 @@ export function stareDinQuota(q: any, fondator: boolean) {
 export function placeholderCaseta(peReguli: boolean, pachet: any, poateRapoarte: boolean): string {
   return !peReguli ? (poateRapoarte ? 'Scrie o întrebare sau cere un raport…' : 'Scrie o întrebare…') : (pachet && !pachet.ai ? 'Apasă „+” sau scrie o întrebare…' : 'Apasă „+” ca să alegi…');
 }
-// Butonul „Sursă externă": pe Start și când butoanele răspund (fără AI) nu apare. Oprit = doar globul (pe ecran îngust, numele
-// pleacă, ca pe web); pornit = și câte au rămas, plus fraza de sub casetă. Când s-au terminat, rămâne cu „0 din 10".
+// Butonul „Sursă externă”: pe Start și când butoanele răspund (fără AI) nu apare. Oprit = doar globul (pe ecran îngust, numele
+// pleacă, ca pe web); pornit = și câte au rămas, plus fraza de sub casetă. Când s-au terminat, rămâne cu „0 din 10”.
 export function butonSursa(si: any, peReguli: boolean, pornit: boolean) {
   const s = peReguli ? null : si;
   if (!s) return null;
@@ -84,7 +84,7 @@ export function butonSursa(si: any, peReguli: boolean, pornit: boolean) {
 }
 export function areAi(peReguli: boolean, pachet: any): boolean { return !peReguli && !(pachet && !pachet.ai); }
 
-// ── „Azi la tine": un rând = un clic (web: aziPrimul, aziButon) ──
+// ── „Azi la tine”: un rând = un clic (web: aziPrimul, aziButon) ──
 export function aziPrimul(rd: any, cuAi: boolean, poateRapoarte: boolean): any {
   return (rd.butoane || []).filter((b: any) => {
     if (b.fel === 'dece' && !cuAi) return false;
@@ -93,7 +93,7 @@ export function aziPrimul(rd: any, cuAi: boolean, poateRapoarte: boolean): any {
     return true;
   })[0] || null;
 }
-// Ce face rândul: { ruta } sau { trimite, buton }. „De ce?" e o întrebare pentru RA Insight (se numără), restul pleacă pe butoane.
+// Ce face rândul: { ruta } sau { trimite, buton }. „De ce?” e o întrebare pentru RA Insight (se numără), restul pleacă pe butoane.
 export function aziActiune(b: any, pachet?: any): { ruta?: string; trimite?: string; buton?: boolean } | null {
   if (!b) return null;
   if (b.fel === 'harta') return { ruta: rutaMasina((b.imeis || [])[0]) };
@@ -139,7 +139,7 @@ export function rutaTraseu(b: any): string {
 export function rutaButon(b: any, p?: any): string | null {
   if (!b) return null;
   const imei = b.imei != null && b.imei !== '' ? String(b.imei) : '';
-  if (b.fel === 'echipa') return usaCaseta(b, p);   // „Anunță echipa RA Track": fereastra cererii, cu ce a scris aplicația în casetă
+  if (b.fel === 'echipa') return usaCaseta(b, p);   // „Anunță echipa RA Track”: fereastra cererii, cu ce a scris aplicația în casetă
   if (b.fel === 'harta') return imei ? rutaMasina(imei) : null;
   if (b.fel === 'traseu') return imei ? rutaTraseu(b) : null;
   if (b.fel === 'ecran') return ECRANE[String(b.ecran || '')] || null;
@@ -166,7 +166,7 @@ export function iconaButonProblema(fel: any): string {
 // ── Textul serverului: **îngroșat**, titluri și liste, fără HTML (web: md, mdScurt, textGros). Doar noduri, niciodată innerHTML. ──
 export interface Parte { t: string; b?: boolean; i?: boolean }
 const RE_BOLD = /\*\*([^*]+)\*\*/g;
-// *italic* (explicațiile serverului când s-a terminat fondul): un „*" urmat de spațiu (listă) sau lipit de cifre („2*3") rămâne text.
+// *italic* (explicațiile serverului când s-a terminat fondul): un „*” urmat de spațiu (listă) sau lipit de cifre („2*3”) rămâne text.
 const RE_ITALIC = /(^|[^*\w])\*([^*\s](?:[^*\n]*[^*\s])?)\*(?![*\w])/g;
 function bucati(s: string, re: RegExp, cu: (m: RegExpExecArray) => { inainte?: string; parte: string }, fel: 'b' | 'i', rest: (t: string) => Parte[]): Parte[] {
   const out: Parte[] = [];
@@ -216,7 +216,7 @@ export function mdBlocuri(t: any): BlocMd[] {
 export function textSimplu(t: any): string {
   return String(t || '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').replace(/^[•*-]\s+/gm, '• ').trim();
 }
-// Linkurile din „Sursă externă": doar http / https.
+// Linkurile din „Sursă externă”: doar http / https.
 export function linkSigur(url: any): boolean { return /^https?:\/\//i.test(String(url || '')); }
 
 // ── Caseta: o bucată (mașina, perioada) pusă unde e cursorul (web: _chatPuneInText). `buton` = întrebarea e făcută doar din butoane. ──
@@ -227,7 +227,7 @@ export function punInText(v: string, a: number | null, b: number | null, bucata:
   const pune = (inainte && !/\s$/.test(inainte) ? ' ' : '') + bucata + (dupa && !/^\s/.test(dupa) ? ' ' : '');
   return { text: inainte + pune + dupa, cursor: (inainte + pune).length, buton };
 }
-// Mașinile din „+": aceeași listă ca harta (GET /api/devices), sortate (web: _chatMasini).
+// Mașinile din „+”: aceeași listă ca harta (GET /api/devices), sortate (web: _chatMasini).
 export function masiniAlegere(devices: any): { text: string; sub: string; pune: string }[] {
   const l = Array.isArray(devices) ? devices : ((devices && devices.devices) || []);
   return l.map((d: any) => {
@@ -235,13 +235,13 @@ export function masiniAlegere(devices: any): { text: string; sub: string; pune: 
     return { text: nr && nume && nr !== nume ? nr + ' · ' + nume : (nr || nume || String(d.imei)), sub: d.group_name || '', pune: nr || nume || String(d.imei) };
   }).sort((a: any, b: any) => a.text.localeCompare(b.text, 'ro'));
 }
-// Lista din „+": Mașina, Perioada și (cu dreptul la rapoarte) Raport.
+// Lista din „+”: Mașina, Perioada și (cu dreptul la rapoarte) Raport.
 export function listaPlus(poateRapoarte: boolean) {
   const l = [{ text: 'Mașina', sub: 'numărul sau numele', ic: 'car', k: 'm' }, { text: 'Perioada', sub: 'azi, ieri, luna trecută…', ic: 'calendar', k: 'p' }];
   if (poateRapoarte) l.push({ text: 'Raport', sub: 'îl fac și-l pun în Istoric', ic: 'report', k: 'r' });
   return l;
 }
-// Meniul „⋯". „Pachet și conturi": administratorul firmei (web: `esteAdmin() && (S.pachet || S.faraLoc)`). Redenumirea și ștergerea:
+// Meniul „⋯”. „Pachet și conturi”: administratorul firmei (web: `esteAdmin() && (S.pachet || S.faraLoc)`). Redenumirea și ștergerea:
 // doar pe o conversație deschisă, nu pe o pagină.
 export function listaMeniu(o: { areConv: boolean; peRamura?: boolean; poateAgenti: boolean; poatePachet?: boolean }) {
   const l: { text: string; ic: string; k: string; sep?: boolean; rosu?: boolean }[] = [];
@@ -259,7 +259,7 @@ export const NOTA_MENIU = 'Conversațiile le vezi doar tu și se păstrează 12 
 export function corpIntrebare(message: string, o: { buton?: boolean; sursa?: boolean; conversatieId?: any }) {
   const corp: Record<string, any> = { message };
   if (o.buton) corp.buton = true;
-  if (o.sursa) corp.sursa = true;   // „Sursă externă" pornită în discuția asta
+  if (o.sursa) corp.sursa = true;   // „Sursă externă” pornită în discuția asta
   if (o.conversatieId) corp.conversatieId = o.conversatieId; else corp.nou = true;
   return corp;
 }
@@ -270,7 +270,7 @@ export function mesajDinRaspuns(j: any) {
       limita: j.limita, pachetMesaj: j.pachetMesaj, raport: j.raport, rapoarte: j.rapoarte, probleme: j.probleme,
       verificat: j.verificat, verificatText: j.verificatText, nota: j.nota, insigna: j.insigna, sursa: j.sursa, faraModel: j.faraModel, recomandat: j.recomandat } };
 }
-// Pasul următor după „Da": mesajul nou de la server (web: adaugaUrmator).
+// Pasul următor după „Da”: mesajul nou de la server (web: adaugaUrmator).
 export function mesajUrmator(u: any) {
   if (!u || !u.text) return null;
   return { rol: 'assistant', id: u.mesajId || null, text: u.text, feedback: null as number | null, extra: { source: 'reguli', urmari: u.urmari, insigna: u.insigna } };
@@ -292,13 +292,13 @@ export function planBula(m: any) {
   }
   const mai: any[] = Array.isArray(x.propuneri) ? x.propuneri.filter((q: any) => q && q.id) : [];
   const propunere = x.propunere && x.propunere.id ? x.propunere : null;
-  // Propunerea apăsată nu-și mai arată fraza de deasupra („apeși Da și o fac"): cartonașul spune tot.
+  // Propunerea apăsată nu-și mai arată fraza de deasupra („apeși Da și o fac”): cartonașul spune tot.
   const propInchisa = mai.length ? mai.every((q: any) => q.stare !== 'propusa') : !!(propunere && propunere.stare !== 'propusa');
   const text = !x.limita && !cuRaport && !propInchisa && textAi ? textAi : '';
   const sursa = x.sursa && Array.isArray(x.sursa.surse) ? x.sursa : null;
   const actiuni: any[] = Array.isArray(x.actiuni) ? x.actiuni : [];
   const probleme: any[] = Array.isArray(x.probleme) ? x.probleme : [];
-  // Textul rândului „✓" îl scrie serverul; mesajele salvate înainte de 30.10 n-au textul și rămân cum erau.
+  // Textul rândului „✓” îl scrie serverul; mesajele salvate înainte de 30.10 n-au textul și rămân cum erau.
   const verificat = x.verificat ? String(x.verificatText || (x.sursa ? 'Cifrele le-am luat din aplicație și din sursele de mai sus.' : 'Cifrele le-am luat din rapoarte.')) : '';
   const vf = x.nota ? { perioada: x.nota } : x.verificare;
   const nota = vf && vf.perioada ? String(vf.perioada) : '';
@@ -325,20 +325,20 @@ export function planBula(m: any) {
   if (alege.length) ordine.push('alege');
   if (surse.length) ordine.push('surse');
   ordine.push('jos');
-  // `faraPachete` (04.11): mesajul refuzului lui Anthropic — caseta fără „Vezi pachetele" (web: `!x.faraModel`).
-  // `recomandat` (16.11, Alin: „4. DA"): pachetul următor, de la server — „Treci la Pro" în locul lui „Vezi pachetele" (doar cu un cod curat).
+  // `faraPachete` (04.11): mesajul refuzului lui Anthropic — caseta fără „Vezi pachetele” (web: `!x.faraModel`).
+  // `recomandat` (16.11, Alin: „4. DA”): pachetul următor, de la server — „Treci la Pro” în locul lui „Vezi pachetele” (doar cu un cod curat).
   const recomandat = !x.faraModel && x.recomandat && /^[a-z]+$/.test(String(x.recomandat.cod || ''))
     ? { cod: String(x.recomandat.cod), buton: String(x.recomandat.buton || ('Treci la ' + (x.recomandat.nume || ''))) } : null;
   return { insigna, inteles, limita, faraPachete: !!x.faraModel, recomandat, carduri, text, sursa, propunere, propuneri: mai, actiuni, probleme, verificat, nota, alege, surse, voteaza, dinRaport, ordine };
 }
 export function textSursaRaport(s: any): string { return 'Deschide „' + (s.label || s.type) + '”' + (s.vehicle ? ' · ' + s.vehicle : ''); }
-// Refuzul „fără loc pe cont" vine ca 200 pe telefon (cheie / token) și ca 403 pe cookie: textul serverului, din amândouă.
+// Refuzul „fără loc pe cont” vine ca 200 pe telefon (cheie / token) și ca 403 pe cookie: textul serverului, din amândouă.
 export function textFaraLoc(r: any): string | null {
   if (!r || !(r.seatMissing === true || r.error === 'ai_seat_missing')) return null;
   return String(r.message || r.reply || 'RA Insight nu e pornit pe contul tău.');
 }
 
-// ── Cartonașul: câmpurile lui „Schimbă" (web: cartonasPropunere) și ceasul lui „Anulează" ──
+// ── Cartonașul: câmpurile lui „Schimbă” (web: cartonasPropunere) și ceasul lui „Anulează” ──
 export function campuriStart(p: any): Record<string, string> {
   const k = (p && p.campuri) || {};
   const s = (v: any) => (v == null ? '' : String(v));

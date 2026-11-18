@@ -7,8 +7,8 @@ const fs = require('fs');
 const contracte = require('./contracts');   // regulile promise pe hârtie (ex. câte luni se păstrează istoricul)
 
 // Logo RA Track pt. exporturi pe fundal ALB (Excel + PDF). Citit o singură dată din disc.
-// ATENȚIE la denumire: „logo.png" e varianta ALBĂ (pt. fundal închis) — invizibilă pe alb;
-// „logo-light.png" e varianta ÎNCHISĂ (pt. temă/​fundal deschis) — asta ne trebuie pe alb.
+// ATENȚIE la denumire: „logo.png” e varianta ALBĂ (pt. fundal închis) — invizibilă pe alb;
+// „logo-light.png” e varianta ÎNCHISĂ (pt. temă/​fundal deschis) — asta ne trebuie pe alb.
 let _logoBuf = null, _logoTried = false;
 function _logoBuffer() {
   if (!_logoTried) { _logoTried = true; try { _logoBuf = fs.readFileSync(path.join(__dirname, 'public', 'logo-light.png')); } catch (e) { _logoBuf = null; } }
@@ -49,7 +49,7 @@ function xlSheetName(name, used) {
   used.add(cand.toLowerCase());
   return cand;
 }
-// O celulă de tabel. Un link ({ text, hyperlink } — ex. „Vezi pe hartă" din traseu) primește și înfățișarea de
+// O celulă de tabel. Un link ({ text, hyperlink } — ex. „Vezi pe hartă” din traseu) primește și înfățișarea de
 // link, albastru și subliniat: altfel Excel îl arată ca text obișnuit și nu se vede că se poate apăsa.
 function xlCelula(cell, v) {
   cell.value = (v == null ? '' : v);
@@ -71,14 +71,14 @@ function xlWriteTable(ws, titleLines, columns, rows, logoId) {
   columns.forEach((c, i) => { let w = String(c).length; for (const row of (rows || [])) { const v = row && row[i]; if (v != null) w = Math.max(w, xlLungime(v)); } ws.getColumn(i + 1).width = Math.min(45, Math.max(10, w + 2)); });
   return r; // rândul următor liber (după ultimul rând de date) — ca să putem atașa o legendă sub tabel
 }
-// Legendă sub tabel (ex. explicația coloanei „Sursă"): titlu îngroșat + „termen | descriere" pe rânduri.
+// Legendă sub tabel (ex. explicația coloanei „Sursă”): titlu îngroșat + „termen | descriere" pe rânduri.
 // Descrierea e îmbinată pe coloanele rămase și cu wrap, ca să încapă tot textul. Întoarce rândul următor liber.
 function xlWriteLegend(ws, legend, startRow, ncol) {
   let r = startRow;
   const n = Math.max(2, ncol);
-  // Lățimea zonei îmbinate (col 2..n) în „unități caracter" — ca să estimăm câte linii se înfășoară și să setăm
+  // Lățimea zonei îmbinate (col 2..n) în „unități caracter” — ca să estimăm câte linii se înfășoară și să setăm
   // ÎNĂLȚIMEA rândului. Excel NU auto-fit-ează înălțimea la celule îmbinate → fără asta, liniile 2+ ale unei
-  // descrieri lungi se taie la deschidere (rezolvă constatarea review-ului pt. „Estimat (nivel CAN)", 111 car.).
+  // descrieri lungi se taie la deschidere (rezolvă constatarea review-ului pt. „Estimat (nivel CAN)”, 111 car.).
   let mergedW = 0; for (let c = 2; c <= n; c++) { const w = ws.getColumn(c).width; mergedW += (w && w > 0) ? w : 10; }
   const perLine = Math.max(20, mergedW - 2);
   if (legend.title) { ws.mergeCells(r, 1, r, n); const c = ws.getCell(r, 1); c.value = legend.title; c.font = { bold: true, size: 11, color: { argb: 'FF444444' } }; r++; }
@@ -92,20 +92,20 @@ function xlWriteLegend(ws, legend, startRow, ncol) {
   }
   return r;
 }
-// Excel multi-sheet pt. rapoarte cu date pe vehicul (ex. Foaie de parcurs): „Sumar" + un sheet/mașină.
+// Excel multi-sheet pt. rapoarte cu date pe vehicul (ex. Foaie de parcurs): „Sumar” + un sheet/mașină.
 async function toXlsxMultiSheet(report) {
   const wb = new ExcelJS.Workbook(); wb.creator = 'RA Track';
   const used = new Set();
   const period = { text: report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to)), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
   const pv = report.perVehicle || [];
   const logoId = xlLogoId(wb); // logo RA Track, refolosit pe toate foile
-  if (!report.noSummarySheet) { // unele rapoarte (ex. Scadențe) vor DOAR foi/mașină, fără foaia „Sumar"
-    // Sumar generic: coloanele vin din summary-ul fiecărui vehicul (trips au câmpuri bogate; restul → „Înregistrări").
+  if (!report.noSummarySheet) { // unele rapoarte (ex. Scadențe) vor DOAR foi/mașină, fără foaia „Sumar”
+    // Sumar generic: coloanele vin din summary-ul fiecărui vehicul (trips au câmpuri bogate; restul → „Înregistrări”).
     const labels = (pv[0] && pv[0].summary) ? pv[0].summary.map(s => s[0]) : [];
-    const sumCols = [report.groupLabel || 'Vehicul'].concat(labels); // ex. „Șofer" la Pontaj, „Vehicul" la restul
+    const sumCols = [report.groupLabel || 'Vehicul'].concat(labels); // ex. „Șofer” la Pontaj, „Vehicul” la restul
     const sumRows = pv.map(v => [v.vehicul].concat((v.summary || []).map(s => s[1])));
     const totals = labels.map((lbl, i) => {
-      // Coloanele de tip „max" (ex. „Max peste limită", „Viteză max") NU se adună — maximul flotei e cel mai mare, nu suma maximelor.
+      // Coloanele de tip „max” (ex. „Max peste limită”, „Viteză max”) NU se adună — maximul flotei e cel mai mare, nu suma maximelor.
       const isMax = /\bmax/i.test(String(lbl));
       let allNum = true, any = false, acc = isMax ? -Infinity : 0;
       for (const v of pv) { const val = (v.summary && v.summary[i]) ? v.summary[i][1] : ''; if (val === '' || val === '—' || val == null) continue; const n = _summableNum(val); if (n == null) { allNum = false; break; } any = true; acc = isMax ? Math.max(acc, n) : acc + n; }
@@ -117,7 +117,7 @@ async function toXlsxMultiSheet(report) {
       const totalsRow = (report.summaryTotals && report.summaryTotals.length) ? report.summaryTotals : totals;
       sumRows.push([report.groupLabel ? 'TOTAL' : 'TOTAL flotă'].concat(totalsRow));
     }
-    // KPI pe flotă (report.summary) în capul foii „Sumar" — altfel s-ar pierde complet în exportul multi-sheet
+    // KPI pe flotă (report.summary) în capul foii „Sumar” — altfel s-ar pierde complet în exportul multi-sheet
     const kpiLines = Object.entries(report.summary || {}).map(([k, v]) => ({ text: k + ':  ' + (v == null ? '—' : v), font: { size: 11, color: { argb: 'FF444444' } } }));
     const sumWs = wb.addWorksheet(xlSheetName('Sumar', used));
     const sumEnd = xlWriteTable(sumWs, [{ text: (report.label || 'Raport') + ' — Sumar' }, period].concat(kpiLines), sumCols, sumRows, logoId);
@@ -139,8 +139,8 @@ async function toXlsx(report) {
   // Sumar pe FOAIE SEPARATĂ (opt-in prin report.summarySheet) — KPI-urile flotei, curat, ca primă foaie (nu îngrămădit la baza tabelului).
   if (report.summarySheet && report.summary && Object.keys(report.summary).length) {
     const period = { text: report.periodLabel || ('Perioada: ' + fmtPeriod(report.from, report.to)), font: { italic: true, size: 10, color: { argb: 'FF777777' } } };
-    // Valorile pur numerice (inclusiv „8.8" din toFixed) devin NUMERE reale → Excel le aliniază la dreapta
-    // ca pe celelalte cifre (751/2/66); textul real („—", etichete) rămâne neschimbat.
+    // Valorile pur numerice (inclusiv „8.8” din toFixed) devin NUMERE reale → Excel le aliniază la dreapta
+    // ca pe celelalte cifre (751/2/66); textul real („—”, etichete) rămâne neschimbat.
     const sumRows = Object.entries(report.summary).map(([k, v]) => { const n = _summableNum(v); return [k, n != null ? n : (v == null ? '' : v)]; });
     xlWriteTable(wb.addWorksheet('Sumar'), [{ text: (report.label || 'Raport') + ' — Sumar' }, period], ['Indicator', 'Valoare'], sumRows, logoId);
   }
@@ -183,7 +183,7 @@ async function toXlsx(report) {
     }
   }
 
-  // Legendă sub tabel (ex. „Sursa consumului") — sub datele de pe foaia de raport.
+  // Legendă sub tabel (ex. „Sursa consumului”) — sub datele de pe foaia de raport.
   if (report.legend && report.legend.items && report.legend.items.length) {
     xlWriteLegend(ws, report.legend, r + 1, ncol);
   }
@@ -195,7 +195,7 @@ async function toXlsx(report) {
 const PALETTE = ['#3FE07D', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#14b8a6', '#ec4899', '#84cc16'];
 function _num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
 // Sumabil DOAR dacă întreg șirul e un singur număr. `parseFloat` ar accepta prefixul unei date
-// („01.07.2026, 07:53:31" → 1.07), stricând TOTAL-ul; aici respingem date/ore/„1h 20m". Întoarce număr sau null.
+// („01.07.2026, 07:53:31” → 1.07), stricând TOTAL-ul; aici respingem date/ore/„1h 20m”. Întoarce număr sau null.
 function _summableNum(v) {
   if (typeof v === 'number') return isFinite(v) ? v : null;
   if (v == null) return null;
@@ -353,7 +353,7 @@ function renderPdf(doc, report) {
     y += rowH;
   }
 
-  // 5. Legendă sub tabel (ex. explicația coloanei „Sursă") — dacă raportul o are.
+  // 5. Legendă sub tabel (ex. explicația coloanei „Sursă”) — dacă raportul o are.
   const lg = report.legend;
   if (lg && lg.items && lg.items.length) {
     const lineH = 11;
@@ -373,7 +373,7 @@ function toPdf(report) {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30, info: { Title: report.label || 'Raport', Author: 'RA Track' } });
-      // Font unicode înglobat (DejaVu Sans — glife românești complete Ș/Ț/Ă/ș/ț/ă) sub aliasul intern „Nunito".
+      // Font unicode înglobat (DejaVu Sans — glife românești complete Ș/Ț/Ă/ș/ț/ă) sub aliasul intern „Nunito”.
       // Helvetica din pdfkit corupea diacriticele. Fallback la Helvetica dacă lipsesc TTF-urile (nu strică PDF-ul).
       try {
         doc.registerFont('Nunito', path.join(__dirname, 'fonts', 'DejaVuSans.ttf'));
@@ -396,15 +396,15 @@ function _asciiFold(s) {
   const map = { 'ă':'a','â':'a','î':'i','ș':'s','ş':'s','ț':'t','ţ':'t','Ă':'A','Â':'A','Î':'I','Ș':'S','Ş':'S','Ț':'T','Ţ':'T' };
   return String(s || '').replace(/[ăâîșşțţĂÂÎȘŞȚŢ]/g, c => map[c] || c).replace(/[^\x20-\x7E]/g, '');
 }
-// Content-Disposition sigur: antetul HTTP acceptă DOAR ASCII, dar labelul poate avea diacritice („Locație",
-// „Depășiri") → altfel Node aruncă „Invalid character in header content". Dăm fallback ASCII (filename=")
+// Content-Disposition sigur: antetul HTTP acceptă DOAR ASCII, dar labelul poate avea diacritice („Locație”,
+// „Depășiri”) → altfel Node aruncă „Invalid character in header content”. Dăm fallback ASCII (filename=")
 // + numele real UTF-8 (filename*, RFC 5987) pe care browserele moderne îl afișează cu diacritice.
 function contentDisposition(filename) {
   const ascii = _asciiFold(filename).replace(/["\\]/g, '');
   return 'attachment; filename="' + ascii + '"; filename*=UTF-8\'\'' + encodeURIComponent(filename);
 }
 
-// Numele unui raport, fără extensie: „RA-Track - Raport Traseu - 06.07.2026". UN singur loc — descărcarea din platformă
+// Numele unui raport, fără extensie: „RA-Track - Raport Traseu - 06.07.2026”. UN singur loc — descărcarea din platformă
 // (sendReport) și raportul programat trimis pe email (report_schedules.js) îl folosesc pe același (Robert, 14.10).
 function numeRaport(report) {
   return safeName('RA-Track - Raport ' + ((report && (report.label || report.type)) || '') + ' - ' + datePart());
@@ -412,7 +412,7 @@ function numeRaport(report) {
 
 // ─── Trimite raportul ca descărcare ───
 async function sendReport(res, report, fmt) {
-  const name = numeRaport(report); // ex: „RA-Track - Raport Traseu - 06.07.2026"
+  const name = numeRaport(report); // ex: „RA-Track - Raport Traseu - 06.07.2026”
   if (fmt === 'xlsx') {
     const buf = await toXlsx(report);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -425,16 +425,16 @@ async function sendReport(res, report, fmt) {
   return res.send(buf);
 }
 
-// ─── începe „oferta, ca fișier descărcat" ────────────────────────────────────────────────────────
-// Oferta se „descărca" deschizând o fereastră de printare, din care omul salva singur un PDF. Alin
+// ─── începe „oferta, ca fișier descărcat” ────────────────────────────────────────────────────────
+// Oferta se „descărca” deschizând o fereastră de printare, din care omul salva singur un PDF. Alin
 // (21.09): „vreau să fie la fel ca la rapoarte — să-ți alegi unde o descarci. Asta înseamnă
 // descărcare." Deci: PDF făcut aici, pe server, trimis ca fișier, cu numele brandat al casei.
 //
 // Stă în fișierul ăsta, lângă `sendReport`, ca logo-ul, fonturile și regula de denumire să rămână
 // într-un singur loc — nu într-o a doua cale de export care s-ar despărți de ele.
 // ─── Sumele, scrise românește ────────────────────────────────────────────────────────────────────
-// „2250.00 lei" și „1 € = 5.0000 lei" se citesc GREȘIT în română: punctul e separator de mii, deci
-// „5.0000" arată a cinci mii (Alin, 21.09). Scrise cum trebuie: 2.250,00 lei · 1 € = 5,0785 lei.
+// „2250.00 lei” și „1 € = 5.0000 lei” se citesc GREȘIT în română: punctul e separator de mii, deci
+// „5.0000” arată a cinci mii (Alin, 21.09). Scrise cum trebuie: 2.250,00 lei · 1 € = 5,0785 lei.
 function _bani(n, moneda, zec) {
   const z = zec == null ? 2 : zec;
   return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: z, maximumFractionDigits: z })
@@ -451,7 +451,7 @@ function _ofDe(n) {
 // profesionist descrierile alea"). Unde e nevoie de un amănunt, se pune după DOUĂ PUNCTE, nu după
 // o linie de pauză: linia de pauză face fraza să pară o notiță, nu un serviciu vândut.
 //
-// ⚠ NIMIC pe lista asta nu se scrie „ca să sune bine". E o promisiune într-un act semnat, deci
+// ⚠ NIMIC pe lista asta nu se scrie „ca să sune bine”. E o promisiune într-un act semnat, deci
 // fiecare rând trebuie să existe în aplicație ASTĂZI. Ce am lăsat deliberat pe dinafară (Alin,
 // 23.09, când a cerut lista mai bogată):
 //   • Taxa de drum (TollRo) — modulul e scris, dar grila legală s-a mutat de trei ori și încă nu e
@@ -463,7 +463,7 @@ function _ofDe(n) {
 // legat printr-o probă de `ALERT_TYPES` din pagină (nu se poate cere de aici — trăiește în browser).
 const N_ALERTE = 16;   // ALERT_TYPES din public/index.html · păzit de verify_tarife.js
 function _nRapoarte() {
-  // Rotunjit în JOS la zece: „Peste 30" rămâne adevărat și dacă mai scoatem un raport, iar dacă
+  // Rotunjit în JOS la zece: „Peste 30” rămâne adevărat și dacă mai scoatem un raport, iar dacă
   // urcăm peste 40 se schimbă singur. Dacă din orice motiv catalogul nu se poate citi, rândul
   // lipsește cu totul — mai bine tăcere decât o cifră inventată pe hârtia clientului.
   try {
@@ -476,7 +476,7 @@ function _ofIncluse(o) {
   L.push('Istoricul deplasărilor: traseul pe hartă, opririle și staționările, pe zile');
   // Cât se păstrează: 12 luni pentru toți, incluse, sau cât s-a cumpărat în ofertă (24.09). Rândul e
   // MEREU pe hârtie. Dacă un ecran vechi nu trimite cifra, se scrie regula casei — niciodată mai puțin
-  // decât ține aplicația (până pe 24.09 hârtia putea scrie „6 luni" sau „24 de luni" — nelivrate).
+  // decât ține aplicația (până pe 24.09 hârtia putea scrie „6 luni” sau „24 de luni” — nelivrate).
   L.push('Păstrarea istoricului: ' + (o.retentie || contracte.numar(contracte.LUNI_ISTORIC_INCLUSE, 'lună', 'luni')) + ' de la înregistrare');
   if (o.cuDateMotor) L.push('Date preluate direct din calculatorul de bord: consum, kilometraj, turație');
   const nR = _nRapoarte();
@@ -504,11 +504,11 @@ function _ofIncluse(o) {
 
 // ─── Hârtia ──────────────────────────────────────────────────────────────────────────────────────
 // Structura e cea cerută de Alin (21.09): întâi CÂT COSTĂ — lunar și o singură dată, două cifre
-// mari, atât. Apoi detalierea fiecăreia. Iar explicațiile („ce include", „cum se plătește") la
+// mari, atât. Apoi detalierea fiecăreia. Iar explicațiile („ce include”, „cum se plătește”) la
 // FINAL, ca note — nu înaintea cifrelor, unde stăteau și făceau oferta greoaie.
 //
 // ⚠ Fiecare sumă apare în LEI și în EURO, peste tot, în aceeași ordine. Înainte abonamentul și
-// montajul erau în lei cu o coloană „≈ EUR", iar aparatele invers (euro cu „≈ lei") — pe aceeași
+// montajul erau în lei cu o coloană „≈ EUR”, iar aparatele invers (euro cu „≈ lei”) — pe aceeași
 // hârtie, două convenții. Acum: lei mare, euro dedesubt, în toate tabelele.
 function renderOfertaPdf(doc, o) {
   const left = doc.page.margins.left;
@@ -625,7 +625,7 @@ function renderOfertaPdf(doc, o) {
   y += 13;
   // ⚠ Rândurile se ÎNCADREAZĂ, nu se taie. Erau desenate cu `lineBreak: false, ellipsis: true` și
   // un pas fix de 10pt: cât timp lista avea fraze scurte mergea, dar la prima propoziție mai lungă
-  // clientul ar fi primit o promisiune retezată cu „…" (găsit 23.09, la lista cea nouă). Aceeași
+  // clientul ar fi primit o promisiune retezată cu „…” (găsit 23.09, la lista cea nouă). Aceeași
   // rețetă ca la CONDIȚII, mai jos: măsoară cu FONTUL DEJA PUS, cere locul, apoi desenează.
   incluse.forEach((t) => {
     doc.font('Nunito').fontSize(8);
@@ -638,12 +638,12 @@ function renderOfertaPdf(doc, o) {
 
   const zMontaj = contracte.MONTAJ_ZILE_DUPA_AVANS;
   // Ce are oferta, cu adevărat: aparate vândute și/sau montaj (lista lui Robert, 01.10, pct. 22). O ofertă fără aparate
-  // promitea totuși „echipamentele se plătesc integral în avans" și „rămân în proprietatea Beneficiarului".
+  // promitea totuși „echipamentele se plătesc integral în avans” și „rămân în proprietatea Beneficiarului”.
   const cuAparate = !inchiriere && (o.deviceLines || []).length > 0;
   const cuMontaj = (o.montajLines || []).length > 0 || Number(o.montaj) > 0;
   const conditii = [
-    // Aparatele, în AVANS, pe proformă; montajul, după executare (decizie Alin, 29.09: „1.A, 2.DA"). A înlocuit
-    // regula din 21.09 („la livrare"): nu comandăm aparate pe banii noștri. Termenul curge de la ÎNCASARE.
+    // Aparatele, în AVANS, pe proformă; montajul, după executare (decizie Alin, 29.09: „1.A, 2.DA”). A înlocuit
+    // regula din 21.09 („la livrare”): nu comandăm aparate pe banii noștri. Termenul curge de la ÎNCASARE.
     // Aceleași cuvinte ca în contract (IV, V) și în Anexa nr. 2 — actele noastre nu se contrazic.
     (cuAparate && cuMontaj
       ? 'Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea și montajul se fac în cel mult '
@@ -660,8 +660,8 @@ function renderOfertaPdf(doc, o) {
     'Abonamentul fiecărei mașini începe din ziua în care aparatul montat pe ea transmite prima dată; prima lună se plătește pe zile, pe factura lunii următoare. Apoi se facturează în fiecare lună, pe toată durata contractului (' + luni + ' ' + _ofDe(luni) + 'luni).',
     ([cuAparate ? 'Echipamentele rămân în proprietatea Beneficiarului după achitarea lor.' : '', cuMontaj ? 'Instalarea o executăm noi, la sediul Beneficiarului.' : '']
       .filter(Boolean).join(' ') || null),
-    // „Cursul BNR" se scrie DOAR dacă de la BNR vine. Când n-a putut fi preluat, folosim o valoare
-    // de rezervă — și atunci hârtia spune „curs de referință", nu pune numele BNR pe o cifră care nu e
+    // „Cursul BNR” se scrie DOAR dacă de la BNR vine. Când n-a putut fi preluat, folosim o valoare
+    // de rezervă — și atunci hârtia spune „curs de referință”, nu pune numele BNR pe o cifră care nu e
     // a lui. Pe ecran, fondatorul vede un avertisment înainte să trimită oferta.
     (o.fxSursa === 'BNR'
       ? 'Facturarea se face în lei. Sumele în euro sunt informative, la cursul BNR'
@@ -692,7 +692,7 @@ function renderOfertaPdf(doc, o) {
     }).filter(Boolean);
     conditii.splice(2, 0, 'RA Insight: pachetul ' + pkC.nume + '. Pachetele: ' + toate.join(' · ') + '. ' + PKc.CLAUZA_TRECERE.replace('administratorul Beneficiarului', 'administratorul firmei'));
   }
-  // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA") — doar dacă oferta are montaj. Pusă ULTIMA în
+  // Mașinile neaduse la montaj (decizie Alin, 29.09: „3. DA”) — doar dacă oferta are montaj. Pusă ULTIMA în
   // cod, pe locul 2: imediat după plata costului unic, înaintea abonamentului și a RA Insight.
   if ((o.montajLines || []).length || Number(o.montaj) > 0) {
     conditii.splice(1, 0, 'Mașinile se pun la dispoziție în zilele de montaj stabilite. Dacă o mașină lipsește, termenul se prelungește, '
@@ -753,16 +753,16 @@ async function sendOfertaPdf(res, o) {
   res.setHeader('Content-Disposition', contentDisposition(name + '.pdf'));
   return res.send(buf);
 }
-// ─── sfârșit „oferta, ca fișier descărcat" ──
+// ─── sfârșit „oferta, ca fișier descărcat” ──
 
 // `renderOfertaPdf` e exportat pentru probe (verify_stoc_chirie.js citește textul hârtiei cu un document de carton).
-// ─── Șablonul „Mașinile clientului" (28.09) ──────────────────────────────────────────────────────
+// ─── Șablonul „Mașinile clientului” (28.09) ──────────────────────────────────────────────────────
 // Alin: „vreau buton de export a unui șablon fix, cu ce trebuie să identifice calculatorul nostru, și buton
 // de încărcare a șablonului". Îl trimitem CLIENTULUI, deci poartă logo-ul și numele casei, ca rapoartele.
 // Coloanele și combustibilii vin din compatibilitate.js — de acolo îl citește și încărcarea, deci șablonul
 // și citirea lui nu se pot despărți. Mărcile (lista de ales) vin de la server, din listele Teltonika.
 //   • marca: listă de ales, dar se poate scrie și alta (avertisment, nu interdicție — Aro nu e pe liste);
-//   • combustibilul: DOAR din listă (altfel „diesel", „motorina", „M" — trei feluri de a scrie același lucru);
+//   • combustibilul: DOAR din listă (altfel „diesel”, „motorina”, „M” — trei feluri de a scrie același lucru);
 //   • anul și bucățile: numere întregi, cu mesaj pe înțeles când nu sunt.
 async function sablonMasiniXlsx(opt) {
   const compat = require('./compatibilitate');
@@ -773,9 +773,9 @@ async function sablonMasiniXlsx(opt) {
   let r = xlPlaceLogo(ws, xlLogoId(wb));
   const scrie = (text, font) => { const c = ws.getCell(r, 1); c.value = text; c.font = font; r++; };
   scrie('Mașinile flotei — pentru oferta RA Track', { bold: true, size: 14 });
-  scrie('Un rând pentru fiecare model de mașină (sau câte un rând pentru fiecare mașină). La „Bucăți", câte mașini sunt de felul acela.', { size: 10, color: { argb: 'FF555555' } });
-  scrie('Marca și modelul: scrieți primele litere (ex. „da"), apăsați Enter, apoi săgeata din celulă — lista arată doar ce începe așa. La model, doar modelele mărcii scrise. Combustibilul se alege din listă.', { size: 10, color: { argb: 'FF555555' } });
-  scrie('„An fabricație" = anul mașinii, de ex. 2024. Exemplu de rând: Dacia · Logan · 2024 · benzină + GPL · 5.', { size: 10, color: { argb: 'FF555555' } });
+  scrie('Un rând pentru fiecare model de mașină (sau câte un rând pentru fiecare mașină). La „Bucăți”, câte mașini sunt de felul acela.', { size: 10, color: { argb: 'FF555555' } });
+  scrie('Marca și modelul: scrieți primele litere (ex. „da”), apăsați Enter, apoi săgeata din celulă — lista arată doar ce începe așa. La model, doar modelele mărcii scrise. Combustibilul se alege din listă.', { size: 10, color: { argb: 'FF555555' } });
+  scrie('„An fabricație” = anul mașinii, de ex. 2024. Exemplu de rând: Dacia · Logan · 2024 · benzină + GPL · 5.', { size: 10, color: { argb: 'FF555555' } });
   r++;
   const antet = r;
   col.forEach((c, i) => {
@@ -792,8 +792,8 @@ async function sablonMasiniXlsx(opt) {
   // ── Lista de ales care se STRÂNGE după primele litere (Alin, 28.09: „când scrii litera a, nu-ți dă
   // mărcile cu a... pe măsură ce scrii ar trebui să-ți sugereze"). O listă simplă de 352 de mărci nu se
   // filtrează în Excel: doar Microsoft 365 nou o filtrează cât scrii, și atunci caută literele ORIUNDE în
-  // nume („a" găsește aproape tot). Aici lista e o FORMULĂ care pornește de la ce e scris în celulă:
-  // „da" + Enter → săgeata arată doar mărcile care ÎNCEP cu „da". Merge în orice Excel (din 2007), fără
+  // nume („a” găsește aproape tot). Aici lista e o FORMULĂ care pornește de la ce e scris în celulă:
+  // „da” + Enter → săgeata arată doar mărcile care ÎNCEP cu „da”. Merge în orice Excel (din 2007), fără
   // macro-uri. Condiția ei: lista e ordonată, ca toate numele cu același început să stea unul după altul —
   // de-aia se ordonează aici, pe litere mari, nu după alfabetul românesc (care ar putea sări peste semne).
   // Celula NU refuză ce nu e pe listă (o marcă veche, Aro, tot trebuie să intre; calculatorul o verifică).
@@ -851,13 +851,13 @@ async function sablonMasiniXlsx(opt) {
   return { buffer: Buffer.from(buf), nume: 'RA-Track - Șablon mașini client.xlsx', randAntet: antet, coloane: n };
 }
 
-// ─── începe „traseul descărcat din ecranul Traseu" ───────────────────────────────────────────────
+// ─── începe „traseul descărcat din ecranul Traseu” ───────────────────────────────────────────────
 // Alin (01.10): „raportul CSV — îmi apar numai cifre… nu are numele RA Track ca celelalte documente
 // descărcabile, iar în interiorul fișierului sunt doar cifre, nimic de înțeles". Fișierul vechi
-// (`traseu_<imei>_<zi>.csv`) avea codurile brute ale aparatului („_control_flags", „can_csf_…",
-// „[object Object]") și se deschidea într-o SINGURĂ coloană în Excel-ul românesc (care desparte cu „;").
-// Acum: Excel, prin `sendReport` (numele casei, logo-ul pe fiecare foaie). Foaia „Sumar" are ACELEAȘI
-// cifre ca ecranul (le dă `_sumarTraseu` din server.js), foaia „Poziții" are fiecare punct pe românește.
+// (`traseu_<imei>_<zi>.csv`) avea codurile brute ale aparatului („_control_flags”, „can_csf_…”,
+// „[object Object]") și se deschidea într-o SINGURĂ coloană în Excel-ul românesc (care desparte cu „;”).
+// Acum: Excel, prin `sendReport` (numele casei, logo-ul pe fiecare foaie). Foaia „Sumar” are ACELEAȘI
+// cifre ca ecranul (le dă `_sumarTraseu` din server.js), foaia „Poziții” are fiecare punct pe românește.
 // Exportul CSV brut (`/api/export/:imei`) rămâne neschimbat: e documentat pentru integrările prin API.
 const TRASEU_COLOANE = ['Data', 'Ora', 'Stare', 'Viteză (km/h)', 'Contact', 'Direcție', 'Altitudine (m)', 'Sateliți', 'Coordonate', 'Pe hartă'];
 const _DIRECTII = ['N', 'NE', 'E', 'SE', 'S', 'SV', 'V', 'NV'];
@@ -874,10 +874,10 @@ function hmTraseu(sec) {
   if (m === 60) { h++; m = 0; }
   return h > 0 ? (h + ' h' + (m ? ' ' + m + ' min' : '')) : (m + ' min');
 }
-// „70 km", „1.250 km" — ca pe ecran (`_grp` din hpRenderSummary: kilometrii rotunjiți, cu punct la mii).
+// „70 km”, „1.250 km” — ca pe ecran (`_grp` din hpRenderSummary: kilometrii rotunjiți, cu punct la mii).
 function _miiTraseu(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 function kmTraseu(n) { return _miiTraseu(n) + ' km'; }
-// Durata depășirilor, ca pe ecran (`durStr` din hpRenderSummary): „45s", „3min 20s".
+// Durata depășirilor, ca pe ecran (`durStr` din hpRenderSummary): „45s”, „3min 20s”.
 function durataDepasiri(sec) { const d = Math.max(0, Math.round(Number(sec) || 0)); return d < 60 ? d + ' s' : Math.floor(d / 60) + ' min ' + (d % 60) + ' s'; }
 // Cel mult atâtea poziții într-un fișier (01.10). MĂSURAT: Excel-ul se face în memorie — 10.000 de poziții cer ~3 secunde
 // și ~0,6 GB; 50.000 (cam o lună a unei mașini) cer 16 secunde și 1,5 GB, timp în care serverul nu mai răspunde nimănui
@@ -890,8 +890,8 @@ function traseuPreaMare(total) {
     ' — prea multe pentru un singur fișier Excel. Alege o perioadă mai scurtă sau mai puține mașini.';
 }
 // Un vehicul: rândurile (o poziție pe rând) și sumarul, ca perechi [etichetă, valoare] cu etichete FIXE
-// (la mai multe vehicule devin coloanele foii „Sumar").
-// Ora României, scrisă ca pe ecran („01.10.2026" / „08:30:00"). Formatorii se fac O DATĂ: `toLocaleString` pe fiecare
+// (la mai multe vehicule devin coloanele foii „Sumar”).
+// Ora României, scrisă ca pe ecran („01.10.2026” / „08:30:00”). Formatorii se fac O DATĂ: `toLocaleString` pe fiecare
 // rând își face formatorul de la capăt — la istoricul complet (sute de mii de rânduri) ar însemna zeci de secunde.
 let _fmtZiTraseu = null, _fmtOraTraseu = null;
 function _formatoriTraseu() {
@@ -902,7 +902,7 @@ function _formatoriTraseu() {
   return { zi: _fmtZiTraseu, ora: _fmtOraTraseu };
 }
 // O poziție → un rând pe românește. O SINGURĂ scriere a rândului, pentru traseul de pe ecran și pentru istoricul
-// complet (`cuLink: false` — acolo coloana „Pe hartă" lipsește: Excel nu primește peste 65.530 de linkuri într-o foaie).
+// complet (`cuLink: false` — acolo coloana „Pe hartă” lipsește: Excel nu primește peste 65.530 de linkuri într-o foaie).
 function traseuRand(p, cuLink) {
   const f = _formatoriTraseu(), d = new Date(p.timestamp);
   const io = (p.io_data && typeof p.io_data === 'object') ? p.io_data : {};
@@ -929,8 +929,8 @@ function traseuVehicul(o) {
   const rows = hist.map(function (p) { return traseuRand(p, true); });
   const maxV = hist.reduce(function (m, p) { return Math.max(m, Number(p.speed) || 0); }, 0);
   const limita = Number(o.limit) || null, oc = Number(sum.overspeedCount) || 0;
-  // Etichete FIXE, aceleași la orice mașină (la mai multe mașini devin coloanele foii „Sumar"). Cifrele sunt cele de
-  // pe ecran (`hpRenderSummary`), scrise la fel; „—" unde ecranul n-are ce arăta.
+  // Etichete FIXE, aceleași la orice mașină (la mai multe mașini devin coloanele foii „Sumar”). Cifrele sunt cele de
+  // pe ecran (`hpRenderSummary`), scrise la fel; „—” unde ecranul n-are ce arăta.
   const sumar = [
     ['Distanță', (sum.distanceKm != null && isFinite(sum.distanceKm)) ? kmTraseu(sum.distanceKm) : '—'],
     ['Timp în deplasare', hmTraseu(sum.movingSec)],
@@ -945,7 +945,7 @@ function traseuVehicul(o) {
   ];
   return { vehicul: vehicul || String(o.imei || ''), nume: nume, plate: plate, rows: rows, sumar: sumar };
 }
-// Raportul pentru `sendReport`: un vehicul = foaia „Sumar" + foaia „Poziții"; mai multe = „Sumar" (un rând pe
+// Raportul pentru `sendReport`: un vehicul = foaia „Sumar” + foaia „Poziții”; mai multe = „Sumar” (un rând pe
 // vehicul) + câte o foaie pe vehicul. Numele fișierului: „RA-Track - Raport Traseu {vehicul} - {zi}.xlsx".
 function traseuCaRaport(lista, from, to) {
   const v = (lista || []).filter(Boolean);
@@ -959,21 +959,21 @@ function traseuCaRaport(lista, from, to) {
   return { label: 'Traseu ' + v.length + ' vehicule', from: from, to: to, columns: TRASEU_COLOANE, rows: [],
     perVehicle: v.map(function (x) { return { vehicul: x.vehicul, summary: x.sumar, rows: x.rows }; }), noFleetTotal: true };
 }
-// ─── sfârșit „traseul descărcat din ecranul Traseu" ──────────────────────────────────────────────
+// ─── sfârșit „traseul descărcat din ecranul Traseu” ──────────────────────────────────────────────
 
-// ─── începe „istoricul complet, scris în flux" ───────────────────────────────────────────────────
-// Alin (02.10: „O facem acum"): un client care pleacă are 30 de zile să-și ceară datele înapoi. Un an de traseu al unei
+// ─── începe „istoricul complet, scris în flux” ───────────────────────────────────────────────────
+// Alin (02.10: „O facem acum”): un client care pleacă are 30 de zile să-și ceară datele înapoi. Un an de traseu al unei
 // mașini ≈ 500.000 de poziții; la Traseu încap 10.000 într-un fișier (Excel-ul obișnuit se face în memorie), deci ar fi
 // ieșit ~50 de fișiere. Aici fișierul se scrie ÎN FLUX (ExcelJS WorkbookWriter): pozițiile se citesc din bază pe pagini
 // și pleacă spre browser pe măsură ce sunt scrise — memoria rămâne mică oricât de lung ar fi istoricul.
-//   • Foile: „Sumar" (prima) + câte una pe lună, pe ora României. Coloanele = cele ale Excel-ului de la Traseu, scrise
-//     de ACEEAȘI funcție (`traseuRand`), fără „Pe hartă" (Excel nu primește peste 65.530 de linkuri într-o foaie).
+//   • Foile: „Sumar” (prima) + câte una pe lună, pe ora României. Coloanele = cele ale Excel-ului de la Traseu, scrise
+//     de ACEEAȘI funcție (`traseuRand`), fără „Pe hartă” (Excel nu primește peste 65.530 de linkuri într-o foaie).
 //   • Logo-ul casei pe FIECARE foaie, ca la rapoarte: varianta în flux nu știe să pună imagini pe foi, deci desenul se
 //     adaugă de mână (`_xlFluxLogo`), cu EXACT XML-ul pe care Excel-ul obișnuit îl scrie pentru `xlPlaceLogo` (180×35,
 //     în colțul A1). Atinge piese interne ale ExcelJS (versiunea e fixată în package-lock); păzit de probă, care
 //     citește fișierul înapoi și numără logo-urile.
 const ContentTypesXform = require('exceljs/lib/xlsx/xform/core/content-types-xform');
-const ISTORIC_COLOANE = TRASEU_COLOANE.slice(0, -1);                 // fără „Pe hartă"
+const ISTORIC_COLOANE = TRASEU_COLOANE.slice(0, -1);                 // fără „Pe hartă”
 const ISTORIC_LATIMI = [12, 10, 12, 14, 10, 10, 15, 10, 24];
 const _XL_CAP = { font: { bold: true }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } },
   border: { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } } };
@@ -982,7 +982,7 @@ function _xlFluxLogo(wb) {
   const buf = _logoBuffer(); if (!buf) return function () { return 1; };
   const img = wb.media[wb.addImage({ buffer: buf, extension: 'png' })];
   const desene = [];
-  // Tipul fișierelor-desen trebuie anunțat în [Content_Types].xml, altfel Excel le ignoră (sau „repară" fișierul).
+  // Tipul fișierelor-desen trebuie anunțat în [Content_Types].xml, altfel Excel le ignoră (sau „repară” fișierul).
   wb.addContentTypes = function () {
     const model = { worksheets: this._worksheets.filter(Boolean), sharedStrings: this.sharedStrings, commentRefs: this.commentRefs,
       media: this.media, drawings: desene.map(function (n) { return { name: 'drawing' + n }; }) };
@@ -1021,7 +1021,7 @@ function lunaPozitiei(ts) {
   return { cheie: p.year + '-' + p.month, nume: nume.charAt(0).toUpperCase() + nume.slice(1) };
 }
 // Pasul 1: câte poziții are fiecare lună, citind pe pagini doar orele (`pagina(dupa)` → [{ timestamp, cheie }]). Foaia
-// „Sumar" stă prima, deci cifrele ei se știu ÎNAINTE de a scrie lunile.
+// „Sumar” stă prima, deci cifrele ei se știu ÎNAINTE de a scrie lunile.
 async function istoricPeLuni(pagina, pauza) {
   const luni = []; let dupa = null, total = 0, prima = null, ultima = null, cur = null;
   for (;;) {
@@ -1071,7 +1071,7 @@ async function istoricCompletXlsx(iesire, o) {
     });
     r.commit();
   };
-  // „Sumar": cine, ce firmă, ce perioadă, câte poziții, pe luni.
+  // „Sumar”: cine, ce firmă, ce perioadă, câte poziții, pe luni.
   const s = wb.addWorksheet('Sumar');
   s.columns = [{ width: 30 }, { width: 18 }];
   let r = logo(s);
@@ -1116,7 +1116,7 @@ async function istoricCompletXlsx(iesire, o) {
   if (ws) ws.commit();
   await wb.commit();
 }
-// ─── sfârșit „istoricul complet, scris în flux" ──────────────────────────────────────────────────
+// ─── sfârșit „istoricul complet, scris în flux” ──────────────────────────────────────────────────
 
 module.exports = { toXlsx, toPdf, sendReport, numeRaport, ofertaToPdf, sendOfertaPdf, contentDisposition, renderOfertaPdf, sablonMasiniXlsx,
   traseuVehicul, traseuCaRaport, traseuPreaMare, directieTraseu, hmTraseu, kmTraseu, durataDepasiri, TRASEU_COLOANE, TRASEU_MAX_POZITII,

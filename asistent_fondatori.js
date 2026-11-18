@@ -1,10 +1,10 @@
-// asistent_fondatori.js — asistentul fondatorilor, etapa 1, pasul 2 (Alin, 30.10: „2. da" — caseta „Întreabă orice", ca în macheta
-// „tot un chat", https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw). Două drumuri, ca la RA Insight:
-//   • PE LOC (insigna „Instant"): întrebările obișnuite ale fondatorilor — cine e restant, încasările, montajele, contractele care
+// asistent_fondatori.js — asistentul fondatorilor, etapa 1, pasul 2 (Alin, 30.10: „2. da” — caseta „Întreabă orice”, ca în macheta
+// „tot un chat”, https://claude.ai/artifact/UjazZMNJ9FctMXq7KRfffw). Două drumuri, ca la RA Insight:
+//   • PE LOC (insigna „Instant”): întrebările obișnuite ale fondatorilor — cine e restant, încasările, montajele, contractele care
 //     expiră sau stau nesemnate, stocul, cererile, ce e de facturat, aparatele fără firmă, starea firmelor, venitul lunar —
 //     înțelese pe reguli (`intelege`) și scrise aici (`raspunde`): titlul, tabelul, o frază, butoanele spre ecranul potrivit și de
 //     unde sunt cifrele. Fără model, fără cost.
-//   • MODELUL (insigna „Analiză"): restul — instrucțiunile (`instructiuni`) și uneltele (`UNELTE`), care citesc ACELEAȘI date.
+//   • MODELUL (insigna „Analiză”): restul — instrucțiunile (`instructiuni`) și uneltele (`UNELTE`), care citesc ACELEAȘI date.
 // Curat: fără bază și fără server. Datele le adună serverul (`_asfDate`), cu socotelile care există deja (neplata, contractele,
 // calendarul de montaj, stocul, venitul lunar), și le dă aici. Pagina doar desenează ce primește (textele, ca TEXT).
 'use strict';
@@ -20,28 +20,28 @@ const _fmtParti = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeri
 const _fmtZiSapt = new Intl.DateTimeFormat('ro-RO', { timeZone: TZ, weekday: 'long', day: '2-digit', month: '2-digit' });
 const _fmtData = new Intl.DateTimeFormat('ro-RO', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' });
 
-// Câte rânduri are cel mult un tabel pe ecran (restul: „și încă N").
+// Câte rânduri are cel mult un tabel pe ecran (restul: „și încă N”).
 const MAX_RANDURI = 10;
 // O întrebare mai lungă decât atât e a modelului, chiar dacă pomenește un subiect cunoscut („fă-mi un rezumat al încasărilor pe
 // trei luni, comparat cu costurile"): regulile răspund la întrebările scurte, obișnuite.
 const MAX_CUVINTE_PE_LOC = 14;
-// „Contracte care expiră", fără perioadă: următoarele 90 de zile.
+// „Contracte care expiră”, fără perioadă: următoarele 90 de zile.
 const ZILE_CONTRACTE = 90;
 
-// Întrebările gata făcute de sub „Azi la noi" (macheta): un clic și pleacă, ca una scrisă. `ic` = iconița pastilei (chatul inteligent, 02.11).
+// Întrebările gata făcute de sub „Azi la noi” (macheta): un clic și pleacă, ca una scrisă. `ic` = iconița pastilei (chatul inteligent, 02.11).
 const INTREBARI_GATA = [
   { text: 'Cine e restant?', trimite: 'Cine e restant?', ic: 'fa-coins' },
   { text: 'Încasări luna asta', trimite: 'Încasări luna asta', ic: 'fa-chart-column' },
   { text: 'Montaje săptămâna asta', trimite: 'Montaje săptămâna asta', ic: 'fa-calendar-days' }
 ];
-// Perioadele din „+" › Perioada: se pun în casetă cum le scrie omul, iar regulile de mai jos le înțeleg (proba le citește pe toate).
+// Perioadele din „+” › Perioada: se pun în casetă cum le scrie omul, iar regulile de mai jos le înțeleg (proba le citește pe toate).
 const PERIOADE = [
   { text: 'Azi', pune: 'azi' }, { text: 'Mâine', pune: 'mâine' }, { text: 'Săptămâna asta', pune: 'săptămâna asta' },
   { text: 'Săptămâna viitoare', pune: 'săptămâna viitoare' }, { text: 'Luna asta', pune: 'luna asta' },
   { text: 'Luna trecută', pune: 'luna trecută' }, { text: 'Luna viitoare', pune: 'luna viitoare' }
 ];
 
-// De unde vin cifrele fiecărui subiect (insigna, rândul „✓" și butonul spre ecran).
+// De unde vin cifrele fiecărui subiect (insigna, rândul „✓” și butonul spre ecran).
 const SURSE = {
   restanti: 'Facturare', incasari: 'Facturare', de_facturat: 'Facturare', montaje: 'Calendarul de montaj',
   contracte: 'Contracte', nesemnate: 'Contracte', stoc: 'Stoc echipamente', demo: 'Cereri demo', cereri: 'Cereri de la clienți',
@@ -50,7 +50,7 @@ const SURSE = {
 
 // ─── Ajutoare de scris ───────────────────────────────────────────────────────────────────────────────────────────────────────
 function _mii(n) { return String(Math.floor(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
-// Suma exactă: „1.240,84 lei", „2.915 lei" (fără zecimale când e întreagă).
+// Suma exactă: „1.240,84 lei”, „2.915 lei” (fără zecimale când e întreagă).
 function lei(n) {
   const v = Math.round((Number(n) || 0) * 100) / 100, a = Math.abs(v), int = Math.floor(a), dec = Math.round((a - int) * 100);
   return (v < 0 ? '−' : '') + _mii(int) + (dec ? ',' + String(dec).padStart(2, '0') : '') + ' lei';
@@ -63,7 +63,7 @@ function _parti(ms) {
   return { y: p.year, m0: p.month - 1, d: p.day };
 }
 function _zi0(y, m0, d) { return I.inceputZiRO(y, m0, d); }
-// „de 5 zile" / „de o zi" / „de 3 ore": cât așteaptă ceva.
+// „de 5 zile” / „de o zi” / „de 3 ore”: cât așteaptă ceva.
 function deCand(la, acum) {
   const ms = Math.max(0, (Number(acum) || Date.now()) - (Number(la) || 0));
   if (ms < 3600000) return 'de ' + numar(Math.max(1, Math.round(ms / 60000)), 'minut', 'minute');
@@ -73,8 +73,8 @@ function deCand(la, acum) {
 function _intreg(n) { const v = Number(n) || 0; return v === 1 ? 'o' : String(v); }
 
 // ─── Perioadele ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
-// Zilele întregi ale calendarului (montajele, contractele): „azi", „mâine", „săptămâna asta" (luni–duminică, cu zilele care
-// urmează), „luna viitoare", „în noiembrie". `viitor` = privește înainte (o lună trecută fără an = cea de anul viitor: „contracte
+// Zilele întregi ale calendarului (montajele, contractele): „azi”, „mâine”, „săptămâna asta” (luni–duminică, cu zilele care
+// urmează), „luna viitoare”, „în noiembrie”. `viitor` = privește înainte (o lună trecută fără an = cea de anul viitor: „contracte
 // care expiră în ianuarie", întrebat în octombrie). { de, pana, eticheta } sau null.
 const LUNI_RE = I.LUNI.join('|');
 function perioadaCalendar(t, acum, viitor) {
@@ -100,7 +100,7 @@ function perioadaCalendar(t, acum, viitor) {
   if (/\bluna (trecuta|precedenta|anterioara)\b/.test(t)) return per(_zi0(z.y, z.m0 - 1, 1), _zi0(z.y, z.m0, 1), 'luna trecută (' + I.LUNI[(z.m0 + 11) % 12] + ')');
   if (/\bluna (asta|aceasta|curenta)\b/.test(t)) return per(_zi0(z.y, z.m0, 1), _zi0(z.y, z.m0 + 1, 1), 'luna asta (' + I.LUNI[z.m0] + ')');
   if (/\banul (asta|acesta|curent)\b/.test(t)) return per(_zi0(z.y, 0, 1), _zi0(z.y + 1, 0, 1), 'în ' + z.y);
-  // O lună: „în noiembrie", „noiembrie 2026"; „mai" doar cu „în / luna / din" sau cu anul (altfel e „mai avem").
+  // O lună: „în noiembrie”, „noiembrie 2026”; „mai” doar cu „în / luna / din” sau cu anul (altfel e „mai avem”).
   if ((m = new RegExp('\\b(?:(?:in|luna|din|pe) )?(' + LUNI_RE.replace('mai|', '') + ')(?: (\\d{4}))?\\b').exec(t)) ||
       (m = /\b(?:in|luna|din|pe) (mai)(?: (\d{4}))?\b/.exec(t)) || (m = /\b(mai) (\d{4})\b/.exec(t))) {
     const m0 = I.LUNI.indexOf(m[1]);
@@ -112,9 +112,9 @@ function perioadaCalendar(t, acum, viitor) {
   }
   return null;
 }
-// Încasările privesc înapoi: perioada citită ca la rapoarte (ai_raport.perioadaDin — „luna trecută", „în septembrie", „ieri",
-// „1–7 octombrie"); fără ea sau cu „luna asta", luna de acum până acum. „Luna asta" se citește aici, nu la rapoarte: pe 1 ale lunii
-// rapoartele o fac „azi" (o zi), iar întrebarea era despre lună.
+// Încasările privesc înapoi: perioada citită ca la rapoarte (ai_raport.perioadaDin — „luna trecută”, „în septembrie”, „ieri”,
+// „1–7 octombrie”); fără ea sau cu „luna asta”, luna de acum până acum. „Luna asta” se citește aici, nu la rapoarte: pe 1 ale lunii
+// rapoartele o fac „azi” (o zi), iar întrebarea era despre lună.
 function perioadaTrecuta(t, acum) {
   const now = Number(acum) || Date.now();
   const spusa = /\bluna (asta|aceasta|curenta)\b/.test(t) ? null : AR.perioadaDin(t, now);
@@ -124,7 +124,7 @@ function perioadaTrecuta(t, acum) {
   }
   const e = String(spusa.eticheta || '');
   const fraza = I.LUNI.some(function (l) { return e.indexOf(l + ' ') === 0; }) ? 'în ' + e : (/^(azi|ieri|alaltăieri)$/.test(e) ? e : 'în perioada ' + e);
-  // `lunaAsta` = luna de acum, până azi → „Și luna trecută?" și comparația cu aceleași zile din luna dinainte.
+  // `lunaAsta` = luna de acum, până azi → „Și luna trecută?” și comparația cu aceleași zile din luna dinainte.
   return { de: Date.parse(spusa.from), pana: Date.parse(spusa.to), eticheta: fraza, lunaAsta: / \(până azi\)$/.test(e) };
 }
 // Cu ce se compară încasările: luna de acum (până azi) cu ACELEAȘI zile din luna dinainte — nu cu luna întreagă, care ar ieși
@@ -141,8 +141,8 @@ function perioadaComparata(u, acum) {
 }
 
 // ─── Firmele numite în întrebare ─────────────────────────────────────────────────────────────────────────────────────────────
-// „Trans Expres e restant?", „cât am încasat de la Agro Nord" — numele firmei, fără SRL / SA, ca un cuvânt întreg. La două potriviri
-// care se suprapun („Trans" și „Trans Expres"), câștigă cea mai lungă.
+// „Trans Expres e restant?”, „cât am încasat de la Agro Nord” — numele firmei, fără SRL / SA, ca un cuvânt întreg. La două potriviri
+// care se suprapun („Trans” și „Trans Expres”), câștigă cea mai lungă.
 function _numeFirma(n) {
   return I.norm(n).replace(/\b(s\.?\s?r\.?\s?l|s\.?\s?a|srl|sa|pfa|ii|ie|snc|scs|sca|scm|ifn)\b\.?/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -159,7 +159,7 @@ function firmeDin(t, firme) {
 }
 
 // ─── Înțelegerea întrebării ──────────────────────────────────────────────────────────────────────────────────────────────────
-// Ordinea contează: „facturi restante" e o restanță, nu „de facturat"; „cereri demo" sunt ale demo-ului.
+// Ordinea contează: „facturi restante” e o restanță, nu „de facturat”; „cereri demo” sunt ale demo-ului.
 const SUBIECTE = [
   { k: 'restanti', re: /\b(restant\w*|neplat\w*|neachitat\w*|datori\w*|datoreaza|intarzi\w*|scadent\w*|nu (ne )?(au|a) platit)\b/ },
   { k: 'incasari', re: /\b(incas\w*|bani (am )?(primit|intrat)|ce bani (au )?intrat|plati(le)? primite)\b/ },
@@ -174,19 +174,19 @@ const SUBIECTE = [
   { k: 'venit', re: /\b(venit(ul)? lunar|venitul pe luna|mrr|cat facturam( pe luna| lunar)?|cei mai mari clienti|cel mai mare client|top clienti|abonamentele lunare)\b/ },
   { k: 'firme', re: /\b(cate firme|cati clienti|clienti activi|firme active|toate firmele|toti clientii|suspendat\w*|fara contract|lista (de )?(firme|clienti))\b/ }
 ];
-// O continuare care e DOAR o perioadă („și luna trecută?", „și mâine?"): regula rapoartelor (ai_raport.doarPerioada), plus cuvintele
+// O continuare care e DOAR o perioadă („și luna trecută?”, „și mâine?”): regula rapoartelor (ai_raport.doarPerioada), plus cuvintele
 // viitorului — montajele și contractele privesc și înainte, rapoartele nu.
 const VIITOR = /\b(maine|poimaine|viitoare|viitor|urmatoare|urmatorul|urmatoarele|urmatorii)\b/g;
 function _doarPerioada(t) { return AR.doarPerioada(String(t || '').replace(VIITOR, ' ')); }
-// Modelele din stoc, scrise cum le scriu oamenii („fmc 130", „FMC130", „lv-can").
+// Modelele din stoc, scrise cum le scriu oamenii („fmc 130”, „FMC130”, „lv-can”).
 function _modelDin(t) {
   const m = /\bfmc ?(\d{3})\b/.exec(t);
   if (m) return 'fmc' + m[1];
   if (/\blv ?-?can/.test(t)) return 'lvcan200';
   return null;
 }
-// `o` = { acum, ctx (ce a întors răspunsul de dinainte: { s, de, pana, eticheta, firme }), analiza (insight.esteAnaliza — „de ce",
-// „compară", „ce să fac" sunt ale modelului), firme: [{ id, nume }] }. Întoarce { s, de?, pana?, eticheta?, firme?, model? } sau null.
+// `o` = { acum, ctx (ce a întors răspunsul de dinainte: { s, de, pana, eticheta, firme }), analiza (insight.esteAnaliza — „de ce”,
+// „compară”, „ce să fac” sunt ale modelului), firme: [{ id, nume }] }. Întoarce { s, de?, pana?, eticheta?, firme?, model? } sau null.
 function intelege(text, o) {
   o = o || {};
   const acum = Number(o.acum) || Date.now();
@@ -197,13 +197,13 @@ function intelege(text, o) {
   for (const x of SUBIECTE) if (x.re.test(t)) { s = x.k; break; }
   const firme = firmeDin(t, o.firme);
   const c = o.ctx || {};
-  // „Și luna trecută?", „și la Agro Nord?" — fără subiect, dar cu o perioadă sau o firmă: subiectul de dinainte.
+  // „Și luna trecută?”, „și la Agro Nord?” — fără subiect, dar cu o perioadă sau o firmă: subiectul de dinainte.
   const doarPer = _doarPerioada(t);
   if (!s && c.s && SURSE[c.s] && t.split(' ').length <= 8 && (doarPer || firme.length)) s = c.s;
   if (!s) return null;
   const u = { s: s };
   if (firme.length) u.firme = firme;
-  // Firma de dinainte rămâne doar la o continuare („Și luna trecută?"); o întrebare întreagă e despre toate firmele.
+  // Firma de dinainte rămâne doar la o continuare („Și luna trecută?”); o întrebare întreagă e despre toate firmele.
   else if (c.s === s && Array.isArray(c.firme) && c.firme.length && doarPer) u.firme = c.firme;
   if (s === 'incasari') Object.assign(u, perioadaTrecuta(t, acum));
   if (s === 'montaje') {
@@ -244,7 +244,7 @@ const BTN = {
 function _laFirma(id, nume, fila) { return { text: 'Deschide ' + nume, ic: 'fa-building', tinta: { fel: 'firma', id: id, fila: fila } }; }
 
 const RASPUNS = {
-  // Facturile trecute de scadență — ACEEAȘI listă ca rândul „bani" din „Azi la noi" (neplata). `zilePanaLaOprire` -1 = oprit.
+  // Facturile trecute de scadență — ACEEAȘI listă ca rândul „bani” din „Azi la noi” (neplata). `zilePanaLaOprire` -1 = oprit.
   restanti: function (u, d) {
     const l = _peFirme(u, d.facturi).slice().sort(function (a, b) { return (b.zileIntarziere - a.zileIntarziere) || (b.totalRon - a.totalRon); });
     const df = _deFirma(u);
@@ -268,7 +268,7 @@ const RASPUNS = {
       urmari: [{ text: 'Încasări luna asta', trimite: 'Încasări luna asta' }]
     };
   },
-  // Plățile trecute în aplicație (Facturare › „Plătită" / încasare), pe firme; perioada de dinainte, la fel de lungă, ca reper.
+  // Plățile trecute în aplicație (Facturare › „Plătită” / încasare), pe firme; perioada de dinainte, la fel de lungă, ca reper.
   incasari: function (u, d) {
     const l = _peFirme(u, d.plati);
     const df = _deFirma(u);
@@ -364,7 +364,7 @@ const RASPUNS = {
       butoane: [BTN.stoc]
     };
   },
-  // Cererile deschise de la clienți („Anunță echipa RA Track").
+  // Cererile deschise de la clienți („Anunță echipa RA Track”).
   cereri: function (u, d) {
     const l = _peFirme(u, d.cereri).slice().sort(function (a, b) { return a.la - b.la; });
     if (!l.length) return { titlu: 'Nicio cerere deschisă de la clienți.', butoane: [BTN.cereri] };
@@ -385,7 +385,7 @@ const RASPUNS = {
       butoane: [BTN.demo]
     };
   },
-  // Aparatele care transmit (ultimele 7 zile) și n-au firmă — ca rândul din „Azi la noi"; butonul le bifează în Neasignate.
+  // Aparatele care transmit (ultimele 7 zile) și n-au firmă — ca rândul din „Azi la noi”; butonul le bifează în Neasignate.
   aparate: function (u, d) {
     const l = d.aparate || [];
     if (!l.length) return { titlu: 'Niciun aparat fără firmă nu transmite acum.', butoane: [{ text: 'Dispozitive', ic: 'fa-satellite-dish', tinta: { fel: 'sectiune', tab: 'devices' } }] };
@@ -423,7 +423,7 @@ const RASPUNS = {
       urmari: [{ text: 'Încasări luna asta', trimite: 'Încasări luna asta' }]
     };
   },
-  // Starea firmelor, cu regulile filtrelor din Companii (fără contract / restanță / suspendată) — ca cifrele de sub „Companii".
+  // Starea firmelor, cu regulile filtrelor din Companii (fără contract / restanță / suspendată) — ca cifrele de sub „Companii”.
   firme: function (u, d) {
     const l = d.firme || [];
     const fc = l.filter(function (f) { return f.faraContract; }), rs = l.filter(function (f) { return f.restanta; }), su = l.filter(function (f) { return f.suspendata; });
@@ -450,7 +450,7 @@ function raspunde(u, d, acum) {
   if (u.firme && u.firme.length) ctx.firme = u.firme;
   return Object.assign({ fel: 'instant', insigna: _insigna(u.s), verificat: 'Cifrele le-am luat din ' + SURSE[u.s] + '.', urmari: [] }, r, { context: ctx });
 }
-// Textul simplu al unui răspuns (pentru „Copiază" și pentru istoricul pe care îl vede modelul la întrebarea următoare).
+// Textul simplu al unui răspuns (pentru „Copiază” și pentru istoricul pe care îl vede modelul la întrebarea următoare).
 function textSimplu(r) {
   if (!r) return '';
   const p = [String(r.titlu || '').replace(/\*\*/g, '')];
@@ -476,7 +476,7 @@ const UNELTE = [
   { name: 'stoc', description: 'Stocul de aparate pe modele: în depozit, la instalatori, montate (închiriate de la noi sau vândute).', input_schema: { type: 'object', properties: {} } },
   { name: 'cereri', description: 'Cererile deschise de la clienți (problemele anunțate din aplicație): numărul, firma, problema, starea, de când.', input_schema: { type: 'object', properties: {} } },
   { name: 'de_facturat', description: 'Ce așteaptă o factură: montajul gata de facturat și abonamentul lunii încă neemis, pe firme.', input_schema: { type: 'object', properties: {} } },
-  { name: 'azi_la_noi', description: 'Ce cere atenție azi (aceleași rânduri ca „Azi la noi" de sus): facturi întârziate, cereri, contracte, montaj, de facturat, aparate, firma noastră.', input_schema: { type: 'object', properties: {} } }
+  { name: 'azi_la_noi', description: 'Ce cere atenție azi (aceleași rânduri ca „Azi la noi” de sus): facturi întârziate, cereri, contracte, montaj, de facturat, aparate, firma noastră.', input_schema: { type: 'object', properties: {} } }
 ];
 // De unde vin cifrele unei unelte (insigna și butoanele de sub răspunsul modelului).
 const SURSA_UNELTE = {
@@ -486,7 +486,7 @@ const SURSA_UNELTE = {
   azi_la_noi: { sursa: 'Azi la noi', buton: null }
 };
 // Insigna și butoanele unui răspuns al modelului, din uneltele chiar rulate (nu din ce a scris el). `surse` = ecranele din care
-// au venit cifrele (pentru rândul „✓", la pasul 3).
+// au venit cifrele (pentru rândul „✓”, la pasul 3).
 function _insiruire(l) { return l.length > 1 ? l.slice(0, -1).join(', ') + ' și ' + l[l.length - 1] : (l[0] || ''); }
 function dupaModel(unelte) {
   const surse = [], butoane = [];
@@ -499,10 +499,10 @@ function dupaModel(unelte) {
   return { insigna: { fel: 'ai', nume: 'Asistent', eticheta: 'Analiză', detaliu: det }, butoane: butoane.slice(0, 3), surse: surse };
 }
 
-// ─── Pasul 3 (04.11; Alin, 02.11: „5. da", 03.11: „da, poți începe"): cifrele verificate și analiza atentă ─────────────────────
+// ─── Pasul 3 (04.11; Alin, 02.11: „5. da”, 03.11: „da, poți începe”): cifrele verificate și analiza atentă ─────────────────────
 // Cifrele din răspunsul modelului se caută în ce au întors uneltele (cifre.negasite — aceeași regulă ca la RA Insight: sumele în lei
 // și procentele; totalurile, diferențele și procentele între două perioade se socotesc din date). O cifră negăsită → modelul își
-// rescrie O DATĂ răspunsul (`cerereRescriere`); rămasă negăsită → o spunem pe față („Nu am găsit…"), nu „verifică tu".
+// rescrie O DATĂ răspunsul (`cerereRescriere`); rămasă negăsită → o spunem pe față („Nu am găsit…”), nu „verifică tu”.
 function cerereRescriere(lipsa) {
   return 'Verificarea aplicației: cifrele ' + (lipsa || []).join(', ') + ' nu se regăsesc în datele citite de unelte și nici nu se pot ' +
     'socoti din ele. Scrie din nou tot răspunsul, doar cu cifre din unelte (citește din nou ce îți trebuie). Nu pomeni verificarea.';
@@ -518,8 +518,8 @@ function verificare(text, lipsa, citite, surse) {
   if (deVazut.length && (citite || []).length) return { verificat: 'Cifrele le-am luat din ' + (_insiruire(surse || []) || 'aplicație') + '.' };
   return {};
 }
-// Analiza atentă (ca la RA Insight, insight.ANALIZA_ATENTA): la „de ce", „compară", „ce să fac" (insight.esteAnaliza) același model
-// gândește mai mult (efortul „medium", pus de server) și răspunde în forma fixă. Zilele perioadelor le dă aplicația (pe ora României),
+// Analiza atentă (ca la RA Insight, insight.ANALIZA_ATENTA): la „de ce”, „compară”, „ce să fac” (insight.esteAnaliza) același model
+// gândește mai mult (efortul „medium”, pus de server) și răspunde în forma fixă. Zilele perioadelor le dă aplicația (pe ora României),
 // ca modelul să nu le socotească singur. Stă în CONTEXTUL întrebării, nu în partea fixă din cache.
 function _iso(y, m0, d) { return new Date(Date.UTC(y, m0, d)).toISOString().slice(0, 10); }
 function analizaAtenta(acum) {
@@ -527,7 +527,7 @@ function analizaAtenta(acum) {
   const dow = (new Date(Date.UTC(z.y, z.m0, z.d)).getUTCDay() + 6) % 7;   // 0 = luni
   const zileLunaTrecuta = new Date(Date.UTC(z.y, z.m0, 0)).getUTCDate();
   const azi = _iso(z.y, z.m0, z.d);
-  return 'ÎNTREBARE DE ANALIZĂ („de ce", „compară", „ce să fac"). Lucrează atent; forma de mai jos ține locul celei obișnuite.\n' +
+  return 'ÎNTREBARE DE ANALIZĂ („de ce”, „compară”, „ce să fac”). Lucrează atent; forma de mai jos ține locul celei obișnuite.\n' +
     '1. Înainte să răspunzi, citește cu uneltele datele pentru perioada întrebării ȘI pentru perioada dinainte, de aceeași lungime ' +
     '(de pildă încasările lunii și ale lunii dinainte: unealta `incasari` de două ori, cu `de` și `pana`); pe firme, dacă ajută. ' +
     'Zilele, pe ora României: luna asta până azi = ' + _iso(z.y, z.m0, 1) + ' – ' + azi + '; aceleași zile din luna trecută = ' +
@@ -550,7 +550,7 @@ function instructiuni(scrisul) {
     'firma RA Track și unde se vede restul în aplicație.\n' +
     'REGULI: Cifrele DOAR din unelte — nu inventa și nu ghici; dacă o unealtă nu are datele, spune asta. Sumele în lei, cu punct la mii și ' +
     'virgulă la zecimale (2.915,40 lei). Datele pe ora României (30.10.2026). Începe cu răspunsul, o propoziție cu cifra, îngroșată cu **…**; ' +
-    'apoi, dacă e nevoie, cel mult 6 rânduri care încep cu „- ". Fără tabele, fără titluri (#), fără emoji. Nu promite acțiuni: nu emiți ' +
+    'apoi, dacă e nevoie, cel mult 6 rânduri care încep cu „- ”. Fără tabele, fără titluri (#), fără emoji. Nu promite acțiuni: nu emiți ' +
     'facturi, nu suspenzi firme, nu schimbi prețuri, nu trimiți emailuri, nu ștergi nimic — spui doar unde se face, în aplicație ' +
     '(Facturare, Companii, Contracte, Montaj, Stoc echipamente, Cereri de la clienți).\n' + (scrisul || '');
 }
@@ -567,14 +567,14 @@ function faraModel() {
   return { fel: 'instant', insigna: { fel: 'instant', nume: 'Asistent', eticheta: 'Instant', detaliu: 'din aplicație' },
     text: 'La întrebarea asta răspunde modelul, iar cheia lui nu e pusă pe server. Pe loc îți pot răspunde, de pildă, la:', urmari: PE_LOC };
 }
-// `motiv` (04.11) = de ce a refuzat Anthropic și ce e de făcut (sold_ai.textRefuz): fondatorul află cauza, nu doar „n-a răspuns".
+// `motiv` (04.11) = de ce a refuzat Anthropic și ce e de făcut (sold_ai.textRefuz): fondatorul află cauza, nu doar „n-a răspuns”.
 function eroareModel(motiv) {
   return { fel: 'instant', insigna: { fel: 'instant', nume: 'Asistent', eticheta: 'Instant', detaliu: 'din aplicație' },
     text: (motiv ? String(motiv).trim() + ' ' : 'Modelul n-a răspuns acum. Încearcă din nou peste un minut. ') + 'Pe loc îți pot răspunde, de pildă, la:', urmari: PE_LOC };
 }
 
-// ─── Conversațiile păstrate (pasul 4, 04.11; Alin: „da") ────────────────────────────────────────────────────────────
-// Textele listei din stânga (☰ pe telefon) și ale meniului „⋯". Cifra lunilor o dă serverul, din contracts.js (LUNI_CONVERSATII_AI,
+// ─── Conversațiile păstrate (pasul 4, 04.11; Alin: „da”) ────────────────────────────────────────────────────────────
+// Textele listei din stânga (☰ pe telefon) și ale meniului „⋯”. Cifra lunilor o dă serverul, din contracts.js (LUNI_CONVERSATII_AI,
 // aceeași ca la RA Insight). Pagina doar le arată.
 function texteConversatii(luni) {
   const n = Math.max(1, Math.round(Number(luni) || 12));

@@ -5,10 +5,10 @@ import { Icon } from './Icon';
 import { Confirma } from './FlotaUi';
 import '../screens/detail.css'; // .sheet*, .btn*
 
-// „Schimbă aparatul" (Robert, 29.10) — aceeași fereastră ca în fișa mașinii de pe web, pe aceleași rute:
+// „Schimbă aparatul” (Robert, 29.10) — aceeași fereastră ca în fișa mașinii de pe web, pe aceleași rute:
 // GET / POST /api/devices/:imei/schimba-aparat (doar noi, super-admin). Aparatul nou PREIA mașina: istoricul, fișa, actele,
 // reviziile, șoferul și abonamentul rămân pe ea. Telefonul nu verifică și nu socotește nimic: lista candidaților, textul de
-// confirmare (pentru „defect" și pentru „retur") și refuzurile vin de la server (aparat_schimbat.js).
+// confirmare (pentru „defect” și pentru „retur”) și refuzurile vin de la server (aparat_schimbat.js).
 type Candidat = { imei: string; model: string | null; sursa: string; unde: string; confirmare: Record<string, string> };
 type DateSchimb = {
   vehicul: { imei: string; nume: string }; aparatAcum: string; model: string | null; sim: string | null;

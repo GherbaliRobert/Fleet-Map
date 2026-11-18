@@ -8,13 +8,13 @@ import { deNr, nrDe } from '../lib/numar';
 import { fisierB64, potTrimiteCrud, trimiteFisierCrud } from '../lib/trimiteFisier';
 import '../screens/oferte.css';
 
-// „Mașinile clientului" din Ofertare Live, pe telefon (pe web din 28.09) — doar pentru noi, nu apare în ofertă.
+// „Mașinile clientului” din Ofertare Live, pe telefon (pe web din 28.09) — doar pentru noi, nu apare în ofertă.
 //
 // Omul scrie mașinile clientului (marcă, model, an, combustibil, câte bucăți) sau încarcă șablonul completat de
 // client; SERVERUL le caută în listele Teltonika și spune, pe fiecare, ce aparat merge și ce date se citesc.
 // Telefonul NU hotărăște niciun aparat: ține doar rândurile, le trimite la fiecare socoteală a ofertei
 // (`/api/admin/offers/calc`, câmpul `masini`) și arată ce a scris pagina web sub fiecare rând
-// (`masini.randuri[i].rez`) și sumarul cu „Trece în ofertă" (același buton ca „Aplică recomandarea" de la pasul 4).
+// (`masini.randuri[i].rez`) și sumarul cu „Trece în ofertă” (același buton ca „Aplică recomandarea” de la pasul 4).
 // Lista se salvează cu oferta (serverul o pune în `cfg.masini`) și NU ajunge pe hârtia clientului.
 //
 // Rândurile sunt ale telefonului: un răspuns de la server NU le rescrie (capcana de la Inventar — caseta în care
@@ -24,7 +24,7 @@ export type RezMs = { rez: string; rec: { aparat: string; et: string } | null; s
 export type Optiune = { k: string; et: string };
 export const MS_GOL = { marca: '', model: '', an: '', combustibil: '', buc: '1', aparat: '' };
 
-// Ce decide potrivirea unei mașini: marca, modelul, anul, combustibilul — plus „date din motor" și comutatorul CAN
+// Ce decide potrivirea unei mașini: marca, modelul, anul, combustibilul — plus „date din motor” și comutatorul CAN
 // (alege între listele Teltonika la mașinile care sunt pe amândouă). Bucățile și aparatul ales de mână nu o schimbă.
 // Un rezultat primit pentru altă semnătură decât cea de acum e VECHI: rândul arată că se caută din nou.
 export function semnMs(r: RandMs, motor: boolean, canMod: string): string {
@@ -45,7 +45,7 @@ function potriviri(lista: string[], text: string, max: number): string[] {
   if (inc.length === 1 && !cuprinde.length && inc[0].toLowerCase() === t) return [];
   return inc.concat(cuprinde).slice(0, max);
 }
-// Ziua unei liste („2025-07-23") sau a încărcării ei (ms), ca pe web (`_ofZiRo`).
+// Ziua unei liste („2025-07-23”) sau a încărcării ei (ms), ca pe web (`_ofZiRo`).
 function zi(x: any): string {
   if (!x) return '';
   const d = typeof x === 'number' ? new Date(x) : new Date(String(x) + 'T12:00:00');
@@ -77,7 +77,7 @@ export function MasiniClient(p: {
   onScoate: (id: number) => void;
   onMotor: (v: boolean) => void;
   onInlocuieste: (lista: Omit<RandMs, 'id'>[]) => void;
-  onAplica: () => void;         // „Trece în ofertă" = „Aplică recomandarea", apăsat de server în pagină
+  onAplica: () => void;         // „Trece în ofertă” = „Aplică recomandarea”, apăsat de server în pagină
   onListeNoi: () => void;       // o listă Teltonika nouă: rezultatele se cer din nou
 }) {
   const [marci, setMarci] = useState<string[]>([]);
@@ -91,9 +91,9 @@ export function MasiniClient(p: {
   const [liste, setListe] = useState<any[] | null>(null);
   const [fisierLista, setFisierLista] = useState<File | null>(null);
   const [stareLista, setStareLista] = useState<{ s: string; rau: boolean } | null>(null);
-  const citit = useRef<any>(null);   // șablonul citit, cât așteaptă întrebarea „Înlocuiești lista?"
+  const citit = useRef<any>(null);   // șablonul citit, cât așteaptă întrebarea „Înlocuiești lista?”
 
-  // Mărcile, pentru completarea casetei „Marcă" (pe web, lista de sub casetă): la deschidere și după o listă
+  // Mărcile, pentru completarea casetei „Marcă” (pe web, lista de sub casetă): la deschidere și după o listă
   // Teltonika nouă. Scrie doar răspunsul cererii celei mai noi — unul întârziat, de dinaintea listei, nu-l calcă.
   function incarcaMarci() {
     const g = ++genMarci.current;
@@ -141,7 +141,7 @@ export function MasiniClient(p: {
     );
   }
 
-  // „Poate e: …" de sub o mașină: modelul propus de server, pus în caseta ei.
+  // „Poate e: …” de sub o mașină: modelul propus de server, pus în caseta ei.
   const laClicRand = (id: number) => (e: any) => {
     const a = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
     if (!a) return;
@@ -222,7 +222,7 @@ export function MasiniClient(p: {
   return (
     <div class="of-card">
       <div class="of-t"><Icon name="car" size={15} /> Mașinile clientului <span class="of-ms-tag">doar pentru tine</span></div>
-      <div class="of-d">Scrii mașinile clientului (sau încarci șablonul completat de el) și îți spun ce aparat merge pe fiecare și ce date se citesc, după listele oficiale Teltonika. „Trece în ofertă" completează pașii 2, 4 și 5. Nu apare pe oferta clientului.</div>
+      <div class="of-d">Scrii mașinile clientului (sau încarci șablonul completat de el) și îți spun ce aparat merge pe fiecare și ce date se citesc, după listele oficiale Teltonika. „Trece în ofertă” completează pașii 2, 4 și 5. Nu apare pe oferta clientului.</div>
       <div class="of-tgl">
         <span class="lbl" style="font-size:13.5px;font-weight:600">Clientul vrea date din motor (consum, rezervor, kilometri), nu doar poziția</span>
         <button onClick={() => p.onMotor(!p.motor)} role="switch" aria-checked={p.motor} aria-label="Clientul vrea date din motor"><span class={'sw' + (p.motor ? ' on' : '')} /></button>

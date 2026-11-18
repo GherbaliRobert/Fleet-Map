@@ -5,16 +5,16 @@ import { Icon, type IconName } from './Icon';
 import { Gros } from './InsightText';
 import { campuriStart, iconaFa, nivelDovada, rutaButon, textCeas } from '../lib/insight';
 
-// Cartonașul „RA Insight face, cu Da-ul tău" (web: cartonasPropunere). Tot ce scrie vine de la server (soferi_masini.js,
+// Cartonașul „RA Insight face, cu Da-ul tău” (web: cartonasPropunere). Tot ce scrie vine de la server (soferi_masini.js,
 // propuneri.js, programari.js): ce se schimbă, de ce, ce nu se schimbă, textele de după. Aici se desenează și se trimit apăsările:
-// Da / Schimbă / Nu, „Anulează". Nimic nu se schimbă fără un buton apăsat. Ceasul lui „Anulează" pornește de la ce spune serverul
+// Da / Schimbă / Nu, „Anulează”. Nimic nu se schimbă fără un buton apăsat. Ceasul lui „Anulează” pornește de la ce spune serverul
 // (`ramasMs`), nu de la ceasul telefonului.
 
 export function ButonProp({ text, ic, prim, disabled, onClick }: { text: string; ic: IconName; prim?: boolean; disabled?: boolean; onClick: () => void }) {
   return <button type="button" class={'chat-pas' + (prim ? ' chat-prop-da' : '')} disabled={disabled} onClick={onClick}><Icon name={ic} size={14} />{text}</button>;
 }
 
-// „Anulează · mai ai 9:58", numărat pe ecran; la capăt butonul pleacă (serverul refuză oricum după cele 10 minute).
+// „Anulează · mai ai 9:58”, numărat pe ecran; la capăt butonul pleacă (serverul refuză oricum după cele 10 minute).
 export function CeasAnulare({ ramasMs, disabled, onClick }: { ramasMs: number; disabled: boolean; onClick: () => void }) {
   const capat = useRef(Date.now() + Math.max(0, Number(ramasMs) || 0));
   const [ramas, setRamas] = useState(capat.current - Date.now());
@@ -46,13 +46,13 @@ export function CartonasPropunere({ p, onGata, laButon }: { p: any; onGata: (nou
   const so = p.sofer || {};
   const k = p.campuri || {};
   const [busy, setBusy] = useState(false);
-  // „Schimbă" (alerta, discuția, revizia, actul, raportul): casetele în locul rândurilor; `ed` = ce e scris în ele.
+  // „Schimbă” (alerta, discuția, revizia, actul, raportul): casetele în locul rândurilor; `ed` = ce e scris în ele.
   const [ed, setEd] = useState<Record<string, string> | null>(null);
   const numeAtins = useRef(false);
   const [dovezi, setDovezi] = useState<any[] | null>(null);
   const [dovVechi, setDovVechi] = useState(false);
   const tDov = useRef<any>(null);
-  // „Schimbă" pe șofer: alt șofer liber care poate conduce mașina (lista o dă serverul, pe cartonaș).
+  // „Schimbă” pe șofer: alt șofer liber care poate conduce mașina (lista o dă serverul, pe cartonaș).
   const [alegeSofer, setAlegeSofer] = useState(false);
   const [ales, setAles] = useState<{ id: any; nume: any }>({ id: p.la, nume: so.la });
   useEffect(() => () => clearTimeout(tDov.current), []);
@@ -93,7 +93,7 @@ export function CartonasPropunere({ p, onGata, laButon }: { p: any; onGata: (nou
     }
   }
   function puneCamp(c: string, v: string) { setEd((f) => Object.assign({}, f, { [c]: v })); }
-  // „Din ultimele 30 de zile" se socotește din nou (pe server, cu regula motorului) pentru pragul și mașina alese. Numele pus de
+  // „Din ultimele 30 de zile” se socotește din nou (pe server, cu regula motorului) pentru pragul și mașina alese. Numele pus de
   // aplicație îl scrie serverul din nou, după pragul și mașina alese — cât omul nu l-a scris el.
   function refaceAlerta(prag: string, imei: string) {
     if (!numeAtins.current) puneCamp('nume', '');
@@ -215,7 +215,7 @@ export function CartonasPropunere({ p, onGata, laButon }: { p: any; onGata: (nou
         ) : null}
         {deschis && p.sub ? <div class="chat-prop-sub">{p.sub}</div> : null}
       </div>
-      {/* După „Da": gata, cu „Anulează" (cât mai ține) și butonul serverului; rândul jurnalului dedesubt. */}
+      {/* După „Da”: gata, cu „Anulează” (cât mai ține) și butonul serverului; rândul jurnalului dedesubt. */}
       {p.stare === 'aplicata' && p.gata ? (
         <div class="chat-gata">
           <div class="chat-gata-t"><Icon name="circleCheck" size={15} /><span><Gros text={p.gata.text} /></span></div>

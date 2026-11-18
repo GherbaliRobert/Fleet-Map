@@ -1,7 +1,7 @@
 // verify_notif_detaliu.js — ce ajunge în modalul unei notificări, cap-coadă, pe server pornit.
 //
 // Cele trei cazuri cerute de Robert (20.08): „intrarea în zonă să facă zoom pe zonă și să arate pe
-// unde a intrat", „tensiunea scăzută și expirarea documentelor să fie mult mai specifice".
+// unde a intrat", „tensiunea scăzută și expirarea documentelor să fie mult mai specifice”.
 // Toate trei se sprijină pe /api/notifications/:id/context — dacă acela nu trimite geometria zonei,
 // valoarea tensiunii sau actul propriu-zis, interfața n-are ce desena, oricât de bine ar fi scrisă.
 //
@@ -70,7 +70,7 @@ const asteapta = (ms) => new Promise((r) => setTimeout(r, ms));
 
   console.log('\n══ 2. TENSIUNE SCĂZUTĂ: valoarea măsurată ══\n');
   await J('/api/alerts', { method: 'POST', body: JSON.stringify({ name: 'Baterie descărcată', type: 'low_voltage', imei: IMEI, condition: { minVoltage: 12 }, enabled: true }) });
-  // AVL 66 = tensiune alimentare externă (mV). Trimis pe 2 octeți prin blocul „two bytes".
+  // AVL 66 = tensiune alimentare externă (mV). Trimis pe 2 octeți prin blocul „two bytes”.
   const pachetTensiune = (() => {
     const tsb = Buffer.alloc(8); tsb.writeBigUInt64BE(BigInt(Date.now()), 0);
     const gps = Buffer.alloc(15);
@@ -97,7 +97,7 @@ const asteapta = (ms) => new Promise((r) => setTimeout(r, ms));
   }
 
   console.log('\n══ 3. SCADENȚĂ DOCUMENT: actul propriu-zis ══\n');
-  // Rezumatul „acte fara data" se trimite PE COMPANIE (server.js sare peste randurile cu
+  // Rezumatul „acte fara data” se trimite PE COMPANIE (server.js sare peste randurile cu
   // company_id NULL) — deci vehiculul trebuie sa aiba o companie, altfel testam o cale moarta.
   const co = await J('/api/companies', { method: 'POST', body: JSON.stringify({ name: 'Proba SRL' }) });
   t('compania de proba s-a creat', !!(co && co.id), JSON.stringify(co).slice(0, 120));
@@ -127,13 +127,13 @@ const asteapta = (ms) => new Promise((r) => setTimeout(r, ms));
     t('emitentul', c.document.issuer === 'GROUPAMA', c.document.issuer);
     t('zilele rămase, RECALCULATE la azi', c.document.days === 5, String(c.document.days));
     t('costul', Number(c.document.cost) === 812.5, String(c.document.cost));
-    t('știe că are scan atașat („Vezi actul")', c.document.hasFile === true, String(c.document.hasFile));
-    t('știe vehiculul (butonul „Documentele vehiculului")', c.document.imei === IMEI, c.document.imei);
+    t('știe că are scan atașat („Vezi actul”)', c.document.hasFile === true, String(c.document.hasFile));
+    t('știe vehiculul (butonul „Documentele vehiculului”)', c.document.imei === IMEI, c.document.imei);
     t('eticheta vehiculului, nu IMEI-ul', /B 154 UIP|Dacia/.test(String(c.document.vehicle || '')), c.document.vehicle);
     t('NU trimite fișierul în context (ar fi sute de KB la fiecare deschidere)', c.document.file_b64 === undefined && c.document.fileB64 === undefined);
   }
   const nfd = arr.find((x) => String((x.data || {}).key || '').startsWith('vdoc-nodate-'));
-  t('rezumatul „acte fără dată" s-a produs', !!nfd);
+  t('rezumatul „acte fără dată” s-a produs', !!nfd);
   if (nfd) {
     const c = await J('/api/notifications/' + nfd.id + '/context');
     t('contextul listează actele fără dată, nu doar numărul lor', Array.isArray(c.documentsFaraData) && c.documentsFaraData.length > 0, JSON.stringify(c.documentsFaraData));

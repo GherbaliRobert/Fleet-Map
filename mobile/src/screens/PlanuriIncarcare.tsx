@@ -1,5 +1,5 @@
 // Planurile de încărcare (pasul 4, 12.10): șoferul vede ce i s-a trimis, dispecerul vede planurile firmei (cu starea:
-// netrimis / trimis / încărcat / problemă). Aceeași listă ca „Planuri" de pe web; starea o scrie serverul (incarcare.js).
+// netrimis / trimis / încărcat / problemă). Aceeași listă ca „Planuri” de pe web; starea o scrie serverul (incarcare.js).
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';

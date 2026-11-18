@@ -1,4 +1,4 @@
-// Fișa de contract, partea cu banii lunari: chenarul „Contractul și factura spun același lucru" și Anexa
+// Fișa de contract, partea cu banii lunari: chenarul „Contractul și factura spun același lucru” și Anexa
 // nr. 1 (aparatele și serviciile lunare). Ca pe web: _raxCtrComparatie, _raxCtrAnexaHtml,
 // _raxCtrAnexaCitita, raxCtrAnexaTotal, raxCtrSalveazaAnexa.
 //
@@ -7,7 +7,7 @@
 // Totalul anexei din editor e informativ (suma adevărată o face serverul, contracte.facAnexa, la salvare).
 // Prețul propus pe aparat vine de la server (`pret_sugerat` pe vehicul, în /overview) — regula „cu CAN →
 // prețul CAN, FMS → prețul FMS" nu se copiază pe telefon. Până îl trimite serverul, caseta rămâne goală
-// și „Salvează anexa" NU pleacă cu un aparat bifat fără preț: serverul l-ar socoti 0 lei, iar partea
+// și „Salvează anexa” NU pleacă cu un aparat bifat fără preț: serverul l-ar socoti 0 lei, iar partea
 // mașinilor venită din ofertă (ex. 10 × 45 lei) s-ar înlocui cu o sumă mai mică, pe hârtie și în comparație.
 import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
@@ -30,7 +30,7 @@ export function Comparatie({ cmp, semnat }: { cmp: any; semnat: boolean }) {
       </div>
     );
   }
-  // Imediat după „Client nou din ofertă" firma n-are încă aparate: drumul firesc, nu o nepotrivire.
+  // Imediat după „Client nou din ofertă” firma n-are încă aparate: drumul firesc, nu o nepotrivire.
   // Păstrarea istoricului se spune și aici: istoricul curge de la primul aparat, deci regula trebuie să fie
   // bună din prima zi — cu o nepotrivire acolo, cutia se face portocalie (ca pe web).
   if (v.fel === 'dupaMontaj') {
@@ -50,7 +50,7 @@ export function Comparatie({ cmp, semnat }: { cmp: any; semnat: boolean }) {
     <div class={'ctr-band ' + (bine ? 'ok' : 'warn')}>
       <div class="ctr-band-t">{bine ? 'Contractul și factura spun același lucru' : 'Contractul și factura nu spun același lucru'}</div>
       <div>Mașini: contractul <b>{lei(m.contract.lei)}</b> pe lună ({nrMasini(m.contract.nr)}{m.contract.dinOferta ? ', din ofertă' : ''}) · factura de luna asta <b>{lei(m.factura.lei)}</b> ({nrMasini(m.factura.nr)})</div>
-      {/* Pachetul RA Insight: din contract lângă rândul de pe factură, ca pe web (regula veche, „pe cont", a ieșit pe 11.11). */}
+      {/* Pachetul RA Insight: din contract lângă rândul de pe factură, ca pe web (regula veche, „pe cont”, a ieșit pe 11.11). */}
       {ai && ai.pachet && (
         <div style="margin-top:4px">RA Insight: contractul — pachetul <b>{ai.contractNume || ''}</b>{ai.contractLei > 0 ? ', ' + lei(ai.contractLei) + ' pe lună' : ' (inclus)'} · pe factură {ai.facturaLei ? <b>{lei(ai.facturaLei)}</b> : 'nimic'}</div>
       )}
@@ -62,7 +62,7 @@ export function Comparatie({ cmp, semnat }: { cmp: any; semnat: boolean }) {
   );
 }
 
-// „Păstrarea istoricului: contractul **24 de luni** · aplicația ține **12 luni**": bucățile dintre ** se
+// „Păstrarea istoricului: contractul **24 de luni** · aplicația ține **12 luni**”: bucățile dintre ** se
 // îngroașă, ca pe web. Rândul îl scrie verdictComparatie (lib/contracte.ts), din cifrele serverului.
 function RandPastrare({ t }: { t: string }) {
   if (!t) return null;
@@ -144,7 +144,7 @@ export function AnexaEditor({ contract, vehicles, onSalvat }: { contract: any; v
         {dinOferta}
         <div class="ctr-empty">
           Firma n-are încă niciun aparat adoptat. Adoptă-le întâi din{' '}
-          {/* Cu filtrul „Neasignate" pus ÎNAINTE de deschidere, ca raxDevDeschideNeasignate pe web. Adopția rămâne acolo. */}
+          {/* Cu filtrul „Neasignate” pus ÎNAINTE de deschidere, ca raxDevDeschideNeasignate pe web. Adopția rămâne acolo. */}
           <button class="ctr-name" style="min-height:30px;display:inline-flex" onClick={() => loc.route(RUTA_NEASIGNATE)}>Dispozitive → Neasignate</button>
           , apoi treci-le aici.
         </div>
@@ -158,7 +158,7 @@ export function AnexaEditor({ contract, vehicles, onSalvat }: { contract: any; v
   vehicles.forEach((v) => { const r = rd[v.imei]; if (r && r.bifat) { n++; t += parseFloat(r.pret) || 0; } });
   const ts = sv.reduce((s, r) => s + (Number(r.total) || 0), 0);
 
-  // Aparatele bifate fără abonament scris: serverul le-ar socoti 0 lei (nu „prețul din ofertă").
+  // Aparatele bifate fără abonament scris: serverul le-ar socoti 0 lei (nu „prețul din ofertă”).
   const faraPret = (o: Record<string, Rd>) => vehicles.filter((v) => {
     const r = o[v.imei];
     return r && r.bifat && (r.pret.trim() === '' || !isFinite(parseFloat(r.pret)));

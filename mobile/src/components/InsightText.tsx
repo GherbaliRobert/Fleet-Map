@@ -5,7 +5,7 @@ import { mdBlocuri, partiGros, type Parte } from '../lib/insight';
 function Bucati({ parti }: { parti: Parte[] }) {
   return <>{parti.map((x) => (x.b ? <b>{x.t}</b> : (x.i ? <em>{x.t}</em> : x.t)))}</>;
 }
-// Un rând cu **îngroșat** („Azi la tine", „Gata").
+// Un rând cu **îngroșat** („Azi la tine”, „Gata”).
 export function Gros({ text }: { text: any }) { return <Bucati parti={partiGros(text)} />; }
 // Răspunsul întreg, pe rânduri: titluri, liste, paragrafe.
 export function Md({ text }: { text: any }) {

@@ -89,7 +89,7 @@ label.ctr-btn { cursor: pointer; }
 .ctr-row-v { flex: 0 0 auto; font-weight: 700; font-size: 13.5px; text-align: right; white-space: nowrap; color: var(--text-primary); }
 .ctr-row .ctr-btns { margin-top: 4px; }
 
-/* Capul fișei + cutia „ce urmează" */
+/* Capul fișei + cutia „ce urmează” */
 .ctr-cap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .ctr-cap b { font-size: 17px; font-weight: 800; }
 .ctr-cap .per { font-size: 13px; color: var(--text-muted); flex: 1 1 100%; }
@@ -130,8 +130,8 @@ label.ctr-btn { cursor: pointer; }
 .ctr-bad-txt { color: var(--red); }
 .ctr-warn-txt { color: var(--ctr-warn); }
 
-/* Drumul clientului (24.09): șase pași într-o coloană; pasul „acum" are chenarul aplicației, iar dedesubt
-   „Pasul următor" cu butonul lui. Stările vin de la server; aici doar culorile. Bifa verde trece pe --ctr-ok,
+/* Drumul clientului (24.09): șase pași într-o coloană; pasul „acum” are chenarul aplicației, iar dedesubt
+   „Pasul următor” cu butonul lui. Stările vin de la server; aici doar culorile. Bifa verde trece pe --ctr-ok,
    mai închis pe tema luminoasă (verdele aplicației pe alb nu se citește). */
 .ctr-drum { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; }
 .ctr-drum-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; font-size: 14px; color: var(--text-primary); }
@@ -159,7 +159,7 @@ label.ctr-btn { cursor: pointer; }
 .ctr-drum-termen.curand { color: var(--ctr-termen-curand); background: rgba(249, 115, 22, .10); }
 .ctr-drum-termen.depasit { color: var(--ctr-termen-depasit); background: rgba(239, 68, 68, .10); }
 
-/* Lista Contracte (24.09): sub stare, pasul următor cu butonul lui; la „Dosar", fiecare lipsă cu butonul ei. */
+/* Lista Contracte (24.09): sub stare, pasul următor cu butonul lui; la „Dosar”, fiecare lipsă cu butonul ei. */
 .ctr-pas { display: flex; flex-direction: column; gap: 2px; padding: 0 0 10px; }
 .ctr-pas .ctr-btns { margin-top: 4px; }
 .ctr-rand { flex: 1 1 100%; }

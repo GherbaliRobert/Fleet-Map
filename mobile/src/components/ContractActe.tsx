@@ -6,11 +6,11 @@
 // nu se mai modifică și nu se șterge (regula stă pe server). Serverul păstrează singur serviciile lunare
 // în anexa nouă a actului și scrie hârtia (PDF-ul) — telefonul nu desenează nimic.
 //
-// Un act de PRELUNGIRE (cu „luni în plus") schimbă ce scrie sus, în fișă: „Prelungirea e pornită: actul …"
-// și butonul „Reînnoiește" vin din /overview (`prelungire_in_lucru`). De aceea, orice schimbare a unui astfel
+// Un act de PRELUNGIRE (cu „luni în plus”) schimbă ce scrie sus, în fișă: „Prelungirea e pornită: actul …”
+// și butonul „Reînnoiește” vin din /overview (`prelungire_in_lucru`). De aceea, orice schimbare a unui astfel
 // de act (salvat, șters, trecut la pasul următor, semnat) reîncarcă TOATĂ fișa (`onFisa`), nu doar lista —
-// altfel „Reînnoiește" rămânea ascuns după ștergerea ciornei, sau vizibil și dădea 409.
-// Butonul „înapoi" de pe Android închide foaia actului (întreabă dacă s-a scris ceva), nu pleacă din fișă.
+// altfel „Reînnoiește” rămânea ascuns după ștergerea ciornei, sau vizibil și dădea 409.
+// Butonul „înapoi” de pe Android închide foaia actului (întreabă dacă s-a scris ceva), nu pleacă din fișă.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
@@ -38,7 +38,7 @@ export function ContractActe({ contract, vehicles, onFisa }: { contract: any; ve
   const [semneaza, setSemneaza] = useState<any | null>(null);
   const [sterge, setSterge] = useState<any | null>(null);
   const [urca, setUrca] = useState<number | null>(null);
-  const start = useRef(''); // formularul cum s-a deschis — „înapoi" întreabă doar dacă s-a schimbat ceva
+  const start = useRef(''); // formularul cum s-a deschis — „înapoi” întreabă doar dacă s-a schimbat ceva
   const contractId = Number(contract.id);
   const inVigoare = contract.status === 'activ'; // act nou doar la un contract în vigoare
 
@@ -86,7 +86,7 @@ export function ContractActe({ contract, vehicles, onFisa }: { contract: any; ve
     start.current = JSON.stringify(f);
     setForm(f);
   }
-  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi" de pe Android.
+  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi” de pe Android.
   function inchide(): boolean {
     if (!form) return true;
     if (busy) return false;

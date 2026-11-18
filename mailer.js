@@ -2,11 +2,11 @@
 // neplată, invitații și linkuri de parolă, rapoarte programate, notificări (channels.js trece tot pe aici).
 // Două feluri, alese din variabilele de mediu:
 //   • Brevo, prin API-ul lor pe HTTPS: BREVO_API_KEY. Merge și pe Railway Hobby, care blochează SMTP (Robert, 12.10:
-//     „am făcut contul, îl putem integra?"). Câștigă dacă sunt setate amândouă.
+//     „am făcut contul, îl putem integra?”). Câștigă dacă sunt setate amândouă.
 //   • SMTP (nodemailer): SMTP_HOST + SMTP_USER (+ SMTP_PORT, SMTP_SECURE, SMTP_PASS), ca până acum.
 // Expeditorul: EMAIL_FROM, apoi SMTP_FROM, apoi „RA Track <noreply@ratrack.ro>" (la Brevo, adresa trebuie să fie pe
 // un domeniu autentificat în contul Brevo — ratrack.ro, cu înregistrările lor în Cloudflare).
-// DORMANT fără niciuna: send() întoarce { ok: false } și ecranele spun „serverul n-are email".
+// DORMANT fără niciuna: send() întoarce { ok: false } și ecranele spun „serverul n-are email”.
 const fs = require('fs');
 const path = require('path');
 let nodemailer = null; try { nodemailer = require('nodemailer'); } catch (e) { /* dep opțional */ }
@@ -38,7 +38,7 @@ function fromAddr() {
   return 'RA Track <' + ((fel() === 'smtp' && process.env.SMTP_USER) || 'noreply@ratrack.ro') + '>';
 }
 
-// „Nume <adresa@x.ro>" sau „adresa@x.ro" → { name?, email }.
+// „Nume <adresa@x.ro>" sau „adresa@x.ro” → { name?, email }.
 function _adresa(s) {
   const t = String(s || '').trim();
   const m = t.match(/^"?([^"<]*?)"?\s*<([^>]+)>$/);
@@ -59,11 +59,11 @@ function _htmlDinText(text) {
 }
 function _baza() { return String(process.env.BASE_URL || 'https://ratrack.ro').replace(/\/$/, ''); }
 
-// ─── Chenarul casei (Robert, 13.10: „un template de mail cu logo" — „1, b": pe TOATE emailurile care pleacă din aplicație) ───
+// ─── Chenarul casei (Robert, 13.10: „un template de mail cu logo” — „1, b”: pe TOATE emailurile care pleacă din aplicație) ───
 // Ca emailul cu factura: bandă închisă cu sigla (imaginea albă) și linia verde, textul pe alb, un rând cu ratrack.ro dedesubt.
 // Se pune singur în send(): invitații, linkuri de parolă, contracte, avertismente, rapoarte, panoul Mail. Un email care își
 // are deja antetul cu sigla (factura) nu-l mai primește a doua oară; `cadru: false` îl oprește dinadins.
-// Sigla vine „în corp" (cid); la Brevo, care nu primește cid, _pentruBrevo o cere de pe site (public/logo.png).
+// Sigla vine „în corp” (cid); la Brevo, care nu primește cid, _pentruBrevo o cere de pe site (public/logo.png).
 const LOGO_CID = 'logo@ratrack.ro';
 const LOGO = { filename: 'logo.png', path: path.join(PUBLIC_DIR, 'logo.png'), cid: LOGO_CID, contentType: 'image/png' };
 function cadru(continut) {
@@ -84,11 +84,11 @@ function _cuCadru(m) {
   return Object.assign({}, m, { html: cadru(html), attachments: (m.attachments || []).concat([LOGO]) });
 }
 
-// ─── Semnătura (Robert, 13.10: „2 da pentru robert 0729699847, trebuie să avem în fișă numărul de telefon"; apoi „la
+// ─── Semnătura (Robert, 13.10: „2 da pentru robert 0729699847, trebuie să avem în fișă numărul de telefon”; apoi „la
 // semnătură vreau să fie și funcția și adresa de mail") ───
 // Doar pe emailurile scrise din panoul Mail. Numele, funcția și telefonul din fișa omului (users.full_name / functie / phone),
-// adresa de pe care pleacă; pe adresa comună, „Echipa RA Track", fără funcție și telefon. Un număr românesc de 10 cifre se
-// scrie pe grupe: „0729 699 847".
+// adresa de pe care pleacă; pe adresa comună, „Echipa RA Track”, fără funcție și telefon. Un număr românesc de 10 cifre se
+// scrie pe grupe: „0729 699 847”.
 function _tel(t) {
   const s = String(t || '').trim(), c = s.replace(/[\s.\-()]/g, '');
   return /^0\d{9}$/.test(c) ? c.slice(0, 4) + ' ' + c.slice(4, 7) + ' ' + c.slice(7) : s;
@@ -130,7 +130,7 @@ function cuSemnatura(text, citat, semn) {
 }
 
 // Atașamentele în forma nodemailer ({ filename, content | path, cid, encoding }) → forma Brevo ({ name, content base64 }).
-// Brevo NU primește imagini „în corp" (cid): una din public/ (sigla din emailul cu factura) se cere de pe site, de la
+// Brevo NU primește imagini „în corp” (cid): una din public/ (sigla din emailul cu factura) se cere de pe site, de la
 // aceeași adresă; altfel imaginea lipsește și rămâne textul ei (alt). Nu se trimite ca atașament: ar apărea ca fișier.
 function _pentruBrevo(m) {
   let html = m.html || _htmlDinText(m.text);
@@ -157,7 +157,7 @@ function _pentruBrevo(m) {
     htmlContent: html,
   };
   if (m.text) corp.textContent = String(m.text);
-  if (m.cc) { const cc = _destinatari(m.cc); if (cc.length) corp.cc = cc; }   // „Răspunde tuturor" (13.10)
+  if (m.cc) { const cc = _destinatari(m.cc); if (cc.length) corp.cc = cc; }   // „Răspunde tuturor” (13.10)
   if (m.replyTo) corp.replyTo = _adresa(m.replyTo);
   if (atas.length) corp.attachment = atas;
   // Un răspuns din panoul Mail (etapa 2) spune la ce email răspunde, ca programul omului să-l pună în aceeași discuție.
@@ -181,17 +181,17 @@ async function _trimiteBrevo(m) {
   try {
     let x = await _postBrevo(corp);
     // Brevo nu spune în documentație dacă primește antetele de discuție. Dacă le refuză, emailul pleacă fără ele —
-    // răspunsul ajunge oricum, cu „Re:" și cu mesajul citat dedesubt.
+    // răspunsul ajunge oricum, cu „Re:” și cu mesajul citat dedesubt.
     if (x.r.status === 400 && corp.headers) { delete corp.headers; x = await _postBrevo(corp); }
     if (x.r.ok) return { ok: true, id: x.j.messageId || (x.j.messageIds && x.j.messageIds[0]) || null };
     return { ok: false, error: 'Brevo ' + x.r.status + ': ' + (x.j.message || x.t || 'eroare').toString().slice(0, 300) };
   } catch (e) { return { ok: false, error: 'Brevo: ' + e.message }; }
 }
 
-// ─── Jurnalul „Trimise" din panoul Mail (12.10) ───
+// ─── Jurnalul „Trimise” din panoul Mail (12.10) ───
 // Un email cu `jurnal: { fel, companyId, userId }` se scrie, după trimitere (reușită sau nu), prin funcția pusă de server
 // (`setJurnal`) — mailer.js nu știe de bază. Fără `jurnal`, emailul NU se scrie: rapoartele și alertele pe care o firmă și
-// le trimite singură oamenilor ei nu intră în „Trimise" (hotărât: nu ne uităm la ce face o companie).
+// le trimite singură oamenilor ei nu intră în „Trimise” (hotărât: nu ne uităm la ce face o companie).
 let _jurnal = null;
 function setJurnal(fn) { _jurnal = typeof fn === 'function' ? fn : null; }
 async function _noteaza(m, r) {
@@ -214,9 +214,9 @@ async function _noteaza(m, r) {
   } catch (e) { return null; /* jurnalul nu are voie să strice trimiterea */ }
 }
 
-// ─── Starea trimiterii (22.10, Alin: „mailul nu mai funcționează… a funcționat, apoi nu a mai mers") ───
-// Brevo refuza serverul după o publicare (adresa lui nouă nu era autorizată), iar aplicația nu spunea nimănui: rândul „Email" din
-// „Stare producție" era verde fiindcă cheia era pusă. Acum ultimul email plecat și ultimul refuzat se țin minte aici; serverul
+// ─── Starea trimiterii (22.10, Alin: „mailul nu mai funcționează… a funcționat, apoi nu a mai mers”) ───
+// Brevo refuza serverul după o publicare (adresa lui nouă nu era autorizată), iar aplicația nu spunea nimănui: rândul „Email” din
+// „Stare producție” era verde fiindcă cheia era pusă. Acum ultimul email plecat și ultimul refuzat se țin minte aici; serverul
 // le scrie în bază, le arată și ne anunță (setLaRezultat). `motiv` spune pe înțeles ce s-a întâmplat și ce e de făcut.
 let _stare = { reusitLa: null, esuatLa: null, eroare: null };
 let _laRezultat = null;
@@ -235,12 +235,12 @@ function motiv(eroare) {
 }
 
 // send({to, cc?, subject, html, text, attachments, replyTo, from?, inReplyTo?, references?, jurnal?, cadru?}) → { ok, id?, error?, jurnalId? }. Nu aruncă (best-effort).
-// Chenarul casei se pune aici (_cuCadru), o dată pentru toate căile; „Trimise" ține emailul fără el (conținutul scris).
+// Chenarul casei se pune aici (_cuCadru), o dată pentru toate căile; „Trimise” ține emailul fără el (conținutul scris).
 // `replyTo`: unde ajunge răspunsul omului (ex. contractul trimis înapoi semnat) — adresa noastră, nu noreply.
 // `from`: altă adresă de-a noastră decât cea implicită (panoul Mail: robert.gherbali@…); o verifică serverul, nu aici.
 async function send(m) {
   if (!m || !m.to) return { ok: false, error: 'Fără destinatar' };
-  const scris = m;   // ce a scris omul / aplicația — așa intră în „Trimise"
+  const scris = m;   // ce a scris omul / aplicația — așa intră în „Trimise”
   m = _cuCadru(m);
   let r;
   if (fel() === 'brevo') r = await _trimiteBrevo(m);
@@ -261,7 +261,7 @@ async function send(m) {
   // Serverul primește și emailul (destinatarii, `livrare` / `jurnal`), ca să poată întreba Brevo, mai târziu, dacă a ajuns (28.10).
   if (_laRezultat) { try { _laRezultat(r, scris); } catch (e) { /* starea nu are voie să strice trimiterea */ } }
   const jid = await _noteaza(scris, r);
-  if (jid != null) r.jurnalId = jid;   // rândul din „Trimise" (răspunsul se leagă de emailul primit)
+  if (jid != null) r.jurnalId = jid;   // rândul din „Trimise” (răspunsul se leagă de emailul primit)
   return r;
 }
 // Adresa de bază a API-ului Brevo (din adresa de trimitere, ca probele să-l poată muta pe un server fals cu BREVO_API_URL).

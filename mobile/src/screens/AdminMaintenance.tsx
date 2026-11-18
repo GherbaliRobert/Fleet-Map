@@ -1,6 +1,6 @@
 // Mentenanță — același ecran ca pe web (Management → Mentenanță): o listă de MAȘINI, cele cu restanțe
-// primele și deschise singure; filele „De făcut / Făcute / Intervale"; căutare; costurile pe lună/an;
-// rândul spune „mai sunt 7.700 km", „depășit cu 12 zile", „azi" sau „făcută". Starea (restant / curând)
+// primele și deschise singure; filele „De făcut / Făcute / Intervale”; căutare; costurile pe lună/an;
+// rândul spune „mai sunt 7.700 km”, „depășit cu 12 zile”, „azi” sau „făcută”. Starea (restant / curând)
 // vine de la server (_due), cu preavizul firmei — aceeași cifră ca alertele.
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
@@ -20,7 +20,7 @@ const RANG: Record<string, number> = { over: 0, soon: 1, ok: 2, none: 3, done: 4
 
 export function AdminMaintenance() {
   const loc = useLocation();
-  // Serverul cere „modifică flota" și ca firma să nu fi tăiat rolului editarea mentenanței.
+  // Serverul cere „modifică flota” și ca firma să nu fi tăiat rolului editarea mentenanței.
   const canEdit = !!me.value?.permissions?.manageFleet && !(me.value?.editariTaiate || []).includes('mentenanta');
   const [list, setList] = useState<any[] | null>(null);
   const [err, setErr] = useState('');
@@ -47,7 +47,7 @@ export function AdminMaintenance() {
   const all = list || [];
   const k = norm(q);
   const filtrat = k ? all.filter((m) => norm([m.type, m.description, numar(devs, m.imei), modelul(devs, m.imei)].join(' ')).indexOf(k) >= 0) : all;
-  // Costurile din ACEEAȘI listă pentru toate trei cifrele (web: „trei cifre care se contraziceau").
+  // Costurile din ACEEAȘI listă pentru toate trei cifrele (web: „trei cifre care se contraziceau”).
   const cst = costuri(filtrat.filter(mntFacuta), (x) => zi10(x.done_date) || zi10(x.done_at));
   const pending = filtrat.filter((m) => !mntFacuta(m)).sort((a, b) => {
     const da = mntZileRamase(a), db = mntZileRamase(b);
@@ -162,7 +162,7 @@ export function AdminMaintenance() {
   );
 }
 
-// Fila „Intervale", doar de citit pe telefon: la câți km și la câte luni se repetă fiecare lucrare, pe
+// Fila „Intervale”, doar de citit pe telefon: la câți km și la câte luni se repetă fiecare lucrare, pe
 // cele trei feluri de mașini. Tabelul vine gata îmbinat de la server; cifrele schimbate de firmă sunt
 // scoase în evidență. Se modifică din aplicația web (96 de căsuțe nu încap cinstit pe un telefon).
 function Intervale({ iv, cat, canEdit }: { iv: any | null; cat: Catalog | null; canEdit: boolean }) {
@@ -175,7 +175,7 @@ function Intervale({ iv, cat, canEdit }: { iv: any | null; cat: Catalog | null; 
     <>
       <div class="fl-note">
         <b>La cât se face fiecare lucrare.</b> Cifrele sunt punctul nostru de plecare. Când adaugi o lucrare, aplicația
-        completează singură scadența după tabelul ăsta și după felul mașinii. „La nevoie" = fără propunere.
+        completează singură scadența după tabelul ăsta și după felul mașinii. „La nevoie” = fără propunere.
         {canEdit ? ' Cifrele se schimbă din aplicația web, în Mentenanță → Intervale.' : ''}
       </div>
       <div class="fl-tb">

@@ -12,7 +12,7 @@ import './firma.css';
 import './companii.css';
 import './clientnou.css';
 
-// „Client nou" (fondatori) — deschiderea unui client în trei pași, ca pe web (coNouStart … coNouCreeaza):
+// „Client nou” (fondatori) — deschiderea unui client în trei pași, ca pe web (coNouStart … coNouCreeaza):
 //   1. Firma — cu datele luate de la ANAF, ca să nu fie tastate greșit (opțional, pornind de la o ofertă);
 //   2. Contractul — număr, date, durată, reînnoire, preaviz, cine semnează, acordul GDPR;
 //   3. Administratorul — DOAR emailul, fără parolă (08.09 și 16.09): pleacă un link și omul și-o pune singur.
@@ -39,7 +39,7 @@ type Gata = {
   offerTotal: number | null; pretPeFirma: boolean; autoFactura: boolean; drum: CnDrum; avertismente: string[];
 };
 
-// ── începe „panoul de final" ─────────────────────────────────────────────────────────────────────────────
+// ── începe „panoul de final” ─────────────────────────────────────────────────────────────────────────────
 // Ce scrie ecranul de la capăt, ca pe web (coNouGataHtml / coNouCreeaza). Bucata e curată — fără ecran și fără
 // importuri —, ca proba s-o poată rula lângă cea a paginii și să ceară aceleași cuvinte.
 
@@ -54,7 +54,7 @@ function cnMotivLink(a: any): string {
     : 'Serverul nu are email configurat, deci invitația n-a plecat.';
 }
 
-// Ce fel de aparate are contractul, citit din ce a SCRIS serverul în el (răspunsul la „fă contractul"), nu
+// Ce fel de aparate are contractul, citit din ce a SCRIS serverul în el (răspunsul la „fă contractul”), nu
 // presupus din ofertă: Anexa nr. 2 cu echipamente → vândute (proformă, avans); Anexa nr. 1 cu `chirie` →
 // închiriate (fără avans). Același criteriu ca hârtia contractului (areEchip / areMontaj / chirieA din
 // contract_pdf.js) — proba le rulează pe amândouă, pe contracte făcute din oferte cu funcțiile serverului.
@@ -69,7 +69,7 @@ function cnDrum(ct: any): CnDrum {
   return { fel: areEchip ? 'cumparate' : (inchiriate ? 'inchiriate' : 'fara-aparate'), montaj: areMontaj };
 }
 
-// „Mai departe": drumul de AZI (Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima
+// „Mai departe”: drumul de AZI (Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima
 // factură), pe felul contractului, cu regulile semnate în el (IV și V): aparatele vândute se plătesc în avans, pe
 // proformă; montajul se facturează după executare, pe mașinile montate efectiv; abonamentul pornește la prima
 // transmisie. Web-ul scrie o singură frază fixă, cu proforma și la închiriere, fără aparate sau chiar fără
@@ -99,7 +99,7 @@ function cnMaiDeparte(d: CnDrum): string[] {
   p.push('Abonamentul fiecărei mașini începe din ziua în care aparatul ei transmite prima dată.');
   return p;
 }
-// ── sfârșit „panoul de final" ──
+// ── sfârșit „panoul de final” ──
 const PASI = ['Firma', 'Contractul', 'Administratorul'];
 const firmaGoala = (): Firma => ({ cui: '', name: '', reg_com: '', address: '', contact_email: '', phone: '', anaf: null });
 const contractGol = (): Ctr => ({
@@ -123,7 +123,7 @@ export function ClientNou() {
   const [gata, setGata] = useState<Gata | null>(null);
   const [link, setLink] = useState<LinkParola | null>(null);
   // Firma arătată acum în panoul de final: foaia cu linkul se deschide doar dacă panoul e tot al ei (după
-  // „Deschid alt client" nu mai apare linkul clientului de dinainte).
+  // „Deschid alt client” nu mai apare linkul clientului de dinainte).
   const gataAcum = useRef<number | null>(null);
   const [anafBusy, setAnafBusy] = useState(false);
 
@@ -142,7 +142,7 @@ export function ClientNou() {
   useEffect(() => {
     if (noi && noi.length && !ctr.our_name) setCtr((c) => ({ ...c, our_name: noi.join(' și '), our_role: rolNostru(noi.length) }));
   }, [noi]);
-  // Venit din „Ofertare Live" cu oferta aleasă → pașii se umplu din ea.
+  // Venit din „Ofertare Live” cu oferta aleasă → pașii se umplu din ea.
   useEffect(() => { if (oferte && ofertaCeruta && !offerId) iaOferta(ofertaCeruta); }, [oferte, ofertaCeruta]);
 
   const sf = (k: keyof Firma, v: any) => setFirma((f) => ({ ...f, [k]: v }));
@@ -181,7 +181,7 @@ export function ClientNou() {
         anaf: { vat_payer: !!j.vat_payer, inactiva: !!j.inactiva, radiata: !!j.radiata },
       }));
     } catch (e: any) {
-      // Fără răspuns (rețea / timp depășit) → nu am ajuns la ANAF; altfel, vorbele serverului („Nu am găsit firma" etc.).
+      // Fără răspuns (rețea / timp depășit) → nu am ajuns la ANAF; altfel, vorbele serverului („Nu am găsit firma” etc.).
       const retea = !e || e.status === 0 || e.status === 408;
       sf('anaf', { eroare: retea ? 'Nu am putut ajunge la ANAF.' : (e.message || 'Nu am găsit firma.') });
     } finally { setAnafBusy(false); }
@@ -223,8 +223,8 @@ export function ClientNou() {
     // Datele juridice se salvează imediat după creare — ruta de creare primește doar numele.
     try {
       await Api.updateCompany(id, { cui: firma.cui.trim(), reg_com: firma.reg_com.trim(), address: firma.address.trim(), contact_email: firma.contact_email.trim(), phone: firma.phone.trim(),
-        // Plătitoare de TVA: doar când a răspuns ANAF, ca pe web (coNou). Hotărăște „RO" în fața CUI-ului pe factură și
-        // codul de TVA din e-Factura; fără ea, firma rămânea mereu „plătitoare" (implicitul din bază).
+        // Plătitoare de TVA: doar când a răspuns ANAF, ca pe web (coNou). Hotărăște „RO” în fața CUI-ului pe factură și
+        // codul de TVA din e-Factura; fără ea, firma rămânea mereu „plătitoare” (implicitul din bază).
         ...(firma.anaf && !firma.anaf.eroare ? { vat_payer: !!firma.anaf.vat_payer } : {}) });
     } catch (e: any) { av.push('Datele juridice nu s-au salvat (' + (e?.message || 'eroare') + ') — completează-le din fișa firmei.'); }
 
@@ -238,9 +238,9 @@ export function ClientNou() {
         try {
           const calc: any = await Api.offerCalc({ offer_id: offerId, contract: true });
           dinOferta = (calc && calc.pentruContract) || null;
-          if (!dinOferta) av.push('Socoteala ofertei nu a venit de la server — anexa are doar suma lunară, iar prețul pe mașină se pune din fișa firmei, „Abonament & plăți".');
+          if (!dinOferta) av.push('Socoteala ofertei nu a venit de la server — anexa are doar suma lunară, iar prețul pe mașină se pune din fișa firmei, „Abonament & plăți”.');
         } catch (e: any) {
-          av.push('Socoteala ofertei nu s-a putut face (' + (e?.message || 'eroare') + ') — anexa are doar suma lunară, iar prețul pe mașină se pune din fișa firmei, „Abonament & plăți".');
+          av.push('Socoteala ofertei nu s-a putut face (' + (e?.message || 'eroare') + ') — anexa are doar suma lunară, iar prețul pe mașină se pune din fișa firmei, „Abonament & plăți”.');
         }
       }
       try {
@@ -253,7 +253,7 @@ export function ClientNou() {
           gdpr: { kind: c.gdpr_kind },
         });
         // `auto_factura` vine DOAR când serverul chiar a pornit factura automată (prima ofertă a firmei, 29.09).
-        // Contractul întors (anexele lui) spune și ce fel de aparate are — de acolo se scrie „Mai departe".
+        // Contractul întors (anexele lui) spune și ce fel de aparate are — de acolo se scrie „Mai departe”.
         if (ct && ct.id) { contractId = Number(ct.id); numar = ct.number || null; autoFactura = !!ct.auto_factura; ctRasp = ct; }
       } catch (e: any) { av.push('Contractul nu s-a salvat: ' + (e?.message || 'eroare') + '.'); }
     }
@@ -327,7 +327,7 @@ export function ClientNou() {
                 ? <>Contractul <b>{gata.contract}</b> e salvat, în lucru.{gata.offerTotal
                   ? (gata.pretPeFirma
                     ? ' Prețul din ofertă (' + nrDe(Math.round(gata.offerTotal), 'leu', 'lei') + '/lună) e trecut în anexă și scris pe firmă, pentru factură.'
-                    : ' Prețul din ofertă (' + nrDe(Math.round(gata.offerTotal), 'leu', 'lei') + '/lună) e trecut în anexă. Pe firmă nu s-a scris încă prețul pe mașină — pune-l din fișa firmei, „Abonament & plăți".')
+                    : ' Prețul din ofertă (' + nrDe(Math.round(gata.offerTotal), 'leu', 'lei') + '/lună) e trecut în anexă. Pe firmă nu s-a scris încă prețul pe mașină — pune-l din fișa firmei, „Abonament & plăți”.')
                   : ''}</>
                 : 'Fără contract încă.'}</li>
               {gata.autoFactura && <li>{CN_AUTO_FACTURA}</li>}

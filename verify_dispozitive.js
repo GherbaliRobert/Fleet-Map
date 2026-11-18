@@ -1,15 +1,15 @@
-// verify_dispozitive.js — ecranul „Dispozitive" (verticala fondatorilor) + cine are voie la aparate.
+// verify_dispozitive.js — ecranul „Dispozitive” (verticala fondatorilor) + cine are voie la aparate.
 //
 //   node verify_dispozitive.js
 //
 // Ecranul ăsta e registrul NOSTRU de aparate, peste toate firmele. Trei lucruri nu au voie să se
 // strice tăcut:
 //
-//   • SEMNALUL. Coloana „Stare" spune ce am hotărât NOI (activ / neasignat / arhivat) și nu știe
-//     nimic despre teren: un aparat mort de o lună scria tot „activ", cu verde. De aceea există a
-//     doua coloană, „Semnal" — dar cuvintele și pragurile NU se scriu aici: se ia `agpsStare` din
-//     „Aparate GPS", care e scrisă o dată și are probele ei. Două vocabulare pentru același lucru e
-//     exact greșeala cu „Admin" / „Admin companie".
+//   • SEMNALUL. Coloana „Stare” spune ce am hotărât NOI (activ / neasignat / arhivat) și nu știe
+//     nimic despre teren: un aparat mort de o lună scria tot „activ”, cu verde. De aceea există a
+//     doua coloană, „Semnal” — dar cuvintele și pragurile NU se scriu aici: se ia `agpsStare` din
+//     „Aparate GPS”, care e scrisă o dată și are probele ei. Două vocabulare pentru același lucru e
+//     exact greșeala cu „Admin” / „Admin companie”.
 //   • GRUPAREA PE FIRME. Vindem pe firme, deci ecranul arată clienți, nu o listă plată de IMEI-uri.
 //     Iar un grup cu ceva de rezolvat nu are voie să stea închis: o problemă ascunsă e mai rea decât
 //     una scrisă urât.
@@ -39,8 +39,8 @@ function functie(antet) {
   const j = html.indexOf('\n    }', i);
   return html.slice(i, j + 6);
 }
-const blocDev = bloc('// ── începe „dispozitivele, pe firme" ──', '// ── sfârșit „dispozitivele, pe firme" ──');
-// Starea de semnal vine din „Aparate GPS" — o luăm de acolo, ca să probăm chiar ce rulează.
+const blocDev = bloc('// ── începe „dispozitivele, pe firme” ──', '// ── sfârșit „dispozitivele, pe firme” ──');
+// Starea de semnal vine din „Aparate GPS” — o luăm de acolo, ca să probăm chiar ce rulează.
 const fnAgps = functie('    function agpsDeCand(ms) {') + '\n' + functie('    function agpsStare(lastTx, acum) {');
 const fnBucket = (function () {
   const i = html.indexOf('    function _raxDevBucket(d) {');
@@ -67,12 +67,12 @@ const ap = (x) => Object.assign({ imei: '860000000000001', name: 'Dacia Logan', 
   company_id: 7, company_name: 'Transport Rapid SRL', status: 'active', can_type: 'can',
   can_interface: null, last_position_time: min(2), install_issue: null }, x);
 
-sect('1. „Semnal" nu e un vocabular nou — e cel din „Aparate GPS"');
+sect('1. „Semnal” nu e un vocabular nou — e cel din „Aparate GPS”');
 T('funcția de semnal cheamă `agpsStare`, nu scrie praguri proprii',
   /if \(typeof agpsStare === 'function'\) return agpsStare\(d\.last_position_time, Date\.now\(\)\);/.test(html));
 T('și nu are numere de prag scrise în ea', !/_raxDevSemnal[\s\S]{0,400}(1440|86400000|24 \* 3600)/.test(html));
 T('un aparat care a transmis acum 2 minute comunică', U._raxDevSemnal(ap({})).k === 'ok', U._raxDevSemnal(ap({})).t);
-T('la 3 ore e tăcut, nu „fără semnal"', U._raxDevSemnal(ap({ last_position_time: ore(3) })).k === 'tacut',
+T('la 3 ore e tăcut, nu „fără semnal”', U._raxDevSemnal(ap({ last_position_time: ore(3) })).k === 'tacut',
   U._raxDevSemnal(ap({ last_position_time: ore(3) })).t);
 T('peste 24 de ore e fără semnal', U._raxDevSemnal(ap({ last_position_time: ore(50) })).k === 'mut',
   U._raxDevSemnal(ap({ last_position_time: ore(50) })).t);
@@ -80,7 +80,7 @@ T('și textul spune de cât timp', /2 zile/.test(U._raxDevSemnal(ap({ last_posit
 T('cine n-a transmis niciodată e altceva decât cine a amuțit',
   U._raxDevSemnal(ap({ last_position_time: null })).k === 'niciodata');
 
-sect('2. „Stare" și „Semnal" rămân două lucruri diferite');
+sect('2. „Stare” și „Semnal” rămân două lucruri diferite');
 T('tabelul are amândouă coloanele', /<th>Stare<\/th><th>Semnal<\/th>/.test(html));
 T('starea e tot cea administrativă', /function _raxDevBucket\(d\) \{ if \(d\.status === 'archived'\)/.test(html));
 T('un aparat ACTIV poate fi fără semnal — nu se contrazic',
@@ -88,10 +88,10 @@ T('un aparat ACTIV poate fi fără semnal — nu se contrazic',
     const B = new Function(fnBucket + '; return _raxDevBucket;')();
     return B(ap({ last_position_time: ore(50) })) === 'active';
   })());
-T('la un aparat arhivat nu scriem „fără semnal" (l-am oprit noi)',
+T('la un aparat arhivat nu scriem „fără semnal” (l-am oprit noi)',
   /b === 'archived'[\s\S]{0,120}rax-dev-sem/.test(html) || /\(b === 'archived'\)\s*\n?\s*\? '<span style="color:var\(--text-muted\)">/.test(html));
 
-sect('3. Pastila „Fără semnal"');
+sect('3. Pastila „Fără semnal”');
 T('există, lângă celelalte', /chip\('nosignal', 'Fără semnal', 'atentie'\)/.test(html));
 T('numără doar aparatele care NU sunt arhivate',
   /if \(_raxDevBucket\(d\) !== 'archived' && _raxDevSemnal\(d\)\.k === 'mut'\) counts\.nosignal\+\+;/.test(html));
@@ -125,8 +125,8 @@ T('iar arhivatele nu se numără — nu mai transmit din voia noastră',
   U._raxDevProbleme([ap({ status: 'archived', last_position_time: ore(500) })]) === 0);
 
 sect('6. Ce stă deschis și ce stă închis');
-T('„Neasignate" e mereu deschis', /gr\.k === '_neas'\) \? true/.test(html));
-T('„Arhivate" e mereu închis', /\(gr\.k === '_arh'\) \? false/.test(html));
+T('„Neasignate” e mereu deschis', /gr\.k === '_neas'\) \? true/.test(html));
+T('„Arhivate” e mereu închis', /\(gr\.k === '_arh'\) \? false/.test(html));
 T('o firmă cu ceva de rezolvat rămâne deschisă, oricâte firme ar fi', /pb > 0 \|\| grupuri\.length <= 5/.test(html));
 T('și când ai căutat ceva, se vede ce a rămas', /!!q \|\| pb > 0/.test(html));
 T('sumarul spune câte are și câte-s de rezolvat', /de rezolvat/.test(html));
@@ -227,7 +227,7 @@ function gata(cod) {
 
   sect('11. Modelul și cartela se scriu CHIAR LA ÎNREGISTRARE');
   // Se puteau scrie doar la EDITARE, deși sunt fix datele pe care le știm când punem aparatul în
-  // evidență (îl avem în mână). Efectul: orice aparat nou intra în „Inventar dispozitive" ca „fără
+  // evidență (îl avem în mână). Efectul: orice aparat nou intra în „Inventar dispozitive” ca „fără
   // model/SIM" și cerea imediat o a doua trecere prin fișă (Alin, 18.09).
   const IMEI2 = '860000000099007';
   T('le primește la înregistrare',
@@ -246,20 +246,20 @@ function gata(cod) {
     (await cere('POST', '/api/devices', { imei: '860000000099008', gps_model: 'ALTCEVA' }, ckSef)).status === 403);
 
   sect('12. Aparatele neasignate se adoptă ÎNTR-UN SINGUR loc');
-  // Pe „Companii" a stat până acum o a doua listă de aparate neasignate, cu „Adoptă"/„Respinge" —
-  // rămasă de pe vremea când ecranul se numea „Companii & Dispozitive" și le ținea pe amândouă.
+  // Pe „Companii” a stat până acum o a doua listă de aparate neasignate, cu „Adoptă”/„Respinge” —
+  // rămasă de pe vremea când ecranul se numea „Companii & Dispozitive” și le ținea pe amândouă.
   // Apăsa ACELAȘI buton pe server ca ecranul Dispozitive, dar fără IMEI, semnal, ultima poziție sau
   // interfață CAN — deci hotărai cu mai puțin în față. A rămas doar banda, care te trimite acolo.
-  T('nu mai există a doua listă de neasignate pe „Companii"',
+  T('nu mai există a doua listă de neasignate pe „Companii”',
     !/id="rax-co-neasignate"/.test(html) && !/id="rax-co-unassigned"/.test(html));
   T('și nici butoanele ei (șterse, nu ascunse)',
     !/raxAssignDevice\s*=/.test(html) && !/raxRejectDevice\s*=/.test(html));
-  T('banda de pe „Companii" a rămas',
+  T('banda de pe „Companii” a rămas',
     /function _coBandaNeasignate\(n\)[\s\S]{0,700}aparate așteaptă să fie adoptate/.test(html));
-  T('și trimite în „Dispozitive", nu mai jos în pagină',
+  T('și trimite în „Dispozitive”, nu mai jos în pagină',
     /_coBandaNeasignate\(n\)[\s\S]{0,700}onclick="raxDevDeschideNeasignate\(\)"/.test(html) &&
     !/raxCoSariLaNeasignate/.test(html));
-  // (30.09: primește, opțional, ce să bifeze — anunțul „aparate noi transmit"; filtrul se pune tot înainte de deschidere.)
+  // (30.09: primește, opțional, ce să bifeze — anunțul „aparate noi transmit”; filtrul se pune tot înainte de deschidere.)
   T('acolo deschide fix filtrul de neasignate',
     /window\.raxDevDeschideNeasignate = function \((?:pune)?\) \{[\s\S]{0,200}_raxDevFilter = 'unassigned';[\s\S]{0,400}raxAdminTab\('devices'\)/.test(html));
   T('lista de neasignate se mai cere doar ca să fie NUMĂRATĂ',

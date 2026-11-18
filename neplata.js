@@ -17,14 +17,14 @@ const ZILE_GRATIE = 15;
 // În a câta zi de la scadență se taie accesul. (15 zile de grație ⇒ a 16-a zi.)
 const ZI_SUSPENDARE = ZILE_GRATIE + 1;
 
-// „11 zile", „1 zi", „20 de zile" — cifra vine din regulă, deci și „de" se pune din cod.
+// „11 zile”, „1 zi”, „20 de zile” — cifra vine din regulă, deci și „de” se pune din cod.
 function zile(n) { const r = n % 100; return n === 1 ? '1 zi' : n + ((r >= 1 && r <= 19) ? ' zile' : ' de zile'); }
 
 // Când sună clopoțelul, în zile de la scadență. Patru avertismente, nu mai multe: peste asta,
 // oamenii încep să le ignore, iar noi ne obișnuim să le vedem — și atunci nu mai valorează nimic.
 // Câte zile mai are omul se SOCOTEȘTE din ziua suspendării (29.09): titlurile erau scrise de mână
-// („10 zile", „5 zile") ca și cum suspendarea ar veni în ziua 15, iar textul de dedesubt spunea,
-// corect, „achitați în 11 zile" — două cifre diferite în același anunț.
+// („10 zile”, „5 zile”) ca și cum suspendarea ar veni în ziua 15, iar textul de dedesubt spunea,
+// corect, „achitați în 11 zile” — două cifre diferite în același anunț.
 const TREPTE = [
   { zi: 0,  fel: 'info',     titlu: 'Factura a depășit termenul de plată' },
   { zi: 5,  fel: 'warning',  titlu: 'Factură neachitată — ' + zile(ZI_SUSPENDARE - 5) + ' până la suspendare' },
@@ -60,7 +60,7 @@ function facturaCareTrage(facturi, acum) {
 
 // Starea de plată a unei firme. Întoarce mereu aceeași formă:
 //   { faza: 'ok' | 'avertisment' | 'suspendat', factura, zile, suspendareLa, zilePanaLaSuspendare }
-// „faza" e ce vede omul; „zile" e vechimea restanței, în zile de la scadență.
+// „faza” e ce vede omul; „zile” e vechimea restanței, în zile de la scadență.
 function stareNeplata(facturi, acum) {
   const now = acum || Date.now();
   const f = facturaCareTrage(facturi, now);
@@ -101,7 +101,7 @@ function mesajClient(stare, treapta) {
     (ramase <= 0 ? 'Accesul se suspendă azi.'
       : 'Vă rugăm să achitați în ' + ramase + (ramase === 1 ? ' zi' : ' zile') + ', până la ' + zi(stare.suspendareLa) +
         ', altfel accesul la platformă se suspendă.');
-  // (Primul avertisment adăuga „Aveți 15 zile de la scadență", după „achitați în 16 zile" — două cifre pentru același
+  // (Primul avertisment adăuga „Aveți 15 zile de la scadență”, după „achitați în 16 zile” — două cifre pentru același
   //  termen. Rămâne doar cea socotită din ZI_SUSPENDARE, cu data: lista lui Robert, 01.10, pct. 26.)
 }
 

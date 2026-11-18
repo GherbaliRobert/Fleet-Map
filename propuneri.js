@@ -1,26 +1,26 @@
-// propuneri.js — Pasul 2 al Capitolului 2, partea 2 (Alin, 23.10: „da"): „RA Insight face, cu Da-ul tău" — ALERTA DE VITEZĂ și
-// „AM VORBIT CU EL". RA Insight pregătește cartonașul, omul apasă „Da", aplicația face pe calea ecranului (Alerte › Adaugă regulă;
-// RA Drive › „Am vorbit cu el"), cu aceleași drepturi. Curat: fără bază, fără server. Aici stau înțelegerea cererii (pe reguli,
-// fără model), cartonașele, textele și socoteala „din ultimele 30 de zile" — de câte ori ar fi sunat alerta, cu regula MOTORULUI
+// propuneri.js — Pasul 2 al Capitolului 2, partea 2 (Alin, 23.10: „da”): „RA Insight face, cu Da-ul tău” — ALERTA DE VITEZĂ și
+// „AM VORBIT CU EL”. RA Insight pregătește cartonașul, omul apasă „Da”, aplicația face pe calea ecranului (Alerte › Adaugă regulă;
+// RA Drive › „Am vorbit cu el”), cu aceleași drepturi. Curat: fără bază, fără server. Aici stau înțelegerea cererii (pe reguli,
+// fără model), cartonașele, textele și socoteala „din ultimele 30 de zile” — de câte ori ar fi sunat alerta, cu regula MOTORULUI
 // de alerte (pragul + marja lui, o dată la 5 minute pe mașină; serverul îi dă cifrele). Serverul adună datele și aplică.
 'use strict';
 const insight = require('./insight');
-const soferiMasini = require('./soferi_masini');   // aceleași 10 minute pentru „Anulează", aceeași zi pentru o propunere veche
+const soferiMasini = require('./soferi_masini');   // aceleași 10 minute pentru „Anulează”, aceeași zi pentru o propunere veche
 const condus = require('./condus');
 const safeDrive = require('./safe_drive');
 
-const ZILE_ISTORIC = 30;               // „Din ultimele 30 de zile" (macheta M3)
+const ZILE_ISTORIC = 30;               // „Din ultimele 30 de zile” (macheta M3)
 const PRAG_MIN = 30, PRAG_MAX = 250;   // km/h: pragul unei alerte de viteză cerute în cuvinte
 const RACIRE_MS = 5 * 60000;           // motorul de alerte: pe aceeași mașină, cel mult o dată la 5 minute
 const PE_ZI_DES = 10;                  // de la atâtea anunțuri pe zi, cartonașul o spune: un prag mai mare sună mai rar
 const NUME_MAX = 120, NOTA_MAX = 300, DESPRE_MAX = 120;
 const PRAGURI_PROPUSE = [90, 110, 130];
-const MASINI_IN_LISTA = 60;            // „Pe" (din „Schimbă"): cel mult atâtea mașini, plus toată flota
+const MASINI_IN_LISTA = 60;            // „Pe” (din „Schimbă”): cel mult atâtea mașini, plus toată flota
 
 // Textele pe care le spune RA Insight în jurul cartonașelor (serverul doar le trimite; pagina doar le arată).
 const TEXTE = {
-  fondator: 'Propunerile cu „Da" (o alertă, o discuție notată) se fac pe flota unei firme, iar contul de fondator n-are una. Intră cu contul administratorului firmei ca să le vezi.',
-  pachet: 'Propunerile cu „Da" (o alertă, o discuție notată, șoferul pe mașină) sunt de la pachetul Basic în sus.',
+  fondator: 'Propunerile cu „Da” (o alertă, o discuție notată) se fac pe flota unei firme, iar contul de fondator n-are una. Intră cu contul administratorului firmei ca să le vezi.',
+  pachet: 'Propunerile cu „Da” (o alertă, o discuție notată, șoferul pe mașină) sunt de la pachetul Basic în sus.',
   faraMasini: 'Nu văd nicio mașină pe care să pun alerta.',
   careMasina: 'Pe care mașină pun alerta?',
   sauFlota: 'Sau pe toată flota.',
@@ -46,7 +46,7 @@ function dupaAnulare(fel) { return TEXTE.dupaAnulare[fel] || TEXTE.dupaAnulare.s
 function _n(t) { return insight.norm(t || ''); }
 function _de(n) { const r = Math.abs(Math.round(n)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
 function _ori(n) { return n === 1 ? 'o dată' : 'de ' + n + _de(n) + 'ori'; }
-// Ziua României a unei clipe: „14.10" (anul doar dacă nu e cel de acum).
+// Ziua României a unei clipe: „14.10” (anul doar dacă nu e cel de acum).
 function _zi(ms, acum) {
   const z = new Date(Date.parse(insight.perioada({ period: 'today' }, ms).from) + 12 * 3600000);
   const an = new Date(Date.parse(insight.perioada({ period: 'today' }, acum || Date.now()).from) + 12 * 3600000).getUTCFullYear();
@@ -60,9 +60,9 @@ function _nr(n) { return Math.round(Number(n) || 0).toLocaleString('ro-RO'); }
 function _curat(s, max) { return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max); }
 
 // ─── Ce cere omul: o alertă ────────────────────────────────────────────────────────────────────────────────────────────────
-// O CERERE = „anunță-mă / avertizează-mă / alertează-mă / notifică-mă / dă-mi de știre / să fiu anunțat", „vreau să știu când …
-// trece / depășește / merge" sau „pune / fă / creează / adaugă / setează / pornește (o) alertă". Ce NU e: o întrebare („câte
-// alerte a avut…", „când a trecut…" — timpul trecut), un raport („fă-mi raportul alertelor"). Se rezolvă pe reguli, fără model.
+// O CERERE = „anunță-mă / avertizează-mă / alertează-mă / notifică-mă / dă-mi de știre / să fiu anunțat”, „vreau să știu când …
+// trece / depășește / merge" sau „pune / fă / creează / adaugă / setează / pornește (o) alertă”. Ce NU e: o întrebare („câte
+// alerte a avut…", „când a trecut…” — timpul trecut), un raport („fă-mi raportul alertelor”). Se rezolvă pe reguli, fără model.
 const RE_ANUNTA = /\b(anunta-ma|anuntati-ma|anunta ma|avertizeaza-ma|alerteaza-ma|notifica-ma|da-mi de stire|da-mi de veste|sa fiu anuntat|sa fiu avertizat|sa fiu notificat|trimite-mi o alerta|trimite-mi o notificare)\b/;
 const RE_VREAU_STIU = /\bvreau sa stiu (cand|daca)\b/;
 const RE_ALERTA = /\b(pune|pune-mi|fa|fa-mi|creeaza|creeaza-mi|adauga|adauga-mi|seteaza|seteaza-mi|porneste|porneste-mi|activeaza|configureaza|vreau|imi trebuie|as vrea)\b[^.?!]{0,40}\balert(a|e|ele)\b/;
@@ -85,7 +85,7 @@ function pareCerereAlerta(text) {
   if (RE_RAPORT.test(t) || RE_TRECUT.test(t)) return false;
   return RE_ANUNTA.test(t) || RE_VREAU_STIU.test(t) || RE_ALERTA.test(t);
 }
-// Numerele mașinilor („B 154 UIP") și numele lor („Iveco Daily 35", „Logan 3") ies din text înainte de căutarea pragului.
+// Numerele mașinilor („B 154 UIP”) și numele lor („Iveco Daily 35”, „Logan 3”) ies din text înainte de căutarea pragului.
 function _faraMasini(text, fisa) {
   let t = ' ' + _n(text) + ' ';
   const sc = function (s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
@@ -138,10 +138,10 @@ function textAltTip(alt) {
   const a = ALT_TIP.filter(function (x) { return x[0] === alt; })[0];
   return 'Din discuție pun deocamdată doar **alerte de viteză**. O alertă de ' + (a ? a[2] : 'felul ăsta') + ' o pui din **Management › Alerte › Adaugă regulă**, unde sunt toate felurile.';
 }
-// „Viteză peste 130 — B 154 UIP" / „Viteză peste 120 — toată flota".
+// „Viteză peste 130 — B 154 UIP” / „Viteză peste 120 — toată flota”.
 function numeAlerta(prag, scurt) { return _curat('Viteză peste ' + prag + ' — ' + (scurt || 'toată flota'), NUME_MAX); }
 
-// ─── „Din ultimele 30 de zile": de câte ori ar fi sunat, cu regula motorului ────────────────────────────────────────────────
+// ─── „Din ultimele 30 de zile”: de câte ori ar fi sunat, cu regula motorului ────────────────────────────────────────────────
 // Pragul efectiv = max(baza motorului, prag) + marja (motorul nu sună sub 60 km/h și lasă o marjă); pe aceeași mașină, cel mult
 // o dată la 5 minute. `puncte` = pozițiile din perioadă, de la serverul care a cerut deja doar ce trece de pragul efectiv
 // (ordonate pe mașină și timp): { imei, t (ms), v (km/h) }.
@@ -179,8 +179,8 @@ function doveziViteza(o) {
   d.push({ nivel: 'i', text: 'Ajunge la cei care primesc azi alertele firmei, ca orice altă alertă.' });
   return d;
 }
-// Când sună de fapt o alertă de viteză — O frază, pentru cartonașul din RA Insight și pentru ecranul Alerte (26.10, Alin: „da"
-// la „spune-o și acolo"). Sub baza motorului pragul efectiv e baza + marja (un prag de 30 sună tot peste 60), iar fraza o spune.
+// Când sună de fapt o alertă de viteză — O frază, pentru cartonașul din RA Insight și pentru ecranul Alerte (26.10, Alin: „da”
+// la „spune-o și acolo”). Sub baza motorului pragul efectiv e baza + marja (un prag de 30 sună tot peste 60), iar fraza o spune.
 function textMarjaViteza(prag, marja) {
   const baza = Number(marja && marja.baza) || 0, m = Number(marja && marja.marja) || 0, p = Number(prag) || 0;
   const ef = pragEfectiv(prag, marja);
@@ -192,7 +192,7 @@ function textRacireViteza(racireMs) {
   const min = Math.round((Number(racireMs) || RACIRE_MS) / 60000);
   return 'Cât timp mașina merge peste, sună cel mult o dată la ' + (min === 1 ? 'un minut' : min + _de(min) + 'minute') + '.';
 }
-// Ora României („10:42"), ca la șoferi (o dată pe cartonaș, nu pe poziție).
+// Ora României („10:42”), ca la șoferi (o dată pe cartonaș, nu pe poziție).
 function _ora(ms) { return new Date(ms).toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }); }
 function cardAlerta(o) {
   const opt = (o.optiuni || []).filter(function (x) { return String(x.v) === String(o.imei || ''); })[0] || { v: '', t: 'Toată flota', scurt: 'toată flota' };
@@ -203,11 +203,11 @@ function cardAlerta(o) {
     campuri: { prag: o.prag, imei: String(o.imei || ''), nume: nume, optiuni: o.optiuni || [], min: PRAG_MIN, max: PRAG_MAX },
     dovT: 'Din ultimele ' + ZILE_ISTORIC + _de(ZILE_ISTORIC) + 'zile', dovezi: doveziViteza(o),
     sub: o.poate ? 'Se face exact ca din Management › Alerte › Adaugă regulă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. O oprești oricând din lista de alerte; se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.'
-      : 'Doar cine poate schimba alertele apasă „Da"' + (o.aproba ? ': ' + o.aproba : '') + '.',
+      : 'Doar cine poate schimba alertele apasă „Da”' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, pune alerta', poate: !!o.poate
   };
 }
-// „Schimbă" (pragul, mașina, numele): ce trimite pagina, verificat pe ce e pe cartonaș. Numele scris de om rămâne; cel pus de
+// „Schimbă” (pragul, mașina, numele): ce trimite pagina, verificat pe ce e pe cartonaș. Numele scris de om rămâne; cel pus de
 // aplicație se reface după pragul și mașina noi.
 function campuriAlerta(cerute, card) {
   const c = cerute || {}, k = (card && card.campuri) || {};
@@ -220,7 +220,7 @@ function campuriAlerta(cerute, card) {
   if (!nume || (nume === k.nume && (prag !== Number(k.prag) || imei !== String(k.imei || '')))) nume = numeAlerta(prag, opt.scurt);
   return { spec: { type: 'overspeed', imei: imei || null, condition: { maxSpeed: prag }, name: nume, enabled: true }, eticheta: opt.t, prag: prag };
 }
-// Cartonașul după „Da": rândurile cu ce s-a pus de fapt (pragul, mașina, numele — poate schimbate din „Schimbă").
+// Cartonașul după „Da”: rândurile cu ce s-a pus de fapt (pragul, mașina, numele — poate schimbate din „Schimbă”).
 function cardAlertaDupa(card, c) {
   return Object.assign({}, card, { randuri: [{ l: 'Ce urmăresc', v: 'Depășire viteză', b: true }, { l: 'Peste', v: c.prag + ' km/h' }, { l: 'Pe', v: c.eticheta }, { l: 'Numele alertei', v: c.spec.name }] });
 }
@@ -238,9 +238,9 @@ function gataAlerta(spec, cine, la) {
   };
 }
 
-// ─── Ce cere omul: „Am vorbit cu el" ───────────────────────────────────────────────────────────────────────────────────────
-// „Notează că am vorbit cu Ion despre viteză" (o comandă) sau „Am vorbit cu Ion despre viteză" (spus pe față, fără întrebare).
-// O întrebare („ce s-a schimbat de când am vorbit cu Ion?") rămâne întrebare: o analizează RA Insight.
+// ─── Ce cere omul: „Am vorbit cu el” ───────────────────────────────────────────────────────────────────────────────────────
+// „Notează că am vorbit cu Ion despre viteză” (o comandă) sau „Am vorbit cu Ion despre viteză” (spus pe față, fără întrebare).
+// O întrebare („ce s-a schimbat de când am vorbit cu Ion?”) rămâne întrebare: o analizează RA Insight.
 const RE_NOTEAZA = /\b(noteaza|noteaza-mi|noteaza-ti|treci|scrie|scrie-mi|marcheaza|consemneaza|inregistreaza|tine minte)\b[^?]{0,40}\b(am vorbit|am discutat|vorbit|discutat|discutie|discutia)\b/;
 const RE_AM_VORBIT = /^\s*(azi |astazi |tocmai |deja |ieri )?(am vorbit|am discutat)\s+cu\b/;
 const RE_INTREB = /\?|\b(ce|cum|cat|cate|de cand|dupa ce|s-a schimbat|a mers|merge mai|a condus|conduce mai)\b/;
@@ -281,7 +281,7 @@ function cardDiscutie(o) {
     campuri: { nota: o.despre || '', max: NOTA_MAX },
     dovT: 'Din RA Drive', dovezi: dov,
     sub: o.poate ? 'Se face exact ca din RA Drive › „Am vorbit cu el”. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute. Șoferul nu primește niciun mesaj.'
-      : 'Doar cine conduce flota apasă „Da"' + (o.aproba ? ': ' + o.aproba : '') + '.',
+      : 'Doar cine conduce flota apasă „Da”' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, notează', poate: !!o.poate
   };
 }

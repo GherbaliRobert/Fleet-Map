@@ -14,7 +14,7 @@
 //   BACKUP_S3_SECRET       — secret access key
 //   BACKUP_S3_REGION       — implicit 'auto' (R2) / pune regiunea la AWS
 //   BACKUP_S3_PREFIX       — prefix cheie, implicit 'ratracks-backup'
-// Retenție: setează o regulă de lifecycle pe bucket (ex. „șterge după 30 zile") — nu o gestionăm noi.
+// Retenție: setează o regulă de lifecycle pe bucket (ex. „șterge după 30 zile”) — nu o gestionăm noi.
 
 const zlib = require('zlib');
 const crypto = require('crypto');
@@ -27,7 +27,7 @@ const BUSINESS_TABLES = [
   'payments', 'platform_costs', 'costs_payments', 'offers', 'agent_findings',
   'weekly_reports', 'report_schedules', 'report_history', 'api_keys', 'webhooks',
   'tacho_files', 'etransport', 'settings', 'ai_usage', 'ai_reguli', 'ai_corecturi', 'pachet_treceri', 'ui_prefs', 'trips', 'audit_log',
-  // „Anunță echipa RA Track" (22.10): cererile clienților către noi — istoricul relației, nu se pot reface.
+  // „Anunță echipa RA Track” (22.10): cererile clienților către noi — istoricul relației, nu se pot reface.
   'cereri_echipa',
   // Lipseau, deși sunt exact genul de date care nu se pot reconstrui:
   //  · `invoices` + `invoice_counters` — facturile emise și CONTORUL de numerotare fiscală. O restaurare
@@ -44,7 +44,7 @@ const BUSINESS_TABLES = [
   // Stocul nostru de echipamente (25.09): ce aparate avem, unde e fiecare și al cui e. Fără el, după o
   // restaurare n-am mai ști ce aparate închiriate stau la clienți — adică marfa noastră.
   'stoc_echipamente',
-  // „Schimbă aparatul" (29.10): ce aparat a fost scos de pe ce mașină, când și de cine — evidența mărfii noastre.
+  // „Schimbă aparatul” (29.10): ce aparat a fost scos de pe ce mașină, când și de cine — evidența mărfii noastre.
   'schimbari_aparat',
   // Safe Drive (06.10): cine a condus ce mașină și când (nu se poate reface din poziții) și discuțiile șefului cu șoferii.
   'istoric_soferi', 'safe_drive_discutii',
@@ -76,9 +76,9 @@ const BACKUP_EXCLUDED = {
   asistent_conversatii: 'conversațiile fondatorilor cu asistentul lor: sunt ale fondatorului care le-a scris și se șterg la 12 luni, ca cele cu RA Insight — nu le ținem și în copii',
   asistent_mesaje: 'mesajele conversațiilor asistentului fondatorilor: același motiv ca asistent_conversatii',
   scrisori_luni: 'scrisorile de luni ale RA Insight: sunt ale omului care le primește și se șterg la 12 luni, ca discuțiile — nu le ținem și în copii',
-  insight_actiuni: 'propunerile lui RA Insight („Da" / „Anulează" 10 minute): schimbările însele stau în fișele mașinilor, în istoricul șoferilor și în jurnal; rândurile sunt ale omului și se șterg la 12 luni, ca discuțiile',
+  insight_actiuni: 'propunerile lui RA Insight („Da” / „Anulează” 10 minute): schimbările însele stau în fișele mașinilor, în istoricul șoferilor și în jurnal; rândurile sunt ale omului și se șterg la 12 luni, ca discuțiile',
   zile_condus: 'rezumatul pe zile din Safe Drive: se reface din poziții (care au arhiva lor) și se șterge odată cu ele',
-  locatii_distribuite: 'linkurile „Distribuie locația": țin cel mult 8 ore și se șterg la expirare — într-o copie ar trăi mai mult decât linkul',
+  locatii_distribuite: 'linkurile „Distribuie locația”: țin cel mult 8 ore și se șterg la expirare — într-o copie ar trăi mai mult decât linkul',
   mail_atasamente: 'atașamentele emailurilor primite: pot ajunge la gigabytes, iar copia se face toată în memorie — ar opri serverul; emailul rămâne în copie, cu numele atașamentelor',
   email_livrari: 'ce a spus Brevo despre emailurile trimise (livrat, refuzat, blocat): o urmă de 30 de zile, fără conținut — se reface la următoarele trimiteri',
 };
@@ -87,15 +87,15 @@ const MAGIC = 'RATBK1'; // antet fișier criptat: MAGIC | salt(16) | iv(12) | ta
 
 // `ok` = dump-ul s-a generat fără eroare. NU înseamnă că datele sunt în siguranță!
 // `offsite` = dump-ul a ajuns EFECTIV în afara containerului (S3/R2). Fără S3 configurat, dump-ul se
-// generează și se ARUNCĂ — pe Railway filesystemul e efemer, deci un „ok" fără „offsite" = zero protecție.
-// Le ținem separate ca UI-ul să nu mai poată raporta „backup rulat ✓" pentru o rulare care n-a salvat nimic.
+// generează și se ARUNCĂ — pe Railway filesystemul e efemer, deci un „ok” fără „offsite” = zero protecție.
+// Le ținem separate ca UI-ul să nu mai poată raporta „backup rulat ✓” pentru o rulare care n-a salvat nimic.
 let _last = { at: null, ok: null, offsite: false, target: null, sizeBytes: 0, tables: null, error: null, encrypted: false, warning: null };
-let _loaded = false;   // starea a fost citită din bază (altfel „nicio rulare" poate însemna doar „server repornit")
+let _loaded = false;   // starea a fost citită din bază (altfel „nicio rulare” poate însemna doar „server repornit”)
 
 // Starea trăia DOAR în memoria procesului. Pe Railway, orice redeploy o resetează: ecranul spunea „nicio
 // rulare de la pornirea serverului" și `backup_offsite` cădea din verde în galben, deși bucket-ul era plin.
 // Invers, un backup mort de șase luni arăta identic cu un server repornit acum — adică nu se putea distinge
-// „nu știu" de „e rău". O persistăm în `settings`.
+// „nu știu” de „e rău”. O persistăm în `settings`.
 const STATE_KEY = 'backup_last_state';
 async function loadState(db) {
   try {
@@ -118,10 +118,10 @@ function getStatus() {
     stateLoaded: _loaded,
     ageHours: ageH == null ? null : Math.round(ageH * 10) / 10,
     stale: ageH == null ? true : ageH > 48,      // backup zilnic → peste 48h înseamnă că workerul n-a mai rulat
-    // „foarte vechi" e altceva decât „nu s-a rulat încă": primul e o pană, al doilea doar o necunoscută.
+    // „foarte vechi” e altceva decât „nu s-a rulat încă”: primul e o pană, al doilea doar o necunoscută.
     dead: ageH != null && ageH > 96,
     never: ageH == null,
-    protected: !!(_last.ok && _last.offsite)     // singurul indicator care chiar înseamnă „datele sunt în siguranță"
+    protected: !!(_last.ok && _last.offsite)     // singurul indicator care chiar înseamnă „datele sunt în siguranță”
   });
 }
 function s3Configured() { return !!(process.env.BACKUP_S3_ENDPOINT && process.env.BACKUP_S3_BUCKET && process.env.BACKUP_S3_KEY_ID && process.env.BACKUP_S3_SECRET); }
@@ -235,8 +235,8 @@ async function restoreDump(db, dump, opts) {
   const log = (opts && opts.log) || function () {};
   const data = (dump && dump.data) || {};
   const metaTabele = (dump && dump._meta && dump._meta.tables) || {};
-  // Un tabel marcat „skip: ..." a căzut la jumătate în timpul copiei: în fișier e doar o parte din el. Nu-l golim (am
-  // șterge rânduri pe care backup-ul nu le are) și îl raportăm ca eroare, ca restaurarea să nu iasă „reușită".
+  // Un tabel marcat „skip: ...” a căzut la jumătate în timpul copiei: în fișier e doar o parte din el. Nu-l golim (am
+  // șterge rânduri pe care backup-ul nu le are) și îl raportăm ca eroare, ca restaurarea să nu iasă „reușită”.
   const incomplet = function (t) { return typeof metaTabele[t] === 'string'; };
   const order = await restoreOrder(db, BUSINESS_TABLES);
   const out = { order: order, tables: {}, inserted: 0, skipped: 0, errors: 0, incomplete: [] };
@@ -473,7 +473,7 @@ async function runScheduledBackup(db, commit) {
     // REFUZĂM urcarea necriptată. Dump-ul conține hash-uri de parole, chei API, datele tuturor
     // clienților și pozițiile lor. Un bucket configurat greșit, o cheie scursă sau un angajat al
     // furnizorului de stocare — și totul e citibil. Mai bine niciun backup extern decât unul care,
-    // singur, e o breșă. Avertismentul apare în „Stare producție" până se setează parola.
+    // singur, e o breșă. Avertismentul apare în „Stare producție” până se setează parola.
     if (s3Configured() && !passphraseSet()) {
       const w = 'BACKUP_PASSPHRASE nu e setată → REFUZ să urc dump-ul necriptat (conține hash-uri de parole, chei API și datele clienților). Setează variabila și backup-ul extern pornește singur.';
       _last = { at: new Date().toISOString(), ok: false, offsite: false, target: 'refuzat',
@@ -491,7 +491,7 @@ async function runScheduledBackup(db, commit) {
     }
     const offsite = target !== 'none';
     // O copie cu tabele căzute la jumătate se urcă oricum (e mai bună decât nimic), dar NU se numește reușită: rămâne de
-    // reluat, iar „Stare producție" o arată ca neprotejată.
+    // reluat, iar „Stare producție” o arată ca neprotejată.
     const incomplete = Object.keys(b.meta.tables).filter(function (t) { return typeof b.meta.tables[t] === 'string'; });
     const warning = incomplete.length ? ('Backup INCOMPLET — tabele citite doar parțial: ' + incomplete.join(', ')) : configWarning(offsite);
     const at = new Date().toISOString();

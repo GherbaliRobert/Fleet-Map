@@ -28,7 +28,7 @@ const a = P([
 t('tipul e RCA', a.doc_type === 'RCA', a.doc_type);
 t('DATA EXPIRĂRII — câmpul care pornește alertele', a.expiry_date === '2027-01-14', a.expiry_date);
 t('data emiterii', a.issue_date === '2026-01-15', a.issue_date);
-t('seria ȘI numărul, deși „Nr." stă între ele', a.number === 'CU/10309310', a.number);
+t('seria ȘI numărul, deși „Nr.” stă între ele', a.number === 'CU/10309310', a.number);
 t('emitentul, fără cuvântul-etichetă în față', a.issuer === 'SOCIETATEA X ASIGURARI', a.issuer);
 t('numărul de înmatriculare', a.plate === 'B 268 ROY', a.plate);
 
@@ -39,7 +39,7 @@ t('seria compusă nu se pierde', b.number === 'RO/22/H22/123456789', b.number);
 t('expirarea', b.expiry_date === '2027-02-28', b.expiry_date);
 t('asigurătorul cunoscut', b.issuer === 'OMNIASIG', b.issuer);
 
-// ── ITP: alt emitent (stație, nu asigurător) și capcana „Nr. înmatriculare" ──
+// ── ITP: alt emitent (stație, nu asigurător) și capcana „Nr. înmatriculare” ──
 console.log('\n── ITP ──');
 const c = P([
   'CERTIFICAT INSPECTIE TEHNICA PERIODICA',
@@ -50,7 +50,7 @@ const c = P([
 t('tipul e ITP', c.doc_type === 'ITP', c.doc_type);
 t('expirarea', c.expiry_date === '2027-01-25', c.expiry_date);
 t('stația, nu un asigurător', c.issuer === 'ITP GENERAL SRL', c.issuer);
-t('„înmatriculare" NU devine număr de act', !c.number || /\d/.test(c.number), c.number);
+t('„înmatriculare” NU devine număr de act', !c.number || /\d/.test(c.number), c.number);
 
 // ── Talonul: codurile armonizate, cazul pentru care regulile sunt cele mai puternice ──
 console.log('\n── Talon ──');
@@ -72,7 +72,7 @@ t('masele', d.max_weight_legal === 1900 && d.tare_weight === 1200, d.max_weight_
 t('anul din data primei înmatriculări', d.year === 2019, d.year);
 
 // ── Cazul REAL raportat (Robert, 18.08): PDF care scrie titlul cu litere spațiate și e plin de
-// etichete de formular. Emitentul ieșea „O R I G I N A L 9. N UMELE SI ADRESA". ──
+// etichete de formular. Emitentul ieșea „O R I G I N A L 9. N UMELE SI ADRESA”. ──
 console.log('\n── Poliță reală: litere spațiate + etichete de formular ──');
 const g = P([
   'O R I G I N A L',
@@ -91,7 +91,7 @@ t('VIN-ul din poliță', g.vin === 'WV2ZZZ2KZ8X017409', g.vin);
 
 // Litere spațiate în titlu: fără lipirea lor, nicio regulă nu se potrivește.
 const h = P(['P O L I T A DE ASIGURARE RCA', 'GROUPAMA ASIGURARI S.A.', 'Valabil pana la 01.01.2028'].join('\n'));
-t('„P O L I T A" lipit → tipul se recunoaște', h.doc_type === 'RCA', h.doc_type);
+t('„P O L I T A” lipit → tipul se recunoaște', h.doc_type === 'RCA', h.doc_type);
 t('asigurătorul din listă', h.issuer === 'GROUPAMA', h.issuer);
 
 // Asigurător care NU e în listă: se prinde generic, dar curat.
@@ -131,7 +131,7 @@ t('combustibilul, în vocabularul fișei', m.fuel_type === 'Motorina', m.fuel_ty
 t('categoria N1 → autoutilitară', m.vehicle_type === 'autoutilitara', m.vehicle_type);
 t('și datele actului rămân corecte', m.expiry_date === '2027-07-27' && m.issuer === 'GROUPAMA', m.expiry_date + ' / ' + m.issuer);
 
-// Valori absurde: mai bine gol decât greșit. O cilindree de 7 cmc „completată automat" nu mai e
+// Valori absurde: mai bine gol decât greșit. O cilindree de 7 cmc „completată automat” nu mai e
 // verificată de nimeni.
 const n2 = P(['RCA', 'Capacitate cilindrica: 7 cm3', 'Putere: 99999 kW', 'Numar locuri: 900'].join('\n'));
 t('cilindree absurdă respinsă', n2.displacement == null, n2.displacement);

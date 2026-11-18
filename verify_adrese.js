@@ -1,4 +1,4 @@
-// verify_adrese.js — „Adrese de email" (Setări → Notificări), pe server pornit.
+// verify_adrese.js — „Adrese de email” (Setări → Notificări), pe server pornit.
 //
 //   node verify_adrese.js
 //
@@ -128,8 +128,8 @@ const login = async (u, p) => {
 
   sect('8. Ecranul spune ce e neconfirmat');
   const html = fs.readFileSync('./public/index.html', 'utf8');
-  const i = html.indexOf('    // ── începe „Adrese de email"');
-  const j = html.indexOf('    // ── sfârșit „Adrese de email" ──', i);
+  const i = html.indexOf('    // ── începe „Adrese de email”');
+  const j = html.indexOf('    // ── sfârșit „Adrese de email” ──', i);
   T('găsesc codul ecranului între repere', i > 0 && j > i, 'i=' + i + ' j=' + j);
   if (i > 0 && j > i) {
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -166,7 +166,7 @@ const login = async (u, p) => {
   T('adresa comună are propria răcire, cheiată pe firmă', /userCooldownOk\('co' \+ coId/.test(srvTxt));
   // Conturile demo nu trimit emailuri prin serverul nostru (regula din CLAUDE.md). Nu putem juca un
   // admin de firmă demo prin API, dar ne asigurăm că ruta de adăugare trece prin poarta demo.
-  // Bifa „Rapoarte" trebuie să facă ceva: rapoartele programate citesc agenda, pe lângă lista scrisă
+  // Bifa „Rapoarte” trebuie să facă ceva: rapoartele programate citesc agenda, pe lângă lista scrisă
   // de mână. O bifă care nu face nimic e mai rea decât lipsa ei.
   const rsTxt = fs.readFileSync('./report_schedules.js', 'utf8');
   T('rapoartele programate citesc agenda firmei', /getConfirmedCompanyEmails\(s\.company_id, 'rapoarte'\)/.test(rsTxt));

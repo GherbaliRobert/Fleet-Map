@@ -6,20 +6,20 @@ import { fmtAgo } from '../lib/format';
 import { Icon } from '../components/Icon';
 import { ReportChart } from '../components/ReportChart';
 import './reports.css'; // .rc-card — graficul
-import './detail.css'; // .sheet-ov / .sheet — lista „Fără semnal"
+import './detail.css'; // .sheet-ov / .sheet — lista „Fără semnal”
 import './statsflota.css';
 import { nrDe } from '../lib/numar';
 
-// „Statistici flotă" — ACELAȘI ecran ca pe web (openDashboard, public/index.html), pe o coloană:
+// „Statistici flotă” — ACELAȘI ecran ca pe web (openDashboard, public/index.html), pe o coloană:
 // cifrele zilei (GET /api/dashboard), starea flotei acum, ce veghează agenții AI, top-urile, graficul și
 // flota vehicul cu vehicul. Serverul scoate singur mașinile demo din flota reală și calculează consumul
 // cu aceleași reguli ca rapoartele; telefonul doar desenează.
 //
 // Filele vechi de pe telefon (Expirare documente / Fără transmisie / Grupuri) au ieșit: pe web ecranul nu
-// le are. Mașinile fără semnal sunt pe cartonașul „Fără semnal" (se apasă → lista lor, pe nume), actele stau
+// le are. Mașinile fără semnal sunt pe cartonașul „Fără semnal” (se apasă → lista lor, pe nume), actele stau
 // în Documente vehicule, grupele în Grupe.
 //
-// Cartonașul „Alerte" de pe web NU e copiat: serverul numără acolo ultimele 20 de alerte de pe toată
+// Cartonașul „Alerte” de pe web NU e copiat: serverul numără acolo ultimele 20 de alerte de pe toată
 // platforma, nefiltrate pe firmă — ar arăta fiecărui client alertele altora. Revine când le filtrează serverul.
 
 const n1 = (v: any) => Number(v || 0).toLocaleString('ro-RO', { maximumFractionDigits: 1 });
@@ -114,12 +114,12 @@ export function Stats() {
 // ── Cartonașele de sus ─────────────────────────────────────────────────────────────────────────────────
 function Cartonase({ d, onFaraSemnal }: { d: any; onFaraSemnal: () => void }) {
   // Media de consum are sens abia după ce s-a rulat ceva: la 2 km și 5 litri arși la ralanti ieșea
-  // „250 L/100km". Doar peste 10 km și doar dacă rezultatul e omenesc (1–100) — ca pe web.
+  // „250 L/100km”. Doar peste 10 km și doar dacă rezultatul e omenesc (1–100) — ca pe web.
   let per100: number | null = (d.totalKm >= 10 && d.totalFuel > 0) ? (d.totalFuel / d.totalKm * 100) : null;
   if (per100 != null && (per100 < 1 || per100 > 100)) per100 = null;
   const consSub = per100 ? '≈ ' + per100.toFixed(1).replace('.', ',') + ' L/100km'
     : (d.totalFuel > 0 ? (d.totalKm < 10 ? 'prea puțini km azi pentru o medie' : 'date de consum incomplete azi') : '—');
-  // „Cine tace", pe nume. Cele care n-au transmis NICIODATĂ nu apar în lista live, deci se numără separat —
+  // „Cine tace”, pe nume. Cele care n-au transmis NICIODATĂ nu apar în lista live, deci se numără separat —
   // altfel ar părea că lipsesc vehicule între cifră și listă.
   const tac: string[] = ((d.devices || []) as any[]).filter((v) => !v.isOnline).map((v) => v.name || v.imei);
   const niciodata = Math.max(0, (d.offlineCount || 0) - tac.length);
@@ -163,11 +163,11 @@ function Cartonase({ d, onFaraSemnal }: { d: any; onFaraSemnal: () => void }) {
 // Cifrele sunt EXACT cele de pe web: le numără serverul (GET /api/dashboard), în clipa încărcării —
 // În mișcare = movingCount, Staționat = stationatCount, Oprit = online − cele două, Offline = offlineCount.
 // Unde duce fiecare rând (ecranul Vehicule are doar filtrele Pornit / În mișcare / Staționat / Oprit):
-//  • „În mișcare" și „Staționat" → lista din Vehicule pe aceeași stare. Acolo cifra e live și fără „ține minte
+//  • „În mișcare” și „Staționat” → lista din Vehicule pe aceeași stare. Acolo cifra e live și fără „ține minte
 //    mișcarea" — poate diferi cu o mașină care tocmai a plecat sau a oprit, la fel ca pe web între Statistici și hartă.
-//  • „Oprit" → lista „Oprit" din Vehicule, care (ca pe harta de pe web) cuprinde și mașinile fără semnal.
-//    Rândul o spune, ca „Oprit 2" să nu pară greșit când lista are 5.
-//  • „Offline" → lista pe nume a celor fără semnal, din aceleași date ca cifra (ca cartonașul „Fără semnal").
+//  • „Oprit” → lista „Oprit” din Vehicule, care (ca pe harta de pe web) cuprinde și mașinile fără semnal.
+//    Rândul o spune, ca „Oprit 2” să nu pară greșit când lista are 5.
+//  • „Offline” → lista pe nume a celor fără semnal, din aceleași date ca cifra (ca cartonașul „Fără semnal”).
 function BaraStare({ d, onRoute, onOffline }: { d: any; onRoute: (s: string) => void; onOffline: () => void }) {
   const moving = d.movingCount || 0, stat = d.stationatCount || 0;
   const oprit = Math.max(0, (d.onlineCount || 0) - moving - stat), offline = d.offlineCount || 0;
@@ -199,10 +199,10 @@ function BaraStare({ d, onRoute, onOffline }: { d: any; onRoute: (s: string) => 
   );
 }
 
-// ── „Fără semnal": cine tace, pe nume ────────────────────────────────────────────────────────────────
+// ── „Fără semnal”: cine tace, pe nume ────────────────────────────────────────────────────────────────
 // Aceleași date ca cifra de pe cartonaș: vehiculele din flotă care nu mai transmit + cele care n-au transmis
 // NICIODATĂ (nu au poziție, deci se numără separat). Suma lor = cifra, ca omul să nu caute vehicule lipsă.
-// „Ultimul semnal" vine din lista live a telefonului — acolo stă ora ultimei poziții.
+// „Ultimul semnal” vine din lista live a telefonului — acolo stă ora ultimei poziții.
 function ListaFaraSemnal({ d, onClose, onVeh }: { d: any; onClose: () => void; onVeh: (imei: string) => void }) {
   const tac: any[] = ((d.devices || []) as any[]).filter((v) => !v.isOnline);
   const niciodata = Math.max(0, (d.offlineCount || 0) - tac.length);
@@ -245,9 +245,9 @@ function ListaFaraSemnal({ d, onClose, onVeh }: { d: any; onClose: () => void; o
   );
 }
 
-// ── „Agenții AI veghează flota" ──────────────────────────────────────────────────────────────────────
+// ── „Agenții AI veghează flota” ──────────────────────────────────────────────────────────────────────
 // Trei stări, ca pe web: agenți opriți / nimic de rezolvat / constatări strânse pe agent. În toate spune CE
-// veghează și CÂND a verificat ultima dată — altfel „flota e curată" nu se deosebește de „funcția nu există".
+// veghează și CÂND a verificat ultima dată — altfel „flota e curată” nu se deosebește de „funcția nu există”.
 // Numele și descrierile agenților vin de la server (GET /api/agents), nu dintr-o listă scrisă aici.
 function AgentiVeghe({ nrVehicule, poateDeschide, onDeschide }: { nrVehicule: number; poateDeschide: boolean; onDeschide: () => void }) {
   const [st, setSt] = useState<{ list: AgentFinding[]; stare: any } | null | 'ascuns'>(null);

@@ -11,7 +11,7 @@
 // constructorul, și cititorul o vor înțelege greșit la fel. Ce dovedește: că citirea e corectă în
 // raport cu structura implementată, că matematica orelor e bună, că regulile 561/2006 se aplică
 // unde trebuie, și — cel mai important — că pe orice fișier pe care NU-l înțelege, parserul spune
-// „necitit" în loc să scoată cifre.
+// „necitit” în loc să scoată cifre.
 
 const t = require('./tacho.js');
 
@@ -126,7 +126,7 @@ sect('2. Pauza prea scurtă NU resetează conducerea continuă');
   T('conducerea continuă se cumulează peste pauza scurtă', d.maxContDriveMin === 292, d.maxContDriveMin);
   T('abaterea de 4h30 e semnalată',
     r.infringements.some(i => /4h30/.test(i.rule)), JSON.stringify(r.infringements.map(i => i.rule)));
-  T('e marcată „serioasă"', (r.infringements.find(i => /4h30/.test(i.rule)) || {}).severity === 'serioasă');
+  T('e marcată „serioasă”', (r.infringements.find(i => /4h30/.test(i.rule)) || {}).severity === 'serioasă');
 }
 
 sect('3. Pauza divizată 15 + 30 resetează, cum zice legea');
@@ -188,7 +188,7 @@ sect('5. Conducere zilnică peste 10h = gravă');
   T('660 de minute de condus', r.days[0].drivingMin === 660, r.days[0].drivingMin);
   const inf = r.infringements.find(i => /peste 10 ore/.test(i.rule));
   T('e semnalată', !!inf, JSON.stringify(r.infringements.map(i => i.rule)));
-  T('e „gravă"', inf && inf.severity === 'gravă');
+  T('e „gravă”', inf && inf.severity === 'gravă');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -215,7 +215,7 @@ sect('6. Pe ce NU înțelege, refuză — nu inventează cifre');
   // lanțul de zile rupt: stricăm lungimea zilei dinainte
   const rupt = Buffer.from(bun);
   {
-    // găsim blocul de activitate (al treilea) și stricăm primul „prevLen" din a doua zi
+    // găsim blocul de activitate (al treilea) și stricăm primul „prevLen” din a doua zi
     const b2 = Buffer.from(bun);
     // stricăm indicatorul către cea mai nouă zi → iese în afara inelului
     const idx = b2.indexOf(Buffer.from([0x05, 0x04, 0x00]));
@@ -260,7 +260,7 @@ sect('9. Fișier din memoria vehiculului (VU)');
     Buffer.from([0x76, 0x05]), Buffer.alloc(80, 0x44)];
   const r = t.parse(Buffer.concat(parti));
   T('e recunoscut ca fișier de vehicul', r.kind === 'memoria vehiculului', r.kind);
-  T('încredere „parțial", nu „confirmat"', r.incredere === 'partial', r.incredere);
+  T('încredere „parțial”, nu „confirmat”', r.incredere === 'partial', r.incredere);
   T('găsește seria de șasiu', r.vin === vin, r.vin);
   T('NU pretinde că a citit activitatea', r.days.length === 0 && !r.totals.conducereMin);
   T('spune limpede ce a făcut și ce nu', /90 de zile/.test(r.parseNote || '') && /nu se analizează/.test(r.parseNote || ''),
@@ -290,11 +290,11 @@ sect('10. Termenele de descărcare (28 de zile cardul, 90 memoria)');
   T('textul e pe românește', s2.text === '3 zile întârziere', s2.text);
 
   const s3 = t.scadenta('2026-08-01', 28, AZI);   // acum 25 → 3 rămase
-  T('la 3 zile de termen → „curând"', s3.stare === 'curand' && s3.zileRamase === 3, JSON.stringify(s3));
+  T('la 3 zile de termen → „curând”', s3.stare === 'curand' && s3.zileRamase === 3, JSON.stringify(s3));
 
   const s4 = t.scadenta(null, 28, AZI);
   T('niciodată descărcat → stare proprie', s4.stare === 'niciodata' && s4.zileRamase === null, JSON.stringify(s4));
-  T('„niciodată" nu se confundă cu „e în regulă"', s4.stare !== 'ok');
+  T('„niciodată” nu se confundă cu „e în regulă”', s4.stare !== 'ok');
 
   const s5 = t.scadenta('2026-05-28', 90, AZI);   // acum 90 de zile fix
   T('exact la termen NU e încă întârziere', s5.zileRamase === 0 && s5.stare === 'curand', JSON.stringify(s5));
@@ -327,10 +327,10 @@ sect('11. Golurile din arhivă — ce zile nu poți dovedi');
 sect('12. Datele venite din baza de date (obiecte Date, nu text)');
 {
   // PostgreSQL întoarce coloanele DATE ca obiecte `Date`. Codul care le trata ca text primea
-  // „Tue Aug 25", ieșea o dată invalidă, iar scadențarul răspundea „null zile rămase" — tăcut.
+  // „Tue Aug 25”, ieșea o dată invalidă, iar scadențarul răspundea „null zile rămase” — tăcut.
   const AZI = '2026-08-26T10:00:00Z';
   const caDate = new Date(2026, 7, 20);           // 20 august 2026, ora locală
-  T('obiect Date → „AAAA-LL-ZZ"', t.ziISO(caDate) === '2026-08-20', t.ziISO(caDate));
+  T('obiect Date → „AAAA-LL-ZZ”', t.ziISO(caDate) === '2026-08-20', t.ziISO(caDate));
   T('text ISO rămâne neatins', t.ziISO('2026-08-20') === '2026-08-20');
   T('text ISO cu oră se taie corect', t.ziISO('2026-08-20T13:45:00.000Z') === '2026-08-20');
   T('null → null', t.ziISO(null) === null && t.ziISO('') === null && t.ziISO(undefined) === null);
@@ -338,7 +338,7 @@ sect('12. Datele venite din baza de date (obiecte Date, nu text)');
 
   const s = t.scadenta(caDate, 28, AZI);
   T('scadența merge cu obiecte Date', s.zileRamase === 22 && s.stare === 'ok', JSON.stringify(s));
-  T('o dată necitibilă NU trece drept „în regulă"',
+  T('o dată necitibilă NU trece drept „în regulă”',
     t.scadenta('nu-i o data', 28, AZI).stare === 'niciodata', t.scadenta('nu-i o data', 28, AZI).stare);
 
   const g = t.goluri([

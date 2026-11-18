@@ -1,10 +1,10 @@
-// @ts-nocheck — copie întocmai a desenului din pagină (public/index.html, blocul „desenul simulatorului"), ca telefonul să
+// @ts-nocheck — copie întocmai a desenului din pagină (public/index.html, blocul „desenul simulatorului”), ca telefonul să
 // deseneze planul exact ca web-ul: lateral, de sus, 3D. verify_plan_incarcare.js rulează amândouă funcțiile pe aceleași
 // simulări și cere același SVG — schimbi desenul pe web, îl schimbi și aici (copiezi blocul).
 // Desenul (lateral, de sus, 3D rotibil) — doar desen, din ce trimite serverul. CURAT: primește rezultatul simulării,
 // vederea, unghiul și culoarea unei opriri și întoarce SVG-ul. Telefonul are aceeași funcție (mobile/src/lib/simDesen.ts),
 // iar hârtia PDF a planului o citește chiar de aici (incarcare_pdf.js); verify_plan_incarcare.js cere același desen.
-// 13.10 (Robert: „vreau să avem desenele mai realiste, cel puțin mașina arată rău"; apoi „mai lucrează la desenul
+// 13.10 (Robert: „vreau să avem desenele mai realiste, cel puțin mașina arată rău”; apoi „mai lucrează la desenul
 // mașinii"): vehiculul se desenează ca un vehicul — cabina rotunjită, cu parbriz, geam, ușă, mânere, trepte, far, bară,
 // oglinzi pe braț, partea de jos închisă și o dungă; deflectorul de pe acoperiș când caroseria e mai înaltă decât cabina;
 // duba dintr-o bucată, cu capotă și scobitura roții din spate; șasiul, rezervorul cu chingi, picioarele semiremorcii,
@@ -15,7 +15,7 @@ function _simMix(hex, spreAlb, t) {
   const a = parseInt(hex.slice(1), 16), r = (a >> 16) & 255, g = (a >> 8) & 255, b = a & 255, T = spreAlb ? 255 : 0;
   return 'rgb(' + Math.round(r + (T - r) * t) + ',' + Math.round(g + (T - g) * t) + ',' + Math.round(b + (T - b) * t) + ')';
 }
-// Colțurile rotunde (13.10, Robert: „acum are grafica din desene animate, fă-le ceva mai rotunjite"): fiecare vârf al unui
+// Colțurile rotunde (13.10, Robert: „acum are grafica din desene animate, fă-le ceva mai rotunjite”): fiecare vârf al unui
 // contur închis devine un arc tangent la cele două laturi (`raze` = un număr sau unul pe vârf; 0 = rămâne colț). Raza se
 // micșorează singură când latura e prea scurtă. Întoarce punctele și, pentru fiecare, vârful din care vine (`din`) — așa
 // se regăsesc laturile drepte (parbrizul cabinei rămâne geam și după rotunjire).

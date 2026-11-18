@@ -1,6 +1,6 @@
 // test_parola.js — ajutor pentru probe: pune parola unui cont nou-creat, pe traseul REAL.
 //
-// De ce există: conturile nu se mai nasc cu parolă (vezi CLAUDE.md, „Parola nu există"). Serverul
+// De ce există: conturile nu se mai nasc cu parolă (vezi CLAUDE.md, „Parola nu există”). Serverul
 // face un link cu termen, iar omul își pune parola singur. Probele au nevoie de conturi pe care se
 // pot autentifica, așa că trec prin exact același traseu ca un om adevărat — și, în treacăt, îl și
 // verifică: dacă linkul de invitație s-ar strica, ar pica tot ce se sprijină pe el, nu doar o probă.

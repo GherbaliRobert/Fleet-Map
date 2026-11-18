@@ -5,14 +5,14 @@
 // sediul, numărul de la Registrul Comerțului și dacă firma e plătitoare de TVA.
 //
 // De ce merită: partea juridică a contractului se scria de mână. Un CUI tastat greșit sau o denumire
-// scrisă „după ureche" înseamnă un contract cu altă firmă decât cea reală. Aici nu mai e loc de asta.
+// scrisă „după ureche” înseamnă un contract cu altă firmă decât cea reală. Aici nu mai e loc de asta.
 //
 // Împărțirea din fișier e intenționată: `mapeaza()` e CURATĂ (primește răspunsul, întoarce câmpurile
 // noastre) și se probează fără rețea; `cautaFirma()` e doar cererea în sine.
 
 const URL_ANAF = process.env.ANAF_TVA_URL || 'https://webservicesp.anaf.ro/api/PlatitorTvaRest/v9/tva';
 
-// „RO 12345678", „ro12345678", „12345678" → „12345678". ANAF vrea doar cifrele.
+// „RO 12345678”, „ro12345678”, „12345678” → „12345678”. ANAF vrea doar cifrele.
 function curataCui(cui) {
   const doarCifre = String(cui == null ? '' : cui).replace(/[^0-9]/g, '');
   return doarCifre || null;

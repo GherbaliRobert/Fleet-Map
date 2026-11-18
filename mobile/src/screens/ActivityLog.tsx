@@ -5,10 +5,10 @@ import { FmScreen, poartaFirma } from '../components/FirmaUi';
 import { istFapta, istOre, istZi, istZile } from '../lib/activitate';
 import { nrDe } from '../lib/numar';
 
-// „Istoric activitate" (web: Setări → Evidență), pentru adminul firmei: cine s-a conectat și cine ce a
+// „Istoric activitate” (web: Setări → Evidență), pentru adminul firmei: cine s-a conectat și cine ce a
 // modificat în contul firmei. Filtrul pe firmă îl pune serverul, nu telefonul. IP-ul NU se arată clientului.
 //
-// Timpul în aplicație: îl trimite DOAR aplicația web (semnalul „sunt în aplicație"). Aplicația de telefon nu-l
+// Timpul în aplicație: îl trimite DOAR aplicația web (semnalul „sunt în aplicație”). Aplicația de telefon nu-l
 // trimite — hotărârea fondatorilor: nu strângem mai multe date despre activitatea oamenilor. Blocul o spune pe
 // față, ca adminul să nu creadă că un om care lucrează doar de pe telefon nu lucrează deloc.
 export function ActivityLog() {
@@ -141,7 +141,7 @@ function ActivityLogEcran() {
   );
 }
 
-// „Cât stau oamenii în aplicație" — procentul din timpul echipei, cu ora exactă alături, ca să nu fie citit
+// „Cât stau oamenii în aplicație” — procentul din timpul echipei, cu ora exactă alături, ca să nu fie citit
 // greșit (50% dintr-o oră nu e 50% din o sută de ore). p: undefined = se încarcă, null = nu s-a putut citi.
 function Prezenta({ p, zile }: { p: any; zile: number }) {
   const oameni: any[] = (p && Array.isArray(p.oameni)) ? p.oameni : [];

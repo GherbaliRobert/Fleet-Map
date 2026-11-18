@@ -1,7 +1,7 @@
 /* Flota administrată (Mentenanță, Documente, Șoferi, Grupe, Alerte) — aspectul comun al listelor,
    pe o singură coloană, cu ținte de atingere mari. Culorile vin din token-uri (temă închisă + deschisă). */
 
-/* Culorile de STARE folosite ca TEXT („la zi", „făcută", „curând", titluri de secțiune). Pe tema închisă
+/* Culorile de STARE folosite ca TEXT („la zi”, „făcută”, „curând”, titluri de secțiune). Pe tema închisă
    sunt verdele accent și chihlimbarul de până acum; pe tema DESCHISĂ, verdele accent (#3FE07D) și
    chihlimbarul deschis ar ieși pe alb la ~1,5–2:1 — de necitit. Acolo le închidem (ca în contulmeu.css,
    etoll.css, firma.css). Le pot folosi și stilurile inline din componente: color:var(--fl-ok). */

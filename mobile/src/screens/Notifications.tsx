@@ -29,7 +29,7 @@ export function Notifications() {
       loc.route('/reports' + (hid !== '' ? ('?histId=' + hid) : ''));
       return;
     }
-    // Anunțurile noastre de lucru („aparate noi transmit", „Montaj de facturat", „Cerere demo", termenul de montaj) duc drept la treaba de făcut, ca pe
+    // Anunțurile noastre de lucru („aparate noi transmit”, „Montaj de facturat”, „Cerere demo”, termenul de montaj) duc drept la treaba de făcut, ca pe
     // web — aceeași adresă ca din detaliu și din push (adresaAnunt). Detaliul lor nu se deschide, deci atingerea le
     // marchează citite.
     const spre = adresaAnunt(n.type, n.data);
@@ -38,7 +38,7 @@ export function Notifications() {
       loc.route(spre);
       return;
     }
-    loc.route('/notif/' + n.id); // deschide detaliul evenimentului — marcarea „citit" se face din modal
+    loc.route('/notif/' + n.id); // deschide detaliul evenimentului — marcarea „citit” se face din modal
   }
   async function markAll() { try { await Api.ackAll(); } catch {} refreshUnread(); setItems((cur) => cur ? cur.map((x) => ({ ...x, acknowledged: true })) : cur); }
 

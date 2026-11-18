@@ -2,8 +2,8 @@ import { Api } from '../api/endpoints';
 
 // Coada scrierilor de preferințe pe CONT (PUT /api/me/ui-prefs) — tema, harta, ecranul de pornire.
 //
-// De ce există: tema (rândul „Temă" din meniu) și harta (butonul de pe hartă) urcă pe cont FĂRĂ să aștepte
-// serverul. Dacă o citire (GET, la deschiderea „Contul meu" sau la revenirea în aplicație) apuca să plece
+// De ce există: tema (rândul „Temă” din meniu) și harta (butonul de pe hartă) urcă pe cont FĂRĂ să aștepte
+// serverul. Dacă o citire (GET, la deschiderea „Contul meu” sau la revenirea în aplicație) apuca să plece
 // înainte ca scrierea să ajungă, aducea valoarea VECHE și o reaplica: tema sărea înapoi, iar pe cont rămânea
 // cea nouă — telefonul și contul nu mai spuneau același lucru până la sincronizarea următoare.
 //
@@ -30,7 +30,7 @@ export function trimitePrefs(patch: Record<string, any>): Promise<{ ok: boolean 
     return Api.saveUiPrefs(patch);
   });
   _coada = p.catch(() => { /* coada merge mai departe și după o scriere eșuată */ });
-  // Scrierea n-a ajuns pe cont → nu mai ținem alegerea ca „mai nouă decât contul". Numai dacă între timp
+  // Scrierea n-a ajuns pe cont → nu mai ținem alegerea ca „mai nouă decât contul”. Numai dacă între timp
   // n-a venit alta peste ea pe aceeași cheie.
   p.catch(() => { for (const k of chei) if (_ultima[k] && _ultima[k].nr === nr) delete _ultima[k]; });
   return p;

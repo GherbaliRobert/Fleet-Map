@@ -6,7 +6,7 @@
 //
 // CONFIG (env):
 //   ANAF_ETRANSPORT_TOKEN — token OAuth (obținut din SPV cu certificat digital; ~90 zile). FĂRĂ el → dormant.
-//   ANAF_CIF              — CIF-ul companiei declarante (fără „RO").
+//   ANAF_CIF              — CIF-ul companiei declarante (fără „RO”).
 //   ANAF_ETRANSPORT_TEST  — 'true' (implicit) = mediul de test ANAF; 'false' = producție (după validare).
 
 function base(test) { return test ? 'https://api.anaf.ro/test/ETRANSPORT/ws/v1' : 'https://api.anaf.ro/prod/ETRANSPORT/ws/v1'; }
@@ -96,7 +96,7 @@ async function emitUIT(t, decl) {
     if (stare && /eroare|erori|nok|invalid/i.test(stare)) {
       let detail = '';
       if (idDl) { const dl = await _req('GET', '/descarcare/' + idDl, c.token, null, c.test); detail = (dl.text || '').slice(0, 220); }
-      throw new Error('ANAF stare „' + stare + '" ' + detail);
+      throw new Error('ANAF stare „' + stare + '” ' + detail);
     }
   }
   return { uit: null, index, pending: true }; // încă în prelucrare — reverifică mai târziu cu index-ul

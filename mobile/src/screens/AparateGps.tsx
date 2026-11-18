@@ -7,16 +7,16 @@ import { FmScreen, poartaFirma } from '../components/FirmaUi';
 import { stareAparat, momentMs, TACUT_MIN, MUT_ORE } from '../lib/semnal';
 import { salveazaPostDeLaServer, numeBrand } from '../lib/descarcaPost';
 
-// „Aparate GPS" (web: Setări → Evidență), pentru adminul sau managerul firmei. Ecranul de ECHIPAMENTE, nu de
+// „Aparate GPS” (web: Setări → Evidență), pentru adminul sau managerul firmei. Ecranul de ECHIPAMENTE, nu de
 // mașini: pe hartă o mașină tăcută arată exact ca una parcată — aici se vede ce aparat a amuțit.
 // Clientul NU înregistrează și NU modifică aparate (le punem noi), iar aparatele arhivate nu le vede (18.09):
-// de aceea nu există fila „Arhivate", iar lista de mașini se cere fără ?includeArchived.
+// de aceea nu există fila „Arhivate”, iar lista de mașini se cere fără ?includeArchived.
 //
 // De unde vin rândurile: DOAR din /api/devices — lista de mașini pe care serverul o filtrează deja pe firmă și
 // pe mașinile atribuite contului. NU din /api/device-inventory: pe 24.09 ruta aceea nu filtra pe firmă și
 // întorcea aparatele TUTUROR firmelor (reparat pe server pe 29.09 — filtrează pe firmă și pe mașinile contului).
 // Oricum, /api/devices are deja tot ce trebuie aici (model, cartelă, stare,
-// ultima poziție și last_seen); „ultima transmisie" o socotim ca serverul: cea mai nouă dintre cele două.
+// ultima poziție și last_seen); „ultima transmisie” o socotim ca serverul: cea mai nouă dintre cele două.
 // Exportul cere pe nume exact rândurile de pe ecran, deci primește înapoi doar aparatele contului.
 export function AparateGps() {
   const p = poartaFirma('manageFleet', 'Aparate GPS', 'Aparatele stau pe firme',
@@ -29,7 +29,7 @@ const fmtCand = (v: unknown) => {
   const t = typeof v === 'number' ? v : Date.parse(String(v || ''));
   return v && isFinite(t) ? new Date(t).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 };
-// „Ultima transmisie" = cea mai nouă dintre ultima poziție și ultima conectare (last_seen, pentru aparatele
+// „Ultima transmisie” = cea mai nouă dintre ultima poziție și ultima conectare (last_seen, pentru aparatele
 // care s-au conectat dar n-au trimis încă nicio poziție) — aceeași regulă ca în inventarul de pe server.
 function ultimaTransmisie(d: any): number | null {
   const t = Math.max(momentMs(d && d.last_position_time) || 0, momentMs(d && d.last_seen) || 0);
@@ -81,9 +81,9 @@ function AparateGpsEcran() {
     return String(a.plate || a.name || a.imei).localeCompare(String(b.plate || b.name || b.imei), 'ro');
   }), [rows, q, acum]);
 
-  // Exportul trece prin sendReport pe server (nume „RA-Track - Raport Inventar dispozitive - data" + logo).
+  // Exportul trece prin sendReport pe server (nume „RA-Track - Raport Inventar dispozitive - data” + logo).
   // Pleacă DOAR cu aparatele de pe ecran, în ordinea de pe ecran. O listă goală nu se trimite niciodată:
-  // serverul ar înțelege „tot inventarul".
+  // serverul ar înțelege „tot inventarul”.
   async function exporta(fmt: 'xlsx' | 'pdf') {
     if (!lista.length || busy) return;
     setBusy(fmt);
@@ -157,7 +157,7 @@ function AparateGpsEcran() {
               })}
             </div>
           )}
-          {/* „Tăcut" nu înseamnă neapărat stricat — omul trebuie să știe ce citește înainte să sune pe cineva. */}
+          {/* „Tăcut” nu înseamnă neapărat stricat — omul trebuie să știe ce citește înainte să sune pe cineva. */}
           <p class="fm-foot">Un aparat scrie <b>„comunică”</b> dacă a transmis în ultimele {TACUT_MIN} de minute. Peste {MUT_ORE} de ore de tăcere devine <b>„fără semnal”</b> — de obicei mașina e într-un loc fără acoperire, are bateria scoasă sau aparatul s-a defectat.</p>
         </>
       )}

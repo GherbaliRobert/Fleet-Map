@@ -2,11 +2,11 @@
 //
 // REGULĂ IMPORTANTĂ (politica de uz Overpass): NU se interoghează per-poziție pentru toată flota — ar fi blocat.
 // Aici: o SINGURĂ interogare bbox per traseu (la cerere, când userul deschide un traseu), throttled + cache agresiv.
-// Datele OSM sunt ODbL → orice afișare necesită atribuirea „© OpenStreetMap contributors".
+// Datele OSM sunt ODbL → orice afișare necesită atribuirea „© OpenStreetMap contributors”.
 
 // Configurabil (una sau mai multe adrese, separate prin virgulă), ca să se poată trece pe o instanță
 // proprie fără atins codul. Implicit rămân cele publice: aici volumul NU crește cu flota, ci cu numărul de
-// click-uri pe „Limite reale", și e deja plafonat structural (1 cerere/s, cache 7 zile, max 25 vehicule/raport).
+// click-uri pe „Limite reale”, și e deja plafonat structural (1 cerere/s, cache 7 zile, max 25 vehicule/raport).
 const ENDPOINTS = (process.env.OVERPASS_URL || '').split(',').map(s => s.trim()).filter(Boolean).length
   ? process.env.OVERPASS_URL.split(',').map(s => s.trim()).filter(Boolean)
   : [
@@ -41,7 +41,7 @@ function parseMaxspeed(v) {
   return null; // "none", "signals", "variable", necunoscut → fără limită utilă
 }
 
-// Limită ESTIMATĂ din clasa drumului OSM (când lipsește maxspeed). Valori orientative RO — marcate „estimat".
+// Limită ESTIMATĂ din clasa drumului OSM (când lipsește maxspeed). Valori orientative RO — marcate „estimat”.
 const CLASS_LIMIT = {
   motorway: 130, motorway_link: 80,
   trunk: 100, trunk_link: 60,
@@ -101,7 +101,7 @@ async function _overpassBbox(s, w, n, e) {
 
 // Proiecția punctului pe segment: distanța în metri ȘI punctul proiectat.
 // (proiecție echirectangulară locală — destul de precisă la scară de stradă)
-// Proiecția se calcula deja aici, pentru distanță, dar se arunca; e exact ce trebuie ca să „lipim" un punct
+// Proiecția se calcula deja aici, pentru distanță, dar se arunca; e exact ce trebuie ca să „lipim” un punct
 // GPS pe carosabil, deci o întoarcem. Vezi `snapPoints`.
 function _projToSeg(plat, plng, alat, alng, blat, blng) {
   const R = 6371000, rad = Math.PI / 180, clat = Math.cos(plat * rad);
@@ -142,7 +142,7 @@ async function _waysFor(points) {
   return ways;
 }
 
-// „Lipirea" punctelor pe carosabil, fără OSRM: fiecare punct se mută pe cel mai apropiat drum, dacă e destul
+// „Lipirea” punctelor pe carosabil, fără OSRM: fiecare punct se mută pe cel mai apropiat drum, dacă e destul
 // de aproape. NU e map-matching adevărat — nu reconstruiește drumul DINTRE puncte și nu ține cont de topologie
 // (la pasaje suprapuse sau străzi paralele poate alege greșit). Pentru desenarea coridoarelor, unde punctele
 // sunt puse manual și dese, rezultatul e practic identic; pentru trasee cu poziții rare, linia tot taie
@@ -205,7 +205,7 @@ async function limitsForPoints(points) {
 // fiecare destul de mică pentru o interogare, și le luăm pe rând. Bucățile se cache-uiesc după
 // coordonate rotunjite, așa că al doilea camion pe același coridor nu mai interoghează nimic.
 const TILE_AREA = 0.05;     // deg² per bucată — sub AREA_GUARD, cu marjă
-const MAX_TILES = 40;       // plafon DUR: peste el refuzăm explicit, nu ținem omul 5 minute în „se încarcă"
+const MAX_TILES = 40;       // plafon DUR: peste el refuzăm explicit, nu ținem omul 5 minute în „se încarcă”
 
 function _arie(pts) {
   let s = 90, w = 180, n = -90, e = -180;

@@ -1,16 +1,16 @@
-// alerte_stare.js — Alertele „de stare" (Alin, 27.10: „da"): sună când starea ÎNCEPE, nu la fiecare 5 minute cât ține.
-// Până pe 27.10 o regulă ca „Uzură plăcuțe frână" suna la fiecare 5 minute cât plăcuțele erau sub prag — cam 96 de anunțuri
+// alerte_stare.js — Alertele „de stare” (Alin, 27.10: „da”): sună când starea ÎNCEPE, nu la fiecare 5 minute cât ține.
+// Până pe 27.10 o regulă ca „Uzură plăcuțe frână” suna la fiecare 5 minute cât plăcuțele erau sub prag — cam 96 de anunțuri
 // într-o zi de 8 ore de mers, pe fiecare mașină. Acum: un anunț când apare; cât ține, o amintire pe zi; dacă trece și revine după
 // cel puțin 30 de minute de normal, e o stare nouă și sună din nou. Curat: fără bază, fără server — serverul ține starea fiecărei
 // reguli pe fiecare mașină și, după o repornire, citește o dată din istoricul alertelor când a sunat ultima oară.
 'use strict';
 
-// Tipurile „de stare": ceva care ține (o eroare, o temperatură, o greutate, priza de putere pornită, plăcuțele, revizia), nu o
+// Tipurile „de stare”: ceva care ține (o eroare, o temperatură, o greutate, priza de putere pornită, plăcuțele, revizia), nu o
 // clipă (pornirea motorului, intrarea în zonă) și nu viteza (aceea sună cel mult o dată la 5 minute cât mașina merge peste — așa
 // o spun ecranul Alerte și cartonașul din RA Insight).
 const DE_STARE = ['dtc_error', 'engine_temp', 'overload_legal', 'overload_construct', 'axle_overload', 'pto_active', 'brake_pad_wear', 'service_due'];
 const AMINTIRE_MS = 24 * 3600000;   // cât ține starea: o amintire pe zi
-const REARMARE_MS = 30 * 60000;     // revenită după cel puțin 30 de minute de normal = o stare nouă (sub atât: aceeași, care „pâlpâie")
+const REARMARE_MS = 30 * 60000;     // revenită după cel puțin 30 de minute de normal = o stare nouă (sub atât: aceeași, care „pâlpâie”)
 
 // Pe ecranul Alerte: fraza de sub câmpuri (fereastra regulii) și rândul scurt din listă.
 const TEXT = 'Sună când apare. Cât ține, îți amintește o dată pe zi; dacă trece și revine după cel puțin 30 de minute, sună din nou.';
@@ -37,7 +37,7 @@ function stareDin(tip, io, cond) {
     }
     case 'engine_temp': {
       const t = _nr(io.can_engine_temp), lim = _nr(cond.maxTemp);
-      if (t === null || !lim) return { stare: null };   // „gol = dezactivat"
+      if (t === null || !lim) return { stare: null };   // „gol = dezactivat”
       return t > lim ? { stare: true, date: { temp: t, limit: lim } } : { stare: false };
     }
     case 'overload_legal':

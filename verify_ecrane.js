@@ -1,21 +1,21 @@
-// verify_ecrane.js — Aplicația pe toate mărimile de ecran (26.10, Alin: „aplicația trebuie să fie ok pe toate tipurile de ecrane").
+// verify_ecrane.js — Aplicația pe toate mărimile de ecran (26.10, Alin: „aplicația trebuie să fie ok pe toate tipurile de ecrane”).
 // Măsurat atunci în browser (Chromium), 42 de ecrane — administratorul firmei și fondatorul — pe 12 mărimi, de la 360 la 1920 px:
 // ce iese din ecran, ce butoane sunt acoperite, ce e tăiat de o cutie care nu se derulează, ferestrele mai înalte decât ecranul.
 // Plus pozele, ecran cu ecran. Au ieșit șase lucruri, reparate aici:
 //   1. fișa mașinii pe tabletă (820–834 px) ieșea 38–52 px din ecran și harta dispărea (la 1024 px harta rămânea de 92 px):
 //      cât stă fișa deschisă pe hartă, meniul din stânga se strânge singur, iar ☰ îl deschide peste hartă, ca pe telefon;
-//   2. în bara de sus, pe tabletă, căsuța de căutare acoperea „Anunță echipa RA Track" și „Temă": bara stă acum în rândul ei;
-//   3. fereastra „Anunță echipa RA Track" era de 640 px și pe un telefon de 360 px;
+//   2. în bara de sus, pe tabletă, căsuța de căutare acoperea „Anunță echipa RA Track” și „Temă”: bara stă acum în rândul ei;
+//   3. fereastra „Anunță echipa RA Track” era de 640 px și pe un telefon de 360 px;
 //   4. Vehicule și Șoferi pe telefon: regula de telefon (sus în pagină) era călcată de grila de calculator scrisă mai jos — capul de
-//      tabel se vedea, creionul și coșul stăteau peste „Profesionist"; pe tabletă numele șoferilor se tăiau la trei litere;
-//   5. Setări → Afișaj pe tabletă: „Tema aplicației" câte un cuvânt pe rând, cu „Închisă" peste titlu;
-//   6. cartonașele pe firme ale fondatorilor (Tahograf, e-Transport): „Deschide firma" tăiat cu 16–104 px;
+//      tabel se vedea, creionul și coșul stăteau peste „Profesionist”; pe tabletă numele șoferilor se tăiau la trei litere;
+//   5. Setări → Afișaj pe tabletă: „Tema aplicației” câte un cuvânt pe rând, cu „Închisă” peste titlu;
+//   6. cartonașele pe firme ale fondatorilor (Tahograf, e-Transport): „Deschide firma” tăiat cu 16–104 px;
 //   7. bara de sus pe telefonul îngust: grupul din dreapta trecea de ecran (360 px; la fondator, cu comutatorul mov, și la 390 px),
 //      iar browserul micșora TOATĂ pagina ca s-o încapă (conținut de 386 / 472 px într-un ecran de 360) — textul ieșea mai mic
 //      peste tot. Pe telefon, măsoară lățimea paginii (clientWidth), nu innerWidth: cea din urmă devine lățimea micșorată;
 //   8. bula RA Insight stătea peste creionul ultimului rând din liste, pe telefon.
 // Proba nu pornește un browser (poarta de pe GitHub n-are unul): păzește regulile care au reparat ce s-a măsurat și rulează în
-// vm regula „meniul ca sertar". Măsurătoarea întreagă (în browser) nu e în depozit; se reface când se schimbă așezarea ecranelor.
+// vm regula „meniul ca sertar”. Măsurătoarea întreagă (în browser) nu e în depozit; se reface când se schimbă așezarea ecranelor.
 //
 //   node verify_ecrane.js
 'use strict';
@@ -33,7 +33,7 @@ T('cât stă fișa deschisă pe hartă, meniul din stânga se strânge (lățime
   /body\.detail-open:has\(#view-localizare\.active\) #navrail\.open \{ position: fixed;/.test(media) && /body\.detail-open:has\(#view-localizare\.active\) \.navrail-backdrop\.visible \{ display: block;/.test(media));
 T('fișa rămâne de 320 px până la 900 px și de 380 px peste (cu meniul strâns: lista + fișa + harta încap de la 769 px)',
   /@media \(max-width: 900px\) \{\s*#detail-panel\.open \{ width: 320px; min-width: 320px; \}/.test(CSS) && /--detail-width: 380px;/.test(CSS) && /--sidebar-width: 340px;/.test(CSS));
-// Regula „meniul ca sertar", rulată.
+// Regula „meniul ca sertar”, rulată.
 const fNav = PAG.slice(PAG.indexOf('function _navCaSertar() {'), PAG.indexOf('function toggleNavrail() {'));
 const sertar = (latime, fisa, harta) => {
   const ctx = { window: { innerWidth: latime }, document: { body: { classList: { contains: (c) => c === 'detail-open' && fisa } }, getElementById: (id) => id === 'view-localizare' ? { classList: { contains: (c) => c === 'active' && harta } } : null } };
@@ -57,7 +57,7 @@ T('căutarea stă în rândul barei (nu centrată peste ea) și se strânge cât
 T('pe calculator rămâne centrată, ca înainte; pe telefon plutește sub bară, ca înainte',
   /\.topbar-center \{\n {2}position: absolute; left: 50%; transform: translateX\(-50%\);/.test(MT) && /@media \(max-width: 768px\) \{\n {2}\/\* Pe mobil topbar-ul nu are loc/.test(MT));
 
-console.log('\n3. Fereastra „Anunță echipa RA Track" pe telefon');
+console.log('\n3. Fereastra „Anunță echipa RA Track” pe telefon');
 T('cel mult 640 px, dar niciodată mai lată decât ecranul (grila cu o coloană creștea după conținut)', /\.ce-win \{ width: min\(640px, calc\(100vw - 32px\)\); max-width: 100%;/.test(CSS));
 
 console.log('\n4. Vehicule și Șoferi: regula de telefon stă DUPĂ grila de calculator (câștigă cea scrisă ultima)');
@@ -65,13 +65,13 @@ const bloc = (id) => { const i = PAG.indexOf('<style id="' + id + '">'); return 
 const VEH = bloc('veh-cards-css'), DRV = bloc('drv-cards-css');
 const iVehGrid = VEH.indexOf('.veh-colh, .veh-row { display: grid;'), iVehTel = VEH.indexOf('@media (max-width: 900px) {\n            .veh-colh { display: none; }');
 const iDrvGrid = DRV.indexOf('.drv-colh, .drv-row { display: grid;'), iDrvTel = DRV.indexOf('@media (max-width: 1024px) {\n            .drv-colh { display: none; }');
-T('vehiculele: cardul pliat (≤ 900 px) e în blocul lor, după grila cu 6–7 coloane; grila fără „Companie" (selector mai tare) doar de la 901 px',
+T('vehiculele: cardul pliat (≤ 900 px) e în blocul lor, după grila cu 6–7 coloane; grila fără „Companie” (selector mai tare) doar de la 901 px',
   iVehGrid > 0 && iVehTel > iVehGrid && /@media \(min-width: 901px\) \{\n {12}body:not\(\.is-super\) \.veh-colh, body:not\(\.is-super\) \.veh-row \{ grid-template-columns:/.test(VEH), iVehGrid + ' / ' + iVehTel);
 T('șoferii: cardul pliat (≤ 1024 px) e în blocul lor, după grila cu 6 coloane; fără capul de tabel, lista își pune marginea de sus',
   iDrvGrid > 0 && iDrvTel > iDrvGrid && /\.drv-list \{ border-top: 1px solid var\(--border\); border-radius: 10px; \}/.test(DRV.slice(iDrvTel)), iDrvGrid + ' / ' + iDrvTel);
 T('nicio regulă de telefon pentru ele rămasă mai sus în pagină (ar fi iar călcată)', (PAG.match(/\.veh-colh \{ display: none; \}/g) || []).length === 1 &&
   (PAG.match(/\.drv-colh \{ display: none; \}/g) || []).length === 1 && (PAG.match(/grid-template-areas: "av who act"/g) || []).length === 1 && (PAG.match(/grid-template-areas: "pic veh act"/g) || []).length === 1);
-T('numele șoferului trece pe două rânduri (nu se mai taie cu „…"), eticheta rămâne întreagă',
+T('numele șoferului trece pe două rânduri (nu se mai taie cu „…”), eticheta rămâne întreagă',
   /\.drv-nm \{ flex-wrap: wrap; gap: 3px 7px; \}/.test(DRV) && /\.drv-nm-t \{ white-space: normal; overflow-wrap: anywhere; \}/.test(DRV));
 
 console.log('\n5. Rânduri care se strâng: Setări → Afișaj, cartonașele pe firme ale fondatorilor');
@@ -90,18 +90,18 @@ T('iconițele rămân de 36 px (ținta de atingere), golurile scad la 4 px, marg
   /#topbar \.vert-com \{ margin-right: 0; gap: 2px; padding: 2px; \}/.test(mic) && CSS.indexOf('@media (max-width: 420px) {') > CSS.indexOf('.topbar-icon {') && CSS.indexOf('@media (max-width: 420px) {') > CSS.indexOf('.topbar-user {'));
 // MĂSURAT în browser (26.10, după reparație): la 360 px bara clientului și a fondatorului încap (fără micșorarea paginii); înainte
 // conținutul avea 386 px (client) și 472 px (fondator). Lățimea siglei depinde de font, deci aici nu se socotește — se măsoară.
-T('comutatorul mov se strânge încă puțin, iar sub 380 px „Track" din siglă scade la 18 px (aceeași siglă, mai mică)',
+T('comutatorul mov se strânge încă puțin, iar sub 380 px „Track” din siglă scade la 18 px (aceeași siglă, mai mică)',
   /#topbar \.vert-b \{ padding: 6px 5px; \}/.test(mic) && /@media \(max-width: 380px\) \{\s*#topbar \.ralogo \.raw \{ font-size: 18px !important; \}/.test(CSS));
 T('fondatorul nu trimite cereri echipei: pe telefon iconița cu căști pleacă (loc pentru comutator)',
   /<button class="topbar-icon topbar-echipa" onclick="openSupport\(\)"/.test(PAG) && /body\.is-super \.topbar-echipa \{ display: none; \}/.test(CSS.slice(CSS.indexOf('@media (max-width: 768px) {'), CSS.indexOf('@media (max-width: 420px) {'))));
 T('pe telefon, sub ultimul rând e loc cât bula RA Insight (creionul ultimului vehicul se poate apăsa)', /\.modal-overlay\.as-view \{ padding-bottom: 96px; \}/.test(CSS));
 
-// 29.10 (Alin, cu o poză: „fâșia gri de pe telefon — rezolvă acum"). Un sertar închis stă împins în stânga, în afara ecranului,
+// 29.10 (Alin, cu o poză: „fâșia gri de pe telefon — rezolvă acum”). Un sertar închis stă împins în stânga, în afara ecranului,
 // dar umbra lui trece de marginea lui: 25 px de gri pe marginea din stânga în RA Insight, ~15 px pe ORICE ecran (meniul
 // principal), pe tema deschisă. MĂSURAT pe pixeli (390 și 360 px, ambele teme): după reparație, 0. Umbra = doar sertarul deschis.
 console.log('\n7. Sertarele închise nu-și lasă umbra în ecran');
 const _stiluri = (t) => (t.match(/<style[^>]*>[\s\S]*?<\/style>/g) || []).join('\n');
-// Orice regulă care împinge un element în stânga cu translateX(-100% sau mai mult) nu poartă umbră (în afară de „none").
+// Orice regulă care împinge un element în stânga cu translateX(-100% sau mai mult) nu poartă umbră (în afară de „none”).
 const umbreScapate = (text) => {
   const rele = [];
   (text.match(/[^{}]+\{[^{}]*\}/g) || []).forEach((r) => {
@@ -121,7 +121,7 @@ T('panoul cu conversații din RA Insight pe telefon: umbra doar deschis (.insp.s
   /\.insp-st, \.insp\.st-ascuns \.insp-st \{[^}]*transform: translateX\(-104%\);[^}]*box-shadow: none; \}/.test(CSS) &&
   /\.insp\.st-deschis \.insp-st \{ transform: none; box-shadow: 0 0 40px rgba\(0,0,0,\.35\); \}/.test(CSS));
 
-// 30.10 (Alin: „da"). Rândul de jos cu versiunea / API a plecat demult, dar locul lui (32 px, --footer-h) rămăsese: o bandă
+// 30.10 (Alin: „da”). Rândul de jos cu versiunea / API a plecat demult, dar locul lui (32 px, --footer-h) rămăsese: o bandă
 // deschisă sub fiecare pagină (RA Insight, Rapoarte, Setări…), pe calculator și pe telefon. MĂSURAT în browser (1366 și 390 px):
 // 32 px goi înainte, 0 după. Paginile merg acum până jos, peste zona sigură a telefonului (--sab).
 console.log('\n8. Paginile merg până jos (fără locul rândului scos)');
@@ -129,11 +129,11 @@ T('paginile (.modal-overlay.as-view) se opresc doar la zona sigură a telefonulu
   /\.modal-overlay\.as-view \{\s*inset: calc\(var\(--topbar-h\) \+ var\(--sat\)\) 0 var\(--sab\) var\(--navrail-w\);/.test(CSS));
 T('…iar locul rândului scos nu mai e în foi (--footer-h)', !/--footer-h/.test(CSS + '\n' + MT + '\n' + _stiluri(PAG)));
 
-// 05.11 (Alin: „mai verifică și ca totul să se vadă bine pe telefon și pe toate ecranele… totul"). Aplicația de telefon,
+// 05.11 (Alin: „mai verifică și ca totul să se vadă bine pe telefon și pe toate ecranele… totul”). Aplicația de telefon,
 // rulată în browser ca un telefon de 360 / 390 / 412 px, ecran cu ecran (client + fondator), cu o verificare nouă: o cutie
 // rotunjită (cartonaș, casetă, buton) sau un text care stă la mai puțin de 6 px de marginea ecranului. `.content` n-are margini
 // (hărțile și listele pe toată lățimea își țin forma), iar 25 de ecrane nu și le puneau singure: totul stătea lipit de margine.
-console.log('\n9. Telefonul: marginea ecranelor, pașii de la „Client nou", rândul firmei din Facturare');
+console.log('\n9. Telefonul: marginea ecranelor, pașii de la „Client nou”, rândul firmei din Facturare');
 const TEL = (f) => citeste('mobile/src/' + f);
 const G = TEL('theme/global.css');
 T('o singură regulă pentru margine: `.content.marg` = 14 px pe lângă + 12 px sus; titlurile de secțiune se aliniază cu cartonașele',
@@ -152,10 +152,10 @@ const faraMarg = CU_MARG.filter((f) => {
 T('cele ' + CU_MARG.length + (CU_MARG.length % 100 === 0 || CU_MARG.length % 100 >= 20 ? ' de' : '') + ' fișiere de ecran găsite lipite de margine poartă `marg` pe fiecare `.content` al lor (și în starea de încărcare / eroare)',
   !faraMarg.length, faraMarg.join(', '));
 const CO = TEL('screens/companii.css');
-T('„Client nou", pe telefon: cifra deasupra numelui și fiecare pas cât îi trebuie („Contractul", „Administratorul" întregi)',
+T('„Client nou”, pe telefon: cifra deasupra numelui și fiecare pas cât îi trebuie („Contractul”, „Administratorul” întregi)',
   /@media \(max-width: 430px\) \{\s*\.co-pas \{ flex: 1 1 auto; flex-direction: column;[^}]*\}\s*\.co-pas span\.t \{ overflow: visible; text-overflow: clip; \}/.test(CO));
 const BI = TEL('screens/Billing.tsx'), BC = TEL('screens/billing.css');
-T('Facturare (fondator), pe telefon: numele firmei întreg, „auto" și „Facturile firmei" dedesubt',
+T('Facturare (fondator), pe telefon: numele firmei întreg, „auto” și „Facturile firmei” dedesubt',
   /<div class="adm-item bill-co"/.test(BI) && /<div class="bill-co-act">[\s\S]{0,400}auto<\/label>[\s\S]{0,700}Facturile firmei<\/button>\s*<\/div>/.test(BI) &&
   /\.bill-co \.nm, \.bill-co \.sub \{ white-space: normal; overflow-wrap: anywhere; \}/.test(BC) && /\.bill-co-act \{[^}]*flex: 1 1 100%;[^}]*\}/.test(BC));
 

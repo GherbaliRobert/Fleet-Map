@@ -1,19 +1,19 @@
-// verify_insight_bani.js — „RA Insight · control": telefonul arată aceleași sume și aceleași texte ca web-ul.
+// verify_insight_bani.js — „RA Insight · control”: telefonul arată aceleași sume și aceleași texte ca web-ul.
 //
 //   node verify_insight_bani.js
 //
 // Regula casei: telefonul nu socotește bani. Serverul (/api/admin/ai-usage) trimite gata cifrele mari; puținul pe care îl socotește
 // pagina din două cifre ale lui (ce ne rămâne din total, totalurile istoricului, marja) stă pe
 // telefon într-un singur loc, mobile/src/components/insightBani.ts, copiat de pe web. Proba ține cele două copii legate: rulează
-// blocul web („Panoul RA Insight pe firme" din public/index.html) și insightBani.ts pe ACELEAȘI date și compară cifrele și textele.
+// blocul web („Panoul RA Insight pe firme” din public/index.html) și insightBani.ts pe ACELEAȘI date și compară cifrele și textele.
 //
 // Cum: blocul web rulează într-un vm, cu `_aiuLei` / `_aiuNr` înlocuite cu niște etichete care păstrează suma
-// NEROTUNJITĂ (⟦L:12.3456⟧). Două sume sunt „aceleași" doar dacă sunt același număr (fără zgomot de virgulă mobilă)
-// ȘI se scriu la fel („45 lei (9 €)"). Nu ne ajunge „aproape": o diferență de o zecime de ban, la o graniță de
+// NEROTUNJITĂ (⟦L:12.3456⟧). Două sume sunt „aceleași” doar dacă sunt același număr (fără zgomot de virgulă mobilă)
+// ȘI se scriu la fel („45 lei (9 €)”). Nu ne ajunge „aproape”: o diferență de o zecime de ban, la o graniță de
 // rotunjire, schimbă cifra de pe ecran (așa s-a prins marja 90% pe telefon vs. 91% pe web, când telefonul folosea
 // costul rotunjit de server). Separat, verificăm că o sumă, un număr de întrebări și o lună se scriu la fel.
 //
-// Din 02.11 telefonul are pagina nouă (cele patru cifre, „Ce cere atenție", un rând pe firmă, „Sursă externă", istoricul), deci
+// Din 02.11 telefonul are pagina nouă (cele patru cifre, „Ce cere atenție”, un rând pe firmă, „Sursă externă”, istoricul), deci
 // formulele panoului vechi, ținute aici ca REFERINTA din 19.10, au plecat odată cu el, din insightBani.ts și de aici.
 //
 // Nu pornește serverul și nu are nevoie de rețea. Are nevoie de TypeScript din mobile/node_modules (e acolo
@@ -36,9 +36,9 @@ function flush() {
 
 // ── 1. Blocul web ────────────────────────────────────────────────────────────────────────────────────
 const HTML = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-const A = '// ─── începe „Panoul RA Insight pe firme"', Z = '// ─── sfârșit „Panoul RA Insight pe firme"';
+const A = '// ─── începe „Panoul RA Insight pe firme”', Z = '// ─── sfârșit „Panoul RA Insight pe firme”';
 const ia = HTML.indexOf(A), iz = HTML.indexOf(Z);
-if (ia < 0 || iz < 0 || iz < ia) { console.log('✗ nu găsesc blocul „Panoul RA Insight pe firme" în public/index.html'); process.exit(1); }
+if (ia < 0 || iz < 0 || iz < ia) { console.log('✗ nu găsesc blocul „Panoul RA Insight pe firme” în public/index.html'); process.exit(1); }
 const BLOC = HTML.slice(ia, iz);
 if (/function _aiuKpiuri|function _aiuCard\b/.test(BLOC)) { console.log('✗ panoul vechi a revenit în pagină (_aiuKpiuri / _aiuCard), iar telefonul nu-l mai are'); process.exit(1); }
 const mNrI = HTML.match(/window\._raxNrI = function \(n\) \{[^\n]*\};/);
@@ -72,7 +72,7 @@ for (const f of ['_aiuPachete', '_aiuAtentie', '_aiuTabel', '_aiuSursa', '_aiuIs
 // ── 2. Copia de pe telefon ───────────────────────────────────────────────────────────────────────────
 let ts;
 // Local: cel din aplicația de telefon. În CI nu se instalează aplicația de telefon, deci poarta pune doar
-// TypeScript-ul, la rădăcină (ci.yml, „Install dependencies").
+// TypeScript-ul, la rădăcină (ci.yml, „Install dependencies”).
 try { ts = require(path.join(__dirname, 'mobile', 'node_modules', 'typescript')); }
 catch (e) {
   try { ts = require('typescript'); }
@@ -94,12 +94,12 @@ const txt = (cel) => strip('<td' + (cel || '')).trim();
 const entitati = (t) => String(t || '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 const curat = (h) => entitati(strip(h)).replace(/\s+/g, '');
 const fara = (t) => String(t == null ? '' : t).replace(/\*\*/g, '').replace(/\s+/g, '');
-// Prețul pachetului se pune din fila „Acces" a firmei, și pe web, și pe telefon: aceleași cuvinte.
+// Prețul pachetului se pune din fila „Acces” a firmei, și pe web, și pe telefon: aceleași cuvinte.
 const unde = (t) => String(t);
 function intre(s, a, b, de) { const i = s.indexOf(a, de || 0); if (i < 0) return null; const j = s.indexOf(b, i + a.length); return j < 0 ? null : s.slice(i + a.length, j); }
 const L = (h) => { const m = /⟦L:(-?[\d.e+-]+)⟧/.exec(h || ''); return m ? Number(m[1]) : null; };
 const N = (h) => { const m = /⟦N:(-?[\d.e+-]+)⟧/.exec(h || ''); return m ? Number(m[1]) : null; };
-// Același număr și același text pe ecran (sumă întreagă „lei (€)", respectiv număr scurt ca „0.35").
+// Același număr și același text pe ecran (sumă întreagă „lei (€)”, respectiv număr scurt ca „0.35”).
 const aproape = (a, b) => a != null && b != null && Math.abs(a - b) <= EPS && W0._aiuNr(a) === W0._aiuNr(b);
 const sumaEq = (nume, web, tel) => T(nume, aproape(web, tel) && W0._aiuLei(web) === W0._aiuLei(tel), 'web ' + web + ' · telefon ' + tel);
 function carduri(html) {
@@ -135,7 +135,7 @@ function sumar(rows, fx, istoric) {
   };
 }
 function firma(id, o) {
-  // Orice firmă are un pachet (Start, dacă nu i-am pus altul) — regula veche, „pe cont", a ieșit pe 11.11. Ca plans.pachetAi + _insightFirma.
+  // Orice firmă are un pachet (Start, dacă nu i-am pus altul) — regula veche, „pe cont”, a ieșit pe 11.11. Ca plans.pachetAi + _insightFirma.
   const pk = o.pachet || PK.start;   // { cod, nume, pretRON, ai, intrebari }
   const conturi = o.conturi || 0;
   const fond = pk.intrebari;
@@ -191,8 +191,8 @@ function raspuns(rows, istoric, fx, cuCampuriServer, extra) {
   return { rows, summary: s, istoric, fxEur: fx, pachete: pk, sursa: extra && extra.faraSursa ? null : sumarSursa(extra && extra.sursa) };
 }
 
-// Scenariile cu nume: situațiile pe care fondatorii le văd de fapt. Orice firmă e pe un pachet (regula veche, „pe cont", a ieșit
-// pe 11.11); „nu plătește" = un pachet cu AI pus la 0 lei.
+// Scenariile cu nume: situațiile pe care fondatorii le văd de fapt. Orice firmă e pe un pachet (regula veche, „pe cont”, a ieșit
+// pe 11.11); „nu plătește” = un pachet cu AI pus la 0 lei.
 const LA0 = (pk) => Object.assign({}, pk, { pretRON: 0 });
 const SCENARII = [];
 {
@@ -297,15 +297,15 @@ for (let k = 0; k < ALEATOARE; k++) {
 // ── 3. Felul în care se scrie o sumă ─────────────────────────────────────────────────────────────────
 sect('1. Cum se scrie o sumă, un număr de întrebări, o lună (web _aiuNr / _aiuLei / _raxNrI / _aiuLunaNume)');
 const VALORI = [-950, -12.5, -0.005, 0, 0.004, 0.005, 0.04, 0.1, 0.35, 1.005, 2.5, 9.994, 9.995, 9.999, 10, 10.5, 12.495, 12.5, 45, 123.456, 999.5, 1e6];
-for (const v of VALORI) T('suma ' + v, P.nr(v) === W0._aiuNr(v), 'web „' + W0._aiuNr(v) + '" · telefon „' + P.nr(v) + '"');
+for (const v of VALORI) T('suma ' + v, P.nr(v) === W0._aiuNr(v), 'web „' + W0._aiuNr(v) + '” · telefon „' + P.nr(v) + '”');
 for (const fx of [5, 4.9765]) {
   CURS.v = fx;
   for (const v of VALORI) {
     const tel = P.lei(v, fx);
-    T('„lei (€)" pentru ' + v + ' la cursul ' + fx, strip(W0._aiuLei(v)) === tel, 'web „' + strip(W0._aiuLei(v)) + '" · telefon „' + tel + '"');
+    T('„lei (€)” pentru ' + v + ' la cursul ' + fx, strip(W0._aiuLei(v)) === tel, 'web „' + strip(W0._aiuLei(v)) + '” · telefon „' + tel + '”');
   }
 }
-for (const k of [0, 1, 2, 19, 20, 21, 100, 101, 119, 120, 1000]) T('întrebări ' + k, P.intrebari(k) === W0._raxNrI(k), 'web „' + W0._raxNrI(k) + '" · telefon „' + P.intrebari(k) + '"');
+for (const k of [0, 1, 2, 19, 20, 21, 100, 101, 119, 120, 1000]) T('întrebări ' + k, P.intrebari(k) === W0._raxNrI(k), 'web „' + W0._raxNrI(k) + '” · telefon „' + P.intrebari(k) + '”');
 for (const l of ['2026-01', '2026-09', '2025-12']) T('luna ' + l, P.lunaNume(l) === W0._aiuLunaNume(l), W0._aiuLunaNume(l) + ' · ' + P.lunaNume(l));
 
 // ── 4. Cifrele, scenariu cu scenariu ─────────────────────────────────────────────────────────────────
@@ -333,11 +333,11 @@ function verifica(nume, d) {
   sumaEq(nume + ' · Ne costă', L(sp[1]), costP);
   sumaEq(nume + ' · Ne rămân', L(sp[2]), r2(venitP - costP));
 
-  // „Ce cere atenție": aceleași rânduri, în aceeași ordine, cu aceeași culoare și cu aceeași firmă de deschis.
+  // „Ce cere atenție”: aceleași rânduri, în aceeași ordine, cu aceeași culoare și cu aceeași firmă de deschis.
   const hAt = W0._aiuAtentie(d.pachete, s, rows);
   const atWeb = [...String(hAt).matchAll(/<div class="aiu-(?:alerta|at) (\w+)">([\s\S]*?)<\/span>((?:<button[\s\S]*?<\/button>)?)<\/div>/g)].map((m) => ({ ton: m[1], t: curat(m[2]), firma: (/raxOpenCompanyDetail\((\d+)\)/.exec(m[3]) || [])[1] || null }));
   const atTel = P.atentie(d.pachete, s, rows, fx);
-  if (!atTel.length) T(nume + ' · „Nimic de rezolvat"', atWeb.length === 1 && atWeb[0].ton === 'ok' && atWeb[0].t === fara(P.NIMIC_ATENTIE), JSON.stringify(atWeb));
+  if (!atTel.length) T(nume + ' · „Nimic de rezolvat”', atWeb.length === 1 && atWeb[0].ton === 'ok' && atWeb[0].t === fara(P.NIMIC_ATENTIE), JSON.stringify(atWeb));
   else {
     T(nume + ' · câte rânduri cer atenție', atWeb.length === atTel.length, atWeb.length + ' / ' + atTel.length + ' ' + JSON.stringify(atWeb).slice(0, 400));
     atTel.forEach((a, i) => {
@@ -347,18 +347,18 @@ function verifica(nume, d) {
       T(nume + ' · atenție #' + i + ': firma', String(w.firma) === String(a.firma == null ? null : a.firma), w.firma + ' / ' + a.firma);
     });
   }
-  // Banda „Nicio firmă nu plătește RA Insight" — costul lunii, nerotunjit.
+  // Banda „Nicio firmă nu plătește RA Insight” — costul lunii, nerotunjit.
   const av = W._aiuAvertismente(s, rows);
-  if (/Nicio firmă nu plătește/.test(av)) sumaEq(nume + ' · banda „nu plătește nimeni"', L(av), P.costLunaLei(s, fx));
+  if (/Nicio firmă nu plătește/.test(av)) sumaEq(nume + ' · banda „nu plătește nimeni”', L(av), P.costLunaLei(s, fx));
 
-  // „Sursă externă" pe toată platforma.
+  // „Sursă externă” pe toată platforma.
   const hSe = W0._aiuSursa(d.sursa), pSe = P.planSursa(d.sursa, fx);
   if (!pSe) T(nume + ' · fără `sursa`, fără rând', hSe === '');
   else {
     const tel = pSe.titlu + pSe.sub + pSe.stari.map((x) => x.t).join('') + pSe.model + pSe.eroare + pSe.luna;
-    T(nume + ' · „Sursă externă": aceleași texte', curat(hSe) === fara(tel), curat(hSe) + ' // ' + fara(tel));
-    T(nume + ' · „Sursă externă": starea aleasă', (/<button class="rax-btn primary"[^>]*>([^<]*)</.exec(hSe) || [])[1] === (pSe.stari.find((x) => x.al) || {}).t);
-    T(nume + ' · „Sursă externă": modelul refuzat, în roșu', /aiu-se-m rau">/.test(hSe.split('</div>').slice(2, 4).join('')) === pSe.modelRau || (!!pSe.eroare), String(pSe.modelRau));
+    T(nume + ' · „Sursă externă”: aceleași texte', curat(hSe) === fara(tel), curat(hSe) + ' // ' + fara(tel));
+    T(nume + ' · „Sursă externă”: starea aleasă', (/<button class="rax-btn primary"[^>]*>([^<]*)</.exec(hSe) || [])[1] === (pSe.stari.find((x) => x.al) || {}).t);
+    T(nume + ' · „Sursă externă”: modelul refuzat, în roșu', /aiu-se-m rau">/.test(hSe.split('</div>').slice(2, 4).join('')) === pSe.modelRau || (!!pSe.eroare), String(pSe.modelRau));
   }
 
   // Istoricul.
@@ -460,7 +460,7 @@ T('raxLoadAiUsage există', !!LOAD);
 const iSet = LOAD.indexOf('_aiuFxResp = Number(d.fxEur)'), iSume = LOAD.indexOf('_aiuPachete(');
 T('pune cursul din răspuns înainte de primele sume (cele patru cifre de sus)', iSet > 0 && iSume > iSet, 'set ' + iSet + ' · sume ' + iSume);
 T('nota de sub pagină: aceleași cuvinte ca pe web', LOAD.indexOf(P.NOTA_CONTROL) >= 0);
-T('panoul vechi nu mai e în pagină (nici cutia „Mai multe cifre", nici cartonașele pe firme)', LOAD.indexOf('aiu-mai-box') < 0 && LOAD.indexOf('_aiuKpiuri(') < 0 && LOAD.indexOf('_aiuCard(') < 0);
+T('panoul vechi nu mai e în pagină (nici cutia „Mai multe cifre”, nici cartonașele pe firme)', LOAD.indexOf('aiu-mai-box') < 0 && LOAD.indexOf('_aiuKpiuri(') < 0 && LOAD.indexOf('_aiuCard(') < 0);
 
 sect('5. Cursul');
 T('_aiuFx preferă cursul din răspuns', /function _aiuFx\(\) \{ return _aiuFxResp \|\|/.test(BLOC));

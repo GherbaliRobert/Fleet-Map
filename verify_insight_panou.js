@@ -1,8 +1,8 @@
-// verify_insight_panou.js — panoul „RA Insight pe firme" din verticala fondatorilor.
+// verify_insight_panou.js — panoul „RA Insight pe firme” din verticala fondatorilor.
 //
 //   node verify_insight_panou.js
 //
-// De ce există: RA Insight se vinde pe PACHETE pe firmă (din 14.10; regula veche, „pe cont", a ieșit pe 11.11). Panoul ăsta e
+// De ce există: RA Insight se vinde pe PACHETE pe firmă (din 14.10; regula veche, „pe cont”, a ieșit pe 11.11). Panoul ăsta e
 // singurul loc din care ne uităm la clienți înainte să iasă facturile — dacă el socotește altfel decât factura, aflăm de la
 // client, nu de la noi.
 //
@@ -28,7 +28,7 @@ function taie(sursa, start, capat, unde) {
 }
 
 // ─── Partea 1: socoteala de pe server, rulată cu cifre inventate ────────────────────────────────
-const bucataFirma = taie(server, '// ── începe „Socoteala RA Insight pe o firmă"', '// ── sfârșit „Socoteala RA Insight pe o firmă" ──', 'server.js');
+const bucataFirma = taie(server, '// ── începe „Socoteala RA Insight pe o firmă”', '// ── sfârșit „Socoteala RA Insight pe o firmă” ──', 'server.js');
 const _insightFirma = new Function('pachete', 'plans', bucataFirma + '\n; return _insightFirma;')(require('./pachete'), require('./plans'));
 
 const pk = (cod, pretRON) => ({ ai_pachet: pretRON == null ? { cod } : { cod, pretRON } });
@@ -83,8 +83,8 @@ T('consumul pe om se ia dintr-o singură interogare, nu una pe firmă', /getAiMo
 
 // ─── Partea 2: cartonașul din pagină, randat cu aceleași cifre ──────────────────────────────────
 sect('7. Rândul firmei (Firmă cu firmă), cu amănuntul deschis, așa cum îl vede fondatorul');
-// Din 19.10 (Alin, punctul 5) pagina are un rând pe firmă; cartonașele pe firme de dinainte („Mai multe cifre") au ieșit.
-const bucataPanou = taie(html, '// ─── începe „Panoul RA Insight pe firme"', '// ─── sfârșit „Panoul RA Insight pe firme" ──', 'index.html');
+// Din 19.10 (Alin, punctul 5) pagina are un rând pe firmă; cartonașele pe firme de dinainte („Mai multe cifre”) au ieșit.
+const bucataPanou = taie(html, '// ─── începe „Panoul RA Insight pe firme”', '// ─── sfârșit „Panoul RA Insight pe firme” ──', 'index.html');
 const fereastra = {
   raFx: function () { return { eur: 5 }; },
   _raxNrI: function (n) { n = Number(n) || 0; var x = Math.abs(n) % 100; return n === 1 ? '1 întrebare' : n + ((x === 0 && n) || x >= 20 ? ' de ' : ' ') + 'întrebări'; }
@@ -112,8 +112,8 @@ T('listează oamenii cu cont', /Ion/.test(h) && /Maria/.test(h) && /Vasile/.test
 T('spune cine n-a întrebat deloc', /Vasile[\s\S]{0,200}0 întrebări/.test(h));
 T('semnalează contul dat și nefolosit', /cont dat, nefolosit/.test(h));
 T('nu arată prețuri pe întrebare — nu vindem la bucată', !/lei\s*\/\s*întrebare|pe întrebare/.test(h));
-T('nimic al regulii vechi în rând („conturi ×", „Se facturează N conturi", „Fără preț pe cont")', !/conturi × |Se facturează <b>|Fără preț pe cont|regula veche/.test(h));
-// De unde dă firma conturile (Alin, 19.10): din „Pachet și conturi" (din 15.10); Utilizatori nu mai dă conturi (bagheta a ieșit pe 11.11).
+T('nimic al regulii vechi în rând („conturi ×”, „Se facturează N conturi”, „Fără preț pe cont”)', !/conturi × |Se facturează <b>|Fără preț pe cont|regula veche/.test(h));
+// De unde dă firma conturile (Alin, 19.10): din „Pachet și conturi” (din 15.10); Utilizatori nu mai dă conturi (bagheta a ieșit pe 11.11).
 T('conturile se dau din RA Insight → „Pachet și conturi”, nu din Utilizatori', /din RA Insight → „Pachet și conturi”/.test(h) && !/din Utilizatori/.test(h));
 const peProA = _insightFirma({ id: 47, name: 'Pro SRL', settings: { ai_pachet: { cod: 'pro', pretRON: 20 } } }, { questions: 10 }, [om(1, 'A', true)], { 1: { questions: 10 } }, { areModul: true, costEur: 0.1 });
 T('pe orice pachet cu AI: din RA Insight → „Pachet și conturi”, nu din Utilizatori', /din RA Insight → „Pachet și conturi”/.test(gata.tabel([peProA])) && !/din Utilizatori/.test(gata.tabel([peProA])));
@@ -133,7 +133,7 @@ const zeroConturi = _insightFirma({ id: 46, name: 'V', settings: pk('pro') }, {}
 T('firma care n-a dat niciun cont: socoteala o spune („0 conturi date”), fără înmulțiri cu conturi',
   /\(0 conturi date\)/.test(gata.socoteala(zeroConturi)) && !/conturi ×/.test(gata.socoteala(zeroConturi)), gata.socoteala(zeroConturi).slice(0, 160));
 T('suma se scrie în amândouă monedele', /^45 lei <span[^>]*>\(9 €\)<\/span>$/.test(gata.lei(45)), gata.lei(45));
-// Românește (22.10, Alin: „DA" la reparațiile din proba modelelor): virgula zecimală, punctul miilor.
+// Românește (22.10, Alin: „DA” la reparațiile din proba modelelor): virgula zecimală, punctul miilor.
 T('sumele mici păstrează banii, scrise românește', /^3,5 lei /.test(gata.lei(3.5)) && /\(0,7 €\)/.test(gata.lei(3.5)), gata.lei(3.5));
 T('…iar cele mari au punctul miilor', /^1\.234 lei /.test(gata.lei(1234)), gata.lei(1234));
 T('fără zerouri de umplutură', !/[.,]00\b/.test(gata.lei(100)), gata.lei(100));
@@ -147,7 +147,7 @@ T('panoul vechi a ieșit: nici cartonașele pe firme, nici cele șase cifre, nic
 
 // ─── Partea 3: istoricul, citit din facturi ─────────────────────────────────────────────────────
 sect('9. Istoricul lună de lună');
-const bucataIstoric = taie(server, '// ── începe „Istoricul RA Insight"', '// ── sfârșit „Istoricul RA Insight" ──', 'server.js');
+const bucataIstoric = taie(server, '// ── începe „Istoricul RA Insight”', '// ── sfârșit „Istoricul RA Insight” ──', 'server.js');
 const ist = new Function(bucataIstoric + '\n; return { luni: _insightIstoric, firme: _insightPeFirme };')();
 const ms = (an, luna, zi) => Date.UTC(an, luna - 1, zi || 10);
 const acum = new Date();
@@ -171,7 +171,7 @@ const lunaTrecuta = L[10], lunaAsta = L[11];
 T('facturatul lunii trecute adună rândurile RA Insight', lunaTrecuta.facturatLei === 64, String(lunaTrecuta.facturatLei));
 T('abonamentul GPS NU intră în socoteala RA Insight', lunaTrecuta.facturatLei !== 564, String(lunaTrecuta.facturatLei));
 T('încasat = doar ce e marcat plătit', lunaTrecuta.incasatLei === 45, String(lunaTrecuta.incasatLei));
-T('istoricul nu mai numără „conturi facturate" (regula veche a ieșit pe 11.11)', !('conturi' in lunaTrecuta), Object.keys(lunaTrecuta).join(','));
+T('istoricul nu mai numără „conturi facturate” (regula veche a ieșit pe 11.11)', !('conturi' in lunaTrecuta), Object.keys(lunaTrecuta).join(','));
 T('numără firmele facturate în luna aia', lunaTrecuta.firmeFacturate === 2, String(lunaTrecuta.firmeFacturate));
 T('întrebările lunii vin din consum', lunaTrecuta.intrebari === 40 && lunaAsta.intrebari === 62);
 T('costul lunii e socotit cu costul real', lunaTrecuta.costEur === 0.5, String(lunaTrecuta.costEur));
@@ -189,7 +189,7 @@ T('o factură din afara ferestrei nu intră nicăieri', L.every(m => m.facturatL
 L = ist.luni([], [{ company_id: 1, type: 'invoice', status: 'paid', period_start: msLuna(0), lines: [{ desc: 'RA Insight — trecerea la pachetul Pro, 14–30.11.2026 (17 zile)', qty: 1, net: 5.67 }] }], { luni: 12 });
 T('și rândul trecerii la un pachet mai mare (pe zile) intră la RA Insight', L[11].facturatLei === 5.67, String(L[11].facturatLei));
 L = ist.luni([], [{ company_id: 1, type: 'invoice', status: 'paid', period_start: msLuna(0), lines: [{ desc: 'Asistent AI', qty: 1, net: 29 }] }], { luni: 12 });
-T('rândul vechi „Asistent AI" (suma fixă, scoasă pe 11.11) nu mai e citit ca RA Insight', L[11].facturatLei === 0, String(L[11].facturatLei));
+T('rândul vechi „Asistent AI” (suma fixă, scoasă pe 11.11) nu mai e citit ca RA Insight', L[11].facturatLei === 0, String(L[11].facturatLei));
 const dbSrc = fs.readFileSync('./db.js', 'utf8');
 T('ciornele și facturile anulate nu ajung de la bază', /status NOT IN \('draft','canceled'\)/.test(dbSrc));
 T('nici proformele — altfel am număra de două ori', /type <> 'proforma'/.test(dbSrc));
@@ -210,7 +210,7 @@ const tabel = gata.istoric([
   { luna: cheieLuna(0), intrebari: 62, firme: 1, costEur: 0.27, facturatLei: 60, incasatLei: 0, conturi: 4, firmeFacturate: 1 }
 ], 5);
 T('are cap de tabel cu ce ne interesează', /Facturat/.test(tabel) && /Intrat în cont/.test(tabel) && /Profit/.test(tabel));
-T('nu mai scrie „rămas la noi" — e profit, pe nume', !/Rămas la noi/.test(tabel));
+T('nu mai scrie „rămas la noi” — e profit, pe nume', !/Rămas la noi/.test(tabel));
 const corp = (tabel.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || '';
 T('lunile goale de la început nu se arată', (corp.match(/<tr>/g) || []).length === 2, String((corp.match(/<tr>/g) || []).length));
 T('scrie luna pe nume, nu ca un cod', new RegExp(gata.luna(cheieLuna(0))).test(tabel), gata.luna(cheieLuna(0)));
@@ -227,7 +227,7 @@ T('oprit, graficul nici nu se mai desenează', /if \(pornit\) \{ try \{ _aiuDese
 T('la deschiderea panoului se aplică alegerea de data trecută', /raxAiIstoric\(_aiuIstoricPornit\(\)\)/.test(html));
 T('rândul firmei arată ce i-am facturat', /Ce am facturat pe RA Insight/.test(bucataPanou));
 T('sus apar și facturatul, și cât a intrat', /cap: 'Facturat'/.test(html) && /cap: 'Intrat în cont'/.test(html));
-T('cifra de încasări își spune rostul, nu „încasat tot"', /încă neplătiți de clienți/.test(html) && /tot ce am facturat a fost plătit/.test(html));
+T('cifra de încasări își spune rostul, nu „încasat tot”', /încă neplătiți de clienți/.test(html) && /tot ce am facturat a fost plătit/.test(html));
 T('profitul e numit profit', /cap: 'Profit'/.test(html));
 T('și e limpede că e profitul din RA Insight, nu al firmei: pagina se cheamă „RA Insight · control”', /agents: 'RA Insight · control'/.test(html));
 
@@ -240,7 +240,7 @@ let S = gata.stat([
 T('creșterea față de luna trecută', S.crestere === 50, String(S.crestere));
 T('rata de încasare pe toată perioada', S.rataIncasare === 64, String(S.rataIncasare));   // 160/250
 T('marja după plata modelului', S.marja === 90, String(S.marja));                          // (250-25)/250
-T('nu mai socotește „cât aduce un cont" (regula veche a ieșit pe 11.11)', !('peCont' in S), Object.keys(S).join(','));
+T('nu mai socotește „cât aduce un cont” (regula veche a ieșit pe 11.11)', !('peCont' in S), Object.keys(S).join(','));
 T('nu e marcată ca estimare când s-a facturat', S.estimata === false);
 S = gata.stat([M(cheieLuna(1), { facturatLei: 100, incasatLei: 100, costEur: 2 }), M(cheieLuna(0), { estimatLei: 120, costEur: 2 })], 5);
 T('luna nefacturată intră în creștere cu estimarea', S.crestere === 20, String(S.crestere));
@@ -311,7 +311,7 @@ const LA0 = { cod: 'pro', nume: 'Pro', pretRON: 0, ai: true };
 let A = gata.alerte(SUM({ totalCalls: 47, totalCostEur: 0.16 }), [F({ pachet: LA0, venitLei: 0 }), F({ id: 2, pachet: LA0, venitLei: 0 })]);
 T('nimeni nu plătește → se scrie răspicat', /Nicio firmă nu plătește RA Insight/.test(A));
 T('și se spune cât ne costă degeaba', /47 de întrebări/.test(A) && /0,8 lei/.test(A), A.slice(0, 220));
-T('și unde se pune prețul: fila „Acces" a firmei', /Prețul pachetului se pune pe fiecare firmă, din fila <b>„Acces”<\/b>/.test(A) && !/Conturi &amp; Abonamente|pe cont/.test(A));
+T('și unde se pune prețul: fila „Acces” a firmei', /Prețul pachetului se pune pe fiecare firmă, din fila <b>„Acces”<\/b>/.test(A) && !/Conturi &amp; Abonamente|pe cont/.test(A));
 A = gata.alerte(SUM(), [F(), F({ id: 2, pachet: LA0, venitLei: 0 })]);
 T('doar unele cu AI la 0 lei → altă alertă, mai blândă', /1 firmă are un pachet RA Insight cu AI la 0 lei/.test(A) && !/Nicio firmă nu plătește/.test(A));
 T('Start (inclus, fără AI) nu e o gaură', gata.alerte(SUM(), [F(), F({ id: 2, pachet: { cod: 'start', nume: 'Start', pretRON: 0, ai: false }, venitLei: 0 })]) === '');

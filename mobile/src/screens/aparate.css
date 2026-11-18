@@ -1,8 +1,8 @@
-/* „Dispozitive" pe telefon (lotul 4, pachetul P4, 29.09): trecerea în bloc din „Neasignate" și ziua de pornire a
+/* „Dispozitive” pe telefon (lotul 4, pachetul P4, 29.09): trecerea în bloc din „Neasignate” și ziua de pornire a
    abonamentului pe rândul aparatului. Restul vine din fondator.css (.fd-rand, .fd-btn, .fd-band, --fd-ok/-warn/-bad).
    Doar variabilele temei: se citește pe amândouă temele. */
 
-/* Bara din capul grupului „Neasignate": Toate · câte sunt bifate · firma · „Trece pe firmă". */
+/* Bara din capul grupului „Neasignate”: Toate · câte sunt bifate · firma · „Trece pe firmă”. */
 .ap-bloc { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .ap-bloc-r { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
@@ -14,7 +14,7 @@
 .ap-sel:focus { outline: none; border-color: var(--accent); }
 .ap-bloc .fd-btn.primary { flex: 0 0 auto; min-height: 40px; }
 .ap-bloc-nota { font-size: 12px; line-height: 1.45; color: var(--fd-warn); }
-/* Anunțul „aparate noi transmit" a ales firma din bară (lotul 5, 30.09; web: .rax-dev-propus). */
+/* Anunțul „aparate noi transmit” a ales firma din bară (lotul 5, 30.09; web: .rax-dev-propus). */
 .ap-propus { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
 .ap-propus > svg { flex: 0 0 auto; margin-top: 2px; color: var(--fd-ok); }
 .ap-propus b { color: var(--text-primary); }
@@ -33,12 +33,12 @@
 .ap-abo.nepornit { color: var(--text-muted); }
 .ap-abo .fd-btn { min-height: 34px; padding: 0 10px; font-size: 12px; }
 
-/* Ce a ieșit după „Trece pe firmă": rămâne pe ecran până îl închizi (un mesaj trecător nu ajunge pentru cele sărite). */
+/* Ce a ieșit după „Trece pe firmă”: rămâne pe ecran până îl închizi (un mesaj trecător nu ajunge pentru cele sărite). */
 .ap-rez > span { flex: 1; min-width: 0; }
 .ap-rez-s { display: block; margin-top: 3px; font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .ap-inchide { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px;
   margin: -6px -6px -6px 0; background: transparent; border: none; color: var(--text-muted); }
 
-/* Fereastra „Abonament din" */
+/* Fereastra „Abonament din” */
 .ap-text { font-size: 14px; line-height: 1.5; white-space: pre-line; color: var(--text-primary); }
 .ap-eroare { font-size: 12.5px; font-weight: 700; color: var(--fd-bad); }

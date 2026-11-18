@@ -1,16 +1,16 @@
 // verify_efactura_anaf.js — XML-ul e-Factura (efactura.js) pentru un emitent NEPLĂTITOR de TVA, probat la validatorul ANAF.
 //
 //   node verify_efactura_anaf.js              (offline + validatorul public ANAF — cere internet)
-//   node verify_efactura_anaf.js --fara-anaf  (doar partea offline; o spune pe față, nu „trece" în locul ANAF)
+//   node verify_efactura_anaf.js --fara-anaf  (doar partea offline; o spune pe față, nu „trece” în locul ANAF)
 //
 // DUO BUSINESS CONCEPT S.R.L., emitentul facturilor din ratrack.ro, NU e înregistrată în scopuri de TVA (regim special de
-// scutire, art. 310 Cod fiscal). Generatorul scria pentru ea categoria „O" CU cotă pe rânduri, fără motivul de scutire în
-// total și cu codurile de TVA ale părților — validatorul ANAF răspundea „nok" cu BR-O-02, BR-O-05 și BR-O-10 (25.10).
+// scutire, art. 310 Cod fiscal). Generatorul scria pentru ea categoria „O” CU cotă pe rânduri, fără motivul de scutire în
+// total și cu codurile de TVA ale părților — validatorul ANAF răspundea „nok” cu BR-O-02, BR-O-05 și BR-O-10 (25.10).
 // Regulile corecte sunt cele din programul de facturare al DUO, al cărui XML trece validatorul (vezi efactura.js).
 //
 // Ce păzește proba:
-//   1. forma XML-ului, offline: „O" fără cotă și cu VATEX-EU-O, fără coduri de TVA, CUI-ul fără „RO", mențiunea art. 310,
-//      IBAN-ul; plătitorul de TVA tot cu „S" + cotă și „Z" la 0%;
+//   1. forma XML-ului, offline: „O” fără cotă și cu VATEX-EU-O, fără coduri de TVA, CUI-ul fără „RO”, mențiunea art. 310,
+//      IBAN-ul; plătitorul de TVA tot cu „S” + cotă și „Z” la 0%;
 //   2. județul și localitatea scoase din adresa clientului (ratrack ține adresa într-un singur text), sectorul la București;
 //   3. ce NU pleacă: TVA la un neplătitor, total care nu bate cu rândurile, adresă fără județ / sector, firmă fără CUI;
 //   4. fiecare caz trimis la validatorul public ANAF (nu în SPV — nu se depune nimic), cu `stare: ok` cerut; plus un martor:
@@ -80,24 +80,24 @@ const parte = (xml, rol) => elemente(xml, 'cac:' + rol)[0] || '';
 const xmlDe = (inv) => { try { return ef.buildUBL(inv); } catch (e) { return 'EROARE: ' + e.message; } };
 const eroareDe = (inv) => { try { ef.buildUBL(inv); return null; } catch (e) { return e.message; } };
 
-sect('1. Neplătitor de TVA: categoria „O", fără cote și fără coduri de TVA');
+sect('1. Neplătitor de TVA: categoria „O”, fără cote și fără coduri de TVA');
 for (const c of CAZURI.filter((x) => x.inv.issuer.vat_payer === false)) {
   const xml = xmlDe(c.inv), n = c.nume;
   T(n + ': se scrie', !xml.startsWith('EROARE'), xml.slice(0, 200));
   T(n + ': nicio cotă (BR-O-05)', !/<cbc:Percent>/.test(xml));
-  T(n + ': toate rândurile „O"', elemente(xml, 'cac:ClassifiedTaxCategory').length === c.inv.lines.length &&
+  T(n + ': toate rândurile „O”', elemente(xml, 'cac:ClassifiedTaxCategory').length === c.inv.lines.length &&
     elemente(xml, 'cac:ClassifiedTaxCategory').every((e) => /<cbc:ID>O<\/cbc:ID>/.test(e)));
   const sub = elemente(xml, 'cac:TaxSubtotal');
-  T(n + ': un singur total „O", cu VATEX-EU-O (BR-O-10)', sub.length === 1 && /<cbc:ID>O<\/cbc:ID><cbc:TaxExemptionReasonCode>VATEX-EU-O</.test(sub[0]), sub.join(' '));
+  T(n + ': un singur total „O”, cu VATEX-EU-O (BR-O-10)', sub.length === 1 && /<cbc:ID>O<\/cbc:ID><cbc:TaxExemptionReasonCode>VATEX-EU-O</.test(sub[0]), sub.join(' '));
   T(n + ': niciun cod de TVA pe factură (BR-O-02)', !/PartyTaxScheme/.test(xml));
   T(n + ': TVA 0', texte(xml, 'cbc:TaxAmount').every((t) => t === '0.00'), texte(xml, 'cbc:TaxAmount').join(','));
   T(n + ': de plată = totalul fără TVA', texte(xml, 'cbc:PayableAmount')[0] === c.inv.subtotal, texte(xml, 'cbc:PayableAmount')[0]);
-  T(n + ': emitentul = CUI-ul fără „RO"', /<cbc:CompanyID>48718634<\/cbc:CompanyID>/.test(parte(xml, 'AccountingSupplierParty')));
+  T(n + ': emitentul = CUI-ul fără „RO”', /<cbc:CompanyID>48718634<\/cbc:CompanyID>/.test(parte(xml, 'AccountingSupplierParty')));
   T(n + ': mențiunea art. 310', texte(xml, 'cbc:Note').some((t) => /art\. 310 din Codul fiscal/.test(t)));
 }
 {
   const xml = xmlDe(CAZURI[0].inv);
-  T('clientul firmă: CUI-ul fără „RO" la înregistrarea legală', /<cac:PartyLegalEntity><cbc:RegistrationName>CLIENT EXEMPLU S.R.L.<\/cbc:RegistrationName><cbc:CompanyID>14399840<\/cbc:CompanyID>/.test(xml));
+  T('clientul firmă: CUI-ul fără „RO” la înregistrarea legală', /<cac:PartyLegalEntity><cbc:RegistrationName>CLIENT EXEMPLU S.R.L.<\/cbc:RegistrationName><cbc:CompanyID>14399840<\/cbc:CompanyID>/.test(xml));
   T('mențiunea facturii merge și ea ca notă, înaintea celei de scutire', texte(xml, 'cbc:Note').join(' | ') ===
     'Montaj executat pe 15.10.2026 (1 mașină). | Furnizorul nu este înregistrat în scopuri de TVA (regim special de scutire conform art. 310 din Codul fiscal).', texte(xml, 'cbc:Note').join(' | '));
   T('notele stau după tipul facturii, înaintea monedei (ordinea UBL)', /<cbc:InvoiceTypeCode>380<\/cbc:InvoiceTypeCode><cbc:Note>/.test(xml) && /<\/cbc:Note><cbc:DocumentCurrencyCode>/.test(xml));
@@ -108,10 +108,10 @@ for (const c of CAZURI.filter((x) => x.inv.issuer.vat_payer === false)) {
   T('persoana fizică fără CNP: 13 zerouri', /<cbc:CompanyID>0000000000000<\/cbc:CompanyID>/.test(parte(xp, 'AccountingCustomerParty')));
   T('persoana fizică cu CNP: CNP-ul', parte(xc, 'AccountingCustomerParty').includes('<cbc:CompanyID>' + CAZURI[2].inv.client.cui + '</cbc:CompanyID>'));
   T('București scris de mână: SECTOR3, RO-B', /<cbc:CityName>SECTOR3<\/cbc:CityName><cbc:CountrySubentity>RO-B</.test(parte(xmlDe(CAZURI[3].inv), 'AccountingCustomerParty')));
-  T('București de la ANAF (cu „Ş"): SECTOR6, RO-B', /<cbc:CityName>SECTOR6<\/cbc:CityName><cbc:CountrySubentity>RO-B</.test(parte(xmlDe(CAZURI[4].inv), 'AccountingCustomerParty')));
+  T('București de la ANAF (cu „Ş”): SECTOR6, RO-B', /<cbc:CityName>SECTOR6<\/cbc:CityName><cbc:CountrySubentity>RO-B</.test(parte(xmlDe(CAZURI[4].inv), 'AccountingCustomerParty')));
 }
 
-sect('2. Plătitor de TVA: „S" cu cota, „Z" la 0%, codurile de TVA rămân');
+sect('2. Plătitor de TVA: „S” cu cota, „Z” la 0%, codurile de TVA rămân');
 {
   const xml = xmlDe(CAZURI[5].inv);
   const sub = elemente(xml, 'cac:TaxSubtotal');
@@ -123,10 +123,10 @@ sect('2. Plătitor de TVA: „S" cu cota, „Z" la 0%, codurile de TVA rămân')
   T('codul de TVA al clientului plătitor: RO14399840', /<cac:PartyTaxScheme><cbc:CompanyID>RO14399840</.test(parte(xml, 'AccountingCustomerParty')));
   T('fără mențiunea de scutire la plătitor', !/art\. 310/.test(xml));
   const xz = xmlDe(CAZURI[6].inv), subz = elemente(xz, 'cac:TaxSubtotal');
-  T('rândul la 0%: „Z" cu cota 0, fără motiv de scutire', subz.length === 2 && /<cbc:ID>Z<\/cbc:ID><cbc:Percent>0\.00<\/cbc:Percent><cac:TaxScheme>/.test(subz[1]), subz.join(' '));
-  T('nicio categorie „O" la plătitor', !/<cbc:ID>O<\/cbc:ID>/.test(xz));
+  T('rândul la 0%: „Z” cu cota 0, fără motiv de scutire', subz.length === 2 && /<cbc:ID>Z<\/cbc:ID><cbc:Percent>0\.00<\/cbc:Percent><cac:TaxScheme>/.test(subz[1]), subz.join(' '));
+  T('nicio categorie „O” la plătitor', !/<cbc:ID>O<\/cbc:ID>/.test(xz));
   T('clientul neplătitor al unui plătitor: fără cod de TVA, cu CUI-ul', !/PartyTaxScheme/.test(parte(xz, 'AccountingCustomerParty')) && /<cbc:CompanyID>14399840</.test(parte(xz, 'AccountingCustomerParty')));
-  T('adresa ANAF „JUD. ILFOV, ORŞ. PANTELIMON": PANTELIMON, RO-IF', /<cbc:CityName>PANTELIMON<\/cbc:CityName><cbc:CountrySubentity>RO-IF</.test(parte(xz, 'AccountingCustomerParty')), parte(xz, 'AccountingCustomerParty'));
+  T('adresa ANAF „JUD. ILFOV, ORŞ. PANTELIMON”: PANTELIMON, RO-IF', /<cbc:CityName>PANTELIMON<\/cbc:CityName><cbc:CountrySubentity>RO-IF</.test(parte(xz, 'AccountingCustomerParty')), parte(xz, 'AccountingCustomerParty'));
 }
 
 sect('3. Județul și localitatea, din adresa clientului');
@@ -145,29 +145,29 @@ sect('3. Județul și localitatea, din adresa clientului');
   ];
   for (const [adr, oras, judet] of ADRESE) {
     const x = parte(xmlDe(factura(DUO(), FIRMA_TVA({ address: adr }), RANDURI_NEPLATITOR)), 'AccountingCustomerParty');
-    T('„' + adr + '" → ' + oras + ', ' + judet, x.includes('<cbc:CityName>' + oras + '</cbc:CityName><cbc:CountrySubentity>' + judet + '</cbc:CountrySubentity>'), x.slice(0, 220));
+    T('„' + adr + '” → ' + oras + ', ' + judet, x.includes('<cbc:CityName>' + oras + '</cbc:CityName><cbc:CountrySubentity>' + judet + '</cbc:CountrySubentity>'), x.slice(0, 220));
   }
-  // Emitentul: câmpurile din „Date emitent" bat adresa; județul scris ca nume, sectorul din câmpul de oraș.
+  // Emitentul: câmpurile din „Date emitent” bat adresa; județul scris ca nume, sectorul din câmpul de oraș.
   const em = (o) => parte(xmlDe(factura(DUO(o), FIRMA_TVA(), RANDURI_NEPLATITOR)), 'AccountingSupplierParty');
-  T('emitentul cu județul scris ca nume („Ilfov")', /<cbc:CountrySubentity>RO-IF</.test(em({ county: 'Ilfov' })));
+  T('emitentul cu județul scris ca nume („Ilfov”)', /<cbc:CountrySubentity>RO-IF</.test(em({ county: 'Ilfov' })));
   T('emitentul fără județ, dar cu el în adresă', /<cbc:CityName>Pantelimon<\/cbc:CityName><cbc:CountrySubentity>RO-IF</.test(em({ county: '', city: '', address: 'Str. Exemplu 1, Pantelimon, jud. Ilfov' })));
-  T('emitentul din București: „Sector 2" în câmpul de oraș → SECTOR2', /<cbc:CityName>SECTOR2<\/cbc:CityName><cbc:CountrySubentity>RO-B</.test(em({ county: 'RO-B', city: 'Sector 2' })));
+  T('emitentul din București: „Sector 2” în câmpul de oraș → SECTOR2', /<cbc:CityName>SECTOR2<\/cbc:CityName><cbc:CountrySubentity>RO-B</.test(em({ county: 'RO-B', city: 'Sector 2' })));
 }
 
 sect('4. Ce NU pleacă (mai bine nicio e-Factura decât una greșită)');
 {
   const cuTva = factura(DUO({ vat_rate: 21 }), FIRMA_TVA(), [rand('Abonament', 1, 100, 21)]);
-  T('neplătitor cu TVA pe rânduri → refuz, spune de „Cotă TVA"', /nu e plătitor de TVA.*Cotă TVA/.test(eroareDe(cuTva) || ''), eroareDe(cuTva));
+  T('neplătitor cu TVA pe rânduri → refuz, spune de „Cotă TVA”', /nu e plătitor de TVA.*Cotă TVA/.test(eroareDe(cuTva) || ''), eroareDe(cuTva));
   const stricat = factura(DUO(), FIRMA_TVA(), RANDURI_NEPLATITOR, { total: '999.00' });
   T('total care nu bate cu rândurile → refuz', /nu se potrivește cu rândurile/.test(eroareDe(stricat) || ''), eroareDe(stricat));
   const faraJudet = factura(DUO(), FIRMA_TVA({ address: 'Str. Mare 5, Pantelimon' }), RANDURI_NEPLATITOR);
-  T('adresa clientului fără județ → refuz (nu mai pleacă „RO-B, SECTOR1")', /clientului.*nu spune județul.*fișa firmei/.test(eroareDe(faraJudet) || ''), eroareDe(faraJudet));
+  T('adresa clientului fără județ → refuz (nu mai pleacă „RO-B, SECTOR1”)', /clientului.*nu spune județul.*fișa firmei/.test(eroareDe(faraJudet) || ''), eroareDe(faraJudet));
   const faraSector = factura(DUO(), FIRMA_TVA({ address: 'Calea Victoriei 12, București' }), RANDURI_NEPLATITOR);
   T('București fără sector → refuz', /București, dar nu spune sectorul/.test(eroareDe(faraSector) || ''), eroareDe(faraSector));
   const faraCui = factura(DUO(), FIRMA_TVA({ cui: '' }), RANDURI_NEPLATITOR);
-  T('firmă fără CUI → refuz (nu pleacă drept „persoană fizică")', /n-are CUI/.test(eroareDe(faraCui) || ''), eroareDe(faraCui));
+  T('firmă fără CUI → refuz (nu pleacă drept „persoană fizică”)', /n-are CUI/.test(eroareDe(faraCui) || ''), eroareDe(faraCui));
   const emFaraJudet = factura(DUO({ county: '', address: 'Str. Exemplu 1' }), FIRMA_TVA(), RANDURI_NEPLATITOR);
-  T('emitentul fără județ → refuz, spune de „Date emitent"', /emitentului.*Date emitent/.test(eroareDe(emFaraJudet) || ''), eroareDe(emFaraJudet));
+  T('emitentul fără județ → refuz, spune de „Date emitent”', /emitentului.*Date emitent/.test(eroareDe(emFaraJudet) || ''), eroareDe(emFaraJudet));
 }
 
 sect('5. Ziua facturii pe ora României; numele lungi');
@@ -209,13 +209,13 @@ const scurt = (m) => { const c = /codEroare=([^;]+)/.exec(m), t = /textEroare=([
       console.log('  ANAF · ' + c.nume + ': ' + r.stare);
       T('ANAF · ' + c.nume + ': stare ok', r.stare === 'ok', r.mesaje.map(scurt).join(' | '));
     }
-    // Martorul: greșeala de dinainte de 25.10 (cotă pe rândurile „O") trebuie respinsă — altfel validatorul nu se uită.
+    // Martorul: greșeala de dinainte de 25.10 (cotă pe rândurile „O”) trebuie respinsă — altfel validatorul nu se uită.
     if (!indisponibil) {
       const vechi = xmlDe(CAZURI[0].inv).replace(/<cac:ClassifiedTaxCategory><cbc:ID>O<\/cbc:ID>/g, '<cac:ClassifiedTaxCategory><cbc:ID>O</cbc:ID><cbc:Percent>0.00</cbc:Percent>');
       const r = await laAnaf(vechi);
       if (r.indisponibil) indisponibil = r.indisponibil;
       else {
-        console.log('  ANAF · martor (cotă pe „O", ca înainte): ' + r.stare + (r.mesaje.length ? ' — ' + r.mesaje.map(scurt).map((m) => m.split(' ')[0]).join(', ') : ''));
+        console.log('  ANAF · martor (cotă pe „O”, ca înainte): ' + r.stare + (r.mesaje.length ? ' — ' + r.mesaje.map(scurt).map((m) => m.split(' ')[0]).join(', ') : ''));
         T('martor: ANAF respinge greșeala veche cu BR-O-05', r.stare === 'nok' && r.mesaje.some((m) => /BR-O-05/.test(m)), r.mesaje.map(scurt).join(' | '));
       }
     }

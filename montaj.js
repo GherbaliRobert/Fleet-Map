@@ -11,8 +11,8 @@
 //
 // Montajul e COST UNIC: nu se adaugă niciodată la abonamentul lunar și se facturează separat.
 
-// Tipurile de lucrare, în ordinea în care se întâmplă la o montare adevărată. Cheile („gps",
-// „lvcan"…) sunt cele care se salvează; etichetele se pot schimba fără să strice datele vechi.
+// Tipurile de lucrare, în ordinea în care se întâmplă la o montare adevărată. Cheile („gps”,
+// „lvcan”…) sunt cele care se salvează; etichetele se pot schimba fără să strice datele vechi.
 // `oferta` e cheia aceleiași lucrări din Ofertare Live, ca prețurile să se poată prelua de acolo.
 // `oferta` = cheia PREȚULUI din Ofertare Live; `ofertaQ` = cheia CANTITĂȚII de acolo. Amândouă,
 // ca o ofertă să se poată transforma în anexă de contract fără să retasteze nimeni nimic.
@@ -51,7 +51,7 @@ const ETICHETE_STARE = {
   facturat_de_partener: 'partenerul ne-a facturat',
   facturat_clientului: 'facturat clientului',
   // O zi programată care n-a mai avut loc (01.10). NU e în STARI: nu se alege din formularul lucrării, ci doar din
-  // „Anulează" (cu motiv), ca să rămână în istoric cine, când și de ce.
+  // „Anulează” (cu motiv), ca să rămână în istoric cine, când și de ce.
   anulat: 'anulată'
 };
 
@@ -90,7 +90,7 @@ function calc(rd) {
     totalPartener: totalPartener,
     marja: marja,
     // Procentul din prețul cerut clientului care ne rămâne. Fără preț de client nu există procent
-    // (împărțirea la zero nu e „0%", e „nu se poate spune").
+    // (împărțirea la zero nu e „0%”, e „nu se poate spune”).
     marjaProc: totalClient > 0 ? Math.round((marja / totalClient) * 1000) / 10 : null
   };
 }
@@ -176,7 +176,7 @@ const STARI_PROGRAMATE = ['de_programat', 'programat'];
 // Aceleași stări ca `contracts.MONTAJ_EXECUTAT` (drumul clientului, termenul) — legate printr-o probă.
 const STARI_MONTATE = ['executat', 'facturat_de_partener', 'facturat_clientului'];
 function _obj(v) { if (v && typeof v === 'object') return v; if (typeof v === 'string' && v) { try { return JSON.parse(v); } catch (e) {} } return null; }
-// „1 mașină", „5 mașini", „20 de mașini" (fără „de" când ultimele două cifre sunt între 1 și 19).
+// „1 mașină”, „5 mașini”, „20 de mașini” (fără „de” când ultimele două cifre sunt între 1 și 19).
 function _cate(n, unu, multe) { const r = n % 100; return n + ' ' + (n === 1 ? unu : ((r >= 1 && r <= 19) ? '' : 'de ') + multe); }
 
 // Ce mai e de programat dintr-un contract SEMNAT: Anexa nr. 2 minus lucrările lui (programate + montate), pe
@@ -235,8 +235,8 @@ function lucrareaZilei(stare, cate, tarifeInstalator) {
   return { items: items };
 }
 
-// „Montată": lucrarea programată pentru 10 mașini s-a făcut la 8. Tipurile pe mașină scad în aceeași proporție
-// (GPS-ul exact la 8); deplasarea și restul rămân. Ce nu s-a montat se întoarce SINGUR la „de programat",
+// „Montată”: lucrarea programată pentru 10 mașini s-a făcut la 8. Tipurile pe mașină scad în aceeași proporție
+// (GPS-ul exact la 8); deplasarea și restul rămân. Ce nu s-a montat se întoarce SINGUR la „de programat”,
 // fiindcă restul se socotește din lucrări (`deProgramat`).
 function scaleazaLaMontate(items, masini) {
   const lista = Array.isArray(items) ? items : [];
@@ -262,7 +262,7 @@ function _zzll(ms) { const d = new Date(ms); return String(d.getUTCDate()).padSt
 function _zzllaa(ms) { return _zzll(ms) + '.' + new Date(ms).getUTCFullYear(); }
 function _bani(n) { return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-// ─── Aparatele GPS intră o singură dată: în Stoc, cu IMEI-ul (Alin, 30.09: „da") ───────────────────
+// ─── Aparatele GPS intră o singură dată: în Stoc, cu IMEI-ul (Alin, 30.09: „da”) ───────────────────
 // Doar trackerele TRANSMIT, deci doar ele au IMEI. Un GPS trecut în Stoc cu IMEI-ul e primit la conectare fără să
 // mai fie scris și în Dispozitive, iar când transmite prima dată apare singur la Dispozitive → Neasignate. La un
 // tracker, seria din stoc ESTE IMEI-ul (15 cifre, pe eticheta aparatului): altă serie n-ar putea fi recunoscută
@@ -273,8 +273,8 @@ function seriiFaraImei(tipEchip, serii) {
   return transmite(tipEchip) ? (serii || []).filter(function (s) { return !esteImei(s); }) : [];
 }
 
-// ─── „Aparate noi transmit" (Alin, 30.09: „pregătește-l ca notificare, să fie funcțional atunci când face Robert") ───
-// Un aparat din „Neasignate" care începe să transmită e, aproape sigur, unul abia montat. Dacă uiți să-l treci pe firmă,
+// ─── „Aparate noi transmit” (Alin, 30.09: „pregătește-l ca notificare, să fie funcțional atunci când face Robert”) ───
+// Un aparat din „Neasignate” care începe să transmită e, aproape sigur, unul abia montat. Dacă uiți să-l treci pe firmă,
 // clientul nu-și vede mașina, iar abonamentul ei nu pornește. Anunțul îți propune și firma: montajul din calendar din
 // ziua aceea sau din cele DOUĂ dinainte (instalatorul poate întârzia), la instalatorul la care stă aparatul în stoc.
 // Propunerea e doar o bifă pusă pe ecran; trecerea pe firmă o faci tu, în Dispozitive → Neasignate.
@@ -289,7 +289,7 @@ function propuneFirma(aparat, stoc, lucrari) {
   const cu = function (l) { return _zileIntre(l.zi, aparat.zi); };
   const aproape = (lucrari || []).filter(function (l) {
     if (!l || l.company_id == null || !l.zi) return false;
-    // O lucrare „de programat" n-are încă o zi hotărâtă: nu spune unde s-a montat ceva.
+    // O lucrare „de programat” n-are încă o zi hotărâtă: nu spune unde s-a montat ceva.
     if (l.status !== 'programat' && STARI_MONTATE.indexOf(l.status) < 0) return false;
     const z = cu(l);
     return z >= 0 && z <= ZILE_POTRIVIRE_MONTAJ;
@@ -302,7 +302,7 @@ function propuneFirma(aparat, stoc, lucrari) {
   if (Object.keys(firme).length !== 1) return null;
   return alese.slice().sort(function (a, b) { return cu(a) - cu(b) || (Number(b.masini) || 0) - (Number(a.masini) || 0); })[0];
 }
-// Aparatele noi, pe loturi: unul pe fiecare firmă propusă, plus unul „fără firmă", la urmă.
+// Aparatele noi, pe loturi: unul pe fiecare firmă propusă, plus unul „fără firmă”, la urmă.
 function grupeazaAparateNoi(aparate, stocDupaImei, lucrari) {
   const grupuri = {}, ordine = [];
   (aparate || []).forEach(function (a) {
@@ -330,7 +330,7 @@ function anuntAparateNoi(o) {
   const unu = n === 1;
   const gasesti = n
     ? (unu ? 'Îl găsești la Dispozitive → Neasignate: apasă aici și e deja bifat' : 'Le găsești la Dispozitive → Neasignate: apasă aici și sunt deja bifate') +
-      (firma ? ', cu firma aleasă. Verifici și apeși „Trece pe firmă".' : '. Alegi firma și apeși „Trece pe firmă".')
+      (firma ? ', cu firma aleasă. Verifici și apeși „Trece pe firmă”.' : '. Alegi firma și apeși „Trece pe firmă”.')
     : '';
   const deCe = n ? (unu ? ' Până atunci clientul nu-l vede, iar abonamentul lui nu pornește.' : ' Până atunci clientul nu le vede, iar abonamentul lor nu pornește.') : '';
   if (o && o.sursa === 'instalator') {
@@ -356,7 +356,7 @@ function anuntAparateNoi(o) {
 // ─── Factura montajului, în ritmul instalatorului (Alin, 30.09) ──────────────────────────────────
 // „Dacă instalatorul ne facturează săptămânal, automat și noi tot săptămânal… dacă ne facturează la lună, facturăm și
 // noi la lună — ca să nu fim pe pierdere. Depinde mult de instalator." DOAR la montaj: abonamentul rămâne lunar.
-// Ritmul stă pe fișa instalatorului (implicit lunar). O lucrare montată devine „de facturat" când se ÎNCHEIE perioada
+// Ritmul stă pe fișa instalatorului (implicit lunar). O lucrare montată devine „de facturat” când se ÎNCHEIE perioada
 // ei — săptămâna (luni–duminică) sau luna calendaristică —, iar lucrările unui client din perioadele încheiate merg pe
 // o singură factură. Lucrările fără instalator (făcute de noi) merg lunar.
 const RITMURI = { lunar: 'lunar', saptamanal: 'săptămânal' };
@@ -415,17 +415,17 @@ function deFacturatMontaj(lucrari, azi) {
 // Anunțul către noi: o firmă are montaj de facturat. Aceleași cuvinte ca rândul din Facturare.
 function anuntMontajDeFacturat(g) {
   return { titlu: 'Montaj de facturat: ' + (g.company_name || ('firma #' + g.company_id)),
-    corp: g.text + ' — ' + _bani(g.total) + ' lei fără TVA. Apasă aici: factura e pregătită, cu lucrările puse. O verifici („Previzualizează") și apeși „Emite factura".' };
+    corp: g.text + ' — ' + _bani(g.total) + ' lei fără TVA. Apasă aici: factura e pregătită, cu lucrările puse. O verifici („Previzualizează”) și apeși „Emite factura”.' };
 }
 
 // ─── Calendarul, refăcut (Alin, 01.10: „când selectăm o zi aș vrea să se deschidă un meniu… cum mă înțeleg cu
 //     instalatorul că poate instala în ziua respectivă, să știm și noi dacă are disponibilitate clientul") ───
 // O zi programată poartă două confirmări, vorbite la telefon: a instalatorului și a clientului. Până face Robert contul
-// instalatorului le bifăm noi; după, „Accept" din contul lui o bifează pe a lui, iar „Refuz" anulează lucrarea cu
-// motivul „instalatorul nu poate". O lucrare ANULATĂ nu dispare: rămâne în istoric, cu motivul, iar mașinile ei se
-// întorc singure la „de programat" (deProgramat nu numără starea `anulat`).
+// instalatorului le bifăm noi; după, „Accept” din contul lui o bifează pe a lui, iar „Refuz” anulează lucrarea cu
+// motivul „instalatorul nu poate”. O lucrare ANULATĂ nu dispare: rămâne în istoric, cu motivul, iar mașinile ei se
+// întorc singure la „de programat” (deProgramat nu numără starea `anulat`).
 const STARE_ANULAT = 'anulat';
-// Doar două motive (Alin, 01.10: „ajung cele două"). Amănuntele se scriu alături, ca text.
+// Doar două motive (Alin, 01.10: „ajung cele două”). Amănuntele se scriu alături, ca text.
 const MOTIVE_ANULARE = { instalator: 'Instalatorul nu poate', client: 'Clientul nu poate (mașinile nu sunt disponibile)' };
 function _ts(v) { const x = Number(v); return Number.isFinite(x) && x > 0 ? x : null; }
 // Culoarea zilei în calendar: verde = au confirmat amândoi, galben = mai lipsește cel puțin o confirmare. Doar pentru
@@ -455,15 +455,15 @@ function incarcarePeZile(lucrari) {
   });
   return out;
 }
-// „liber în ziua asta" / „are deja 6 mașini (Logistic Nord SRL)" — lângă numele instalatorului, în fereastra zilei.
+// „liber în ziua asta” / „are deja 6 mașini (Logistic Nord SRL)” — lângă numele instalatorului, în fereastra zilei.
 function textIncarcare(x) {
   if (!x || !(x.masini > 0)) return 'liber în ziua asta';
   return 'are deja ' + _cate(x.masini, 'mașină', 'mașini') + (x.clienti && x.clienti.length ? ' (' + x.clienti.join(', ') + ')' : '');
 }
-// Numele scurt al unui aparat, cum îl spune instalatorul: „FMC130", „LV-CAN200".
+// Numele scurt al unui aparat, cum îl spune instalatorul: „FMC130”, „LV-CAN200”.
 function numeScurt(k) { const e = echipament(k); return e ? e.et.replace(/^(Teltonika|Modul)\s+/, '') : String(k || ''); }
-// Ce aparate ale contractului merg la fiecare fel de lucrare pe mașină: la „gps" trackerele din contract (vândute în
-// Anexa nr. 2 sau închiriate), la „lvcan" modulul LV-CAN200. CAN-ul încorporat și priza FMS nu cer un aparat în plus.
+// Ce aparate ale contractului merg la fiecare fel de lucrare pe mașină: la „gps” trackerele din contract (vândute în
+// Anexa nr. 2 sau închiriate), la „lvcan” modulul LV-CAN200. CAN-ul încorporat și priza FMS nu cer un aparat în plus.
 function aparatePeTip(anexa2, annex) {
   const a2 = _obj(anexa2) || {}, an = _obj(annex) || {};
   const are = {};
@@ -478,7 +478,7 @@ function _lista(bucati) { return bucati.length <= 1 ? (bucati[0] || '') : bucati
 // Nota de stoc din fereastra zilei: ce are instalatorul la el și ce trebuie să-i mai duci pentru ziua aleasă.
 //   cate   = { gps: 6, lvcan: 6 } (ce se montează în ziua aceea);
 //   aparate = aparatePeTip(...) (ce aparate merg la fiecare fel);
-//   stoc   = { fmc130: 6, lvcan200: 4 } (bucățile din stoc aflate „la instalator", la el).
+//   stoc   = { fmc130: 6, lvcan200: 4 } (bucățile din stoc aflate „la instalator”, la el).
 // La mai multe modele de tracker în același contract (FMC130 și FMC650) nu se știe care mașină ce primește: se
 // numără trackerele lor împreună.
 function notaStoc(cate, aparate, stoc, arePartener) {

@@ -3,14 +3,14 @@ import { useLocation } from 'preact-iso';
 import { Api, type AgentFinding } from '../api/endpoints';
 import { Icon, type IconName } from '../components/Icon';
 import { me, showToast } from '../app/store';
-import { nrDe, nrRo } from '../lib/numar'; // „1 critică", „25 de vehicule" — acordul cu numărul, ca pe web
+import { nrDe, nrRo } from '../lib/numar'; // „1 critică”, „25 de vehicule” — acordul cu numărul, ca pe web
 import { PRAGURI } from './Settings'; // aceeași listă de praguri ca în Setări (AGP_THRESH de pe web) — nu a doua copie
 import './reports.css';
-import './admin.css'; // .fld (foaia „Praguri")
+import './admin.css'; // .fld (foaia „Praguri”)
 import './detail.css'; // .sheet*
 
-// Pagina „Agenți AI" — oglinda paginii de pe web (public/index.html: renderAgentsPage / agpOpen / agpLiveRefresh).
-// Agenții „live" calculează starea de ACUM la cerere, NU se salvează pe server și NU pornesc AI-ul plătit.
+// Pagina „Agenți AI” — oglinda paginii de pe web (public/index.html: renderAgentsPage / agpOpen / agpLiveRefresh).
+// Agenții „live” calculează starea de ACUM la cerere, NU se salvează pe server și NU pornesc AI-ul plătit.
 // Oglindește LIVE_AGENTS din server.js.
 const LIVE = ['dispatch', 'care', 'optimize', 'compliance', 'client'];
 const ORDER = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
@@ -27,7 +27,7 @@ const TUT_FACE: Record<string, string> = {
   compliance: 'Se aplică DOAR vehiculelor cu tahograf (peste 3,5 t — camioane, autocare). Turismele nu intră sub Reg. CE 561/2006 și sunt ignorate. Estimează din GPS orele de condus (continuu și zilnic) și te avertizează ÎNAINTE de depășire, nu după.',
   client: 'Rezumă activitatea zilei într-un singur loc: km parcurși, vehicule active și nefolosite, cel mai activ vehicul și comparația cu ieri la aceeași oră. În plus, centralizează ce au semnalat ceilalți agenți (RA Watch, RA Care, RA Optimize, RA Compliance).',
 };
-// Ce a verificat agentul — pentru mesajul „Totul e în regulă" (AGP_META[k].checks pe web).
+// Ce a verificat agentul — pentru mesajul „Totul e în regulă” (AGP_META[k].checks pe web).
 const CHECKS: Record<string, string> = {
   watch: 'fiecare vehicul pentru semnal (fără semnal), ralanti prelungit, scădere și furt de combustibil și tahograf neconfigurat',
   dispatch: 'ce vehicule sunt disponibile acum și care sunt subutilizate',
@@ -37,7 +37,7 @@ const CHECKS: Record<string, string> = {
   client: 'activitatea zilei și concluziile celorlalți agenți',
 };
 
-// Planurile nu mai există. Serverul de dinainte de 23.09 trimitea două texte cu „plan" când agenții sunt opriți pe firmă
+// Planurile nu mai există. Serverul de dinainte de 23.09 trimitea două texte cu „plan” când agenții sunt opriți pe firmă
 // (rularea tuturor fără niciun agent activ și 403 la un agent oprit între timp). Cât mai rulează el undeva,
 // telefonul le spune ca restul aplicației. Orice alt mesaj trece neschimbat.
 function faraPlan(msg: string | undefined | null): string | undefined {
@@ -55,7 +55,7 @@ type ClientSummary = {
 type LiveState = { findings: AgentFinding[]; checkedAt?: string; evaluated?: number; monitored?: number; skipped?: number; summary?: ClientSummary; error?: string };
 
 const isLive = (k?: string) => !!k && LIVE.indexOf(k) >= 0;
-const isNew = (f: AgentFinding) => !f.status || f.status === 'new'; // „Am văzut"/„Ignoră" le scot definitiv din listă
+const isNew = (f: AgentFinding) => !f.status || f.status === 'new'; // „Am văzut”/„Ignoră” le scot definitiv din listă
 const sevCol = (s?: string) => (s === 'critical' ? 'var(--red)' : s === 'warning' ? 'var(--orange)' : 'var(--accent)');
 const sevRank = (s?: string) => (s === 'critical' ? 2 : s === 'warning' ? 1 : 0);
 const tsOf = (t?: string | null) => (t ? new Date(t).getTime() || 0 : 0);
@@ -78,7 +78,7 @@ function whenLabel(ms: number) {
 // Constatare RA Care legată de o mentenanță (fkey care_due_<id>/care_km_<id>) → id-ul mentenanței
 const maintIdOf = (f: AgentFinding) => { const m = /^care_(?:due|km)_(\d+)$/.exec(f.fkey || ''); return m ? Number(m[1]) : null; };
 
-// Mesajele „cinstite" când agentul live n-a găsit nimic (aceleași texte ca pe web).
+// Mesajele „cinstite” când agentul live n-a găsit nimic (aceleași texte ca pe web).
 function okMsg(k: string, st: LiveState): { t: string; b: string } {
   if (k === 'dispatch') return { t: 'Niciun vehicul disponibil acum', b: 'Momentan niciun vehicul cu semnal și oprit, gata de o cursă. Apasă „Dispecerizare” ca să cauți cel mai apropiat vehicul de o destinație.' };
   if (k === 'care') return { t: 'Nicio scadență acum — totul e în regulă', b: 'N-am găsit revizii, ITP/RCA sau service aproape de scadență. Poți sta liniștit.' };
@@ -108,7 +108,7 @@ export function AiAgents() {
   const openKey = String(((loc.query || {}) as any).agent || '');
   // Super-adminul primește constatările TUTUROR firmelor când n-a ales o firmă (serverul nu filtrează fără companyId).
   // Ca pe web (setSuperCompany), alege firma sus: constatările, starea live, rularea și pragurile merg pe ea
-  // (`?firma=<id>`, ca să rămână aleasă și când deschizi un agent). Fără firmă, „Toate văzute" stă ascuns — n-ar
+  // (`?firma=<id>`, ca să rămână aleasă și când deschizi un agent). Fără firmă, „Toate văzute” stă ascuns — n-ar
   // închide dintr-o apăsare alertele mai multor clienți — și lângă fiecare semnalare scrie a cui e.
   const isSuper = !!me.value?.isSuper;
   const coQ = String(((loc.query || {}) as any).firma || '');
@@ -126,7 +126,7 @@ export function AiAgents() {
     if (firma != null) p.push('firma=' + firma);
     return '/ai-agents' + (p.length ? '?' + p.join('&') : '');
   };
-  // Foaia „Praguri" a unui agent (doar fondatorul; clientul își are pragurile în Setări companie).
+  // Foaia „Praguri” a unui agent (doar fondatorul; clientul își are pragurile în Setări companie).
   const [prag, setPrag] = useState<string | null>(null);
   const [thr, setThr] = useState<Record<string, any>>({});
   const [thrOrig, setThrOrig] = useState<Record<string, any>>({});
@@ -148,7 +148,7 @@ export function AiAgents() {
   const ready = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Firma aleasă ACUM. Funcțiile de mai jos pot fi chemate dintr-o randare mai veche (ex. „Rulează" pornit
+  // Firma aleasă ACUM. Funcțiile de mai jos pot fi chemate dintr-o randare mai veche (ex. „Rulează” pornit
   // înainte să schimbi firma): citesc firma de aici, la momentul apelului, nu pe cea prinsă la pornire.
   const coRef = useRef<number | null>(coId);
   coRef.current = coId;
@@ -190,7 +190,7 @@ export function AiAgents() {
       await loadFindings();
       setLoading(false);
       ready.current = true;
-      refreshLive(keys); // la deschiderea paginii, ca pe web — nu doar după „Rulează"
+      refreshLive(keys); // la deschiderea paginii, ca pe web — nu doar după „Rulează”
     })();
     if (isSuper) Api.companies().then((cs) => setFirme((cs || []).map((c: any) => ({ id: Number(c.id), name: c.name || '#' + c.id })))).catch(() => {});
   }, []);
@@ -205,7 +205,7 @@ export function AiAgents() {
     refreshLive(agents.map((a) => a.key));
   }, [coId]);
 
-  // Deschiderea unui agent live recitește starea lui (ca pe web: „se actualizează când deschizi pagina").
+  // Deschiderea unui agent live recitește starea lui (ca pe web: „se actualizează când deschizi pagina”).
   useEffect(() => {
     if (contentRef.current) contentRef.current.scrollTop = 0;
     if (ready.current && isLive(openKey) && agents.some((a) => a.key === openKey)) refreshLive([openKey]);
@@ -221,7 +221,7 @@ export function AiAgents() {
     setRunning(k);
     if (k === 'all') setSummary(null);
     // Firma pe care pornește rularea. Dacă o schimbi cât rulează, rezultatul NU se pune peste firma nouă
-    // (rezumatul AI, constatările și starea de acum ar fi ale altui client, iar „Toate văzute" le-ar închide
+    // (rezumatul AI, constatările și starea de acum ar fi ale altui client, iar „Toate văzute” le-ar închide
     // pe ale lui) — spunem doar că rularea s-a terminat și pentru cine.
     const co = coRef.current;
     const alta = () => coRef.current !== co;
@@ -235,7 +235,7 @@ export function AiAgents() {
       const now = Date.now();
       setLastRun((cur) => { const n = { ...cur }; (k === 'all' ? agents.map((a) => a.key) : [k]).forEach((x) => { n[x] = now; }); return n; });
       if (k === 'all') setSummary(r.aiSummary || null);
-      // „stored" = constatări NOI salvate; agenții live nu se salvează → numărul corespunde listei de mai jos.
+      // „stored” = constatări NOI salvate; agenții live nu se salvează → numărul corespunde listei de mai jos.
       const n = r.stored || 0;
       showToast(faraPlan(r.message) || (n ? nrDe(n, 'semnalare nouă', 'semnalări noi') : 'Verificare terminată · nicio semnalare nouă'));
       if (k === 'all') refreshLive(agents.map((a) => a.key));
@@ -248,7 +248,7 @@ export function AiAgents() {
     finally { setRunning(''); }
   }
 
-  // „Am văzut" / „Ignoră": se salvează pe server (același endpoint ca web-ul) → nu mai revin la redeschidere.
+  // „Am văzut” / „Ignoră”: se salvează pe server (același endpoint ca web-ul) → nu mai revin la redeschidere.
   async function act(f: AgentFinding, action: 'dismiss' | 'ack', silent = false) {
     const id = f.id;
     if (id == null || pending[id]) return;
@@ -364,12 +364,12 @@ export function AiAgents() {
     const last = fs[0];
     if (last) {
       const c = sevCol(last.severity);
-      // RA Care: pe card doar TOTALUL scadențelor — detaliile la „Deschide agentul".
+      // RA Care: pe card doar TOTALUL scadențelor — detaliile la „Deschide agentul”.
       if (k === 'care') { const n = fs.length || 1; return line(c, <>Ai <b>{n}</b> {nrDe(n, 'scadență', 'scadențe').replace(/^-?[\d.]+ /, '')} de urmărit</>); }
       // RA Optimize: câte vehicule au scor slab (fără notificarea de ralanti pe flotă).
       const eco = fs.filter((f) => String(f.fkey || '').indexOf('opt_eco') === 0).length;
       if (k === 'optimize' && eco > 0) return line(c, <><b>{eco}</b> cu scor slab</>);
-      // RA Compliance: „peste limită" doar dacă chiar s-a depășit; altfel sunt avertismente dinainte de limită.
+      // RA Compliance: „peste limită” doar dacă chiar s-a depășit; altfel sunt avertismente dinainte de limită.
       if (k === 'compliance') {
         const over = last.severity === 'critical' || /depășit|peste/i.test(last.title || '');
         return line(c, <><b>{fs.length}</b> {over ? 'peste limită' : 'aproape de limită'}</>);
@@ -395,7 +395,7 @@ export function AiAgents() {
     if (isLive(k) && !st) return <span class="spin" style={SPIN_SM + ';flex:0 0 auto'} />;
     if (st && st.error) return null;
     const n = fs.length, sev = (fs[0] && fs[0].severity) || 'info', c = sevCol(sev);
-    // RA Client e o SINTEZĂ (are mereu o constatare) — „1 semnalare" ar fi înșelător.
+    // RA Client e o SINTEZĂ (are mereu o constatare) — „1 semnalare” ar fi înșelător.
     if (k === 'client') return n && sev !== 'info' ? pill(c, 'de verificat') : pill('var(--accent)', <><Icon name="report" size={11} /> sinteză</>);
     return n ? pill(c, nrDe(n, 'semnalare', 'semnalări')) : pill('var(--accent)', <><Icon name="check" size={11} /> ok</>);
   }
@@ -406,7 +406,7 @@ export function AiAgents() {
     </span>
   );
 
-  // Constatare salvată (RA Watch): se închide cu „Am văzut" / „Ignoră" — salvat pe server.
+  // Constatare salvată (RA Watch): se închide cu „Am văzut” / „Ignoră” — salvat pe server.
   function savedCard(f: AgentFinding, showAgent: boolean) {
     const mid = maintIdOf(f);
     const busy = f.id != null && !!pending[f.id];
@@ -418,7 +418,7 @@ export function AiAgents() {
         </div>
         {f.body ? <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.45">{f.body}</div> : null}
         <div style="font-size:11px;color:var(--text-muted);margin-top:5px">
-          {/* „Toate companiile": a cui e semnalarea, scris lângă ea. */}
+          {/* „Toate companiile”: a cui e semnalarea, scris lângă ea. */}
           {isSuper && coId == null ? <b style="color:var(--text-secondary)">{numeFirma((f as any).company_id)} · </b> : null}
           {showAgent ? nameOf(f.agent) + ' · ' : ''}{ago(f.created_at)}
         </div>
@@ -436,7 +436,7 @@ export function AiAgents() {
     );
   }
 
-  // Semnalare live (stare de acum): nu se „bifează", dar scadența RA Care se poate rezolva pe loc.
+  // Semnalare live (stare de acum): nu se „bifează”, dar scadența RA Care se poate rezolva pe loc.
   function liveCard(f: AgentFinding, k: string, i: number) {
     const mid = k === 'care' ? maintIdOf(f) : null;
     return (
@@ -456,7 +456,7 @@ export function AiAgents() {
     );
   }
 
-  // RA Client — sinteza zilei, afișată aerisit: cifre mari + lista „De verificat".
+  // RA Client — sinteza zilei, afișată aerisit: cifre mari + lista „De verificat”.
   function clientCard(s: ClientSummary) {
     const big = (val: any, lbl: string, col?: string) => (
       <div style="flex:1 1 calc(50% - 5px);min-width:120px;background:var(--bg-dark);border:1px solid var(--border);border-radius:11px;padding:11px 13px">
@@ -503,7 +503,7 @@ export function AiAgents() {
     );
   }
 
-  // Doar pentru super-admin pe „Toate companiile": explică de ce lipsește „Toate văzute".
+  // Doar pentru super-admin pe „Toate companiile”: explică de ce lipsește „Toate văzute”.
   const superNote = isSuper && coId == null ? (
     <div style="font-size:11.5px;color:var(--text-muted);line-height:1.45;margin-bottom:8px">
       {ic('alertO')} Vezi semnalările tuturor firmelor, cu numele firmei lângă fiecare. Ca să le marchezi pe toate văzute dintr-o apăsare, alege întâi firma sus — așa nu închizi din greșeală alertele altui client.
@@ -585,7 +585,7 @@ export function AiAgents() {
     );
   }
 
-  // Cuvântul de după cifra îngroșată: „1 critică", „3 critice", „25 de critice" (cifra o scrie jetonul, separat).
+  // Cuvântul de după cifra îngroșată: „1 critică”, „3 critice”, „25 de critice” (cifra o scrie jetonul, separat).
   const cuvantul = (n: number, unu: string, multe: string) => nrDe(n, unu, multe).replace(/^-?[\d.]+ /, '');
   const chip = (body: any, c?: string) => (
     <span style="font-size:12px;padding:4px 10px;border-radius:999px;background:var(--bg-panel);border:1px solid var(--border);display:inline-flex;align-items:center;gap:5px">
@@ -719,14 +719,14 @@ export function AiAgents() {
                 {thrStare !== 'load' && thrStare !== 'err' && (lista.length === 0 ? (
                   <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.55;background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
                     {prag === 'client'
-                      ? 'Sinteza zilei curente — se recalculează când deschizi pagina sau apeși „Rulează". Nu are praguri proprii: preia pragurile celorlalți agenți, fiindcă le rezumă concluziile.'
+                      ? 'Sinteza zilei curente — se recalculează când deschizi pagina sau apeși „Rulează”. Nu are praguri proprii: preia pragurile celorlalți agenți, fiindcă le rezumă concluziile.'
                       : 'Acest agent nu are praguri de reglat.'}
                   </div>
                 ) : (
                   <div class="frm">
                     {lista.map((t) => {
                       const salvat = thr[t.k];
-                      // Nesetat → „Implicit", nu valoarea recomandată: altfel alegerea ei nu schimba nimic și pragul
+                      // Nesetat → „Implicit”, nu valoarea recomandată: altfel alegerea ei nu schimba nimic și pragul
                       // nu se putea fixa (ca în Setări companie, găsit 24.09).
                       const unset = (salvat == null || salvat === '') && t.def !== '';
                       const v = unset ? '' : (salvat == null || salvat === '' ? String(t.def) : String(salvat));

@@ -16,7 +16,7 @@ export function VehicleCard({ v, offlineMin, onClick }: { v: Position; offlineMi
   return (
     <button class="vcard" onClick={onClick}>
       <span class="dot" style={{ background: s.color, boxShadow: `0 0 6px ${s.color}` }} />
-      {/* Silueta categoriei, colorată după stare — același set „Plutitor cu umbră" ca pe web. */}
+      {/* Silueta categoriei, colorată după stare — același set „Plutitor cu umbră” ca pe web. */}
       <VehicleArt cat={vehCatDin(v as any)} color={s.color} width={34} />
       <div class="vcard-main">
         <div class="vcard-name">

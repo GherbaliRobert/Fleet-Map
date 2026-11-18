@@ -1,17 +1,17 @@
-// verify_proba_modele.js — „Proba modelelor" și modelele noi (Alin, 08.10: „Haiku e slab tare… ce-mi recomanzi după?").
+// verify_proba_modele.js — „Proba modelelor” și modelele noi (Alin, 08.10: „Haiku e slab tare… ce-mi recomanzi după?”).
 //
 //   node verify_proba_modele.js
 //
 // Ce păzește:
 //   1. ai.js, rulat cu un API simulat (nu se cheltuie nimic): prețurile oficiale pe model (Haiku 5.5 = a zecea parte din
-//      Haiku 4.5, Sonnet 5.5 = dublu); modelele 5.x primesc gândire adaptivă cu efort „low" și loc pentru ea, Haiku 4.5
-//      cererea de până acum; textul se citește pe tip de bloc (un răspuns 5.x poate începe cu „thinking"); refuzul se spune;
-//      în bucla cu unelte, la 5.x istoricul NU se atinge (aceleași instrucțiuni, aceleași unelte, nota „gata" adăugată la
+//      Haiku 4.5, Sonnet 5.5 = dublu); modelele 5.x primesc gândire adaptivă cu efort „low” și loc pentru ea, Haiku 4.5
+//      cererea de până acum; textul se citește pe tip de bloc (un răspuns 5.x poate începe cu „thinking”); refuzul se spune;
+//      în bucla cu unelte, la 5.x istoricul NU se atinge (aceleași instrucțiuni, aceleași unelte, nota „gata” adăugată la
 //      capăt, `tool_choice: none`), iar Haiku 4.5 merge pe drumul vechi;
 //   2. pe server pornit, cu modelul simulat: doar super-adminul pornește proba; răspunde aceeași funcție ca pentru client;
 //      modelele cerute chiar sunt chemate, în ordine; costul fiecărui răspuns e pe prețurile modelului; nimic nu ajunge în
-//      conversațiile cuiva și nici în fondul firmei; o singură probă deodată; „Oprește" oprește; rând în jurnal;
-//   3. pagina: butonul din panoul „Utilizare RA Insight", textul modelului scăpat înainte de afișare, costurile luate de
+//      conversațiile cuiva și nici în fondul firmei; o singură probă deodată; „Oprește” oprește; rând în jurnal;
+//   3. pagina: butonul din panoul „Utilizare RA Insight”, textul modelului scăpat înainte de afișare, costurile luate de
 //      la server;
 //   4. (12.10, RA Insight trece pe Haiku 5.5) panourile de cost — Dashboard, Utilizare RA Insight și istoricul ei — socotesc
 //      fiecare răspuns pe prețurile modelului care a răspuns; rândurile vechi, fără model scris, ca Haiku 4.5.
@@ -46,13 +46,13 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
   T('un model necunoscut ia prețurile din env (implicit 1 $ / 5 $)', ai.costUsd(M, 'claude-necunoscut') === 1 && ai.costUsd(O, 'claude-necunoscut') === 5 && ai.pret('claude-necunoscut').gandire === false);
   const c4 = ai._corp({ model: 'claude-haiku-4-5', max_tokens: 700 }), c55 = ai._corp({ model: 'claude-sonnet-5-5', max_tokens: 700 }), h55 = ai._corp({ model: 'claude-haiku-5-5', max_tokens: 700 });
   T('Haiku 4.5 primește cererea de până acum (fără gândire, fără efort)', !c4.thinking && !c4.output_config && c4.max_tokens === 700);
-  T('Sonnet 5.5 și Haiku 5.5: gândire adaptivă, efort „low", loc în plus pentru gândire', [c55, h55].every((c) => c.thinking && c.thinking.type === 'adaptive' && c.output_config && c.output_config.effort === 'low' && c.max_tokens === 2700), JSON.stringify(c55));
-  // Analiza atentă (28.10): o întrebare grea cere efortul „medium", cu loc dublu pentru gândire; câmpul nostru nu pleacă spre API.
+  T('Sonnet 5.5 și Haiku 5.5: gândire adaptivă, efort „low”, loc în plus pentru gândire', [c55, h55].every((c) => c.thinking && c.thinking.type === 'adaptive' && c.output_config && c.output_config.effort === 'low' && c.max_tokens === 2700), JSON.stringify(c55));
+  // Analiza atentă (28.10): o întrebare grea cere efortul „medium”, cu loc dublu pentru gândire; câmpul nostru nu pleacă spre API.
   const hMed = ai._corp({ model: 'claude-haiku-5-5', max_tokens: 700, _efort: 'medium' }), h4Med = ai._corp({ model: 'claude-haiku-4-5', max_tokens: 700, _efort: 'medium' });
-  T('analiza atentă: efort „medium" și loc dublu pentru gândire la 5.x; Haiku 4.5 neschimbat; `_efort` nu ajunge la API',
+  T('analiza atentă: efort „medium” și loc dublu pentru gândire la 5.x; Haiku 4.5 neschimbat; `_efort` nu ajunge la API',
     hMed.output_config.effort === 'medium' && hMed.max_tokens === 4700 && !('_efort' in hMed) && !h4Med.output_config && h4Med.max_tokens === 700 && !('_efort' in h4Med), JSON.stringify([hMed, h4Med]));
   raspunsuri = [{ content: [{ type: 'thinking', thinking: '', signature: 'x' }, { type: 'text', text: 'Răspunsul.' }], stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } }];
-  T('textul se citește pe tip de bloc (răspunsul 5.x poate începe cu „thinking")', (await ai.callClaude({ system: 's', messages: [{ role: 'user', content: 'q' }], model: 'claude-sonnet-5-5' })) === 'Răspunsul.');
+  T('textul se citește pe tip de bloc (răspunsul 5.x poate începe cu „thinking”)', (await ai.callClaude({ system: 's', messages: [{ role: 'user', content: 'q' }], model: 'claude-sonnet-5-5' })) === 'Răspunsul.');
   raspunsuri = [{ content: [], stop_reason: 'refusal', usage: { input_tokens: 1, output_tokens: 0 } }];
   T('refuzul nu se dă drept răspuns', (await ai.callClaude({ system: 's', messages: [{ role: 'user', content: 'q' }], model: 'claude-sonnet-5-5' })) === '');
   let vazut = null;
@@ -75,7 +75,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
   T('5.x: blocurile de gândire se trimit înapoi neschimbate', JSON.stringify(s.c[1].messages[1].content[0]) === JSON.stringify({ type: 'thinking', thinking: '', signature: 'sig1' }));
   T('5.x: aceleași instrucțiuni și aceleași unelte în TOATE cererile (și în cea finală)', s.c.every((c) => JSON.stringify(c.system) === JSON.stringify(s.c[0].system) && JSON.stringify(c.tools) === JSON.stringify(s.c[0].tools)));
   const ultimaUser = s.c[2].messages[s.c[2].messages.length - 1];
-  T('5.x: răspunsul final se cere cu `tool_choice: none`, iar nota „gata" e după ultimele rezultate', s.c[2].tool_choice && s.c[2].tool_choice.type === 'none' &&
+  T('5.x: răspunsul final se cere cu `tool_choice: none`, iar nota „gata” e după ultimele rezultate', s.c[2].tool_choice && s.c[2].tool_choice.type === 'none' &&
     ultimaUser.content[ultimaUser.content.length - 1].type === 'text' && /Gata cu interogările/.test(ultimaUser.content[ultimaUser.content.length - 1].text) && s.r.text === 'Final.', JSON.stringify(s.c[2].tool_choice));
   T('5.x: cache-ul cozii îl pune API-ul (cache_control pe cerere), fără semne mutate pe rezultatele vechi', s.c.every((c) => c.cache_control && c.cache_control.type === 'ephemeral') &&
     !JSON.stringify(s.c.map((c) => c.messages)).includes('"cache_control"'));
@@ -91,11 +91,11 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
   // ─── 3. Pagina ───────────────────────────────────────────────────────────────────────────────────────
   console.log('\n3. Pagina');
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  const bloc = (PAG.match(/─── Proba modelelor \(Alin, 08\.10[\s\S]*?─── sfârșit „Proba modelelor" ──/) || [''])[0];
-  // Din 19.10 panoul nostru se cheamă „RA Insight · control" și are toate butoanele într-un loc, „Controale" (_aiuControale),
+  const bloc = (PAG.match(/─── Proba modelelor \(Alin, 08\.10[\s\S]*?─── sfârșit „Proba modelelor” ──/) || [''])[0];
+  // Din 19.10 panoul nostru se cheamă „RA Insight · control” și are toate butoanele într-un loc, „Controale” (_aiuControale),
   // pe care raxLoadAiUsage îl pune în pagină. Butonul e tot unul singur.
-  T('butonul „Proba modelelor" stă în panoul nostru („RA Insight · control" → Controale)', /b\('raxProbaModele\(\)', 'flask', 'Proba modelelor'/.test(PAG) &&
-    // Din 28.10 controalele primesc și „Sursă externă" (al doilea argument, `d.sursa`).
+  T('butonul „Proba modelelor” stă în panoul nostru („RA Insight · control” → Controale)', /b\('raxProbaModele\(\)', 'flask', 'Proba modelelor'/.test(PAG) &&
+    // Din 28.10 controalele primesc și „Sursă externă” (al doilea argument, `d.sursa`).
     (PAG.match(/raxProbaModele\(\)/g) || []).length === 1 && /function _aiuControale\(p, se\) \{[\s\S]{0,800}raxProbaModele\(\)/.test(PAG) &&
     /window\.raxLoadAiUsage = async function \(\) \{[\s\S]{0,2600}_aiuControale\(d\.pachete, d\.sursa\)/.test(PAG));
   T('textul modelului e scăpat înainte de afișare (e text străin)', /function _pmText\(t\) \{ return esc\(t\)\.replace/.test(bloc) && /_pmText\(x\.text\)/.test(bloc));
@@ -107,7 +107,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
   const DIR = path.join(os.tmpdir(), 'rax_pm_' + Date.now());
   const PRELOAD = DIR + '_fetch.js', AI_LOG = DIR + '_ai.jsonl', AI_COADA = DIR + '_coada.json';
   const B = 'http://127.0.0.1:' + PORT;
-  // Modelul simulat: răspunde cu text, întârziat (ca să se vadă proba „în lucru"), cu un consum fix și mare, ca diferențele
+  // Modelul simulat: răspunde cu text, întârziat (ca să se vadă proba „în lucru”), cu un consum fix și mare, ca diferențele
   // de preț să se vadă după rotunjire.
   fs.writeFileSync(PRELOAD, [
     "const fs = require('fs');", 'const orig = globalThis.fetch;',
@@ -168,9 +168,9 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     T('pregătire: o firmă cu două mașini, una fără mașini, administratorul firmei', !!(co.id && gol.id && ck));
 
     const meta = await json('GET', '/api/admin/insight/proba-modele', S);
-    T('meta: cele trei modele, cu „cel de azi" Haiku 4.5, și 20 de întrebări de pornire', meta.status === 200 && (meta.j.modele || []).map((m) => m.id).join(',') === 'claude-haiku-4-5,claude-haiku-5-5,claude-sonnet-5-5' &&
+    T('meta: cele trei modele, cu „cel de azi” Haiku 4.5, și 20 de întrebări de pornire', meta.status === 200 && (meta.j.modele || []).map((m) => m.id).join(',') === 'claude-haiku-4-5,claude-haiku-5-5,claude-sonnet-5-5' &&
       meta.j.modelAzi === 'claude-haiku-4-5' && (meta.j.intrebari || []).length === 20 && meta.j.maxIntrebari === 20, JSON.stringify(meta.j.modele));
-    T('…cu întrebarea despre o perioadă anume („între 1 și 7 …" a lunii trecute)', (meta.j.intrebari || []).some((q) => /^Ce consum am avut între 1 și 7 [a-zăâîșț]+\?$/.test(q)));
+    T('…cu întrebarea despre o perioadă anume („între 1 și 7 …” a lunii trecute)', (meta.j.intrebari || []).some((q) => /^Ce consum am avut între 1 și 7 [a-zăâîșț]+\?$/.test(q)));
     const nuNoi = [await json('GET', '/api/admin/insight/proba-modele', ck), await json('POST', '/api/admin/insight/proba-modele', ck, { companyId: co.id, modele: ['claude-haiku-4-5'], intrebari: ['x'] })];
     T('administratorul unei firme NU poate porni și nici vedea proba (403)', nuNoi.every((r) => r.status === 403), nuNoi.map((r) => r.status).join(','));
     const fara = [await json('POST', '/api/admin/insight/proba-modele', S, { modele: ['claude-haiku-4-5'], intrebari: ['x'] }),
@@ -197,17 +197,17 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     T('starea live trimisă modelului are DOAR mașinile firmei alese (nu și pe a altei firme)', /B 154 UIP/.test(live) && !/B 999 ALT/.test(live) && /total_flota\\":1/.test(live), live.slice(0, 200));
     const log = toate.filter((c, k) => k !== 1);
     T('modelele cerute chiar sunt chemate, întrebare cu întrebare, în ordine', log.map((c) => c.model).join(',') === MODELE.concat(MODELE).join(','), toate.map((c) => c.model).join(','));
-    // Din 28.10, analiza atentă: la „Compară…" (a doua întrebare) 5.x gândesc mai mult — efortul „medium" — și primesc forma fixă în
-    // contextul întrebării; la întrebarea obișnuită (prima), efortul „low", fără ea. Haiku 4.5 primește cererea de până acum.
+    // Din 28.10, analiza atentă: la „Compară…” (a doua întrebare) 5.x gândesc mai mult — efortul „medium” — și primesc forma fixă în
+    // contextul întrebării; la întrebarea obișnuită (prima), efortul „low”, fără ea. Haiku 4.5 primește cererea de până acum.
     const sysT = (c) => JSON.stringify(c.system || '');
-    T('5.x: gândire adaptivă, efort „low" la întrebarea obișnuită și „medium" la „Compară…" (cu analiza atentă); Haiku 4.5 cererea de până acum',
+    T('5.x: gândire adaptivă, efort „low” la întrebarea obișnuită și „medium” la „Compară…” (cu analiza atentă); Haiku 4.5 cererea de până acum',
       log.every((c) => (c.model === 'claude-haiku-4-5') === !c.thinking) &&
       log.slice(0, 3).filter((c) => c.thinking).every((c) => c.thinking.type === 'adaptive' && c.output_config && c.output_config.effort === 'low' && !/ÎNTREBARE DE ANALIZĂ/.test(sysT(c))) &&
       log.slice(3).filter((c) => c.thinking).every((c) => c.output_config && c.output_config.effort === 'medium' && /ÎNTREBARE DE ANALIZĂ/.test(sysT(c))) &&
       /ÎNTREBARE DE ANALIZĂ/.test(sysT(log[3])), JSON.stringify(log.map((c) => [c.model, c.output_config && c.output_config.effort, /ÎNTREBARE DE ANALIZĂ/.test(sysT(c))])));
     T('„{masina}" și „{masina2}" se înlocuiesc cu mașinile firmei', /Câți km a făcut B 154 UIP ieri\?/.test(JSON.stringify(log[0].messages)) && /Compară B 154 UIP cu B 268 ROY\./.test(JSON.stringify(log[3].messages)));
     const sys0 = (Array.isArray(log[0].system) ? log[0].system : [{ text: String(log[0].system) }]).map((b) => b.text).join('\n');
-    T('răspunde ACEEAȘI funcție ca pentru client: instrucțiunile lui RA Insight, cu regulile de scris', /Ești „RA Insight"/.test(sys0) && /SCRISUL: română corectă și simplă/.test(sys0), sys0.slice(0, 80));
+    T('răspunde ACEEAȘI funcție ca pentru client: instrucțiunile lui RA Insight, cu regulile de scris', /Ești „RA Insight”/.test(sys0) && /SCRISUL: română corectă și simplă/.test(sys0), sys0.slice(0, 80));
     T('…și vede DOAR mașinile firmei alese (2, nu și mașina altei firme)', /Flota la care are acces omul: 2 mașini\./.test(sys0), (sys0.match(/Flota la care are acces omul: [^.]*\./) || [''])[0]);
     const cost = {}; (p.rezultate || []).forEach((x) => { cost[x.model] = x.costLei; });
     // 10.000 de tokeni la intrare + 2.000 la ieșire, la 0,92 €/$ și 5 lei/€: Haiku 4.5 = 0,02 $ = 0,092 lei
@@ -231,7 +231,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     await json('POST', '/api/admin/insight/proba-modele/' + lung.j.id + '/opreste', S);
     let q = null;
     for (let i = 0; i < 60; i++) { q = (await json('GET', '/api/admin/insight/proba-modele/' + lung.j.id, S)).j; if (q.gata) break; await sleep(300); }
-    T('„Oprește" oprește proba (mai puține răspunsuri decât 12, marcată „oprită")', q && q.gata && q.oprita && q.facute < 12, JSON.stringify(q && { facute: q.facute, oprita: q.oprita }));
+    T('„Oprește” oprește proba (mai puține răspunsuri decât 12, marcată „oprită”)', q && q.gata && q.oprita && q.facute < 12, JSON.stringify(q && { facute: q.facute, oprita: q.oprita }));
     const strain = await json('GET', '/api/admin/insight/proba-modele/nu-exista', S);
     T('o probă care nu există: 404', strain.status === 404);
 
@@ -263,14 +263,14 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
     const DBS = fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8');
     T('rândurile vechi, fără model scris, se socotesc ca Haiku 4.5 (modelul de atunci), nu ca modelul de azi',
       /const MODEL_RANDURI_VECHI = 'claude-haiku-4-5';/.test(DBS) && /r\.model \|\| MODEL_RANDURI_VECHI/.test(DBS));
-    // Din 19.10 (Alin, punctul 5) costul AI stă într-un singur loc: „RA Insight · control". Acolo costul unei firme vine gata
-    // de la server (/api/admin/ai-usage, din plasa pachetului, pe modelul fiecărui răspuns — regula veche „pe cont" a ieșit pe
-    // 11.11); „Dashboard platformă" nu-l mai arată (nici tokenii, nici limita veche pe firmă) și nu mai are nicio socoteală pe
+    // Din 19.10 (Alin, punctul 5) costul AI stă într-un singur loc: „RA Insight · control”. Acolo costul unei firme vine gata
+    // de la server (/api/admin/ai-usage, din plasa pachetului, pe modelul fiecărui răspuns — regula veche „pe cont” a ieșit pe
+    // 11.11); „Dashboard platformă” nu-l mai arată (nici tokenii, nici limita veche pe firmă) și nu mai are nicio socoteală pe
     // prețul Haiku 4.5.
-    T('pagina ia costul firmei de la server, într-un singur loc („RA Insight · control"); Dashboard platformă nu-l mai socotește',
+    T('pagina ia costul firmei de la server, într-un singur loc („RA Insight · control”); Dashboard platformă nu-l mai socotește',
       /var cost = x\.plasa \? x\.plasa\.costLei : 0;/.test(PAG) && !/_raxCostRand|function _raxCost\(|RAX_TOK_IN_RATE|raxSetAiLimit|Consum AI \(30z\)/.test(PAG));
-    // Venituri (Alin, 20.10: „rezolvăm acum"): pagina citea câmpuri de pe vremea planurilor (`active_subs`, `by_plan`), pe care
-    // serverul nu le trimite — „Abonamente active" stătea pe 0 și scria „Niciun venit estimat încă" cu venit lunar de 20 de lei.
+    // Venituri (Alin, 20.10: „rezolvăm acum”): pagina citea câmpuri de pe vremea planurilor (`active_subs`, `by_plan`), pe care
+    // serverul nu le trimite — „Abonamente active” stătea pe 0 și scria „Niciun venit estimat încă” cu venit lunar de 20 de lei.
     const rv = ov.j.revenue || {};
     T('Dashboard, venituri: serverul dă venitul lunar și câte firme au ofertă; pagina le citește pe ele (nu câmpurile de pe vremea planurilor)',
       typeof rv.mrr === 'number' && typeof rv.cu_oferta === 'number' && typeof rv.fara_oferta === 'number' &&

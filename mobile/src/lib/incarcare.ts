@@ -1,6 +1,6 @@
-// Simulatorul de încărcare pe telefon: fila „Încărcare" din fișa vehiculului, semiremorcile și remorcile, filtrul pe fel.
-// OGLINDA funcțiilor curate din pagină (public/index.html): blocul „fila Încărcare" (_incVizibile, _incObisnuite,
-// _incDeTrimis), blocul „semiremorcile din flotă" (_remRandText, _remObisnuite) și blocul „felul vehiculului"
+// Simulatorul de încărcare pe telefon: fila „Încărcare” din fișa vehiculului, semiremorcile și remorcile, filtrul pe fel.
+// OGLINDA funcțiilor curate din pagină (public/index.html): blocul „fila Încărcare” (_incVizibile, _incObisnuite,
+// _incDeTrimis), blocul „semiremorcile din flotă” (_remRandText, _remObisnuite) și blocul „felul vehiculului”
 // (_VEH_FELURI, _vehFelul + markerCategory). verify_flota_incarcare.js le rulează pe amândouă pe aceleași cazuri —
 // schimbi una pe web, o schimbi și aici.
 // Cifrele obișnuite NU stau aici: vin de la server (GET /api/incarcare/meta, din incarcare.js).
@@ -34,14 +34,14 @@ export const rutaPlanSofer = (id: number | string) => '/incarcare/plan/' + encod
 export const rutaPlanSimulator = (id: number | string) => '/incarcare?plan=' + encodeURIComponent(String(id));
 export const RUTA_PLANURI = '/incarcare/planuri';
 
-// Modulul „Simulator încărcare": al firmei (features.incarcare), iar noi îl avem mereu.
+// Modulul „Simulator încărcare”: al firmei (features.incarcare), iar noi îl avem mereu.
 export function modulIncarcare(me: any): boolean {
   if (!me) return false;
   if (me.isSuper || me.role === 'superadmin') return true;
   return !!(me.features && me.features.incarcare === true);
 }
 
-// ─── Fila „Încărcare" ───
+// ─── Fila „Încărcare” ───
 export const INC_CHEI: [string, keyof FelVehicul][] = [['inc_lungime', 'lungime'], ['inc_latime', 'latime'], ['inc_inaltime', 'inaltime'], ['inc_ampatament', 'ampatament'],
   ['inc_axa_caroserie', 'axaCaroserie'], ['inc_sa_axa', 'sa'], ['inc_tara_fata', 'taraFata'], ['inc_tara_spate', 'taraSpate']];
 const INC_CAROSERIE = ['inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_axa_caroserie'];
@@ -73,7 +73,7 @@ export function incDeTrimis(val: Record<string, any>, fel: string, meta: IncMeta
   out.inc_remorca_id = val.inc_remorca_id ? String(val.inc_remorca_id) : null;
   return out;
 }
-// Din fișa completă (/full) în căsuțe: NUMERIC vine ca „3.70" → „3.7".
+// Din fișa completă (/full) în căsuțe: NUMERIC vine ca „3.70” → „3.7”.
 export function incDinFull(full: any): Record<string, string> {
   const out: Record<string, string> = { inc_fel: (full && full.inc_fel) || '', inc_remorca_id: full && full.inc_remorca_id ? String(full.inc_remorca_id) : '' };
   for (const [col] of INC_CHEI) out[col] = full && full[col] != null && full[col] !== '' ? String(Number(full[col])) : '';

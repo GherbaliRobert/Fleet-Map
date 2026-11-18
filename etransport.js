@@ -1,7 +1,7 @@
 // etransport.js — regulile RO e-Transport, într-un singur loc.
 //
 // SURSĂ UNICĂ, ca `tacho.js` și `license_cats.js`. Serverul calculează scadențarul de aici; interfața
-// doar desenează ce primește. Fără asta, „mai am 6 ore" s-ar socoti în două locuri și s-ar contrazice.
+// doar desenează ce primește. Fără asta, „mai am 6 ore” s-ar socoti în două locuri și s-ar contrazice.
 //
 // ── Ce spune legea (verificat 26.08.2026) ────────────────────────────────────────────────────────
 // • Codul UIT e valabil 5 zile calendaristice; 15 zile la achiziții intracomunitare de bunuri.
@@ -19,11 +19,11 @@ const insight = require('./insight');   // ziua României: miezul nopții de la 
 const ZILE_NATIONAL = 5;
 const ZILE_INTRACOMUNITAR = 15;
 
-// Cât timp fără nicio poziție înseamnă „nu mai transmite". Mecanismul nostru trimite din 3 în 3
+// Cât timp fără nicio poziție înseamnă „nu mai transmite”. Mecanismul nostru trimite din 3 în 3
 // minute; 15 minute e destul cât să nu sune alarma la un tunel sau la o pauză de semnal, dar destul
 // de scurt cât să prinzi un tracker mort înainte să conteze.
 const TACERE_MINUTE = 15;
-// Sub atâtea ore rămase, transportul urcă în „expiră astăzi".
+// Sub atâtea ore rămase, transportul urcă în „expiră astăzi”.
 const CURAND_ORE = 24;
 
 const TIPURI = [
@@ -38,8 +38,8 @@ function zileValabile(tip) {
 
 // ── Ziua și ora României (23.10) ─────────────────────────────────────────────────────────────────
 // Serverul e pe UTC, iar coloana termenului ține ora fără fus. Termenul se încheia la miezul nopții de
-// la Londra: „valabil până pe 23.10" ținea, la noi, până pe 24.10 la 02:59 (vara; iarna la 01:59) —
-// trei ore în care ecranul spunea „valabil", iar la ANAF codul expirase. Acum orice termen se scrie ca
+// la Londra: „valabil până pe 23.10” ținea, la noi, până pe 24.10 la 02:59 (vara; iarna la 01:59) —
+// trei ore în care ecranul spunea „valabil”, iar la ANAF codul expirase. Acum orice termen se scrie ca
 // CLIPA ultimei secunde a zilei României, iar o dată fără fus (cum o trimit pagina și telefonul) se
 // citește ca oră a României.
 const _FARA_FUS = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?$/;
@@ -71,16 +71,16 @@ function _ziRO(v) {
 }
 
 // Data la care expiră codul, propusă din data de start. Întoarce null dacă data de start nu e bună —
-// NU o zi inventată: mai bine „termen necunoscut" decât un termen fals liniștitor.
-// Ziua se încheie la miezul nopții României: un cod valabil „până pe 30" e valabil toată ziua de 30, și nu mai mult.
+// NU o zi inventată: mai bine „termen necunoscut” decât un termen fals liniștitor.
+// Ziua se încheie la miezul nopții României: un cod valabil „până pe 30” e valabil toată ziua de 30, și nu mai mult.
 function valabilPana(dataStart, tip) {
   const z = dataStart ? _ziRO(dataStart) : null;
   if (!z) return null;
   return new Date(_clipaRO(z[0], z[1], z[2] + zileValabile(tip), 23, 59, 59)).toISOString();
 }
 
-// Termenul venit de la un formular (pagina, telefonul, o cheie API): „AAAA-LL-ZZ" = toată ziua aceea a
-// României; „AAAA-LL-ZZT23:59:59" fără fus = ora României; cu fus (…Z, +03:00) = clipa ca atare.
+// Termenul venit de la un formular (pagina, telefonul, o cheie API): „AAAA-LL-ZZ” = toată ziua aceea a
+// României; „AAAA-LL-ZZT23:59:59” fără fus = ora României; cu fus (…Z, +03:00) = clipa ca atare.
 // Ce nu e o dată → null (ruta o refuză pe față), nu un termen ghicit.
 function termenDinFormular(v) {
   if (v == null || String(v).trim() === '') return null;
@@ -111,7 +111,7 @@ function scadenta(valabil, acum) {
   return { stare: 'ok', oreRamase: ore, text: ore + ' ore rămase' };
 }
 
-// De câte minute tace vehiculul. null = n-avem nicio poziție (altceva decât „tace de 0 minute").
+// De câte minute tace vehiculul. null = n-avem nicio poziție (altceva decât „tace de 0 minute”).
 function tacere(ultimaPozitie, acum) {
   const azi = acum ? new Date(acum) : new Date();
   const p = ultimaPozitie ? new Date(ultimaPozitie) : null;
@@ -124,8 +124,8 @@ function tacere(ultimaPozitie, acum) {
 // Două lucruri DIFERITE, ținute separat dinadins:
 //   A. vehiculul transmite către NOI  (știm mereu, din pozițiile trackerului)
 //   B. noi trimitem către ANAF        (doar când e configurat tokenul ANAF)
-// Machetele le amestecau. Dacă le-am arăta ca pe una singură, un client fără token ar citi „transmite"
-// și ar înțelege „sunt în regulă la ANAF" — exact opusul adevărului.
+// Machetele le amestecau. Dacă le-am arăta ca pe una singură, un client fără token ar citi „transmite”
+// și ar înțelege „sunt în regulă la ANAF” — exact opusul adevărului.
 //
 // `anafPornit` spune care dintre ele are voie să tragă alarma.
 function stareTransport(t, acum, anafPornit) {
@@ -159,7 +159,7 @@ function stareTransport(t, acum, anafPornit) {
 }
 
 // Cât din termen s-a consumat, ca procent — pentru bara din listă. Fără termen = bară plină:
-// nu e „gol", e „nu știm", iar necunoscutul nu se desenează ca liniște.
+// nu e „gol”, e „nu știm”, iar necunoscutul nu se desenează ca liniște.
 function consumatPct(t, acum) {
   const zile = zileValabile(t.tip_operatiune);
   const sc = scadenta(t.valabil_pana, acum);

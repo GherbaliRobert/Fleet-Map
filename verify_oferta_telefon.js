@@ -2,7 +2,7 @@
 //
 //   node verify_oferta_telefon.js
 //
-// Lotul 2b (24.09): „Ofertare Live" ajunge pe telefon. Regula casei: nicio regulă de bani scrisă a doua
+// Lotul 2b (24.09): „Ofertare Live” ajunge pe telefon. Regula casei: nicio regulă de bani scrisă a doua
 // oară. Așa că telefonul NU are socoteala lui — trimite câmpurile la `POST /api/admin/offers/calc`, iar
 // serverul rulează chiar bucățile din public/index.html (calculatorul, pachetele RA Insight, formularul,
 // rezumatul, plicul hârtiei) pe un DOM de carton.
@@ -14,13 +14,13 @@
 //      numele ofertei, fraza cu valabilitatea — și NU atinge ce a scris omul;
 //   3. poarta: aplicația veche (1.0.1/1.0.2, fără antet) tot nu scrie oferte — cu același mesaj;
 //      aplicația 1.0.3 scrie; web-ul (cookie) e neschimbat;
-//   4. o ofertă salvată se redeschide cu prețurile negociate „scrise de mână", iar hârtia ei, contractul
-//      făcut din ea și „Prețurile noastre" vin tot din pagină;
+//   4. o ofertă salvată se redeschide cu prețurile negociate „scrise de mână”, iar hârtia ei, contractul
+//      făcut din ea și „Prețurile noastre” vin tot din pagină;
 //   5. ruta e doar a noastră (un administrator de firmă primește 403);
-//   6. (revizia din 24.09) modulele vândute se redeschid bifate, „Aplică prețul propus" pune prețul unui
-//      cont, numele ofertei poartă data României, iar un „preț" text din bază nu ajunge să ruleze pe server;
+//   6. (revizia din 24.09) modulele vândute se redeschid bifate, „Aplică prețul propus” pune prețul unui
+//      cont, numele ofertei poartă data României, iar un „preț” text din bază nu ajunge să ruleze pe server;
 //   7. (lotul 3, 29.09) sugestiile doar pentru noi (pasul 2, pasul 4, comutatorul CAN, „Aplică
-//      recomandarea"), „Mașinile clientului" (serverul caută, telefonul arată; „Trece în ofertă"), lista
+//      recomandarea"), „Mașinile clientului” (serverul caută, telefonul arată; „Trece în ofertă”), lista
 //      salvată cu oferta EI oricâte cereri ar trece între timp, refuzul hârtiei la chirie lipsă, șablonul
 //      mașinilor urcat în JSON — și că telefonul nu hotărăște nimic singur;
 //   8. o listă Teltonika nouă, urcată de pe telefon: mărcile și modelele propuse o cuprind (telefonul le cere
@@ -110,8 +110,8 @@ function diferenta(a, b, cale) {
 // ─── Blocul web, rulat DIRECT (fără server), ca în verify_tarife.js ─────────────────────────────
 const HTML = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
 function decupez(nume) {
-  const a = HTML.indexOf('// ── începe „' + nume + '"'), b = HTML.indexOf('// ── sfârșit „' + nume + '" ──');
-  if (a < 0 || b < 0) { console.log('✗ nu găsesc blocul „' + nume + '" în index.html'); process.exit(1); }
+  const a = HTML.indexOf('// ── începe „' + nume + '”'), b = HTML.indexOf('// ── sfârșit „' + nume + '” ──');
+  if (a < 0 || b < 0) { console.log('✗ nu găsesc blocul „' + nume + '” în index.html'); process.exit(1); }
   return HTML.slice(a, b);
 }
 function bucata(a, b) {
@@ -137,7 +137,7 @@ function calculator(campuri) {
   };
   return CALC(doc, {}, () => {}, FX.eur, FX.date, FX.sursa, _rDe, _raxDe);
 }
-// Aceeași flotă ca în verify_tarife.js; telefonul trimite aceleași câmpuri, fără prefixul „of-".
+// Aceeași flotă ca în verify_tarife.js; telefonul trimite aceleași câmpuri, fără prefixul „of-”.
 function flota(peste) {
   return Object.assign({
     'of-cl-name': 'Transport Zebra SRL', 'of-cl-cui': 'RO123', 'of-cl-contact': 'ion@zebra.ro', 'of-name': 'Ofertă Zebra',
@@ -172,7 +172,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
 
   sect('1. Ruta socotește EXACT ca pagina web');
   const nou = await json('POST', '/api/admin/offers/calc', telNou, { nou: true });
-  T('„Ofertă nouă" răspunde', nou.status === 200 && !!nou.j.r && !!nou.j.campuri, nou.status + ' ' + nou.text.slice(0, 160));
+  T('„Ofertă nouă” răspunde', nou.status === 200 && !!nou.j.r && !!nou.j.campuri, nou.status + ' ' + nou.text.slice(0, 160));
   T('cursul e cel pus de noi, cu sursa lui', nou.j.fx && nou.j.fx.eur === 5.1 && nou.j.fx.sursa === 'manual' && /^\d\d\.\d\d\.\d{4}$/.test(nou.j.fx.date || ''), JSON.stringify(nou.j.fx));
   T('ruta își spune versiunea calculatorului', /^[0-9a-f]{10}$/.test(nou.j.calcVer || ''), nou.j.calcVer);
   FX = { eur: nou.j.fx.eur, date: nou.j.fx.date, sursa: nou.j.fx.sursa };
@@ -210,7 +210,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
     !/onclick=|href=|class="fas /.test(JSON.stringify(nou.j.html)) && /data-act="preturi"/.test(nou.j.html.rezumat));
   T('opțiunile listelor vin din formularul web (pachetele RA Insight, păstrarea datelor)',
     egal((nou.j.formular.find((x) => x.k === 'aiPachet') || {}).optiuni, [{ v: 'start', et: 'Start — inclus' }, { v: 'basic', et: 'Basic' }, { v: 'pro', et: 'Pro' }, { v: 'business', et: 'Business' }])
-      // păstrarea: 12 luni (incluse), 24, 36, alt număr — fără „6 luni" (24.09)
+      // păstrarea: 12 luni (incluse), 24, 36, alt număr — fără „6 luni” (24.09)
       && egal(((nou.j.formular.find((x) => x.k === 'ret') || {}).optiuni || []).map((o) => o.v), ['12', '24', '36', 'custom']),
     JSON.stringify((nou.j.formular.find((x) => x.k === 'aiPachet') || {}).optiuni));
   T('câmpurile de preț primesc zecimale (pasul web 0,01), iar cele atinse de mână se știu',
@@ -221,15 +221,15 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
 
   sect('2. Ce se completează singur — și ce nu');
   const c0 = nou.j.campuri;
-  // 28.09 (Alin: „DA"): la mașini se propune FMC130 (cu LV-CAN200 la cele cu CAN); FMC650 doar la camioane.
+  // 28.09 (Alin: „DA”): la mașini se propune FMC130 (cu LV-CAN200 la cele cu CAN); FMC650 doar la camioane.
   T('oferta nouă pornește cu 10 vehicule și propunerile din ele (10 × FMC130, niciun FMC650)', c0.nveh === '10' && c0.qGps === '10' && c0.dq130 === '10' && !Number(c0.dq650) && c0.qLvCan === '' && c0.aiPachet === 'start', JSON.stringify({ nveh: c0.nveh, qGps: c0.qGps, dq130: c0.dq130, dq650: c0.dq650, aiPachet: c0.aiPachet }));
   T('fraza cu valabilitatea se scrie singură, din termenul serverului', c0.notes === 'Ofertă valabilă 30 de zile de la trimitere.', c0.notes);
-  T('„Salvează oferta" fără client și fără nume: mesajul paginii', nou.j.salvare === null && nou.j.salvareEroare === 'Pune un nume de client sau de ofertă', nou.j.salvareEroare);
+  T('„Salvează oferta” fără client și fără nume: mesajul paginii', nou.j.salvare === null && nou.j.salvareEroare === 'Pune un nume de client sau de ofertă', nou.j.salvareEroare);
   const ev = await json('POST', '/api/admin/offers/calc', telNou, {
     campuri: Object.assign({}, c0, { nveh: '20', ncan: '5', qGps: '3', 'cl-name': 'Zebra' }), atinse: [], schimbate: ['qGps', 'nveh', 'ncan', 'cl-name'] });
   const c1 = ev.j.campuri || {};
   T('mașinile schimbate completează cantitățile neatinse (LV-CAN 5, FMC130 20, LV-CAN200 5)', c1.qLvCan === '5' && c1.dq130 === '20' && !Number(c1.dq650) && c1.dqLvCan === '5', JSON.stringify({ qLvCan: c1.qLvCan, dq130: c1.dq130, dq650: c1.dq650, dqLvCan: c1.dqLvCan }));
-  T('dar „Instalare GPS", scris de mână (3), rămâne 3', c1.qGps === '3' && lista(ev.j.atinse).includes('qGps'), c1.qGps + ' / ' + JSON.stringify(ev.j.atinse));
+  T('dar „Instalare GPS”, scris de mână (3), rămâne 3', c1.qGps === '3' && lista(ev.j.atinse).includes('qGps'), c1.qGps + ' / ' + JSON.stringify(ev.j.atinse));
   // Din 14.10 prețul RA Insight NU mai depinde de flotă: e al pachetului, pe firmă. Oferta nouă rămâne pe Start.
   T('RA Insight nu se mișcă după numărul de mașini: oferta nouă rămâne pe Start', c1.aiPachet === 'start', c1.aiPachet);
   // Data de AZI la noi, nu a serverului (care merge pe UTC): între 00:00 și 03:00, ora României, ar fi ieșit ieri.
@@ -238,7 +238,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const evP = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign({}, c1, { aiPachet: 'pro' }), atinse: ev.j.atinse, schimbate: ['aiPachet'] });
   T('alegi Pro → prețul se propune din lista casei (20 lei) și caseta lui se arată, ca pe web',
     evP.j.campuri.pPachet === '20' && evP.j.arata.pachetPret === true && evP.j.arata.aiq === false, evP.j.campuri.pPachet + ' / ' + JSON.stringify(evP.j.arata));
-  T('pe rândul ofertei: „RA Insight Pro", 20 de lei', (lista(evP.j.r && evP.j.r.lines).find((l) => l.fel === 'ai') || {}).label === 'RA Insight Pro'
+  T('pe rândul ofertei: „RA Insight Pro”, 20 de lei', (lista(evP.j.r && evP.j.r.lines).find((l) => l.fel === 'ai') || {}).label === 'RA Insight Pro'
     && (lista(evP.j.r && evP.j.r.lines).find((l) => l.fel === 'ai') || {}).total === 20, JSON.stringify(lista(evP.j.r && evP.j.r.lines).find((l) => l.fel === 'ai')));
   const ev2 = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign({}, evP.j.campuri, { pPachet: '17', nveh: '60' }), atinse: lista(evP.j.atinse).concat(['pPachet']), schimbate: ['nveh'] });
   T('un preț RA Insight negociat nu e călcat de numărul de mașini', ev2.j.campuri.pPachet === '17' && ev2.j.campuri.dq130 === '60', ev2.j.campuri.pPachet + ' / ' + ev2.j.campuri.dq130);
@@ -251,15 +251,15 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const CTR = require('./contracts');
   const inch = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign(faraPrefix(flota({ 'of-dq130': 20 })), { echipMod: 'inchiriaza', contract: '12' }), atinse: [], schimbate: ['echipMod'] });
   const ic = (inch.j && inch.j.campuri) || {};
-  T('„Clientul închiriază": durata urcă la minimul închirierii, ca la apăsarea butonului pe web', inch.status === 200 && ic.echipMod === 'inchiriaza' && ic.contract === String(CTR.CHIRIE_LUNI_MIN) && inch.j.arata && inch.j.arata.inchiriere === true,
+  T('„Clientul închiriază”: durata urcă la minimul închirierii, ca la apăsarea butonului pe web', inch.status === 200 && ic.echipMod === 'inchiriaza' && ic.contract === String(CTR.CHIRIE_LUNI_MIN) && inch.j.arata && inch.j.arata.inchiriere === true,
     inch.status + ' ' + JSON.stringify({ mod: ic.echipMod, contract: ic.contract, arata: inch.j.arata }));
   T('explicația închirierii vine din pagină, cu durata minimă', /Închiriere:/.test((inch.j.html && inch.j.html.chirieHint) || '') && new RegExp(CTR.CHIRIE_LUNI_MIN + ' de luni').test(inch.j.html.chirieHint), (inch.j.html && inch.j.html.chirieHint || '').slice(0, 120));
   T('fără costul aparatului, chiria nu se inventează: lângă ea scrie ce lipsește', ic.chFmc130 === '' && /trece cât ne costă/.test((inch.j.chcost && inch.j.chcost.chFmc130) || ''), JSON.stringify({ ch: ic.chFmc130, cost: inch.j.chcost && inch.j.chcost.chFmc130 }));
   const cump = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign({}, ic, { echipMod: 'cumpara' }), atinse: inch.j.atinse, schimbate: ['echipMod'] });
-  T('și înapoi la „Clientul cumpără"', cump.j.campuri && cump.j.campuri.echipMod === 'cumpara' && cump.j.arata.inchiriere === false && !cump.j.html.chirieHint, cump.j.campuri && cump.j.campuri.echipMod);
+  T('și înapoi la „Clientul cumpără”', cump.j.campuri && cump.j.campuri.echipMod === 'cumpara' && cump.j.arata.inchiriere === false && !cump.j.html.chirieHint, cump.j.campuri && cump.j.campuri.echipMod);
   T('lângă fiecare preț, echivalentul în euro', /€/.test(ev3.j.echiv.pPlain || '') && /lei/.test(ev3.j.echiv.dFmc650 || ''), JSON.stringify(ev3.j.echiv).slice(0, 120));
-  // Telefonul de dinainte de pachete (APK-ul cu „conturi") trimite încă bifa `aiA`: fără pachet ales, serverul o citește ca
-  // Basic — altfel oferta de pe telefon ar pierde RA Insight pe tăcute. Până la APK-ul nou (la „De amintit", pentru Robert).
+  // Telefonul de dinainte de pachete (APK-ul cu „conturi”) trimite încă bifa `aiA`: fără pachet ales, serverul o citește ca
+  // Basic — altfel oferta de pe telefon ar pierde RA Insight pe tăcute. Până la APK-ul nou (la „De amintit”, pentru Robert).
   const vechiTel = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign(faraPrefix(flota()), { aiA: true, aiqSeats: '3', pAiA: '14' }), atinse: [], schimbate: ['aiA'] });
   const lVechi = lista(vechiTel.j.r && vechiTel.j.r.lines).find((l) => l.fel === 'ai') || {};
   T('telefonul vechi (bifa „RA Insight”, fără pachet) → Basic, la prețul de listă (10 lei), nu dispare',
@@ -270,7 +270,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
     && (lista(faraBifa.j.r && faraBifa.j.r.lines).find((l) => l.fel === 'ai') || {}).total === 0, faraBifa.j.campuri.aiPachet);
   const faraAiA = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign(faraPrefix(flota()), { aiPachet: 'pro', pPachet: '20' }), atinse: [], schimbate: [] });
   T('telefonul nou (fără `aiA`): pachetul ales rămâne cum l-a trimis', faraAiA.j.campuri.aiPachet === 'pro', faraAiA.j.campuri.aiPachet);
-  T('„Salvează ca tarifele noastre" trimite prețurile de pe ecran', ev3.j.salvareTarife && ev3.j.salvareTarife.tarife_lista && ev3.j.salvareTarife.tarife_lista.pPlain === 29, JSON.stringify(ev3.j.salvareTarife).slice(0, 120));
+  T('„Salvează ca tarifele noastre” trimite prețurile de pe ecran', ev3.j.salvareTarife && ev3.j.salvareTarife.tarife_lista && ev3.j.salvareTarife.tarife_lista.pPlain === 29, JSON.stringify(ev3.j.salvareTarife).slice(0, 120));
 
   sect('3. Poarta: aplicația veche nu scrie oferte, cea nouă da, web-ul ca înainte');
   const corp = primaSalvare.corp;
@@ -291,15 +291,15 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   T('un antet cu versiunea pe web nu schimbă nimic', (await json('POST', '/api/admin/offers', { cookie: S, app: '0.0.1' }, Object.assign({}, corp, { name: 'web+antet' }))).status === 200);
 
   sect('4. O ofertă salvată: creionul, hârtia, contractul');
-  // Prețuri negociate, salvate în ofertă: la redeschidere sunt „scrise de mână".
+  // Prețuri negociate, salvate în ofertă: la redeschidere sunt „scrise de mână”.
   const negociat = Object.assign({}, corp, { config: { cfg: corp.config.cfg, prices: Object.assign({}, corp.config.prices, { pCan: 41, mGps: 90 }) } });
   await json('PUT', '/api/admin/offers/' + idTel, telNou, negociat);
   const inc = await json('POST', '/api/admin/offers/calc', telNou, { offer_id: idTel, incarca: true, hartie: true, contract: true });
   const ci = inc.j.campuri || {};
   T('creionul pune oferta în formular (flotă, client, prețuri negociate)', inc.status === 200 && ci.nveh === '20' && ci.ncan === '20' && ci['cl-name'] === 'Transport Zebra SRL' && ci.pCan === '41' && ci.mGps === '90',
     inc.status + ' ' + JSON.stringify({ nveh: ci.nveh, pCan: ci.pCan, mGps: ci.mGps, cl: ci['cl-name'] }));
-  T('și le marchează „scrise de mână"', ['nveh', 'qGps', 'pCan', 'mGps', 'dq650', 'name', 'notes'].every((k) => lista(inc.j.atinse).includes(k)), JSON.stringify(inc.j.atinse));
-  T('salvarea devine „Actualizează": PUT pe oferta ei', inc.j.salvare && inc.j.salvare.metoda === 'PUT' && inc.j.salvare.url === '/api/admin/offers/' + idTel, JSON.stringify(inc.j.salvare && { m: inc.j.salvare.metoda, u: inc.j.salvare.url }));
+  T('și le marchează „scrise de mână”', ['nveh', 'qGps', 'pCan', 'mGps', 'dq650', 'name', 'notes'].every((k) => lista(inc.j.atinse).includes(k)), JSON.stringify(inc.j.atinse));
+  T('salvarea devine „Actualizează”: PUT pe oferta ei', inc.j.salvare && inc.j.salvare.metoda === 'PUT' && inc.j.salvare.url === '/api/admin/offers/' + idTel, JSON.stringify(inc.j.salvare && { m: inc.j.salvare.metoda, u: inc.j.salvare.url }));
   const dupaMasini = await json('POST', '/api/admin/offers/calc', telNou, { offer_id: idTel, campuri: Object.assign({}, ci, { nveh: '30' }), atinse: inc.j.atinse, schimbate: ['nveh'] });
   T('schimbi numărul de mașini pe oferta deschisă: cantitățile și prețurile ei rămân', dupaMasini.j.campuri.qGps === ci.qGps && dupaMasini.j.campuri.pCan === '41' && dupaMasini.j.campuri.dq650 === ci.dq650,
     JSON.stringify({ qGps: dupaMasini.j.campuri.qGps, pCan: dupaMasini.j.campuri.pCan, dq650: dupaMasini.j.campuri.dq650 }));
@@ -309,7 +309,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const pS = Object.assign({}, calculator({})._ofCalc().p, salvata.config.prices);
   const dirS = calculator({});
   const hS = JSON.parse(JSON.stringify(dirS._ofPayload(dirS._ofCalc(cfgS, pS))));
-  T('„Vezi hârtia" din listă = plicul socotit din oferta salvată', egal(inc.j.hartieSalvata, hS), diferenta(inc.j.hartieSalvata, hS));
+  T('„Vezi hârtia” din listă = plicul socotit din oferta salvată', egal(inc.j.hartieSalvata, hS), diferenta(inc.j.hartieSalvata, hS));
   T('cu prețul negociat pe hârtie (41 lei mașina cu CAN)', (lista(inc.j.hartieSalvata && inc.j.hartieSalvata.lines).find((l) => l.fel === 'can') || {}).unit === 41);
   const ctrDirect = JSON.parse(JSON.stringify(calculator({})._coSocotealaOfertei(JSON.parse(JSON.stringify(salvata)))));
   T('ce duce contractul făcut din ofertă = socoteala paginii (preț pe mașină + anexa)', egal(inc.j.pentruContract, ctrDirect) && inc.j.pentruContract.unitati.can === 41, diferenta(inc.j.pentruContract, ctrDirect));
@@ -318,7 +318,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const cd = pdf.headers.get('content-disposition') || '';
   T('PDF-ul ofertei salvate iese de la generatorul serverului, cu numele lui', pdf.status === 200 && buf.slice(0, 4).toString() === '%PDF' && /filename\*=UTF-8''RA-Track/.test(cd),
     pdf.status + ' ' + cd);
-  // Modulele vândute se redeschid bifate: altfel „Actualizează" scria un abonament mai mic (Tahograf și
+  // Modulele vândute se redeschid bifate: altfel „Actualizează” scria un abonament mai mic (Tahograf și
   // e-Transport dispăreau fără niciun mesaj — și din contractul făcut apoi din ofertă).
   const cuModule = salvari['cu tahograf și e-Transport'];
   const scrisM = await json('POST', '/api/admin/offers', telNou, cuModule.corp);
@@ -327,7 +327,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const corpM = (incM.j.salvare && incM.j.salvare.corp) || {};
   T('o ofertă cu Tahograf și e-Transport se redeschide cu ele bifate', incM.status === 200 && cM.tahograf === true && cM.etransport === true && cM.agenti === true,
     JSON.stringify({ th: cM.tahograf, et: cM.etransport, ag: cM.agenti }));
-  T('iar „Actualizează" o salvează cu același abonament (' + cuModule.r.monthly + ' lei/lună), nu mai mic',
+  T('iar „Actualizează” o salvează cu același abonament (' + cuModule.r.monthly + ' lei/lună), nu mai mic',
     Number(scrisM.j.monthly_total) === cuModule.r.monthly && corpM.monthly_total === cuModule.r.monthly
       && !!(corpM.config && corpM.config.cfg && corpM.config.cfg.tahograf === true && corpM.config.cfg.etransport === true),
     scrisM.j.monthly_total + ' → ' + corpM.monthly_total);
@@ -339,7 +339,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   T('hârtia se poate cere singură, fără formular', doarHartie.status === 200 && egal(doarHartie.j.hartieSalvata, hS) && !doarHartie.j.campuri);
   T('o ofertă care nu există: 404', (await json('POST', '/api/admin/offers/calc', telNou, { offer_id: 999999, hartie: true })).status === 404);
 
-  sect('5. „Prețurile noastre" și lista casei');
+  sect('5. „Prețurile noastre” și lista casei');
   const pr = await json('POST', '/api/admin/offers/calc', telNou, { preturi: true });
   const gr = lista(pr.j.preturi && pr.j.preturi.grupuri);
   T('grupurile vin din pagină (curs, abonament, păstrare, RA Insight, montaj, aparate)', gr.length === 6 && gr[0].curs === true && gr[0].randuri[0][0] === 'cursEur' && gr[3].randuri.map((r) => r[0]).join(',') === 'pkBasic,pkPro,pkBusiness', gr.map((g) => g.t).join(' | '));
@@ -351,13 +351,13 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   gr.forEach((g) => g.randuri.forEach((r) => { if (r[0] && r[0] !== 'cursEur') tarife[r[0]] = vl.tp[r[0]]; if (r[2]) costuri[r[2]] = vl.tc[r[2]]; }));
   tarife.pkPro = 22; costuri.mGps = 70; costuri.cVehLuna = 6; costuri.dFmc650 = 80;
   const salvP = await json('PUT', '/api/admin/system-settings', telNou, { tarife_lista: tarife, costuri_noastre: costuri, curs_eur: '5.1' });
-  T('„Gata" salvează prețurile de pe telefon', salvP.status === 200 && salvP.j.settings.tarife_lista.pkPro === 22 && salvP.j.settings.costuri_noastre.mGps === 70, salvP.status + ' ' + salvP.text.slice(0, 100));
+  T('„Gata” salvează prețurile de pe telefon', salvP.status === 200 && salvP.j.settings.tarife_lista.pkPro === 22 && salvP.j.settings.costuri_noastre.mGps === 70, salvP.status + ' ' + salvP.text.slice(0, 100));
   const nou2 = await json('POST', '/api/admin/offers/calc', telNou, { nou: true });
   const nou2P = await json('POST', '/api/admin/offers/calc', telNou, { campuri: Object.assign({}, nou2.j.campuri, { aiPachet: 'pro' }), atinse: nou2.j.atinse, schimbate: ['aiPachet'] });
   T('o ofertă NOUĂ pornește de la lista schimbată (Pro 22 lei)', nou2P.j.campuri && nou2P.j.campuri.pPachet === '22', nou2P.j.campuri && nou2P.j.campuri.pPachet);
   const inc2 = await json('POST', '/api/admin/offers/calc', telNou, { offer_id: idTel, incarca: true });
   T('iar oferta salvată își păstrează prețurile ei', inc2.j.campuri && inc2.j.campuri.pCan === '41' && inc2.j.campuri.pPachet === ci.pPachet && ci.pPachet === '20', inc2.j.campuri && (inc2.j.campuri.pCan + ' / ' + inc2.j.campuri.pPachet + ' / ' + ci.pPachet));
-  T('„Ce rămâne la noi": cu costul mașinii trecut, oferta fără aparate își arată profitul',
+  T('„Ce rămâne la noi”: cu costul mașinii trecut, oferta fără aparate își arată profitul',
     /Lunar, încasăm/.test(inc2.j.html.rezumat) && !/Nu pot socoti profitul/.test(inc2.j.html.rezumat), (inc2.j.html.rezumat.match(/Ce rămâne la noi[\s\S]{0,200}/) || ['—'])[0]);
   const cuModul = await json('POST', '/api/admin/offers/calc', telNou, { campuri: faraPrefix(flota({ 'of-dqLvCan': 20, 'of-qGps': 20 })), atinse: [], schimbate: [] });
   T('iar fără costul modulului LV-CAN200 spune ce lipsește — nu inventează un profit',
@@ -392,14 +392,14 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   T('hârtia ofertei salvate vine de la server, nu se desenează pe telefon',
     /hartie: true/.test(listaTel) && /\/api\/admin\/offers\/pdf/.test(listaTel) && !/jspdf|pdfmake|window\.print/i.test(calcTel + listaTel));
 
-  sect('8. Un „preț" care nu e număr nu se rulează pe server');
-  // Pagina scrie prețul în formular fără să-l curețe (`value="…"`). Un „preț" care închide ghilimelele își
+  sect('8. Un „preț” care nu e număr nu se rulează pe server');
+  // Pagina scrie prețul în formular fără să-l curețe (`value="…"`). Un „preț” care închide ghilimelele își
   // aduce propriul `oninput` — iar calculatorul de pe server rulează `oninput`-urile câmpurilor atinse.
   const otrava = '1" oninput="document.getElementById(\'of-cl-name\').value=\'PRINS\'';
   const cuOtrava = Object.assign({}, corp, { name: 'Otrava', config: { cfg: corp.config.cfg, prices: Object.assign({}, corp.config.prices, { pPlain: otrava, pCan: '41', mGps: null }) } });
   const scrisO = await json('POST', '/api/admin/offers', telNou, cuOtrava);
   const pO = (scrisO.j.config && scrisO.j.config.prices) || {};
-  T('salvarea ține din prețuri doar numerele: textul cade, „41" devine 41, golul rămâne gol',
+  T('salvarea ține din prețuri doar numerele: textul cade, „41” devine 41, golul rămâne gol',
     scrisO.status === 200 && !('pPlain' in pO) && pO.pCan === 41 && pO.mGps === null, scrisO.status + ' ' + JSON.stringify({ pPlain: pO.pPlain, pCan: pO.pCan, mGps: pO.mGps }));
   // O ofertă scrisă ÎNAINTE de curățare (aici: configurația trimisă ca text, pe care salvarea n-o desface):
   // otrava ajunge în bază, deci doar calculatorul o mai poate opri.
@@ -440,18 +440,18 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   finally { if (tzInainte === undefined) delete process.env.TZ; else process.env.TZ = tzInainte; }
   T('pe un server UTC, la 01:30 ora României, pagina scrie data de azi (24.09), nu de ieri', zi === '24.09.2026' && ziFara === '23.09.2026', zi + ' / fără: ' + ziFara);
 
-  // ─── Lotul 3 (29.09): sugestiile, comutatorul CAN, „Mașinile clientului", închirierea ────────────────
+  // ─── Lotul 3 (29.09): sugestiile, comutatorul CAN, „Mașinile clientului”, închirierea ────────────────
   const calc = (b) => json('POST', '/api/admin/offers/calc', telNou, b);
   const faraCod = (h) => !/onclick=|href=|class="fas |<script/i.test(String(h || ''));
-  sect('9. Sugestiile doar pentru noi: pasul 2, pasul 4, comutatorul CAN, „Aplică recomandarea"');
+  sect('9. Sugestiile doar pentru noi: pasul 2, pasul 4, comutatorul CAN, „Aplică recomandarea”');
   const s0 = (await calc({ nou: true })).j;
   const s1 = (await calc({ campuri: Object.assign({}, s0.campuri, { nveh: '12', ncan: '5', nfms: '3', qGps: '3' }), atinse: ['qGps'], schimbate: ['nveh', 'ncan', 'nfms'] })).j;
   const sf = String((s1.html && s1.html.sfatFlota) || ''), sm = String((s1.html && s1.html.sfatMontaj) || '');
-  T('pasul 2, „Ce recomanzi": un rând pe fel de mașină, scris de pagină (4 fără CAN, 5 cu CAN, 3 camioane)',
+  T('pasul 2, „Ce recomanzi”: un rând pe fel de mașină, scris de pagină (4 fără CAN, 5 cu CAN, 3 camioane)',
     /Ce recomanzi · doar pentru tine, nu apare în ofertă/.test(sf) && /<b>4 fără CAN → FMC130\.<\/b>/.test(sf) && /<b>5 cu CAN → FMC130 \+ modul LV-CAN200\.<\/b>/.test(sf) && /<b>3 camioane cu FMS → FMC650\.<\/b>/.test(sf), sf.slice(0, 160));
-  T('pasul 4, „Recomandarea pentru flota asta": tabelul Recomandat / În ofertă, cu diferența marcată', /Recomandarea pentru flota asta · doar pentru tine/.test(sm) && /<th class="num">Recomandat<\/th><th class="num">În ofertă<\/th>/.test(sm)
+  T('pasul 4, „Recomandarea pentru flota asta”: tabelul Recomandat / În ofertă, cu diferența marcată', /Recomandarea pentru flota asta · doar pentru tine/.test(sm) && /<th class="num">Recomandat<\/th><th class="num">În ofertă<\/th>/.test(sm)
     && /Instalare dispozitiv GPS<\/td><td class="num"><b>12<\/b><\/td><td class="num dif">3</.test(sm), sm.slice(0, 160));
-  T('comutatorul CAN și „Aplică recomandarea" ajung pe telefon ca butoane-semn (fără comenzile paginii)',
+  T('comutatorul CAN și „Aplică recomandarea” ajung pe telefon ca butoane-semn (fără comenzile paginii)',
     /<button type="button" data-act="canMod" data-val="lvcan" class="rax-btn primary">FMC130 \+ LV-CAN200<\/button>/.test(sm) && /data-act="canMod" data-val="fmc150" class="rax-btn">FMC150 \(CAN integrat\)</.test(sm)
       && /<button type="button" data-act="aplicaRec" class="rax-btn primary">Aplică recomandarea în ofertă<\/button>/.test(sm) && faraCod(sf + sm), sm.slice(sm.indexOf('<div'), sm.indexOf('<div') + 200));
   const s2 = (await calc({ campuri: s1.campuri, atinse: s1.atinse, schimbate: ['canMod'], canMod: 'fmc150' })).j;
@@ -461,18 +461,18 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
     JSON.stringify({ canMod: s2.canMod, d130: q2.dq130, d150: q2.dq150, lv: q2.dqLvCan, qLv: q2.qLvCan, qCi: q2.qCanInc, qGps: q2.qGps }));
   T('...și alegerea se vede plină pe butonul ei', /data-val="fmc150" class="rax-btn primary"/.test(s2.html.sfatMontaj) && /data-val="lvcan" class="rax-btn">/.test(s2.html.sfatMontaj));
   const s3 = (await calc({ campuri: s2.campuri, atinse: s2.atinse, schimbate: [] })).j;
-  T('comutatorul nu rămâne agățat în pagina serverului: o cerere fără el pornește pe „FMC130 + LV-CAN200"', s3.canMod === 'lvcan' && /data-val="lvcan" class="rax-btn primary"/.test(s3.html.sfatMontaj), s3.canMod);
+  T('comutatorul nu rămâne agățat în pagina serverului: o cerere fără el pornește pe „FMC130 + LV-CAN200”', s3.canMod === 'lvcan' && /data-val="lvcan" class="rax-btn primary"/.test(s3.html.sfatMontaj), s3.canMod);
   const s4 = (await calc({ campuri: s2.campuri, atinse: s2.atinse, schimbate: [], canMod: 'fmc150', aplicaRecomandarea: true })).j;
   const q4 = s4.campuri || {};
-  T('„Aplică recomandarea": pune cantitățile recomandate la pașii 4 și 5 (GPS 12), cu mesajul paginii',
+  T('„Aplică recomandarea”: pune cantitățile recomandate la pașii 4 și 5 (GPS 12), cu mesajul paginii',
     q4.qGps === '12' && q4.dq150 === '5' && q4.qCanInc === '5' && q4.dq650 === '3' && q4.qFms === '3' && s4.mesaj === 'Recomandarea e în ofertă (pașii 4 și 5) ✓',
     JSON.stringify({ qGps: q4.qGps, d150: q4.dq150, mesaj: s4.mesaj }));
-  T('...le ține minte ca „scrise de mână", iar recomandarea spune că oferta o urmează',
+  T('...le ține minte ca „scrise de mână”, iar recomandarea spune că oferta o urmează',
     ['dq130', 'dq150', 'dq650', 'dqLvCan', 'qGps', 'qLvCan', 'qCanInc', 'qFms'].every((k) => lista(s4.atinse).includes(k)) && /<div class="ok">Oferta urmează recomandarea\.<\/div>/.test(s4.html.sfatMontaj), JSON.stringify(s4.atinse));
   T('...fără să atingă prețurile', q4.mGps === s2.campuri.mGps && q4.dFmc150 === s2.campuri.dFmc150 && q4.pPlain === s2.campuri.pPlain);
   T('sfaturile NU ajung pe hârtie și nici în salvare', !/Recomand|doar pentru tine|Ce recomanzi|Întrebări de pus/.test(JSON.stringify(s4.hartie) + JSON.stringify(s4.salvare || s4.salvareEroare)));
 
-  sect('10. „Mașinile clientului": serverul caută, telefonul doar arată');
+  sect('10. „Mașinile clientului”: serverul caută, telefonul doar arată');
   const MS = [
     { marca: 'Dacia', model: 'Logan 2', an: '2024', combustibil: 'gpl', buc: '3', aparat: '' },
     { marca: 'Volvo', model: 'FH', an: '2020', combustibil: 'motorina', buc: '2', aparat: '' },
@@ -488,23 +488,23 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
     JSON.stringify(lista(pot.j.rezultate).map((x) => x && x.rec && x.rec.aparat)));
   const rezTot = R1.map((x) => x.rez).join('');
   T('ce se citește și pe ce rând din listă — în cuvintele paginii', /citește: rezervor ✓/.test(rezTot) && /LV-CAN200: LOGAN \(III\) \(LPG\), din 2021 · program 13732/.test(rezTot) && /class="raof-ms-st nes">de verificat/.test(rezTot), R1[0].rez.slice(0, 200));
-  T('„Poate e: …" vine ca semn (modelul propus), nu ca o comandă a paginii', /<a data-act="model" data-val="Logan VAN">Logan VAN<\/a>/.test(rezTot) && faraCod(rezTot), (rezTot.match(/Poate e:[^\n]{0,160}/) || ['—'])[0]);
+  T('„Poate e: …” vine ca semn (modelul propus), nu ca o comandă a paginii', /<a data-act="model" data-val="Logan VAN">Logan VAN<\/a>/.test(rezTot) && faraCod(rezTot), (rezTot.match(/Poate e:[^\n]{0,160}/) || ['—'])[0]);
   T('lista de alegere a aparatului NU vine în HTML (telefonul o face nativă, din `aparate`)', !/raof-ms-alege|<select/.test(rezTot)
     && egal(lista(m1.masini.aparate).map((a) => a.k), ['fmc130', 'fmc130_lvcan', 'fmc150', 'fmc650']) && lista(m1.masini.combustibili).length === 5 && m1.masini.combustibili[2].et === 'benzină + GPL');
-  T('sumarul, cu „Trece în ofertă" ca semn: 6 mașini, 4 de verificat', /<b>6 mașini<\/b>: 4 × FMC130 \+ LV-CAN200 · 2 × FMC650 \(camion, FMS\)/.test(m1.masini.sumar) && /4 de verificat/.test(m1.masini.sumar)
+  T('sumarul, cu „Trece în ofertă” ca semn: 6 mașini, 4 de verificat', /<b>6 mașini<\/b>: 4 × FMC130 \+ LV-CAN200 · 2 × FMC650 \(camion, FMS\)/.test(m1.masini.sumar) && /4 de verificat/.test(m1.masini.sumar)
     && /<button type="button" data-act="aplicaRec" class="rax-btn primary">Trece în ofertă<\/button>/.test(m1.masini.sumar) && faraCod(m1.masini.sumar), m1.masini.sumar.slice(0, 200));
   T('pașii 2 și 4 citesc din listă când are mașini', /Ce recomanzi, din lista mașinilor/.test(m1.html.sfatFlota) && /Recomandarea din lista mașinilor/.test(m1.html.sfatMontaj) && /pașii 2, 4 și 5/.test(m1.html.sfatMontaj));
   T('rândurile se întorc cum au venit (și cel pe jumătate scris), ca telefonul să le poată arăta', egal(lista(m1.masini.lista).map((x) => [x.marca, x.model, x.an, x.buc]), MS.map((x) => [x.marca, x.model, x.an, x.buc])) && m1.masini.motor === true);
   const m2 = (await calc({ campuri: m1.campuri, atinse: m1.atinse, schimbate: [], masini: MS, masiniMotor: true, canMod: 'lvcan', aplicaRecomandarea: true })).j;
   const c2 = m2.campuri || {};
-  T('„Trece în ofertă": pasul 2 din listă (6 mașini, 4 cu CAN, 2 cu FMS), pașii 4 și 5 din aparatele alese',
+  T('„Trece în ofertă”: pasul 2 din listă (6 mașini, 4 cu CAN, 2 cu FMS), pașii 4 și 5 din aparatele alese',
     c2.nveh === '6' && c2.ncan === '4' && c2.nfms === '2' && c2.dq130 === '4' && c2.dqLvCan === '4' && c2.dq650 === '2' && c2.qGps === '6' && m2.mesaj === 'Mașinile sunt în ofertă (pașii 2, 4 și 5) ✓',
     JSON.stringify({ nveh: c2.nveh, ncan: c2.ncan, nfms: c2.nfms, d130: c2.dq130, lv: c2.dqLvCan, d650: c2.dq650, mesaj: m2.mesaj }));
   const MSmana = MS.map((m, i) => (i === 2 ? Object.assign({}, m, { aparat: 'fmc130' }) : m));
   const m3 = (await calc({ campuri: m1.campuri, atinse: m1.atinse, schimbate: [], masini: MSmana, masiniMotor: true, aplicaRecomandarea: true })).j;
   T('aparatul ales de mână bate recomandarea (Transit → FMC130, doar poziție)', m3.campuri.ncan === '3' && /1 × FMC130 \(doar poziție\)/.test(m3.masini.sumar), m3.campuri.ncan + ' / ' + m3.masini.sumar.slice(0, 120));
   const m4 = (await calc({ campuri: m1.campuri, atinse: m1.atinse, schimbate: [], masini: MS, masiniMotor: false })).j;
-  T('„date din motor" oprit: mașina mică primește FMC130 (doar poziție)', lista(m4.masini.randuri)[0].rec.aparat === 'fmc130' && m4.masini.motor === false, JSON.stringify(lista(m4.masini.randuri)[0].rec));
+  T('„date din motor” oprit: mașina mică primește FMC130 (doar poziție)', lista(m4.masini.randuri)[0].rec.aparat === 'fmc130' && m4.masini.motor === false, JSON.stringify(lista(m4.masini.randuri)[0].rec));
   const otravaMs = [{ marca: '<img src=x onerror=alert(1)>', model: 'X"><script>alert(1)</script>', an: '2020', combustibil: 'kerosen', buc: '-4', aparat: 'rachetă' }];
   const r5 = await calc({ campuri: s0.campuri, atinse: [], schimbate: [], masini: otravaMs });
   const m5 = r5.j;
@@ -517,7 +517,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const MSa = [MS[0], MS[1], MS[3]];   // Logan ×3, Volvo ×2 și un rând pe jumătate scris (nu se salvează)
   const pa = (await calc({ campuri: Object.assign({}, s0.campuri, { 'cl-name': 'Firma A' }), atinse: [], schimbate: ['cl-name'], masini: MSa, masiniMotor: false })).j;
   const cfgA = pa.salvare && pa.salvare.corp && pa.salvare.corp.config && pa.salvare.corp.config.cfg;
-  T('salvarea duce lista (doar rândurile întregi) și „date din motor"', !!cfgA && lista(cfgA.masini).length === 2 && cfgA.masini[0].model === 'Logan 2' && cfgA.masini[0].buc === 3 && cfgA.masiniMotor === false,
+  T('salvarea duce lista (doar rândurile întregi) și „date din motor”', !!cfgA && lista(cfgA.masini).length === 2 && cfgA.masini[0].model === 'Logan 2' && cfgA.masini[0].buc === 3 && cfgA.masiniMotor === false,
     JSON.stringify(cfgA && { m: cfgA.masini, mo: cfgA.masiniMotor }));
   const idA = (await json('POST', '/api/admin/offers', telNou, pa.salvare.corp)).j.id;
   const pb = (await calc({ campuri: Object.assign({}, s0.campuri, { 'cl-name': 'Firma B' }), atinse: [], schimbate: ['cl-name'], masini: [{ marca: 'Skoda', model: 'Octavia', an: '2021', combustibil: 'benzina', buc: '7' }] })).j;
@@ -526,11 +526,11 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const incA2 = (await calc({ offer_id: idA, incarca: true })).j;
   T('oferta redeschisă își aduce lista, cu rezultatele ei', egal(lista(incA2.masini && incA2.masini.lista).map((x) => [x.marca, x.model, x.an, x.buc]), [['Dacia', 'Logan 2', '2024', '3'], ['Volvo', 'FH', '2020', '2']])
     && incA2.masini.motor === false && lista(incA2.masini.randuri)[1].rec.aparat === 'fmc650', JSON.stringify(incA2.masini && incA2.masini.lista));
-  // Între deschidere și salvare trece altcineva pe la calculator: „Ofertă nouă"…
+  // Între deschidere și salvare trece altcineva pe la calculator: „Ofertă nouă”…
   await calc({ nou: true });
   const dupaNou = (await calc({ offer_id: idA, campuri: incA2.campuri, atinse: incA2.atinse, schimbate: [] })).j;   // telefonul 1.0.3: fără `masini`
   const cN = dupaNou.salvare && dupaNou.salvare.corp.config.cfg;
-  T('după o „Ofertă nouă" în altă parte, salvarea ofertei A duce tot lista ei (nu una goală)', !!cN && egal(cN.masini, listaA) && cN.masiniMotor === false, JSON.stringify(cN && { m: cN.masini, mo: cN.masiniMotor }));
+  T('după o „Ofertă nouă” în altă parte, salvarea ofertei A duce tot lista ei (nu una goală)', !!cN && egal(cN.masini, listaA) && cN.masiniMotor === false, JSON.stringify(cN && { m: cN.masini, mo: cN.masiniMotor }));
   // …sau deschide oferta B.
   await calc({ offer_id: idB, incarca: true });
   const dupaB = (await calc({ offer_id: idA, campuri: incA2.campuri, atinse: incA2.atinse, schimbate: [] })).j;
@@ -549,7 +549,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const ch = (await calc({ campuri: Object.assign({}, s0.campuri, { echipMod: 'inchiriaza', dq130: '5' }), atinse: ['dq130'], schimbate: ['echipMod'] })).j;
   T('aparate închiriate fără chirie: PDF-ul e refuzat cu mesajul paginii, nu cu unul general', ch.hartie === null && ch.hartieEroare === 'Lipsește chiria pentru: Teltonika FMC130 (pasul 5).', JSON.stringify({ h: ch.hartie, e: ch.hartieEroare }));
   T('...iar o ofertă obișnuită n-are niciun refuz', !!s1.hartie && s1.hartieEroare === null);
-  T('„trece cât ne costă", lângă chirie, e un semn spre „Prețurile noastre"', /^<a data-act="preturi"[^>]*>trece cât ne costă<\/a>$/.test(String(ch.chcost && ch.chcost.chFmc130)), ch.chcost && ch.chcost.chFmc130);
+  T('„trece cât ne costă”, lângă chirie, e un semn spre „Prețurile noastre”', /^<a data-act="preturi"[^>]*>trece cât ne costă<\/a>$/.test(String(ch.chcost && ch.chcost.chFmc130)), ch.chcost && ch.chcost.chFmc130);
   const ExcelJS = require('exceljs');
   const rsab = await fetch(B + '/api/admin/masini/sablon', { headers: { Authorization: 'Bearer ' + tel.token } });
   const cdSab = rsab.headers.get('content-disposition') || '';
@@ -582,7 +582,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   sect('13. Telefonul arată ce vine de la server — nu hotărăște nimic singur');
   const calcTel2 = citeste('mobile/src/screens/OfferCalc.tsx'), msTel = citeste('mobile/src/components/MasiniClient.tsx');
   const epTel = citeste('mobile/src/api/endpoints.ts'), trimTel = citeste('mobile/src/lib/trimiteFisier.ts');
-  T('calculatorul trimite lista, comutatorul și „Aplică recomandarea" la fiecare socoteală',
+  T('calculatorul trimite lista, comutatorul și „Aplică recomandarea” la fiecare socoteală',
     /corp\.masini = msRef\.current\.map/.test(calcTel2) && /corp\.masiniMotor = /.test(calcTel2) && /canMod: canModRef\.current/.test(calcTel2) && /corp\.aplicaRecomandarea = true/.test(calcTel2));
   T('...dar NU trimite o listă pe care serverul nu i-a dat-o (una goală ar șterge lista ofertei)', /if \(areListaRef\.current\) \{\s*corp\.masini/.test(calcTel2));
   T('arată sfaturile, refuzul hârtiei și linkul de lângă chirie, din răspunsul serverului',
@@ -600,13 +600,13 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
       && /masiniSablonCiteste: [\s\S]{0,200}'\/api\/admin\/masini\/sablon', \{ method: 'POST'/.test(epTel) && /trimiteFisierCrud\('\/api\/admin\/masini\/liste'/.test(msTel)
       && /dataType: 'file'/.test(trimTel) && /'X-Fisier': encodeURIComponent\(f\.name\)/.test(msTel));
   T('...și întreabă înainte să înlocuiască o listă începută', /fel: 'inlocuieste'/.test(msTel) && /'Lista are deja ' \+ nrDe\(foaie\.acum, 'mașină', 'mașini'\)/.test(msTel));
-  T('lista de oferte arată pastila „închiriere"', /cfg\.echipMod === 'inchiriaza' \? <span class="of-chirie"[^>]*>închiriere<\/span>/.test(citeste('mobile/src/screens/Offers.tsx')));
+  T('lista de oferte arată pastila „închiriere”', /cfg\.echipMod === 'inchiriaza' \? <span class="of-chirie"[^>]*>închiriere<\/span>/.test(citeste('mobile/src/screens/Offers.tsx')));
 
   // La urmă: o listă nouă schimbă potrivirile, deci n-are voie să atingă verificările de mai sus.
   sect('14. O listă Teltonika nouă, urcată de pe telefon: mărcile și modelele propuse o cuprind');
   // Pe web, `raxOfListaIncarca` uită mărcile și modelele ținute minte și le cere din nou. Telefonul le ținea pe
   // cele de la deschidere: o marcă aflată doar în lista nouă nu era propusă până nu redeschideai calculatorul.
-  const incWeb = HTML.slice(HTML.indexOf('window.raxOfListaIncarca = async function'), HTML.indexOf('// ── sfârșit „mașinile clientului" ──'));
+  const incWeb = HTML.slice(HTML.indexOf('window.raxOfListaIncarca = async function'), HTML.indexOf('// ── sfârșit „mașinile clientului” ──'));
   const incTel = msTel.slice(msTel.indexOf('async function incarcaLista('), msTel.indexOf('const inchideFoaia'));
   T('după încărcare, telefonul cere din nou mărcile și uită modelele ținute minte — ca pagina web',
     /_ofMsMarci = null; _ofMsModele = \{\}/.test(incWeb) && /modele\.current = \{\}/.test(incTel) && /incarcaMarci\(\);[\s\S]*p\.onListeNoi\(\)/.test(incTel)
@@ -624,7 +624,7 @@ const faraPrefix = (o) => { const x = {}; Object.keys(o).forEach((k) => { x[k.re
   const upL = await fetch(B + '/api/admin/masini/liste', { method: 'POST', body: xlsxL, headers: { 'Content-Type': 'application/octet-stream',
     'X-RA-App': '1.0.4', Authorization: 'Bearer ' + tel.token, 'X-Fisier': encodeURIComponent('LV-CAN200_list_2026_09_01_en.xlsx') } });
   const jL = await upL.json().catch(() => ({}));
-  T('lista urcă de pe telefon și răspunsul aduce listele de acum (foaia „Listele Teltonika" se reface din el)',
+  T('lista urcă de pe telefon și răspunsul aduce listele de acum (foaia „Listele Teltonika” se reface din el)',
     upL.status === 200 && jL.tip === 'lvcan' && jL.n === 24 && lista(jL.liste).some((l) => l.tip === 'lvcan' && l.sursa === 'incarcata' && l.n === 24),
     upL.status + ' ' + JSON.stringify(jL).slice(0, 200));
   const marciDupa = lista((await json('GET', '/api/admin/masini/marci', telNou)).j.marci);

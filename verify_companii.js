@@ -1,4 +1,4 @@
-// verify_companii.js — ecranul „Companii & Dispozitive", verticala fondatorilor.
+// verify_companii.js — ecranul „Companii & Dispozitive”, verticala fondatorilor.
 //
 //   node verify_companii.js
 //
@@ -7,9 +7,9 @@
 // voie să se strice tăcut:
 //   • să ajungă sub ochii cuiva care nu e fondator — pe server FIECARE cale de companie cere
 //     dreptul `manageCompanies`, pe care îl are doar super-adminul (proba 1);
-//   • starea accesului să se afișeze greșit: „expirat" citit ca „activ" înseamnă un client care
+//   • starea accesului să se afișeze greșit: „expirat” citit ca „activ” înseamnă un client care
 //     folosește platforma neplătit, sau unul plătitor blocat degeaba (proba 2);
-//   • listele să-și piardă forma. Rândurile din „Mută între companii" apăreau scrise italic și
+//   • listele să-și piardă forma. Rândurile din „Mută între companii” apăreau scrise italic și
 //     centrate fiindcă purtau `rax-co-meta` — clasa mesajului de listă GOALĂ — pe containerul
 //     întreg. Proba 3 nu mai lasă clasa aia pe containere.
 //
@@ -36,7 +36,7 @@ const scapate = alePlatformei.filter(r => !/requireSuperadmin/.test(r.rest));
 T('fiecare rută de companie a platformei cere requireSuperadmin',
   scapate.length === 0, scapate.map(r => r.verb.toUpperCase() + ' ' + r.cale).join(', '));
 const aleClientului = RUTE.filter(r => r.cale.startsWith('/api/companies/me'));
-T('rutele „me" (firma proprie a clientului) NU cer super-admin, ci manageUsers',
+T('rutele „me” (firma proprie a clientului) NU cer super-admin, ci manageUsers',
   aleClientului.length > 0 && aleClientului.every(r => /requirePerm\('manageUsers'\)/.test(r.rest)),
   aleClientului.map(r => r.cale).join(', '));
 
@@ -46,7 +46,7 @@ const rolCu = [...server.matchAll(/^\s{2}([a-z_]+):\s*\{([^}]*)\}/gm)]
 T('manageCompanies e doar pe superadmin', rolCu.length === 1 && rolCu[0] === 'superadmin', rolCu.join(', '));
 
 // În interfață: fila se refuză singură dacă nu ai dreptul (nu se bazează doar pe meniu).
-T('fila „companies" din panou verifică dreptul înainte să se deschidă',
+T('fila „companies” din panou verifică dreptul înainte să se deschidă',
   /name === 'companies' \|\| name === 'accounts'[^)]*\) && !can\('manageCompanies'\)/.test(html));
 T('și butonul din meniu verifică același drept',
   /function goSistem\(tab\) \{ if \(\(tab === 'companies'[^)]*\) && !can\('manageCompanies'\)\) return;/.test(html));
@@ -58,9 +58,9 @@ T('găsesc funcția care desenează starea', a1 > 0, 'a1=' + a1);
 if (a1 > 0) {
   const escP = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const cel = new Function('esc', html.slice(a1, a2) + '\n; return _raxAccessCell;')(escP);
-  // Din 28.09 accesul are TREI stări, fără dată „până la": activ, restanță (în cele 15 zile de după
+  // Din 28.09 accesul are TREI stări, fără dată „până la”: activ, restanță (în cele 15 zile de după
   // scadență, cu numărătoarea inversă) și suspendat (neplată sau oprit de noi). Ceasul vechi pe perioade
-  // plătite — „nelimitat", „în grație", „activ până la …" — a fost scos: bloca clienți care plătiseră tot.
+  // plătite — „nelimitat”, „în grație”, „activ până la …” — a fost scos: bloca clienți care plătiseră tot.
   const stare = (s, motiv) => cel({ access: { status: s, motiv: motiv } });
   const restanta = { faza: 'avertisment', zilePanaLaSuspendare: 6, factura: { numar: 'RAT-2026-00007' } };
   const inRestanta = cel({ access: { status: 'grace', motiv: 'neplata' }, neplata: restanta });
@@ -68,37 +68,37 @@ if (a1 > 0) {
   T('și scrie că e SUSPENDAT, cu motivul (neplată)', /suspendat — neplată/.test(stare('expired', 'neplata')), stare('expired', 'neplata'));
   T('sau că l-am oprit noi', /oprit de noi/.test(stare('expired', 'manual')), stare('expired', 'manual'));
   T('restanța iese portocaliu, cu zilele până la suspendare și factura', /raco-pill warn/.test(inRestanta) && /6 zile/.test(inRestanta) && /RAT-2026-00007/.test(inRestanta), inRestanta);
-  T('„activ" iese verde (pastila ok)', /raco-pill ok/.test(stare('active')), stare('active'));
+  T('„activ” iese verde (pastila ok)', /raco-pill ok/.test(stare('active')), stare('active'));
   T('o stare necunoscută NU se dă drept activă', !/raco-pill ok/.test(stare('habarnam')), stare('habarnam'));
-  T('nu mai există „până la …" pe pastilă (ceasul vechi)', !/până /.test(stare('active')) && !/până /.test(inRestanta), stare('active'));
+  T('nu mai există „până la …” pe pastilă (ceasul vechi)', !/până /.test(stare('active')) && !/până /.test(inRestanta), stare('active'));
   // Fiecare stare pe care o poate trimite serverul trebuie să aibă pastila ei.
   const dinServer = [...server.matchAll(/status\s*[:=]\s*'(unlimited|active|grace|expired)'/g)].map(m => m[1]);
   const unice = [...new Set(dinServer)];
   T('serverul chiar trimite stările astea', unice.length >= 3, unice.join(', '));
-  T('și nu mai trimite „nelimitat"', unice.indexOf('unlimited') < 0, unice.join(', '));
-  unice.forEach(s => T('starea „' + s + '" are pastila ei', /raco-pill/.test(s === 'grace' ? inRestanta : stare(s)), stare(s)));
+  T('și nu mai trimite „nelimitat”', unice.indexOf('unlimited') < 0, unice.join(', '));
+  unice.forEach(s => T('starea „' + s + '” are pastila ei', /raco-pill/.test(s === 'grace' ? inRestanta : stare(s)), stare(s)));
 }
 
 sect('3. Listele nu mai poartă clasa mesajului de listă goală');
-// `rax-co-meta` e italic + centrat + gri: bun pentru „Niciun vehicul neasignat", catastrofal pe
+// `rax-co-meta` e italic + centrat + gri: bun pentru „Niciun vehicul neasignat”, catastrofal pe
 // containerul care ține RÂNDURILE (le scria pe toate italic, centrate).
-T('„rax-co-meta" chiar e stilul mesajului gol (italic, centrat)',
+T('„rax-co-meta” chiar e stilul mesajului gol (italic, centrat)',
   /\.empty-state, \.rax-co-meta \{[^}]*font-style: italic/.test(html) && /\.empty-state, \.rax-co-meta \{[^}]*text-align: center/.test(html));
 const contMove = /<div id="rax-move-list"([^>]*)>/.exec(html);
-T('containerul „Mută între companii" nu mai are clasa', !!contMove && !/rax-co-meta/.test(contMove[1]), contMove && contMove[1]);
+T('containerul „Mută între companii” nu mai are clasa', !!contMove && !/rax-co-meta/.test(contMove[1]), contMove && contMove[1]);
 T('dar mesajul de listă goală o folosește în continuare',
   /'<div class="rax-co-meta">Se încarcă…<\/div>'/.test(html));
-T('rândurile se desenează cu „raco-row" (nume la stânga)', /class="raco-row"><span class="raco-row-t">/.test(html));
+T('rândurile se desenează cu „raco-row” (nume la stânga)', /class="raco-row"><span class="raco-row-t">/.test(html));
 T('rândurile de mutare la fel', /return '<div class="raco-row">' \+\s*\n?\s*'<input type="checkbox"/.test(html));
-T('și nu mai există „neasignat" scris italic în rândurile de mutare', !/'<em>neasignat<\/em>'/.test(html));
+T('și nu mai există „neasignat” scris italic în rândurile de mutare', !/'<em>neasignat<\/em>'/.test(html));
 
 sect('4. Limbajul vizual al ecranului e într-un singur loc');
 // Regulile stau sub `.raco`, pusă pe corpul ecranului. Dacă dispare clasa, ecranul se întoarce
 // tăcut la câmpurile palide de dinainte — nimic nu s-ar sparge, doar ar arăta prost.
 T('corpul ecranului poartă clasa', /<div class="rax-body raco">/.test(html));
-// Din 12.10 „Configurare" (modulele, agenții, limita AI) nu mai e o fereastră separată, ci fila „Acces" a ferestrei
+// Din 12.10 „Configurare” (modulele, agenții, limita AI) nu mai e o fereastră separată, ci fila „Acces” a ferestrei
 // firmei (verify_firma_stare.js): clasa trebuie să fie pe corpul ferestrei firmei, unde se desenează fila.
-T('și ferestrele lui (Editează / fereastra firmei, cu fila „Acces") poartă aceeași clasă',
+T('și ferestrele lui (Editează / fereastra firmei, cu fila „Acces”) poartă aceeași clasă',
   /<div class="rax-body raco" id="rax-coedit-body">/.test(html) && /<div class="rax-body raco" id="rax-cod-body">/.test(html) &&
   !/id="rax-cfg-body"/.test(html));
 T('regulile există în CSS-ul aplicației, nu împrăștiate în pagină', /\.raco \.raco-card \{/.test(css) && /\.raco \.rax-field \{/.test(css));
@@ -106,7 +106,7 @@ T('câmpurile au aceeași formă ca în Setări (1,5px + inel la focus)',
   /\.raco \.rax-field \{[^}]*1\.5px solid var\(--border\)/.test(css) &&
   /\.raco \.rax-field:focus \{[^}]*box-shadow: 0 0 0 3px/.test(css));
 // Iconița de pe butonul VERDE nu are voie să fie tot verde. Regula care face iconițele din capul
-// secțiunii verzi prindea și iconițele dinăuntrul butoanelor de acolo; pe „Client nou", care are
+// secțiunii verzi prindea și iconițele dinăuntrul butoanelor de acolo; pe „Client nou”, care are
 // fundal verde, ieșea verde pe verde — invizibilă, dar ocupând loc, așa că textul părea împins
 // strâmb în buton (găsit de Alin, 17.09). Măsurat în browser: icon `rgb(63,224,125)` pe fundal
 // `rgb(63,224,125)`, pe amândouă temele.
@@ -116,19 +116,19 @@ T('dar în butoanele din cap iconița ia culoarea butonului',
   /\.raco \.raco-h-act i \{[^}]*color: inherit/.test(css));
 T('iar pe butoanele fără fundal rămâne discretă',
   /\.raco \.raco-h-act \.rax-btn:not\(\.primary\) i \{[^}]*color: var\(--text-muted\)/.test(css));
-// Numărăm doar cartonașele din MARKUP-ul ecranului Companii. Ecranul „Contracte" își construiește
+// Numărăm doar cartonașele din MARKUP-ul ecranului Companii. Ecranul „Contracte” își construiește
 // cartonașul din JavaScript, ca text între ghilimele — de-aia cerem să NU fie precedat de ghilimea.
 // DOUĂ. Au fost patru, apoi trei, acum două, și de fiecare dată din același motiv — ecranul face un
-// singur lucru: ține evidența firmelor. „Client nou" a devenit buton în capul listei (deschizi un
-// client o dată pe săptămână, lista o citești zilnic), iar „Vehicule neasignate" a plecat de tot în
-// „Dispozitive" (Alin, 17.09): era a doua cale de adopție, mai săracă, rămasă de pe vremea când
-// ecranul se numea „Companii & Dispozitive". A rămas doar banda de sus, care trimite acolo —
-// regula stă în `verify_dispozitive.js`, la „într-un singur loc".
+// singur lucru: ține evidența firmelor. „Client nou” a devenit buton în capul listei (deschizi un
+// client o dată pe săptămână, lista o citești zilnic), iar „Vehicule neasignate” a plecat de tot în
+// „Dispozitive” (Alin, 17.09): era a doua cale de adopție, mai săracă, rămasă de pe vremea când
+// ecranul se numea „Companii & Dispozitive”. A rămas doar banda de sus, care trimite acolo —
+// regula stă în `verify_dispozitive.js`, la „într-un singur loc”.
 const carduri = [...html.matchAll(/(?<!')<section class="raco-card"[ >]/g)].length;
 T('ecranul e împărțit în două cartonașe', carduri === 2, carduri + ' cartonașe');
 const capete = [...html.matchAll(/(?<!')<div class="raco-h">\s*(?:<span>)?<i class="fas ([a-z-]+)"><\/i> ([^<]+)</g)].map(m => m[2].trim());
 T('fiecare cartonaș are titlul lui', capete.length === 2, capete.join(' | '));
-T('„Client nou" e buton în capul listei, nu cartonaș separat',
+T('„Client nou” e buton în capul listei, nu cartonaș separat',
   /id="rax-conou-btn"[^>]*onclick="raxCoNouToggle\(\)"/.test(html) && /window\.raxCoNouToggle\s*=/.test(html));
 // Emoji-ul 🔎 mai trăiește pe alte ecrane ale noastre (Facturare, Control costuri, Dispozitive,
 // Rapoarte) — alea nu au fost atinse încă. Aici verificăm doar cele două căutări din Companii.
@@ -144,7 +144,7 @@ function taie(sursa, start, capat) {
   const b = sursa.indexOf(capat, a); if (b < 0) throw new Error('nu găsesc capătul: ' + capat.slice(0, 50));
   return sursa.slice(a, b);
 }
-const bucataCo = taie(html, '// ─── începe „Lista de companii"', '// ─── sfârșit „Lista de companii" ──');
+const bucataCo = taie(html, '// ─── începe „Lista de companii”', '// ─── sfârșit „Lista de companii” ──');
 const co = new Function('window', 'document', 'esc', '$', 'companiesCache', 'dosarPastila', '_raxAccessCell', '_raxDataOra',
   bucataCo + '\n; return { faraContract: _coEsteFaraContract, restanta: _coEsteRestanta, suspendata: _coEsteSuspendata,' +
   ' cauta: _coCauta, valoare: _coValoare, activitate: _coActivitate, lunar: _coLunar, filtre: CO_FILTRE, zile: CO_ZILE_LINISTE };')(
@@ -154,20 +154,20 @@ const co = new Function('window', 'document', 'esc', '$', 'companiesCache', 'dos
 const F = (o) => Object.assign({ id: 1, name: 'Transport Rapid SRL', plan: 'standard', device_count: 2,
   user_count: 1, paid_total: 0, is_demo: false, access: { status: 'active' }, dosar: null, neplata: null,
   ultimaActivitate: Date.now() }, o);
-// „Fără contract" = nicio hârtie în vigoare sau pe drum (23.09). Înainte însemna „lipsește ceva din
-// dosar", deci o firmă cu contract SEMNAT căreia îi lipsea doar scanul apărea „fără contract", iar
+// „Fără contract” = nicio hârtie în vigoare sau pe drum (23.09). Înainte însemna „lipsește ceva din
+// dosar", deci o firmă cu contract SEMNAT căreia îi lipsea doar scanul apărea „fără contract”, iar
 // Companii și Contracte numărau diferit aceeași întrebare.
-T('firma fără niciun contract e „fără contract"', co.faraContract(F({ dosar: { nivel: 'lipsa', text: 'contractul' } })) === true);
-T('cea cu contract semnat, dar fără scan, NU e „fără contract"',
+T('firma fără niciun contract e „fără contract”', co.faraContract(F({ dosar: { nivel: 'lipsa', text: 'contractul' } })) === true);
+T('cea cu contract semnat, dar fără scan, NU e „fără contract”',
   co.faraContract(F({ dosar: { nivel: 'incomplet', text: 'contractul semnat (PDF)' } })) === false);
 T('nici cea cu contract în lucru', co.faraContract(F({ dosar: { nivel: 'nesemnat', eticheta: 'în lucru' } })) === false);
 T('cea cu contract ÎNCHEIAT care încă intră în aplicație, DA', co.faraContract(F({ dosar: { nivel: 'incheiat' }, access: { status: 'active' } })) === true);
 T('dar nu și cea care nu mai intră (s-a despărțit de noi)', co.faraContract(F({ dosar: { nivel: 'incheiat' }, access: { status: 'expired' } })) === false);
 T('cea cu dosarul complet, nu', co.faraContract(F({ dosar: { nivel: 'ok', eticheta: 'în regulă' } })) === false);
-T('demo-ul nu intră la „fără contract"', co.faraContract(F({ is_demo: true, dosar: { nivel: 'lipsa', text: 'x' } })) === false);
+T('demo-ul nu intră la „fără contract”', co.faraContract(F({ is_demo: true, dosar: { nivel: 'lipsa', text: 'x' } })) === false);
 T('restanța în derulare se recunoaște', co.restanta(F({ neplata: { faza: 'avertisment', zilePanaLaSuspendare: 5 } })) === true);
 T('suspendarea se recunoaște', co.suspendata(F({ access: { status: 'expired' } })) === true);
-// Cifra de sub „Companii" de pe „Acasă" (/api/admin/counts) numără pe server cu `contracte.faraContract` (Alin, 30.10: „da acum" —
+// Cifra de sub „Companii” de pe „Acasă” (/api/admin/counts) numără pe server cu `contracte.faraContract` (Alin, 30.10: „da acum” —
 // număra orice dosar incomplet). Aceeași regulă ca filtrul din pagină: rulate pe aceleași dosare REALE (`stareDosar`) și accese.
 {
   const contracteJs = require('./contracts.js');
@@ -190,15 +190,15 @@ T('suspendarea se recunoaște', co.suspendata(F({ access: { status: 'expired' } 
     const server = contracteJs.faraContract(d, a);
     if (pagina !== server) nepotriviri.push((d ? d.nivel : 'null') + '/' + a + ': pagina ' + pagina + ', server ' + server);
   }));
-  T('„fără contract": pagina (`_coEsteFaraContract`) și serverul (`contracte.faraContract`) spun la fel pe ' + (dosare.length * accese.length) + ' cazuri',
+  T('„fără contract”: pagina (`_coEsteFaraContract`) și serverul (`contracte.faraContract`) spun la fel pe ' + (dosare.length * accese.length) + ' cazuri',
     nepotriviri.length === 0, nepotriviri.join(' | '));
-  T('… contractul semnat căruia îi lipsește doar acordul GDPR NU e „fără contract"', dosare[3].nivel === 'incomplet' && contracteJs.faraContract(dosare[3], 'active') === false,
+  T('… contractul semnat căruia îi lipsește doar acordul GDPR NU e „fără contract”', dosare[3].nivel === 'incomplet' && contracteJs.faraContract(dosare[3], 'active') === false,
     dosare[3].nivel + ' / ' + dosare[3].text);
-  // Socoteala stă O DATĂ, în `_stareFirmeToate` (30.10, pasul 2 al asistentului fondatorilor: „Câte firme…", unealta `firme`), iar
+  // Socoteala stă O DATĂ, în `_stareFirmeToate` (30.10, pasul 2 al asistentului fondatorilor: „Câte firme…”, unealta `firme`), iar
   // ruta doar numără ce întoarce ea.
   const ruta = (server.match(/app\.get\('\/api\/admin\/counts'[\s\S]*?\n\}\);/) || [''])[0];
   const stareFirme = (server.match(/async function _stareFirmeToate\(acum\) \{[\s\S]*?\n\}/) || [''])[0];
-  T('starea firmelor (`_stareFirmeToate`): „fără contract" cu `contracte.faraContract`, restanța pe facturi (avertisment), suspendata separat',
+  T('starea firmelor (`_stareFirmeToate`): „fără contract” cu `contracte.faraContract`, restanța pe facturi (avertisment), suspendata separat',
     /contracte\.faraContract\(contracte\.stareDosar\(c, dos\[c\.id\] \|\| null, acum\), acc\.status\)/.test(stareFirme) &&
     /restanta: neplata\.stareNeplata\(f, acum\)\.faza === 'avertisment'/.test(stareFirme) && /suspendata: acc\.status === 'expired'/.test(stareFirme) &&
     /filter\(function \(c\) \{ return !c\.is_demo; \}\)/.test(stareFirme), stareFirme.slice(0, 200));
@@ -211,7 +211,7 @@ T('suspendarea se recunoaște', co.suspendata(F({ access: { status: 'expired' } 
 const filtruLiniste = co.filtre.filter(f => f.id === 'liniste')[0].f;
 T('firma fără semnal de 20 de zile e prinsă', filtruLiniste(F({ ultimaActivitate: Date.now() - 20 * 86400000 })) === true);
 T('cea care a transmis azi, nu', filtruLiniste(F({ ultimaActivitate: Date.now() })) === false);
-T('firma fără vehicule nu e „fără semnal" (n-are ce transmite)', filtruLiniste(F({ device_count: 0, ultimaActivitate: null })) === false);
+T('firma fără vehicule nu e „fără semnal” (n-are ce transmite)', filtruLiniste(F({ device_count: 0, ultimaActivitate: null })) === false);
 T('pragul de liniște e 14 zile', co.zile === 14, String(co.zile));
 
 const cautabil = F({ cui: 'RO11112222', contact_email: 'office@rapid.ro', phone: '0722111222',
@@ -226,13 +226,13 @@ T('și nu găsește ce nu e', co.cauta(cautabil, 'altceva') === false);
 
 T('sortarea după vehicule citește numărul', co.valoare(F({ device_count: 7 }), 'devices') === 7);
 T('sortarea după nume nu ține cont de majuscule', co.valoare(F({ name: 'ABC' }), 'name') === 'abc');
-T('„azi" se scrie ca azi', /azi/.test(co.activitate(F({ ultimaActivitate: Date.now() }))));
+T('„azi” se scrie ca azi', /azi/.test(co.activitate(F({ ultimaActivitate: Date.now() }))));
 T('liniștea lungă se scrie portocaliu', /var\(--orange\)/.test(co.activitate(F({ ultimaActivitate: Date.now() - 30 * 86400000 }))));
 T('firma care n-a transmis niciodată e strigată', /niciodată/.test(co.activitate(F({ ultimaActivitate: null }))));
 T('firma fără vehicule nu e trasă la răspundere', /fără vehicule/.test(co.activitate(F({ device_count: 0 }))));
 
 sect('6. Venitul lunar — aceeași socoteală ca pe factură');
-const bucataV = taie(server, '// ── începe „Venitul lunar pe firmă"', '// ── sfârșit „Venitul lunar pe firmă" ──');
+const bucataV = taie(server, '// ── începe „Venitul lunar pe firmă”', '// ── sfârșit „Venitul lunar pe firmă” ──');
 // `contracte` = regula păstrării istoricului (24.09): 24/36 de luni plătite intră și în venitul lunar.
 const _venitLunar = new Function('plans', 'contracte', bucataV + '\n; return _venitLunar;')(require('./plans.js'), require('./contracts.js'));
 const firmaPret = (o) => ({ id: 1, name: 'X', custom_plan: o, settings: {} });
@@ -247,21 +247,21 @@ T('fără ofertă, firma nu aduce nimic',
   String(_venitLunar({ id: 2, settings: {} }, { none: 5, can: 0, fms: 0 })));
 T('nici măcar dacă are vehicule și un plan scris în coloană',
   _venitLunar({ id: 2, plan: 'premium', settings: {} }, { none: 5, can: 2, fms: 1 }) === 0);
-// RA Insight se plătește prin pachet, fix pe firmă (regula veche, „pe cont", a ieșit pe 11.11).
+// RA Insight se plătește prin pachet, fix pe firmă (regula veche, „pe cont”, a ieșit pe 11.11).
 const cuPachet = { id: 3, custom_plan: { priceNoneRON: 30 }, settings: { ai_pachet: { cod: 'pro', pretRON: 20 } } };
 T('pachetul RA Insight se adaugă, o dată pe firmă', _venitLunar(cuPachet, { none: 2, can: 0, fms: 0 }) === 80,
   String(_venitLunar(cuPachet, { none: 2, can: 0, fms: 0 })));
 const cuVechi = { id: 4, custom_plan: { priceNoneRON: 30 }, settings: { ai_quota: { questionsPerSeat: 50, seatPriceRON: 15, seatsPeak: { luna: '2026-11', n: 4 } } } };
 T('un `ai_quota` rămas (conturi, vârful lunii) nu mai aduce bani: firma e pe Start', _venitLunar(cuVechi, { none: 2, can: 0, fms: 0 }) === 60,
   String(_venitLunar(cuVechi, { none: 2, can: 0, fms: 0 })));
-T('„Lunar" nu mai citește conturile RA Insight', !/aiSeatsByCompany/.test(server) && /_venitLunar\(c, peFirma\[c\.id\]\)/.test(server));
+T('„Lunar” nu mai citește conturile RA Insight', !/aiSeatsByCompany/.test(server) && /_venitLunar\(c, peFirma\[c\.id\]\)/.test(server));
 T('clasificatorul de CAN e cel adevărat, nu o copie',
   /classifyDeviceCan\(\{ can_interface: b\.can_interface/.test(server));
-T('ruta de bani e declarată ÎNAINTEA rutelor cu :id (altfel „mrr" ar fi luat drept un id)',
+T('ruta de bani e declarată ÎNAINTEA rutelor cu :id (altfel „mrr” ar fi luat drept un id)',
   server.indexOf("app.get('/api/companies/mrr'") < server.indexOf("app.get('/api/companies/:id"));
 
 sect('7. Exportul listei de clienți');
-const bucataE = taie(server, '// ── începe „Lista de clienți, pe hârtie"', '// ── sfârșit „Lista de clienți, pe hârtie" ──');
+const bucataE = taie(server, '// ── începe „Lista de clienți, pe hârtie”', '// ── sfârșit „Lista de clienți, pe hârtie” ──');
 const _randuri = new Function(bucataE + '\n; return _randuriExportCompanii;')();
 const acumE = Date.UTC(2026, 8, 15, 12, 0, 0);
 const rExp = _randuri([
@@ -284,11 +284,11 @@ T('și lasă un rând în jurnalul de audit', /auditReq\(req, 'export', 'compani
 T('fișierul trece prin regula casei (nume + logo)', /reportExport\.sendReport\(res, report, 'xlsx'\)/.test(server) &&
   /label: 'Companii'/.test(server));
 
-sect('8. Cartonașul de pe „Acasă" spune starea');
+sect('8. Cartonașul de pe „Acasă” spune starea');
 T('serverul trimite câte firme n-au contract și câte au restanță',
   /companies_fara_contract/.test(server) && /companies_restante/.test(server));
 T('pagina le scrie sub cifră', /adash-s-companies/.test(html) && /fără contract/.test(html));
-T('și zice „toate în regulă" când nu e nimic de rezolvat', /toate în regulă/.test(html));
+T('și zice „toate în regulă” când nu e nimic de rezolvat', /toate în regulă/.test(html));
 
 sect('9. Stilul listei');
 ['.raco-filtre', '.raco-mrr', '.raco-sort', '.raco-subrand', '.raco-lista'].forEach(function (x) {
@@ -297,9 +297,9 @@ sect('9. Stilul listei');
 T('pe telefon lista devine cartonașe', /@media \(max-width: 860px\)\{[\s\S]{0,700}\.raco-lista thead\{ display:none/.test(css));
 T('și fiecare cifră își spune ce e', /\.raco-lista td:before\{ content:attr\(data-et\)/.test(css));
 
-sect('N. Fereastra „Companie" nu se mai zbate, și golul are rost');
-// Fereastra își schimba înălțimea la fiecare filă: 185px pe „Facturi" (aproape goală) → 705px pe
-// „Abonament & plăți". Sărea sub mouse, iar pe fila plină ajungea lipită de marginile ecranului și
+sect('N. Fereastra „Companie” nu se mai zbate, și golul are rost');
+// Fereastra își schimba înălțimea la fiecare filă: 185px pe „Facturi” (aproape goală) → 705px pe
+// „Abonament & plăți”. Sărea sub mouse, iar pe fila plină ajungea lipită de marginile ecranului și
 // părea tăiată de sus (Alin, 18.09). Măsurat în browser pe toate șase filele.
 T('fereastra are o înălțime fixă', /#rax-codetail-overlay \.rax-card \{ height: min\(82vh, 620px\); \}/.test(html));
 T('capul și filele stau pe loc',
@@ -309,7 +309,7 @@ T('doar corpul se derulează', /#rax-codetail-overlay #rax-cod-body \{[^}]*flex:
 T('secțiunile se despart din CSS, nu din margini scrise pe fiecare',
   /#rax-cod-body > \.rax-cod-sect \+ \.rax-cod-sect/.test(html) && !/rax-cod-sect" style="margin-top:14px/.test(html));
 T('butoanele de jos au rândul lor, despărțit', /#rax-cod-body > \.rax-cod-actiuni \{[^}]*border-top/.test(html));
-T('cele două coloane din „Detalii" au același număr de rânduri (se aliniază)',
+T('cele două coloane din „Detalii” au același număr de rânduri (se aliniază)',
   /<span class="k">Acces<\/span>/.test(html) && /<span class="k">Vehicule<\/span>/.test(html));
 T('rândurile au aceeași înălțime', /\.rax-kv \{[^}]*min-height: 36px/.test(html));
 T('o filă goală arată a gol, nu a aplicație stricată', (html.match(/class="rax-cod-gol"/g) || []).length >= 4);
@@ -319,10 +319,10 @@ T('nu mai există rânduri italice orfane în filele goale',
   !/rax-co-meta" style="padding:16px;">Niciun vehicul\./.test(html) &&
   !/rax-co-meta" style="padding:16px;">Nicio plată/.test(html));
 
-sect('O. Fila „Detalii": coloanele nu se mai ating, valorile stau pe o verticală');
+sect('O. Fila „Detalii”: coloanele nu se mai ating, valorile stau pe o verticală');
 // Înălțimea fusese reparată, dar fila tot arăta înghesuită (Alin, 18.09). Măsurat în browser, pe
-// firma „Compania mea": valoarea din coloana stângă ajungea la 22px de eticheta coloanei drepte —
-// „Compania mea" și „IBAN" se citeau ca un singur rând. Iar valorile, fiind împinse la marginea din
+// firma „Compania mea”: valoarea din coloana stângă ajungea la 22px de eticheta coloanei drepte —
+// „Compania mea” și „IBAN” se citeau ca un singur rând. Iar valorile, fiind împinse la marginea din
 // dreapta, porneau din TREI locuri diferite (597 / 634 / 676px): nicio coloană de urmărit cu ochiul.
 // Pe deasupra, butoanele se opreau unde se termina textul, cu 118px de gol sub ele.
 T('fiecare secțiune stă în panoul ei (asta desparte coloanele)',
@@ -339,7 +339,7 @@ T('butoanele stau pe FUNDUL ferestrei, nu unde se termină textul',
 
 sect('P. Capul ferestrei: o singură margine și aer între titlu și file');
 // Titlul pornea de la 17px de chenar, conținutul tot de la 17px, dar rândul de file de la 1px —
-// „Detalii" lipit de chenar. Iar între titlu și file erau ZERO pixeli, cu DOUĂ linii orizontale una
+// „Detalii” lipit de chenar. Iar între titlu și file erau ZERO pixeli, cu DOUĂ linii orizontale una
 // sub alta și butoanele strivite între ele (Alin, 18.09). Măsurat în browser.
 T('filele au aceeași margine laterală ca titlul și textul (16px)',
   /\.rax-cod-tabs \{[^}]*padding: 14px 16px/.test(html) &&

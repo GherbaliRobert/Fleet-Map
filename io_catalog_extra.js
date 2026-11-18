@@ -1,6 +1,6 @@
 // io_catalog_extra.js — GENERAT de tools/gen-io-catalog-extra.js din specul oficial FMC130.
 // NU edita de mână. Catalogul scris de mână (io_catalog.js) are prioritate; aici e restul listei
-// oficiale (400 intrări), ca editorul „Mapează" și DevConsole să aibă etichete pentru tot.
+// oficiale (400 intrări), ca editorul „Mapează” și DevConsole să aibă etichete pentru tot.
 module.exports = [
   { id: 502, name: "MSP500 speed sensor", name_ro: "MSP500 viteză senzor", unit: "-", multiplier: 1, category: "Sistem", key: "msp500_speed_sensor", desc_ro: "" },
   { id: 10800, name: "EYE Temperature 1", name_ro: "EYE temperatură 1", unit: "°C", multiplier: 0.01, category: "Sistem", key: "eye_temperature_1", desc_ro: "" },

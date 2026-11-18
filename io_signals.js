@@ -3,7 +3,7 @@
 // De ce există. Aplicația mai are trei liste de IO-uri, fiecare cu rostul ei:
 //   • `codec8e.js`   — ce ID trimite aparatul și cum se cheamă cheia (can_engine_rpm…)
 //   • `io_catalog.js`— fișa Teltonika, indexată pe ID-ul AVL (nu pe cheie!)
-//   • `io_format.js` — cum se SCRIE o valoare pe ecran („87.0 °C")
+//   • `io_format.js` — cum se SCRIE o valoare pe ecran („87.0 °C”)
 // Niciuna nu răspunde la întrebarea de care are nevoie un raport: *care semnale sunt numere pe care
 // merită să le urmărești în timp, în ce unitate și cum se grupează pentru omul care bifează*.
 // Aici stau exact alea. Etichetele NU se rescriu: vin din `io_format.formatIoLabel`.

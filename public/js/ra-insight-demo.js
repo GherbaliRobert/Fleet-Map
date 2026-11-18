@@ -1,12 +1,12 @@
-/* RA Insight — telefonul de prezentare (16.11; Alin: „1. A, 2. închis, 3. da, cu comutator Basic / Pro / Business, 4. da, 5. da",
-   la macheta https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — „exact așa animat ca în machetă").
+/* RA Insight — telefonul de prezentare (16.11; Alin: „1. A, 2. închis, 3. da, cu comutator Basic / Pro / Business, 4. da, 5. da”,
+   la macheta https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — „exact așa animat ca în machetă”).
 
    UN SINGUR fișier, folosit în trei locuri:
      - prima pagină: telefonul din primul ecran (patru întrebări în aceeași discuție, cu butoanele de sub el) și bucățile de
        ecran din secțiunea RA Insight (starea finală a fiecărei întrebări);
      - /pachete-ra-insight: telefonul pachetului Start (un buton) și telefonul pachetelor plătite, cu comutatorul Basic / Pro /
-       Business (cine întreabă, câte întrebări are, „Sursă externă");
-     - aplicația, „Vezi pachetele", la firmele de pe Start: același telefon al pachetelor plătite.
+       Business (cine întreabă, câte întrebări are, „Sursă externă”);
+     - aplicația, „Vezi pachetele”, la firmele de pe Start: același telefon al pachetelor plătite.
    NU scrie a doua variantă în pagină: pune un <div data-ri-demo="…"> și cheamă RaInsightDemo.porneste(container) dacă e pus după
    încărcare (aplicația).
 
@@ -14,7 +14,7 @@
    luat din rapoarte.", butoanele de sub casetă, pachetele) sunt legate de el în verify_ra_insight_demo.js, iar întrebările trec prin
    regulile adevărate ale aplicației (răspunsul pe loc, raportul cerut, alerta, analiza). Mașinile, oamenii și cifrele sunt inventate;
    zilele se socotesc față de azi, pe ora României, ca pagina să nu îmbătrânească.
-   Se mișcă doar cât e pe ecran; cine a cerut „mai puțină mișcare" vede răspunsurile gata scrise. */
+   Se mișcă doar cât e pe ecran; cine a cerut „mai puțină mișcare” vede răspunsurile gata scrise. */
 (function () {
   'use strict';
   if (window.RaInsightDemo) return;
@@ -29,13 +29,13 @@
     return { y: +o.year, m0: +o.month - 1, d: +o.day };
   }
   function doi(n) { return (n < 10 ? '0' : '') + n; }
-  // „09.11" — cu anul doar când ziua e în alt an decât azi (ca _zi din propuneri.js și zz din ramuri.js). `faraAn` = „până pe 23.11"
+  // „09.11” — cu anul doar când ziua e în alt an decât azi (ca _zi din propuneri.js și zz din ramuri.js). `faraAn` = „până pe 23.11”
   // de sub raportul cerut (cartonasRaport scrie mereu fără an).
   function zz(ms, acum, faraAn) { var p = parti(ms); return doi(p.d) + '.' + doi(p.m0 + 1) + (!faraAn && acum != null && parti(acum).y !== p.y ? '.' + p.y : ''); }
   function zzan(ms) { var p = parti(ms); return doi(p.d) + '.' + doi(p.m0 + 1) + '.' + p.y; }
   var ORA = '10:24';
 
-  // ── Pachetele plătite (copia lui pachete.js: titlu, pentru cine, conturi, întrebări; „Sursă externă" din sursa_externa.js) ──
+  // ── Pachetele plătite (copia lui pachete.js: titlu, pentru cine, conturi, întrebări; „Sursă externă” din sursa_externa.js) ──
   var PACHETE = {
     basic: { nume: 'Basic', titlu: 'Întreabă orice despre flota ta.', pentru: 'Pentru patron și încă un om.', conturi: '2', intrebari: '200 pe lună', sursa: 10,
       cine: 'Andrei', rol: 'patronul', contor: ['198 din 200', '197 din 200'], sursaRamase: 7, sc: 'dece' },
@@ -114,7 +114,7 @@
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
   function asteapta(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-  // Antetul răspunsului, ca în aplicație: „RA Insight", eticheta (INSTANT cu fulger / ANALIZĂ cu steluțe), detaliul, durata.
+  // Antetul răspunsului, ca în aplicație: „RA Insight”, eticheta (INSTANT cu fulger / ANALIZĂ cu steluțe), detaliul, durata.
   function antet(s) {
     var c = el('div', 'ri-cap');
     c.appendChild(el('span', 'ri-nm', 'RA Insight'));
@@ -152,7 +152,7 @@
     if (gata) b.querySelectorAll('.ri-dupa').forEach(function (x) { x.classList.add('ri-v'); });
     return { row: row, av: av, bub: b, corp: corp };
   }
-  // După „Da": cartonașul se închide („Ai apăsat Da · 10:24"), iar dedesubt vine „Gata", cu „Anulează" (10 minute) și jurnalul.
+  // După „Da”: cartonașul se închide („Ai apăsat Da · 10:24”), iar dedesubt vine „Gata”, cu „Anulează” (10 minute) și jurnalul.
   function puneGata(T, r, s) {
     var dz = r.bub.querySelector('[data-rol="da"]'); if (!dz) return;
     var prop = r.bub.querySelector('.ri-prop');
@@ -165,7 +165,7 @@
     if (T) T.ceas(g.querySelector('.ri-anul'));
   }
 
-  // ── Un telefon: ecranul gol (salut, casetă, butoane, „Azi la tine") și discuția ──
+  // ── Un telefon: ecranul gol (salut, casetă, butoane, „Azi la tine”) și discuția ──
   function Telefon(gazda, o) {
     this.o = o || {}; this.gen = 0; this.vazut = !('IntersectionObserver' in window); this.trezeste = null; this._ceas = null;
     this.cine = this.o.cine || 'Andrei'; this.contor = this.o.contor || null; this.sursa = this.o.sursa || null;
@@ -198,7 +198,7 @@
       '<span class="ri-trim"><i class="fa-solid fa-arrow-up"></i></span></div></div>';
   };
   Telefon.prototype.opresteCeas = function () { if (this._ceas) { clearInterval(this._ceas); this._ceas = null; } };
-  // „Anulează · mai ai 9:59", care scade cât stă pe ecran (ca ceasAnulare din aplicație).
+  // „Anulează · mai ai 9:59”, care scade cât stă pe ecran (ca ceasAnulare din aplicație).
   Telefon.prototype.ceas = function (b) {
     this.opresteCeas();
     if (!b || !MISCARE) return;
@@ -248,7 +248,7 @@
     var a = el('span', 'ri-atinge'); a.style.left = (r.left - s.left + r.width / 2) + 'px'; a.style.top = (r.top - s.top + r.height / 2) + 'px';
     this.scr.appendChild(a); setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 600);
   };
-  // Contorul de lângă săgeată și „Sursă externă": aceleași în caseta din mijloc și în cea de jos.
+  // Contorul de lângă săgeată și „Sursă externă”: aceleași în caseta din mijloc și în cea de jos.
   Telefon.prototype.puneContor = function (t) {
     this.contor = t;
     this.scr.querySelectorAll('.ri-cnt').forEach(function (c) { c.textContent = t; });
@@ -259,7 +259,7 @@
     var self = this;
     this.scr.querySelectorAll('.ri-sursa').forEach(function (b) { b.classList.toggle('ri-on', on); b.querySelector('.ri-sursa-nr').textContent = on ? self.sursa.nr : ''; });
   };
-  // Scrie întrebarea în caseta care se vede (în mijloc, pe ecranul gol, sau jos, în discuție), apoi „trimite".
+  // Scrie întrebarea în caseta care se vede (în mijloc, pe ecranul gol, sau jos, în discuție), apoi „trimite”.
   Telefon.prototype.scrie = async function (g, text) {
     var cas = (this.inConv ? this.dock : this.gol).querySelector('.ri-cas');
     var tx = cas.querySelector('.ri-tx'), tr = cas.querySelector('.ri-trim');
@@ -310,7 +310,7 @@
       ch.classList.remove('ri-apasat');
     } else {
       if (s.sursa && this.sursa) {
-        // „Sursă externă": omul o pornește, apoi scrie (butonul se face albastru și arată câte au rămas).
+        // „Sursă externă”: omul o pornește, apoi scrie (butonul se face albastru și arată câte au rămas).
         if (!(await this.pauza(g, 500))) return false;
         var sb = (this.inConv ? this.dock : this.gol).querySelector('.ri-sursa');
         this.atinge(sb); this.puneSursa(true, this.sursa.ramase + ' din ' + this.sursa.total);
@@ -380,7 +380,7 @@
     return T;
   }
 
-  // ── Pachetul Start: un buton („Ce a făcut flota ieri?"), răspunsul pe loc, contorul celor 50 ──
+  // ── Pachetul Start: un buton („Ce a făcut flota ieri?”), răspunsul pe loc, contorul celor 50 ──
   function start(gazda) {
     var T = new Telefon(gazda, { start: true, cine: START.cine, contor: START.contor[0], contorDupa: START.contor[1] });
     (async function () {
@@ -396,8 +396,8 @@
   }
 
   // ── Pachetele plătite: comutatorul Basic / Pro / Business, cine întreabă, câte întrebări are; trece singur de la unul la altul ──
-  // Pe telefon (≤ 720 px, unde cele două telefoane ar sta unul sub altul; 18.11, Alin: „3. da"): coloana Start de alături se ascunde
-  // (`ri-col-start` în `ri-unul`, stilul în pagină), iar telefonul ăsta primește și butonul „Start" — UN telefon cu Start · Basic · Pro ·
+  // Pe telefon (≤ 720 px, unde cele două telefoane ar sta unul sub altul; 18.11, Alin: „3. da”): coloana Start de alături se ascunde
+  // (`ri-col-start` în `ri-unul`, stilul în pagină), iar telefonul ăsta primește și butonul „Start” — UN telefon cu Start · Basic · Pro ·
   // Business. Textele Start NU se scriu aici: se iau din coloana Start a paginii (aceeași hârtie, legată de pachete.js prin probe).
   var INGUST = '(max-width: 720px)';
   function platit(gazda) {

@@ -32,7 +32,7 @@ import { AdminAlerts } from './screens/AdminAlerts';
 import { AdminUsers } from './screens/AdminUsers';
 import { NotifPrefs } from './screens/NotifPrefs';
 import { ReportSchedules } from './screens/ReportSchedules';
-import { Insight } from './screens/Insight';   // RA Insight: discuția (02.11), în locul vechiului „Asistent AI"
+import { Insight } from './screens/Insight';   // RA Insight: discuția (02.11), în locul vechiului „Asistent AI”
 import { AiAssistants } from './screens/AiAssistants';
 import { AiAgents } from './screens/AiAgents';
 import { ETransport } from './screens/ETransport';
@@ -50,11 +50,11 @@ import { PlatformDashboard } from './screens/PlatformDashboard';
 import { CostControl } from './screens/CostControl';
 import { Offers } from './screens/Offers';
 import { OfferCalc } from './screens/OfferCalc';   // calculatorul — socotit pe server, cu codul paginii web
-import { OurPrices } from './screens/OurPrices';   // „Prețurile noastre": cât cerem, cât ne costă, cursul
+import { OurPrices } from './screens/OurPrices';   // „Prețurile noastre”: cât cerem, cât ne costă, cursul
 import { DemoRequests } from './screens/DemoRequests';
 import { Mail } from './screens/Mail';
-import { AnuntaEchipa } from './screens/AnuntaEchipa';   // „Anunță echipa RA Track": fereastra clientului
-import { CereriClienti } from './screens/CereriClienti';   // „Cereri de la clienți": lista noastră
+import { AnuntaEchipa } from './screens/AnuntaEchipa';   // „Anunță echipa RA Track”: fereastra clientului
+import { CereriClienti } from './screens/CereriClienti';   // „Cereri de la clienți”: lista noastră
 // Operațiunile fondatorului (lotul 2b, F4): Acasă, Inventar, Tahograf și e-Transport pe firme, RA Insight, Chei API, Jurnal audit.
 import { FounderHome } from './screens/FounderHome';
 import { DeviceInventory } from './screens/DeviceInventory';
@@ -85,14 +85,14 @@ import { ContulMeu } from './screens/ContulMeu';
 // ── Ecranele tăiate din rol ──
 // Firma poate ascunde unui rol anumite ecrane (câmpul `ecraneAscunse` din /api/me). Din meniu și din bara
 // de jos dispar; dacă omul ajunge totuși la adresa ecranului (buton din alt ecran, notificare), vede o pagină
-// calmă în loc de „Acces interzis" de la server. Cheile sunt cele din ECRANE (server.js). Ecranele fără rute
-// proprii pe server („localizare", „vehicule") nu se păzesc aici: harta/lista de vehicule rămâne ecranul de
+// calmă în loc de „Acces interzis” de la server. Cheile sunt cele din ECRANE (server.js). Ecranele fără rute
+// proprii pe server („localizare”, „vehicule”) nu se păzesc aici: harta/lista de vehicule rămâne ecranul de
 // pornire, exact ca pe web, unde ascunderea lor scoate doar butonul din meniu.
 // Învelișurile se fac O SINGURĂ DATĂ, aici sus: o funcție nouă la fiecare randare ar reîncărca ecranul mereu.
 function pazit(cheie: EcranCheie, Ecran: ComponentType<any>, titlu: string, radacina = false): ComponentType<any> {
   return (props: any) => (ecranAscuns(cheie) ? <EcranIndisponibil titlu={titlu} radacina={radacina} /> : <Ecran {...props} />);
 }
-// „Asistenți AI" arată tokenii și modelul AI — informație doar pentru noi (pe web ecranul a ieșit din meniu).
+// „Asistenți AI” arată tokenii și modelul AI — informație doar pentru noi (pe web ecranul a ieșit din meniu).
 function doarSuper(Ecran: ComponentType<any>, titlu: string): ComponentType<any> {
   return (props: any) => (me.value?.isSuper ? <Ecran {...props} /> : <EcranIndisponibil titlu={titlu} doarNoi />);
 }
@@ -103,7 +103,7 @@ const P = {
   fuelstats: pazit('statistici', FuelStats, 'Statistici consum'),
   schedules: pazit('programari', ReportSchedules, 'Rapoarte programate'),
   hotspot: pazit('hotspot', Hotspot, 'Hotspot & Rutare'),
-  geofences: pazit('hotspot', AdminGeofences, 'Zone'), // zonele stau pe server sub ecranul „hotspot"
+  geofences: pazit('hotspot', AdminGeofences, 'Zone'), // zonele stau pe server sub ecranul „hotspot”
   drivers: pazit('soferi', AdminDrivers, 'Șoferi'),
   groups: pazit('grupe', AdminGroups, 'Grupe'),
   remorci: pazit('vehicule', Remorci, 'Semiremorci și remorci'),   // simulatorul de încărcare (12.10)
@@ -113,11 +113,11 @@ const P = {
   tahograf: pazit('tahograf', Tahograf, 'Tahograf'),
   etransport: pazit('etransport', ETransport, 'e-Transport (ANAF)'),
   etoll: pazit('tollro', EToll, 'Taxa de drum (TollRo)'),
-  insight: pazit('insight', Insight, 'RA Insight'),   // /api/insight și /api/ai stau pe server sub ecranul „insight"
+  insight: pazit('insight', Insight, 'RA Insight'),   // /api/insight și /api/ai stau pe server sub ecranul „insight”
   aiAgents: pazit('insight', AiAgents, 'Agenți AI'),
   aiStats: doarSuper(AiAssistants, 'Asistenți AI'),
   // Ecranele platformei: în meniu apar doar la super-admin, dar la adresă se putea ajunge și altfel (buton,
-  // notificare) și dădeai în „Acces interzis". Aparatele — inclusiv cele ARHIVATE — sunt ale noastre:
+  // notificare) și dădeai în „Acces interzis”. Aparatele — inclusiv cele ARHIVATE — sunt ale noastre:
   // hotărât pe 18.09 că clientul nu-și vede aparatele arhivate.
   devices: doarSuper(AdminDevices, 'Dispozitive'),
   archived: doarSuper(AdminArchived, 'Dispozitive arhivate'),
@@ -183,9 +183,9 @@ function Shell() {
     return () => { stopLive(); clearInterval(unreadTimer); clearInterval(accesTimer); h.then((x) => x.remove()); };
   }, [token.value]);
 
-  // „Ecranul cu care se deschide aplicația" (Contul meu → Afișaj): store-ul îl cere O SINGURĂ DATĂ, după
+  // „Ecranul cu care se deschide aplicația” (Contul meu → Afișaj): store-ul îl cere O SINGURĂ DATĂ, după
   // pornirea la rece sau după autentificare, când sosesc preferințele contului. Îl deschidem doar dacă omul e
-  // încă pe ecranul de pornire („/", sau „/vehicles" unde îl duce Login). Un tap pe notificare repornește
+  // încă pe ecranul de pornire („/”, sau „/vehicles” unde îl duce Login). Un tap pe notificare repornește
   // aplicația direct pe fișa mașinii sau pe Notificări — aceea câștigă. La revenirea din fundal nu se cere nimic.
   const ecranCerut = ecranPornireCerut.value;
   useEffect(() => {
@@ -197,7 +197,7 @@ function Shell() {
 
   // Banda de restanță / suspendare (ca pe web, applyAccessBanner): din `access` de pe profil, cu textul serverului.
   // Când apare sau dispare, ecranul de dedesubt își schimbă înălțimea fără ca fereastra să se schimbe — de ex. la
-  // autentificare, unde profilul sosește la o clipă după cheie. Hărțile (Leaflet) își refac mărimea doar la „resize"
+  // autentificare, unde profilul sosește la o clipă după cheie. Hărțile (Leaflet) își refac mărimea doar la „resize”
   // pe fereastră: i-l dăm noi, o dată, altfel partea de jos a hărții ar rămâne tăiată și centrul mutat.
   const banda = bandaAcces(me.value);
   const areBanda = !!banda;
@@ -211,7 +211,7 @@ function Shell() {
 
   // Ramele benzii (.ba-cadru / .ba-corp) stau MEREU acolo, cu sau fără bandă: dacă ar apărea doar odată cu ea,
   // ecranul deschis s-ar reîncărca de la zero (și și-ar pierde ce era scris în el) când sosește profilul.
-  // Butonul spre facturi: doar pe banda de RESTANȚĂ, doar cine are „Facturile mele" în meniu (aceeași condiție) și nu
+  // Butonul spre facturi: doar pe banda de RESTANȚĂ, doar cine are „Facturile mele” în meniu (aceeași condiție) și nu
   // e deja acolo. Pe banda roșie nu stă (ca pe web): contul suspendat iese din aplicație la următoarea pornire.
   const spreFacturi = banda && banda.fel === 'restanta' && me.value?.permissions?.manageUsers && path !== '/billing' ? () => loc.route('/billing') : undefined;
 
@@ -303,14 +303,14 @@ function Shell() {
   );
 }
 
-// Adresa veche a „Asistentului AI": anunțuri și scurtături mai pot duce aici. Înlocuim adresa, ca „Înapoi" să nu se întoarcă la ea.
+// Adresa veche a „Asistentului AI”: anunțuri și scurtături mai pot duce aici. Înlocuim adresa, ca „Înapoi” să nu se întoarcă la ea.
 function SpreInsight() {
   const loc = useLocation();
   useEffect(() => { loc.route('/insight', true); }, []);
   return null;
 }
 
-// Pagina calmă pentru un ecran la care omul n-are acces. Un „Acces interzis" sec arată a aplicație stricată;
+// Pagina calmă pentru un ecran la care omul n-are acces. Un „Acces interzis” sec arată a aplicație stricată;
 // aici se spune pe scurt de ce și unde poate merge mai departe.
 function EcranIndisponibil({ titlu, radacina, doarNoi }: { titlu: string; radacina?: boolean; doarNoi?: boolean }) {
   const loc = useLocation();

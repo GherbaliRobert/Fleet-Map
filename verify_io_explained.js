@@ -2,7 +2,7 @@
 //
 //   node verify_io_explained.js            (pornește singur un server pe PGlite)
 //
-// E ruta pe care o folosește fereastra „Ce înseamnă?" din telefon. Toată prelucrarea stă pe server —
+// E ruta pe care o folosește fereastra „Ce înseamnă?” din telefon. Toată prelucrarea stă pe server —
 // potrivirea cu catalogul, strângerea codurilor care duc la același semnal, formatarea — tocmai ca
 // aplicația de telefon să NU-și țină o a doua copie a regulilor. Proba asta apără contractul.
 const { spawn } = require('child_process');
@@ -50,8 +50,8 @@ function gata(code) {
   const imei = Array.isArray(dev) && dev.length ? (dev[0].imei || dev[0].IMEI) : null;
   if (!imei) { console.log('nu am niciun vehicul de test'); return gata(1); }
 
-  // Codul „pe care nu-l cunoaștem" se alege LA RULARE, nu se scrie de mână: pe 26.08 proba pica
-  // fiindcă io_1148 fusese între timp catalogat („Connectivity quality") — adică exact lucrul bun
+  // Codul „pe care nu-l cunoaștem” se alege LA RULARE, nu se scrie de mână: pe 26.08 proba pica
+  // fiindcă io_1148 fusese între timp catalogat („Connectivity quality”) — adică exact lucrul bun
   // pe care ni-l dorim făcea proba să sune alarma. Luăm primul ID liber din catalog.
   const { IO_CATALOG } = require('./io_catalog.js');
   const idsCunoscute = new Set(IO_CATALOG.map((e) => e.id));
@@ -114,8 +114,8 @@ function gata(code) {
     T('fără _sf_/_cf_ printre semnale', !d.semnale.some(s => /^_(sf|cf)_/.test(s.cheie)));
   } else {
     // NU sărim peste. Daca injectarea n-a mers, proba nu mai verifica nimic din ce conteaza, iar un
-    // „6 verificari trecute" ar fi o minciuna linistitoare. Prima oara chiar asa s-a intamplat: ruta
-    // de injectare taia literele din IMEI-ul de proba („TEST222" -> „222"), lista venea goala, si
+    // „6 verificari trecute” ar fi o minciuna linistitoare. Prima oara chiar asa s-a intamplat: ruta
+    // de injectare taia literele din IMEI-ul de proba („TEST222” -> „222”), lista venea goala, si
     // proba raporta succes.
     T('vehiculul de test are semnale (altfel proba nu verifica nimic)', false,
       'lista a venit goala - injectarea a esuat tacut');

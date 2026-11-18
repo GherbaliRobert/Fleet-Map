@@ -15,7 +15,7 @@ export interface FieldDef {
   options?: { value: string; label: string; group?: string; hi?: boolean; title?: string }[];
   half?: boolean;       // pune două câmpuri pe un rând
   default?: any;
-  // `chips`: bife multiple, salvate ca listă separată prin virgulă („B,C,CE"). `group` le împarte pe
+  // `chips`: bife multiple, salvate ca listă separată prin virgulă („B,C,CE”). `group` le împarte pe
   // rânduri, `hi` le scoate în evidență (ex: categoriile profesioniste). `note` desenează un rând sub
   // câmp, recalculat la fiecare bifă — acolo spunem ce înseamnă alegerea, nu într-un ajutor separat.
   note?: (value: string) => any;
@@ -225,7 +225,7 @@ function field(fd: FieldDef, form: Record<string, any>, setF: (k: string, v: any
       </select>
     );
   } else if (fd.type === 'chips') {
-    // Valoarea stă tot ca string („B,C,CE") — la fel ca pe web și ca în bază. Serverul o normalizează
+    // Valoarea stă tot ca string („B,C,CE”) — la fel ca pe web și ca în bază. Serverul o normalizează
     // oricum (license_cats.format), deci nu ne batem capul aici cu ordinea sau cu duplicatele.
     const sel = String(val).split(',').map((s) => s.trim()).filter(Boolean);
     const toggle = (code: string) => {

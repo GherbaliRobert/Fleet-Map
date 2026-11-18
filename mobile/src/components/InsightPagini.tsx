@@ -20,7 +20,7 @@ export type LaPagina = {
   numere: () => void;          // numărul de lângă pagină s-a schimbat
 };
 
-// Luna, grupa, „Cum se socotește" rămân ținute minte cât trăiește aplicația (web: S.sdLuna, S.sdGrupa, S.sdCumDeschis…).
+// Luna, grupa, „Cum se socotește” rămân ținute minte cât trăiește aplicația (web: S.sdLuna, S.sdGrupa, S.sdCumDeschis…).
 const mem: { alegeri: Record<string, { per?: string; grupa?: string | null }>; cum: Record<string, boolean> } = { alegeri: {}, cum: {} };
 
 function Eroare({ h3, text }: { h3: string; text: string }) { return <div class="insp-card"><h3>{h3}</h3><div>{text}</div></div>; }
@@ -180,7 +180,7 @@ function BlocUna({ b, l, bife, reia }: { b: Bloc; l: LaPagina; bife?: { stare: B
   }
   return null;
 }
-// Capul paginii: titlul, luna / săptămâna, grupa, „Întreabă RA Insight".
+// Capul paginii: titlul, luna / săptămâna, grupa, „Întreabă RA Insight”.
 function Cap({ p, l, laSelect }: { p: Plan; l: LaPagina; laSelect?: (s: Select, v: string) => void }) {
   return (
     <div class="sdp-cap">
@@ -206,7 +206,7 @@ export function PlanDesenat({ p, l, laSelect, reia, bife }: { p: Plan; l: LaPagi
 }
 function SeIncarca() { return <div class="insp-gol">Se încarcă…</div>; }
 
-// ── Paginile pe lună / săptămână: RA Drive, Combustibil, Ore de condus. „Pregătesc…" se reia singură. ──
+// ── Paginile pe lună / săptămână: RA Drive, Combustibil, Ore de condus. „Pregătesc…” se reia singură. ──
 const LUNARE: Record<string, { cere: (q: any) => Promise<any>; plan: typeof planSafeDrive; param: string; ales: string; eroare: string }> = {
   safedrive: { cere: (q) => Api.insightSafeDrive(q), plan: planSafeDrive, param: 'luna', ales: 'lunaAleasa', eroare: 'RA Drive nu s-a putut deschide' },
   combustibil: { cere: (q) => Api.insightCombustibil(q), plan: planCombustibil, param: 'luna', ales: 'lunaAleasa', eroare: 'Combustibil nu s-a putut deschide' },
@@ -219,7 +219,7 @@ function PaginaPerioada({ k, l }: { k: string; l: LaPagina }) {
   const [grupa, setGrupa] = useState<string | null | undefined>(m.grupa);
   const [j, setJ] = useState<any | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [fel, setFel] = useState(0);       // „Reia" după o discuție sau după prețuri: aceeași lună, fără „Se încarcă…"
+  const [fel, setFel] = useState(0);       // „Reia” după o discuție sau după prețuri: aceeași lună, fără „Se încarcă…”
   const [sheet, setSheet] = useState<Act | null>(null);
   const tok = useRef(0);
   useInapoiInchide(!!sheet, () => { setSheet(null); return true; });
@@ -238,7 +238,7 @@ function PaginaPerioada({ k, l }: { k: string; l: LaPagina }) {
       setErr(null); setJ(r);
     } catch (e: any) { if (t === tok.current) { setErr(textEroare(e)); setJ(null); } }
   }
-  // Alegerea de sus: „Se încarcă…" (web: fără `singur`); reluările rămân pe pagina de acum.
+  // Alegerea de sus: „Se încarcă…” (web: fără `singur`); reluările rămân pe pagina de acum.
   useEffect(() => { setJ(null); setErr(null); aduce(); return () => { tok.current++; }; }, [k, per, grupa]);
   useEffect(() => { if (fel) aduce(); }, [fel]);
   const p = j ? d.plan(j) : null;
@@ -299,7 +299,7 @@ function PaginaMentenanta({ l }: { l: LaPagina }) {
   return <div class="sdp">{err != null ? <Eroare h3="Mentenanță & acte nu s-a putut deschide" text={err} /> : !j ? <SeIncarca /> : <PlanDesenat p={planMentenanta(j)} l={l} />}</div>;
 }
 
-// ── Șoferi pe mașini: toată flota deodată; bifezi și apeși „Aplică". Nimic nu se schimbă fără apăsare. ──
+// ── Șoferi pe mașini: toată flota deodată; bifezi și apeși „Aplică”. Nimic nu se schimbă fără apăsare. ──
 function PaginaSoferi({ l }: { l: LaPagina }) {
   const [j, setJ] = useState<any | null>(null);
   const [err, setErr] = useState<string | null>(null);

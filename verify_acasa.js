@@ -1,21 +1,21 @@
-// verify_acasa.js — cartonașele de pe „Acasă" (Administrare): sumar care duce în pagină.
+// verify_acasa.js — cartonașele de pe „Acasă” (Administrare): sumar care duce în pagină.
 //
 //   node verify_acasa.js
 //
 // Cum e gândit ecranul (decizia lui Alin, 17.09): cartonașele sunt **sumar**, nu loc de lucru. Cifra
-// și starea stau pe cartonaș, iar „Vezi detalii" te duce în pagina secțiunii — aceeași pagină la care
+// și starea stau pe cartonaș, iar „Vezi detalii” te duce în pagina secțiunii — aceeași pagină la care
 // ajungi și din meniul din stânga. Așa o secțiune se deschide într-un SINGUR fel.
 //
 // Înainte exista și a doua cale: secțiunea se deschidea chiar sub cartonașe. Motivul era că altfel
-// „cifrele dispăreau" — dar între timp fiecare pagină și-a căpătat propriul sumar (pastile cu numere,
+// „cifrele dispăreau” — dar între timp fiecare pagină și-a căpătat propriul sumar (pastile cu numere,
 // venitul lunar, contorul de conturi), deci motivul a dispărut. Iar a doua cale costa: aplicația
 // trebuia să țină minte în care din ele e deschisă o secțiune, și de acolo a venit bug-ul cu
-// „Dispozitive" rămas agățat sub cartonașe după ce apăsai „Acasă".
+// „Dispozitive” rămas agățat sub cartonașe după ce apăsai „Acasă”.
 //
 // Ce prinde proba asta:
 //   • perna de sus/dreapta scoasă (cartonașul se ridică sub mouse, iar zona taie ce iese din ea);
-//   • un cartonaș rămas fără „Vezi detalii", sau care duce în altă secțiune decât a lui;
-//   • reîntoarcerea mecanismului de „deschide sub cartonașe";
+//   • un cartonaș rămas fără „Vezi detalii”, sau care duce în altă secțiune decât a lui;
+//   • reîntoarcerea mecanismului de „deschide sub cartonașe”;
 //   • listele de secțiuni scrise de mână — cele trei care au dus la bug;
 //   • două grupe deschise deodată în meniul din stânga, sau deschiderea fără animație (secțiunea 9).
 const fs = require('fs');
@@ -59,9 +59,9 @@ console.log('\n2. Cartonașul e SUMAR și spune unde duce');
 const carduri = html.match(/<button class="adash-card[^>]*>[\s\S]*?<\/button>/g) || [];
 T('sunt cele patru cartonașe', carduri.length === 4, String(carduri.length));
 T('fiecare are cifra lui', carduri.every(c => /class="adash-num"/.test(c)));
-T('și fiecare spune „Vezi detalii"', carduri.every(c => /adash-go">Vezi detalii/.test(c)),
+T('și fiecare spune „Vezi detalii”', carduri.every(c => /adash-go">Vezi detalii/.test(c)),
   carduri.filter(c => !/adash-go/.test(c)).length + ' fără');
-T('semnul „duce undeva" e o săgeată, nu un cuvânt inventat', carduri.every(c => /fa-arrow-right/.test(c)));
+T('semnul „duce undeva” e o săgeată, nu un cuvânt inventat', carduri.every(c => /fa-arrow-right/.test(c)));
 T('stilul lui există', /#admin-dash \.adash-go\{/.test(css));
 const perechi = carduri.map(b => ({
   card: (b.match(/data-card="([^"]+)"/) || [])[1],
@@ -78,14 +78,14 @@ T('cartonașul cheamă aceeași funcție ca meniul',
   /window\.raxDashCard = function \(name\) \{[\s\S]{0,200}raxAdminTab\(name\);/.test(html));
 T('deschiderea unei secțiuni ascunde cartonașele (nu le lasă deasupra)',
   /var dash = document\.getElementById\('admin-dash'\); if \(dash\) dash\.style\.display = 'none';/.test(html));
-T('nu mai există „deschide sub cartonașe"', !/subCarduri/.test(html));
+T('nu mai există „deschide sub cartonașe”', !/subCarduri/.test(html));
 T('nici bara cu numele secțiunii de sub ele', !/adash-bara/.test(html) && !/adash-bara/.test(css));
 T('nici cutia care continua chenarul', !/adash-continua/.test(html) && !/adash-continua/.test(css));
-T('și nici marcajul de „cartonaș deschis"', !/adash-card\.deschis/.test(css));
+T('și nici marcajul de „cartonaș deschis”', !/adash-card\.deschis/.test(css));
 T('textul de sub cartonașe spune ce fac ele', /Cifrele de mai sus sunt un sumar/.test(html));
 
 console.log('\n4. O SINGURĂ listă de secțiuni — nu trei scrise de mână');
-// Bug găsit de Alin (17.09): intrai în „Dispozitive" din meniu, apăsai „Acasă" — și tabelul rămânea
+// Bug găsit de Alin (17.09): intrai în „Dispozitive” din meniu, apăsai „Acasă” — și tabelul rămânea
 // deschis sub cartonașe. Cauza: TREI liste de id-uri de secțiuni, scrise separat în `raxAdminTab`,
 // `raxDashCard` și `raxAdminHome`; a treia rămăsese fără `devices` și `inventar`.
 T('există o singură listă, cu numele ei', /const _RAX_TABURI = \{/.test(html));
@@ -95,16 +95,16 @@ T('și conține ȘI dispozitivele, ȘI inventarul',
 T('ascunderea secțiunilor se face într-un singur loc', /function _raxAscundeTaburile\(deschisId\)/.test(html));
 T('și ambele căi o folosesc', (html.match(/_raxAscundeTaburile\(/g) || []).length >= 3,
   String((html.match(/_raxAscundeTaburile\(/g) || []).length));
-T('nu mai există nicio listă scrisă de mână de id-uri „admin-tab-…"',
+T('nu mai există nicio listă scrisă de mână de id-uri „admin-tab-…”',
   !/\['admin-tab-[a-z]+',\s*'admin-tab-/.test(html));
-T('„Acasă" închide orice secțiune rămasă deschisă',
+T('„Acasă” închide orice secțiune rămasă deschisă',
   /window\.raxAdminHome = function \(\) \{[\s\S]{0,260}_raxAscundeTaburile\(null\)/.test(html));
 
 console.log('\n5. Pagina se numește ca rândul din meniu — nu altfel');
-// Bug găsit de Alin (17.09): apăsai „Companii" și ajungeai într-o pagină numită „Companii &
-// Dispozitive" (nume rămas de pe vremea când secțiunea le ținea pe amândouă); „Dispozitive" se
-// numea „Dispozitive (super-admin)" — jargon de-al nostru pe ecran; iar „Inventar dispozitive"
-// lipsea din listă, deci pagina lui se numea „Administrare". Trei nume scrise separat de meniu.
+// Bug găsit de Alin (17.09): apăsai „Companii” și ajungeai într-o pagină numită „Companii &
+// Dispozitive" (nume rămas de pe vremea când secțiunea le ținea pe amândouă); „Dispozitive” se
+// numea „Dispozitive (super-admin)” — jargon de-al nostru pe ecran; iar „Inventar dispozitive”
+// lipsea din listă, deci pagina lui se numea „Administrare”. Trei nume scrise separat de meniu.
 T('numele secțiunilor stau într-o singură listă', /const _RAX_NUME = \{/.test(html));
 T('și titlul paginii se ia de acolo',
   /textContent = _RAX_NUME\[name\] \|\| 'Administrare'/.test(html));
@@ -136,14 +136,14 @@ const MENIU = {};
 });
 T('rândurile din meniu se pot citi', Object.keys(MENIU).length >= 12, Object.keys(MENIU).join(', '));
 const nepotrivite = Object.keys(MENIU).filter(k => TABURI[k] && NUME[k] !== MENIU[k])
-  .map(k => k + ': meniu „' + MENIU[k] + '" vs. pagină „' + NUME[k] + '"');
+  .map(k => k + ': meniu „' + MENIU[k] + '” vs. pagină „' + NUME[k] + '”');
 T('pagina poartă exact numele rândului din meniu', nepotrivite.length === 0, nepotrivite.join(' | '));
 
 console.log('\n6. Cartonașul spune UNDE te duce');
 T('eticheta de pe cartonaș se ia din aceeași listă',
   /function _raxDashEtichete\(\)[\s\S]{0,420}_RAX_NUME\[b\.getAttribute\('data-card'\)\]/.test(html));
-T('și scrie „Vezi detalii în <secțiune>"', /'Vezi detalii în ' \+ nume/.test(html));
-T('se pune de fiecare dată când intri pe „Acasă"',
+T('și scrie „Vezi detalii în <secțiune>”', /'Vezi detalii în ' \+ nume/.test(html));
+T('se pune de fiecare dată când intri pe „Acasă”',
   /window\.raxAdminHome = function \(\) \{[\s\S]{0,320}_raxDashEtichete\(\)/.test(html));
 T('și fiecare cartonaș arată spre o secțiune care are nume',
   perechi.every(p => !!NUME[p.card]), perechi.map(p => p.card + '→' + (NUME[p.card] || '?')).join(', '));
@@ -151,28 +151,28 @@ T('și fiecare cartonaș arată spre o secțiune care are nume',
 console.log('\n7. Cele patru cartonașe arată la fel');
 // Erau aliniate la stânga, iar iconița din etichetă împingea textul cu câțiva pixeli — marginea
 // din stânga ieșea zimțată. Mai rău: cartonașele FĂRĂ rândul de stare (Dispozitive active,
-// Arhivate) aveau „Vezi detalii" cu 19px mai sus decât celelalte două — măsurat în browser
-// (233 vs. 214). Alin: „aliniază textele din carduri să fie la fel pe toate, centrare."
+// Arhivate) aveau „Vezi detalii” cu 19px mai sus decât celelalte două — măsurat în browser
+// (233 vs. 214). Alin: „aliniază textele din carduri să fie la fel pe toate, centrare.”
 const cardRegula = regula(html, '.adash-card {');
 T('conținutul cartonașului e centrat', /align-items: center/.test(cardRegula || ''), cardRegula);
 T('și textul la fel', /text-align: center/.test(cardRegula || ''));
-T('„Vezi detalii" e împins la fundul cartonașului', /#admin-dash \.adash-go\{[^}]*margin-top:auto/.test(css));
+T('„Vezi detalii” e împins la fundul cartonașului', /#admin-dash \.adash-go\{[^}]*margin-top:auto/.test(css));
 T('deci stă pe aceeași linie oricâte rânduri are deasupra',
   !/#admin-dash \.adash-go\{[^}]*margin-top:\s*\d/.test(css));
 T('rândul de stare dispare când e gol (altfel ar împinge degeaba)', /\.adash-sub:empty \{ display: none/.test(html));
 
 console.log('\n8. Verdele din meniu stă pe pagina deschisă');
-// Bug găsit de Alin (17.09): apăsai „Vezi detalii în Companii", ajungeai în Companii — și în meniu
-// rămânea aprins „Acasă". Erau două meniuri în cod: cel vechi, dinăuntrul panoului (`#admin-side`,
+// Bug găsit de Alin (17.09): apăsai „Vezi detalii în Companii”, ajungeai în Companii — și în meniu
+// rămânea aprins „Acasă”. Erau două meniuri în cod: cel vechi, dinăuntrul panoului (`#admin-side`,
 // ascuns azi), și cel adevărat, din bara din stânga. Cartonașul îl aprindea doar pe primul.
 // Pe deasupra, în verticala CLIENTULUI verdele nu se muta NICIODATĂ: șase rânduri chemau direct
-// `showView(...)`, fără să treacă prin `navGo`, deci rămânea pe „Localizare" orice ai fi deschis.
+// `showView(...)`, fără să treacă prin `navGo`, deci rămânea pe „Localizare” orice ai fi deschis.
 T('există un singur loc care mută verdele', /window\._navAprinde = function \(el\) \{/.test(html));
 T('și toate căile trec prin el',
   /function navGo\(btn, fn\) \{[\s\S]{0,140}window\._navAprinde\(btn\)/.test(html) &&
   /function _raxSideActive\(name\)[\s\S]{0,700}window\._navAprinde\(tinta\)/.test(html) &&
   /window\._navAprinde\(document\.querySelector\('#navrail \.nav-item\[data-view="' \+ name \+ '"\]'\)\)/.test(html));
-T('nimeni nu mai umblă la „active" pe lângă el',
+T('nimeni nu mai umblă la „active” pe lângă el',
   (html.match(/#navrail \.nav-item'\)\.forEach\(function \(n\) \{ n\.classList\.remove\('active'\)/g) || []).length === 1);
 T('un rând ascuns nu se aprinde, și atunci nu se stinge nimic',
   /_navAprinde = function \(el\) \{\s*\n\s*if \(!el \|\| el\.style\.display === 'none' \|\| el\.closest\('\.vert-ascuns'\)\) return false;/.test(html));
@@ -186,10 +186,10 @@ const randuri = (rail.match(/<button[^>]*class="[^"]*nav-item[^"]*"[^>]*>[\s\S]*
 const orfane = randuri.filter(b => !/navGo\(this/.test(b) && !/data-view="/.test(b))
   .map(b => (b.match(/<span>([^<]*)<\/span>/) || [])[1] || '?');
 T('niciun rând din meniu nu rămâne pe dinafară', orfane.length === 0, orfane.join(', '));
-T('„Setări" e și el recunoscut (nu trecea prin navGo)', /id="nav-setari"[^>]*data-view="settings"/.test(html));
+T('„Setări” e și el recunoscut (nu trecea prin navGo)', /id="nav-setari"[^>]*data-view="settings"/.test(html));
 
 console.log('\n9. O singură grupă deschisă în meniu, cu animație (Robert, 08.10)');
-// „Când deschidem un meniu, vreau ca celălalt să se închidă, cu animație." Rulăm chiar funcțiile din
+// „Când deschidem un meniu, vreau ca celălalt să se închidă, cu animație.” Rulăm chiar funcțiile din
 // pagină pe un DOM de carton: grupe cu clasa `open`, corpuri cu înălțime, ceasuri prinse de mână.
 (function () {
   const i0 = html.indexOf('function _navAnimGrupa(');
@@ -223,7 +223,7 @@ console.log('\n9. O singură grupă deschisă în meniu, cu animație (Robert, 0
     return { grupe: grupe, api: api, ceasuri: ceasuri, deschise: function () { return grupe.filter(function (g) { return g.classList.contains('open'); }).map(function (g) { return g.nume; }).join(','); } };
   }
   const L = lume();
-  L.api.toggleNavGroup(L.grupe[0].head); // deschid „a" cât „b" e deschisă
+  L.api.toggleNavGroup(L.grupe[0].head); // deschid „a” cât „b” e deschisă
   T('deschizi o grupă → cealaltă se închide (rămâne una singură)', L.deschise() === 'a', L.deschise());
   T('cea care se închide pleacă din înălțimea ei și merge spre 0 (animație, nu salt)', L.grupe[1].corp.style.height === '0px', L.grupe[1].corp.style.height);
   T('cea care se deschide merge până la cât îi trebuie', L.grupe[0].corp.style.height === '100px', L.grupe[0].corp.style.height);
@@ -232,10 +232,10 @@ console.log('\n9. O singură grupă deschisă în meniu, cu animație (Robert, 0
   L.api.toggleNavGroup(L.grupe[0].head);
   T('clic pe titlul grupei deschise o închide', L.deschise() === '', L.deschise());
   L.api._navDeschideGrupa(L.grupe[2]); L.api._navDeschideGrupa(L.grupe[1]);
-  T('și pe calea „ai ajuns în pagină altfel" rămâne una singură', L.deschise() === 'b', L.deschise());
+  T('și pe calea „ai ajuns în pagină altfel” rămâne una singură', L.deschise() === 'b', L.deschise());
   const R = lume({ miscareRedusa: true });
   R.api.toggleNavGroup(R.grupe[0].head);
-  T('„mișcare redusă" → tot una singură, dar fără animație', R.deschise() === 'a' && !R.grupe[0].corp.style.height && !R.grupe[1].corp.style.height);
+  T('„mișcare redusă” → tot una singură, dar fără animație', R.deschise() === 'a' && !R.grupe[0].corp.style.height && !R.grupe[1].corp.style.height);
   const A = lume({ ascunse: true });
   A.api.toggleNavGroup(A.grupe[2].head);
   T('grupele care nu sunt pe ecran se schimbă fără animație', A.deschise() === 'c' && !A.grupe[2].corp.style.height);
@@ -246,7 +246,7 @@ T('rândul aprins își deschide grupa tot prin aceeași funcție (nu cu clasa, 
 T('închis = înălțime 0 și ascuns de Tab; deschis = cât cuprinsul',
   /\.nav-group-body \{[^}]*overflow: hidden;[^}]*height: 0;[^}]*visibility: hidden;[^}]*transition: height/.test(html) &&
   /\.nav-group\.open > \.nav-group-body \{[^}]*height: auto;[^}]*visibility: visible;/.test(html));
-T('„mișcare redusă" oprește animația și din CSS', /@media \(prefers-reduced-motion: reduce\) \{ \.nav-group-body/.test(html));
+T('„mișcare redusă” oprește animația și din CSS', /@media \(prefers-reduced-motion: reduce\) \{ \.nav-group-body/.test(html));
 
 console.log('\n──────────────────────────────');
 console.log(ok + ' verificări trecute, ' + rele + ' picate');

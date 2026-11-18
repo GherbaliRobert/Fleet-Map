@@ -1,7 +1,7 @@
 // Simulatorul de încărcare pe telefon (pasul 4, 12.10) — același ca pe web (Meniu → Simulator încărcare), pe aceleași rute:
 // telefonul trimite alegerile la /api/incarcare/simuleaza și arată ce primește (cifrele, osiile, textele — din incarcare.js);
 // desenul e copia celui de pe web (lib/simDesen.ts). Aici stau doar alegerile omului: vehiculul, semiremorca, marfa,
-// opririle; planul se salvează și se trimite unui om al firmei („Trimite șoferului"), ca pe web.
+// opririle; planul se salvează și se trimite unui om al firmei („Trimite șoferului”), ca pe web.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
@@ -20,7 +20,7 @@ const TON = (t?: string) => 'ton-' + (t || 'gri');
 export function Simulator() {
   const loc = useLocation();
   const planDinAdresa = String(((loc.query || {}) as any).plan || '');
-  // Din fișa remorcii („Deschide în simulator", 13.10): vehiculul la care e atașată și remorca, gata alese.
+  // Din fișa remorcii („Deschide în simulator”, 13.10): vehiculul la care e atașată și remorca, gata alese.
   const vehDinAdresa = String(((loc.query || {}) as any).vehicul || ''), remDinAdresa = String(((loc.query || {}) as any).remorca || '');
   const [meta, setMeta] = useState<(IncMeta & any) | null>(null);
   const [flota, setFlota] = useState<{ vehicule: any[]; remorci: any[] } | null>(null);
@@ -63,8 +63,8 @@ export function Simulator() {
     const obis = lista.find((r) => String(r.id) === String(vv.remorca_id));
     setRemorcaId(obis ? String(obis.id) : (vv.tip === 'trac' && lista[0] ? String(lista[0].id) : ''));
   }
-  // „Ai schimbat planul" = ce e pe ecran nu mai e ce s-a salvat (socotit, nu ținut minte: un plan redeschis nu rămâne
-  // „schimbat" din greșeală). Rândurile de marfă se compară pe valori, nu pe ordinea cheilor.
+  // „Ai schimbat planul” = ce e pe ecran nu mai e ce s-a salvat (socotit, nu ținut minte: un plan redeschis nu rămâne
+  // „schimbat” din greșeală). Rândurile de marfă se compară pe valori, nu pe ordinea cheilor.
   const semn = (o: { imei: any; remorca: any; mod: any; opriri: any; marfa: any }) => JSON.stringify([String(o.imei || ''), String(o.remorca || ''), String(o.mod || ''),
     (o.opriri || []).map(String), (o.marfa || []).map((x: any) => [String(x.nume || ''), +x.lungime, +x.latime, +x.inaltime, +x.kg, +x.buc, +x.oprire, !!x.suprapus])]);
   const modificat = !!(planId && plan && semn({ imei, remorca: remorcaId, mod, opriri, marfa }) !== semn({ imei: plan.imei, remorca: plan.remorca_id, mod: plan.mod, opriri: plan.opriri, marfa: plan.marfa }));
@@ -148,14 +148,14 @@ export function Simulator() {
     try { await Api.stergePlan(id); if (planId === id) { setPlanId(null); setPlan(null); } deschidePlanuri(); }
     catch (e: any) { showToast(e?.message || 'Nu s-a putut șterge.', true); }
   }
-  // „Trimite șoferului": se salvează (planul nou, sau peste cel deschis), apoi se alege omul — ca pe web.
+  // „Trimite șoferului”: se salvează (planul nou, sau peste cel deschis), apoi se alege omul — ca pe web.
   async function trimite() {
     setLucru(true);
     try {
       let p = plan, id = planId;
       if (!id || modificat) {
         p = await Api.salveazaPlan(id, corp()); id = p.id;
-        puneDinPlan(p);   // ecranul ia ce a păstrat serverul (cifrele curățate), ca planul să nu pară „schimbat"
+        puneDinPlan(p);   // ecranul ia ce a păstrat serverul (cifrele curățate), ca planul să nu pară „schimbat”
       }
       setOameni(null); setAles(p && p.trimis_catre ? p.trimis_catre : null); setFoaie('trimite');
       setOameni(await Api.destinatariPlan(me.value?.isSuper && v ? v.company_id : null));

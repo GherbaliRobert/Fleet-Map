@@ -5,7 +5,7 @@ import { Icon } from '../components/Icon';
 import './reports.css';
 import './stats.css';
 
-// Etichetă axă X (număr de zile de la epocă → „D lună 'YY").
+// Etichetă axă X (număr de zile de la epocă → „D lună 'YY”).
 const _MON = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sep.', 'oct.', 'noi.', 'dec.'];
 function fpTick(v: number) { const d = new Date(v * 86400000); return d.getDate() + ' ' + _MON[d.getMonth()] + ' ’' + String(d.getFullYear()).slice(2); }
 
@@ -31,7 +31,7 @@ export function FuelPrice() {
   }, [days]);
 
   const auto = cur?.auto || {}, eff = cur?.effective || {}, comp = cur?.company || {};
-  // Axă X LINIARĂ pe „ziua" (număr) → spațierea reflectă timpul real + etichete cu ziua/luna/anul (ca pe web).
+  // Axă X LINIARĂ pe „ziua” (număr) → spațierea reflectă timpul real + etichete cu ziua/luna/anul (ca pe web).
   const dnum = (day: string) => { const t = Date.parse(day + 'T00:00:00'); return isFinite(t) ? Math.round(t / 86400000) : null; };
   const xs: number[] = hist ? hist.map((h) => dnum(h.day)).filter((x): x is number => x != null) : [];
   const trend = (hist && xs.length) ? {
@@ -80,7 +80,7 @@ export function FuelPrice() {
 
                 <div style="padding:4px 16px 24px;font-size:11.5px;color:var(--text-muted);line-height:1.5">
                   Sursa: <b>{cur?.source || 'PretCarburant.ro'}</b> — media națională (CC BY 4.0), actualizată de 2×/zi și acumulată zilnic.
-                  Istoric (ultimul an): referințe <b>GlobalPetrolPrices.com</b> + medii lunare din arhive publice de piață. „Preț companie" = tariful setat în Setări (linia punctată).
+                  Istoric (ultimul an): referințe <b>GlobalPetrolPrices.com</b> + medii lunare din arhive publice de piață. „Preț companie” = tariful setat în Setări (linia punctată).
                 </div>
               </>
             )}

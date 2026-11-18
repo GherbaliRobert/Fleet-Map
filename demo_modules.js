@@ -1,4 +1,4 @@
-// demo_modules.js — 3 module strategice „DEMO-READY": e-Transport (ANAF), E-Toll/Roviniete, Tahograf.
+// demo_modules.js — 3 module strategice „DEMO-READY”: e-Transport (ANAF), E-Toll/Roviniete, Tahograf.
 // Filozofie: UI complet + simulare cu mock data; integrările reale se activează prin flag-uri de config
 // (stocate în tabela `settings`, NU hardcodat). Când flag-ul devine adevărat + există credențialele,
 // modulul trece pe ramura reală. Ramurile reale răspund 501 (onest) până la integrare.
@@ -19,7 +19,7 @@ async function getModuleConfig(db) {
     etransport: { mode: anafConnected ? 'real' : 'demo', anafConnected, tokenSet: !!(anaf && anaf.enabled()), test: !!(anaf && anaf.cfg().test) },
     // e-Toll: NU există (încă) integrare reală cu vreun furnizor — cifrele vin din simulator.
     // Selectarea unui furnizor din listă e doar o PREFERINȚĂ salvată, nu o conexiune; de aceea modul
-    // rămâne 'demo' până când există API real + credențiale (altfel afișam badge „REAL" peste date inventate).
+    // rămâne 'demo' până când există API real + credențiale (altfel afișam badge „REAL” peste date inventate).
     etoll: { provider: etollProvider, mode: 'demo', providerSelected: !!etollProvider, integrationReady: false },
     tahograf: { mode: companyCardHost ? 'real' : 'demo', companyCardHost }
   };
@@ -32,13 +32,13 @@ function generateDemoUIT() {
   return 'UIT_DEMO_' + Date.now().toString().slice(-8) + '_' + rnd;
 }
 
-// Simulare flux GPS: buffer in-memory per transport. Push o coordonată „la fiecare minut" (accelerat în demo).
+// Simulare flux GPS: buffer in-memory per transport. Push o coordonată „la fiecare minut” (accelerat în demo).
 const _txSim = new Map(); // id -> { timer, buffer, lat, lng, startedAt }
 function startTransportSim(id, opts) {
   opts = opts || {};
   stopTransportSim(id);
   const state = { buffer: [], lat: Number(opts.lat) || 44.4268, lng: Number(opts.lng) || 26.1025, startedAt: Date.now(), timer: null };
-  const intervalMs = opts.intervalMs || 4000; // demo: 1 punct la ~4s (= „1 minut" comprimat); real: 60000
+  const intervalMs = opts.intervalMs || 4000; // demo: 1 punct la ~4s (= „1 minut” comprimat); real: 60000
   state.timer = setInterval(function () {
     state.lat += (Math.random() - 0.3) * 0.004;
     state.lng += (Math.random() - 0.2) * 0.006;
@@ -254,7 +254,7 @@ function register(app, deps) {
       const drivers = await db.getDrivers(scopeOf(req));
       const drv = drivers.find(function (d) { return String(d.id) === String(req.params.driverId); });
       const analysis = mockTachoAnalysis(drv ? drv.name : 'Șofer Demo');
-      // Înregistrează o „descărcare" demo în tacho_files → resetează indicatorul de 28 zile.
+      // Înregistrează o „descărcare” demo în tacho_files → resetează indicatorul de 28 zile.
       try {
         await db.createTachoFile({
           companyId: req.companyId, imei: null, driverName: drv ? drv.name : 'Demo',

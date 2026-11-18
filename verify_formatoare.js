@@ -4,8 +4,8 @@
 //
 // Găsit pe 21.10, când Robert a întrebat de ce plătim 18 $ pe lună la Railway cu 3 mașini: `_dayKeyISO` (reports.js)
 // făcea un `new Intl.DateTimeFormat(...)` la FIECARE poziție. Un formatator ține ~17 KB pe care procesul nu-i mai dă
-// înapoi: „Condus & repaus" pe o lună, 3 mașini, dura 28 s și lăsa ~6 GB ocupați (Situație zilnică: 22 s). Cu UN
-// formatator ținut minte: 1,5 s și ~200 MB, rezultatele identice octet cu octet. Robert: „rezolvă acum".
+// înapoi: „Condus & repaus” pe o lună, 3 mașini, dura 28 s și lăsa ~6 GB ocupați (Situație zilnică: 22 s). Cu UN
+// formatator ținut minte: 1,5 s și ~200 MB, rezultatele identice octet cu octet. Robert: „rezolvă acum”.
 // Același lucru făcea programul de lucru (workschedule.js), la fiecare poziție a unei mașini în mers.
 //
 // Ce păzește proba:
@@ -107,7 +107,7 @@ programe.forEach((s) => {
   }
 });
 T('aceleași răspunsuri ca un formatator nou la fiecare apel (' + total + ' de momente, 3 fusuri)', difWs === 0, difWs + ' diferite');
-T('proba chiar are și „în program", și „în afara"', adevarate > 0 && adevarate < total, adevarate + ' din ' + total);
+T('proba chiar are și „în program”, și „în afara”', adevarate > 0 && adevarate < total, adevarate + ' din ' + total);
 T('o pereche de formatatoare pe fus (3 fusuri → 6), nu una la fiecare apel', NOU.c.n === 6, NOU.c.n + ' formatatoare');
 const stricat = NOU.ws.sanitize({ enabled: true, tz: 'Nu/Exista', days: { mon: [{ from: '08:00', to: '09:00' }] } });
 T('un fus greșit nu blochează (în program, ca înainte)', NOU.ws.isWithin(stricat, Date.now()) === true && NOU.ws.isWithin(stricat, Date.now()) === true);

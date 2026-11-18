@@ -13,11 +13,11 @@ import './fondator.css';
 import { nrDe } from '../lib/numar';
 
 // Dispozitive arhivate — DOAR super-admin (hotărât 18.09: clientul nu-și vede aparatele arhivate; ruta e
-// păzită și în App.tsx). Ca pe web (_arhRandeaza): grupate pe firme, cu „Deschide firma", „Istoric" (traseul
-// aparatului arhivat), „Restaurează" și ștergerea definitivă cu numărul tastat. Termenul vine de la server.
+// păzită și în App.tsx). Ca pe web (_arhRandeaza): grupate pe firme, cu „Deschide firma”, „Istoric” (traseul
+// aparatului arhivat), „Restaurează” și ștergerea definitivă cu numărul tastat. Termenul vine de la server.
 // Din 24.09 istoricul unui aparat arhivat se șterge la 30 de zile de la arhivare (cum scrie în contract), nu
 // după 2 ani. Aceleași cuvinte și același prag ca pe web (_arhTermen, ARH_PRAG_ZILE); cifrele — ziua ștergerii,
-// zilele rămase, „șters" — le socotește serverul.
+// zilele rămase, „șters” — le socotește serverul.
 export const PRAG_ZILE = 7;
 export function termen(d: any): { t: string; c: string; rau: boolean } | null {
   if (d.istoric_sters) return { t: 'istoricul s-a șters', c: 'var(--text-muted)', rau: false };
@@ -37,7 +37,7 @@ function grupuri(rows: any[]): Grup[] {
     if (!m[k]) m[k] = { k, nume: d.company_name || 'Fără firmă', coId: d.company_id == null ? null : d.company_id, dev: [] };
     m[k].dev.push(d);
   });
-  // „Fără firmă" la urmă; restul, alfabetic.
+  // „Fără firmă” la urmă; restul, alfabetic.
   return Object.keys(m).map((k) => m[k]).sort((a, b) => (a.k === '_fara' ? 1 : b.k === '_fara' ? -1 : a.nume.localeCompare(b.nume, 'ro')));
 }
 
@@ -48,14 +48,14 @@ export function AdminArchived() {
   const [busy, setBusy] = useState('');
   const [q, setQ] = useState('');
   const [manual, setManual] = useState<Record<string, boolean>>({});
-  // Ștergerea definitivă cere tastarea numărului (sau a IMEI-ului) — ca pe web. Un „OK" apăsat din greșeală
+  // Ștergerea definitivă cere tastarea numărului (sau a IMEI-ului) — ca pe web. Un „OK” apăsat din greșeală
   // pe telefon ar fi șters tot istoricul unui client, fără cale de întoarcere.
   const [del, setDel] = useState<any | null>(null);
   const [scris, setScris] = useState('');
   // Restaurarea se întreabă în foaia de confirmare a aplicației (ca pe web, raConfirm), nu în fereastra gri a sistemului.
   const [restaur, setRestaur] = useState<any | null>(null);
 
-  // Butonul „înapoi" de pe Android închide foaia deschisă, nu ecranul arhivei de sub ea. Cât se lucrează, rămâne.
+  // Butonul „înapoi” de pe Android închide foaia deschisă, nu ecranul arhivei de sub ea. Cât se lucrează, rămâne.
   // (Cele două foi nu se deschid niciodată deodată.)
   useInapoiInchide(!!restaur, () => { if (busy) return false; setRestaur(null); return true; });
   useInapoiInchide(!!del, () => { if (busy) return false; setDel(null); return true; });
@@ -73,8 +73,8 @@ export function AdminArchived() {
     catch (e: any) { showToast(e?.message || 'Eroare la restaurare.', true); } finally { setBusy(''); }
   }
 
-  // „Istoric": Traseul aparatului, pe o perioadă care se TERMINĂ la ultima lui poziție — altfel „Azi" ar fi gol.
-  // /api/history citește și din arhivă. Pe ecran scrie „(arhivat)", ca să știi de ce n-are date noi.
+  // „Istoric”: Traseul aparatului, pe o perioadă care se TERMINĂ la ultima lui poziție — altfel „Azi” ar fi gol.
+  // /api/history citește și din arhivă. Pe ecran scrie „(arhivat)”, ca să știi de ce n-are date noi.
   function istoric(d: any) {
     const t = new Date(d.last_ts || d.last_seen || Date.now()).getTime();
     const pana = isFinite(t) ? t : Date.now();
@@ -112,7 +112,7 @@ export function AdminArchived() {
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button type="button" class="fd-btn" onClick={() => istoric(d)}><Icon name="route" size={14} /> Istoric</button>
-          {/* „Restaurează" plin, ca pe web (btn-primary): scris verde pe fundalul deschis ieșea invizibil. */}
+          {/* „Restaurează” plin, ca pe web (btn-primary): scris verde pe fundalul deschis ieșea invizibil. */}
           <button type="button" class="fd-btn primary" disabled={busy === d.imei} onClick={() => setRestaur(d)}><Icon name="refresh" size={14} /> Restaurează</button>
           <button type="button" class="fd-btn danger" disabled={busy === d.imei} onClick={() => { setDel(d); setScris(''); }}><Icon name="trash" size={14} /> Șterge</button>
         </div>

@@ -11,7 +11,7 @@ import './admin.css';
 // Pragurile sunt aceleași ca în cardul fiecărui agent de pe web (AGP_THRESH, public/index.html): aceleași
 // chei, aceleași opțiuni, aceeași explicație sub fiecare. Pe telefon stau grupate pe agent, într-o coloană.
 // Limitele (min/max) sunt cele din ALERT_THRESHOLD_SPECS de pe server, care validează oricum.
-// Exportate: foaia „Praguri" din Agenți AI (fondatorul, pe o firmă aleasă) citește ACEEAȘI listă — nu a doua copie.
+// Exportate: foaia „Praguri” din Agenți AI (fondatorul, pe o firmă aleasă) citește ACEEAȘI listă — nu a doua copie.
 export type ThrOpt = [number | '', string];
 export type Prag = { k: string; label: string; unit: string; min: number; max: number; def: number | ''; hint: string; options: ThrOpt[] };
 export const PRAGURI: { agent: string; nume: string; campuri: Prag[] }[] = [
@@ -29,7 +29,7 @@ export const PRAGURI: { agent: string; nume: string; campuri: Prag[] }[] = [
     { k: 'serviceSoonKm', label: 'Avertisment service (bord/CAN)', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de service-ul indicat de BORDUL mașinii să apară alerta.',
       options: [[500, '500 km înainte'], [1000, '1.000 km înainte'], [1500, '1.500 km înainte (recomandat)'], [2000, '2.000 km înainte'], [3000, '3.000 km înainte'], [5000, '5.000 km înainte']] },
     // Lucrările (schimb de ulei, revizie) au preavizul lor; ACTELE îl au pe al lor, mai jos. Înainte, pe telefon,
-    // se numeau „Avertisment scadențe" și omul credea că reglează și ITP-ul, și RCA-ul.
+    // se numeau „Avertisment scadențe” și omul credea că reglează și ITP-ul, și RCA-ul.
     { k: 'careDaysLead', label: 'Avertisment lucrări service (zile)', unit: 'zile înainte', min: 1, max: 365, def: 14, hint: 'Cu câte zile înainte de scadența unei LUCRĂRI pe dată să se aprindă. Aceeași cifră colorează rândul în Mentenanță ȘI trimite notificarea.',
       options: [[7, '7 zile înainte'], [14, '14 zile înainte (recomandat)'], [21, '3 săptămâni înainte'], [30, '30 zile înainte (o lună)'], [60, '60 zile înainte']] },
     { k: 'careKmLead', label: 'Avertisment lucrări service (km)', unit: 'km înainte', min: 50, max: 50000, def: 500, hint: 'Cu câți km înainte de scadența pe KILOMETRI să se aprindă. Aceeași cifră colorează rândul ȘI trimite notificarea.',
@@ -42,9 +42,9 @@ export const PRAGURI: { agent: string; nume: string; campuri: Prag[] }[] = [
       options: [[40, 'sub 40 — doar cazurile grave'], [50, 'sub 50 — relaxat'], [60, 'sub 60 (recomandat)'], [70, 'sub 70 — exigent'], [80, 'sub 80 — foarte exigent']] },
   ] },
   { agent: 'dispatch', nume: 'RA Dispatch', campuri: [
-    { k: 'dispOnlineMin', label: 'Disponibil — ultimul semnal sub', unit: 'min', min: 5, max: 240, def: 65, hint: 'Un vehicul e „disponibil" dacă a transmis semnal mai recent de atât și e oprit.',
+    { k: 'dispOnlineMin', label: 'Disponibil — ultimul semnal sub', unit: 'min', min: 5, max: 240, def: 65, hint: 'Un vehicul e „disponibil” dacă a transmis semnal mai recent de atât și e oprit.',
       options: [[30, '30 minute'], [45, '45 minute'], [65, '65 minute (recomandat)'], [90, '90 minute'], [120, '2 ore']] },
-    { k: 'dispIdleHour', label: 'Verifică „subutilizat" după', unit: 'ora zilei', min: 0, max: 23, def: 12, hint: 'De la ce oră a zilei semnalăm vehiculele disponibile dar fără rulaj azi.',
+    { k: 'dispIdleHour', label: 'Verifică „subutilizat” după', unit: 'ora zilei', min: 0, max: 23, def: 12, hint: 'De la ce oră a zilei semnalăm vehiculele disponibile dar fără rulaj azi.',
       options: [[10, '10:00'], [11, '11:00'], [12, '12:00 (recomandat)'], [13, '13:00'], [14, '14:00']] },
     { k: 'dispIdleKm', label: 'Nefolosit azi — sub', unit: 'km', min: 1, max: 100, def: 1, hint: 'Sub câți km parcurși azi un vehicul disponibil e considerat neutilizat.',
       options: [[1, '1 km (recomandat)'], [2, '2 km'], [5, '5 km'], [10, '10 km']] },
@@ -59,7 +59,7 @@ export const PRAGURI: { agent: string; nume: string; campuri: Prag[] }[] = [
 const TOATE = PRAGURI.flatMap((g) => g.campuri);
 // Ce arată caseta: valoarea salvată, altfel valoarea implicită a agentului (ca pe web).
 const afisat = (t: Prag, salvat: any) => (salvat == null || salvat === '' ? String(t.def) : String(salvat));
-// Valoarea PROPRIE, ca text: nesetată (null / gol) → ''. „Ce ai schimbat" se măsoară pe ea, nu pe ce arată caseta.
+// Valoarea PROPRIE, ca text: nesetată (null / gol) → ''. „Ce ai schimbat” se măsoară pe ea, nu pe ce arată caseta.
 const brut = (v: any) => (v == null ? '' : String(v));
 const nesetat = (v: any) => v == null || v === '';
 
@@ -98,10 +98,10 @@ export function Settings() {
 
   // Trimite DOAR ce ai schimbat aici. Serverul îmbină oricum, dar așa un prag pus între timp pe web (de alt
   // om, pe alt agent) nu e călcat de valoarea veche rămasă pe ecranul telefonului.
-  // „Schimbat" = valoarea proprie a firmei s-a schimbat, NU cifra din casetă. La un prag nesetat caseta arată
+  // „Schimbat” = valoarea proprie a firmei s-a schimbat, NU cifra din casetă. La un prag nesetat caseta arată
   // implicitul agentului (ex. 60 min), dar agentul folosește baza platformei, pusă de fondatori (ex. 30).
   // Dacă omul alege chiar 60 ca s-o fixeze, e o schimbare reală și se trimite — comparat pe cifra afișată,
-  // telefonul zicea „Nimic de salvat" și firma rămânea pe 30.
+  // telefonul zicea „Nimic de salvat” și firma rămânea pe 30.
   const schimbate = TOATE.filter((t) => brut(thr[t.k]) !== brut(thrOrig[t.k]));
   async function saveThr() {
     if (!schimbate.length) { showToast('Nimic de salvat — n-ai schimbat niciun prag'); return; }
@@ -110,7 +110,7 @@ export function Settings() {
       const v = thr[t.k];
       if (v === '' || v == null) { clean[t.k] = null; continue; } // gol = revine la implicit (ex. furt: dezactivat)
       const n = Number(v);
-      if (!Number.isFinite(n) || n < t.min || n > t.max) { showToast('Valoare invalidă la „' + t.label + '"', true); return; }
+      if (!Number.isFinite(n) || n < t.min || n > t.max) { showToast('Valoare invalidă la „' + t.label + '”', true); return; }
       clean[t.k] = Math.round(n);
     }
     setBusy('thr');
@@ -164,7 +164,7 @@ export function Settings() {
             {isSuper && (
               <div style="margin:8px 0 4px;padding:9px 11px;border-radius:9px;font-size:12px;line-height:1.45;background:rgba(245,158,11,.12);color:var(--text-primary);border:1px solid rgba(245,158,11,.35)">
                 <Icon name="alert" size={13} color="var(--orange)" style="vertical-align:-2px;margin-right:4px" />
-                Modifici <b>baza platformei</b>, valabilă pentru TOATE companiile care n-au praguri proprii. Pragurile unei singure firme le schimbi din <b>Agenți AI</b>: alegi firma sus, deschizi agentul și apeși „Praguri".
+                Modifici <b>baza platformei</b>, valabilă pentru TOATE companiile care n-au praguri proprii. Pragurile unei singure firme le schimbi din <b>Agenți AI</b>: alegi firma sus, deschizi agentul și apeși „Praguri”.
               </div>
             )}
             {thrErr && <div style="color:var(--red);font-size:13px;margin-top:10px">{thrErr}</div>}
@@ -172,9 +172,9 @@ export function Settings() {
               <div style="margin-top:12px">
                 <div style="font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);padding:6px 0;border-bottom:1px solid var(--border)">{g.nume}</div>
                 {g.campuri.map((t) => {
-                  // Nesetat → caseta stă pe „Implicit", NU pe valoarea recomandată: altfel alegerea recomandatei nu
+                  // Nesetat → caseta stă pe „Implicit”, NU pe valoarea recomandată: altfel alegerea recomandatei nu
                   // schimba nimic în casetă și pragul nu se putea fixa pentru firmă (găsit 24.09). Unde implicitul
-                  // e chiar „gol" (furtul de combustibil: dezactivat), opțiunea goală există deja în listă.
+                  // e chiar „gol” (furtul de combustibil: dezactivat), opțiunea goală există deja în listă.
                   const unset = nesetat(thr[t.k]) && t.def !== '';
                   const val = unset ? '' : afisat(t, thr[t.k]);
                   const opts = t.options.slice();

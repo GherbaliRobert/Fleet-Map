@@ -24,7 +24,7 @@
 //              'code' — nu e pornit/oprit, e un cod numeric; se afișează ca atare
 //              'text' — o stare cu literă/cuvânt (treapta P/R/N/D); se afișează valoarea
 //   st     — [text aprins, text stins]; DOAR când textul implicit al lui `kind` nu se acordă
-//            gramatical („Faza scurtă — Pornit" ar fi greșit → ['Pornită','Oprită']).
+//            gramatical („Faza scurtă — Pornit” ar fi greșit → ['Pornită','Oprită']).
 //   mereu  — plăcuța se arată ÎNTOTDEAUNA, cu ultima stare știută, chiar și stinsă. Restul apar
 //            doar când sunt aprinse (altfel ecranul era un perete de casete stinse, din care
 //            nu se distingea ce se întâmplă acum).
@@ -103,7 +103,7 @@ const FLAGS = [
   { key: '_cf_front_fog_lights',  label: 'Proiectoare ceață față',   icon: 'fa-smog',                mi: 'fogFront',        group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
   { key: '_cf_rear_fog_lights',   label: 'Lumini ceață spate',       icon: 'fa-smog',                mi: 'fogRear',        group: 'lumini', kind: 'on', st: ['Aprinse', 'Stinse'] },
   { key: '_sf_hazard_lights',     label: 'Avarii',                   icon: 'fa-triangle-exclamation', mi: 'hazardTri',     group: 'lumini', kind: 'warn', st: ['Pornite', 'Oprite'] },
-  // „Bec ars — Stins" ar suna a bec, nu a martor. Da/Nu nu lasă loc de interpretare.
+  // „Bec ars — Stins” ar suna a bec, nu a martor. Da/Nu nu lasă loc de interpretare.
   { key: '_cf_lights_failure',    label: 'Bec ars',                  icon: 'fa-lightbulb',           mi: 'lightBulbOut',       group: 'lumini', kind: 'warn', st: ['Da', 'Nu'] },
 
   // ── Martori de bord ──
@@ -206,15 +206,15 @@ const FLAGS = [
 ];
 
 // ── Ce înseamnă fiecare steag — textul din balonul care se deschide la atingerea pictogramei ──
-// (cerut de Robert, 26.08: „apeși pe pictogramă și îți apare un balon cu informația"). Pe scurt și
-// pe înțelesul oricui; starea („Aprins/Stins") vine separat, din `stateText`.
+// (cerut de Robert, 26.08: „apeși pe pictogramă și îți apare un balon cu informația”). Pe scurt și
+// pe înțelesul oricui; starea („Aprins/Stins”) vine separat, din `stateText`.
 const DESC = {
   _sf_ignition_on: 'Contactul e pus (poziția ON). Vine direct din CAN-ul mașinii, nu din firele dispozitivului.',
   _sf_key_in_ignition: 'Cheia se află în contact, indiferent dacă e răsucită sau nu.',
   _sf_engine_working: 'Motorul funcționează în acest moment.',
   _cf_ready_to_drive: 'Mașina e gata de plecare — toate sistemele au terminat verificările.',
   _sf_ready_to_drive: 'Mașina e gata de plecare — toate sistemele au terminat verificările.',
-  _sf_dynamic_ignition: 'Contact „dinamic": mașina consideră contactul pus după alte semnale (ex. motor pornit), nu după cheie.',
+  _sf_dynamic_ignition: 'Contact „dinamic”: mașina consideră contactul pus după alte semnale (ex. motor pornit), nu după cheie.',
   _sf_webasto: 'Încălzitorul staționar (Webasto) e pornit — încălzește motorul sau cabina fără ca motorul să meargă.',
   _sf_electric_engine: 'Motorul electric e cel care lucrează acum (la hibride și electrice).',
   _sf_standalone_engine: 'Motor care funcționează independent (utilaje / agregate auxiliare).',
@@ -281,7 +281,7 @@ const DESC = {
   _cf_dpf_warning: 'Filtrul de particule (DPF) cere regenerare — de regulă un drum mai lung la turație constantă.',
   _cf_maintenance: 'Mașina cere revizie (mesajul de service din bord).',
   _cf_general_warning: 'Avertisment general din bord — verifică afișajul mașinii pentru detalii.',
-  _cf_air_filter_clogged: 'Filtrul de aer e înfundat — motorul „respiră" greu, consum mai mare.',
+  _cf_air_filter_clogged: 'Filtrul de aer e înfundat — motorul „respiră” greu, consum mai mare.',
   _cf_fuel_filter_clogged: 'Filtrul de combustibil e înfundat — de schimbat.',
   _cf_water_in_fuel: 'S-a detectat apă în combustibil — de golit separatorul (frecvent la diesel).',
   _cf_washer_fluid_low: 'Lichidul de parbriz e pe terminate.',
@@ -336,7 +336,7 @@ FLAGS.forEach(f => { if (DESC[f.key]) f.desc = DESC[f.key]; });
 
 // Steagurile pe care fișa Teltonika le listează, dar pe care NU le decodăm încă.
 // 26.08: lista s-a golit aproape de tot — ambreiajul și telecomanda au acum poziții de biți din
-// tabelele oficiale „State Flags P4" (wiki Teltonika, fixture: tools/fixtures/p4-flags.json) și
+// tabelele oficiale „State Flags P4” (wiki Teltonika, fixture: tools/fixtures/p4-flags.json) și
 // se decodează în codec8e (decodeSecurityFlagsP4). A rămas doar închiderea centralizată, care nu
 // are bit propriu în niciunul dintre protocoale.
 const NEDECODATE = ['_sf_central_lock'];
@@ -348,15 +348,15 @@ const _nedecodate = new Set(NEDECODATE);
 function flagMeta(key) { return _byKey[key] || null; }
 function isFlagKey(key) { return !!_byKey[key]; }
 
-// Textul de stare pentru un steag: „Deschisă" / „Închisă", „Aprins" / „Stins" etc.
+// Textul de stare pentru un steag: „Deschisă” / „Închisă”, „Aprins” / „Stins” etc.
 function stateText(key, on) {
   const f = _byKey[key];
   if (!f) return on ? 'Da' : 'Nu';
   // 'text' nu e pornit/oprit: valoarea E starea (treapta P/R/N/D). Fără valoare = mașina n-a
-  // trimis-o încă, nu „oprit".
+  // trimis-o încă, nu „oprit”.
   if (f.kind === 'text') return (on === null || on === undefined || on === '') ? '—' : String(on);
   // 'code' nu e pornit/oprit, e numărul de stare al magistralei. N-avea caz propriu și cădea pe
-  // textele implicite, deci un cod 1 se scria „Da".
+  // textele implicite, deci un cod 1 se scria „Da”.
   if (f.kind === 'code') return (on === null || on === undefined || on === '') ? '—' : 'cod ' + on;
   const t = f.st || KIND_TEXT[f.kind] || KIND_TEXT.info;
   return on ? t[0] : t[1];
@@ -368,7 +368,7 @@ function seVede(key, on) {
   const f = _byKey[key];
   if (!f || f.ascuns) return false;
   if (f.mereu) return on !== undefined && on !== null;
-  // Un cod e un NUMĂR. Fără el (0, false, lipsă) plăcuța n-are ce spune — scria „cod false".
+  // Un cod e un NUMĂR. Fără el (0, false, lipsă) plăcuța n-are ce spune — scria „cod false”.
   if (f.kind === 'code') return Number(on) > 0;
   if (f.kind === 'text') return on !== undefined && on !== null && on !== '';
   return !!on;
@@ -382,13 +382,13 @@ function isAlarming(key, on) {
 }
 
 // ── Cum se AȘAZĂ plăcuțele pe ecran ─────────────────────────────────────────────────────────
-// Grupate pe categorii („Lumini", „Camion"…) aveau sens cât se arătau toate: erau 120 și trebuiau
+// Grupate pe categorii („Lumini”, „Camion”…) aveau sens cât se arătau toate: erau 120 și trebuiau
 // puse undeva. De când se văd doar cele active, categoriile sunt aproape goale — rămâneau cinci
 // titluri cu câte o plăcuță sub fiecare. Acum se așază după CÂT DE MULT CER ATENȚIE, ceea ce e și
 // ordinea în care se uită omul la bordul mașinii:
 //
 //   1. STAREA — cele trei care se văd tot timpul (frâna de mână, treapta, încuietoarea) + contactul
-//      și motorul, dacă mașina le trimite. Astea răspund la „în ce stare e mașina acum?".
+//      și motorul, dacă mașina le trimite. Astea răspund la „în ce stare e mașina acum?”.
 //   2. MARTORI — becurile roșii din bord. Ce e stricat sau pe cale să se strice.
 //   3. DESCHIS — uși, capotă, portbagaj, geamuri. Ce nu e închis.
 //   4. ACTIVE — restul: lumini aprinse, aer condiționat, centuri puse, priză de putere.
@@ -396,13 +396,13 @@ function isAlarming(key, on) {
 // O bandă goală nu se desenează deloc.
 const BANDA_STARE = ['_sf_handbrake', '_sf_gear', '_sf_car_closed', '_sf_ignition_on', '_sf_engine_working'];
 
-// ── Adaptorul în repaus (Robert, 23.10: „de ce am adaptor în mod sleep și ambreiaj apăsat") ──────
+// ── Adaptorul în repaus (Robert, 23.10: „de ce am adaptor în mod sleep și ambreiaj apăsat”) ──────
 // Cu mașina oprită, calculatorul ei tace și adaptorul CAN intră în repaus (`_sf_can_sleep_mode`).
-// Ce a citit ultima oară rămâne în mesaj: VW Caddy, parcat, arăta „Ambreiaj: Apăsat" și „Frână de
-// mână: Eliberată" — starea de dinainte de luarea contactului, nu cea de acum. Robert: „2" = cât timp
+// Ce a citit ultima oară rămâne în mesaj: VW Caddy, parcat, arăta „Ambreiaj: Apăsat” și „Frână de
+// mână: Eliberată" — starea de dinainte de luarea contactului, nu cea de acum. Robert: „2” = cât timp
 // adaptorul doarme, plăcuțele astea NU se arată (frâna de mână, frâna de picior, ambreiajul).
-// Dar unele adaptoare trimit „în repaus" și cu mașina în MERS (Dacia Logan B 154 UIP, 23.10): atunci
-// semnalul e greșit și nu-l credem — nici plăcuța „în repaus", nici ascunderea. „Merge" = contactul
+// Dar unele adaptoare trimit „în repaus” și cu mașina în MERS (Dacia Logan B 154 UIP, 23.10): atunci
+// semnalul e greșit și nu-l credem — nici plăcuța „în repaus”, nici ascunderea. „Merge” = contactul
 // aparatului GPS (care nu depinde de adaptor); fără el, turația sau viteza.
 const REPAUS_ASCUNSE = ['_sf_handbrake', '_sf_footbrake', '_sf_clutch'];
 const REPAUS_TEXT = 'Adaptorul CAN e în repaus: mașina e oprită. Frâna de mână și pedalele se citesc din nou la pornire.';
@@ -417,7 +417,7 @@ function inRepaus(flat) { return !!flat._sf_can_sleep_mode && !mergeMasina(flat)
 function benzi(flat) {
   const s = { stare: [], martori: [], deschis: [], active: [], repaus: inRepaus(flat) };
   const puse = new Set();
-  // În repaus se ascund stările vechi; în mers, „în repaus" e un semnal greșit și nu se arată.
+  // În repaus se ascund stările vechi; în mers, „în repaus” e un semnal greșit și nu se arată.
   function ascuns(k) {
     if (k === '_sf_can_sleep_mode') return !s.repaus;
     return s.repaus && REPAUS_ASCUNSE.indexOf(k) >= 0;

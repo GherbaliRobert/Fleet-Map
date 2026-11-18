@@ -6,8 +6,8 @@
 let segmentTrack = null;
 try { segmentTrack = require('./reports').segmentTrack; } catch (e) { segmentTrack = null; }
 const preaviz = require('./preaviz');   // preavizul termenelor: același ca listele și anunțurile
-const tacho = require('./tacho');       // „e camion / autobuz?" — o singură listă de tipuri (tacho.vehiculAreTahograf)
-const insight = require('./insight');   // „azi" și ora pe ceasul ROMÂNIEI (serverul e pe UTC)
+const tacho = require('./tacho');       // „e camion / autobuz?” — o singură listă de tipuri (tacho.vehiculAreTahograf)
+const insight = require('./insight');   // „azi” și ora pe ceasul ROMÂNIEI (serverul e pe UTC)
 
 const SPEED_LIMIT = 90;        // km/h
 const IDLE_MIN_MINUTES = 120;  // ralanti prelungit (RA Watch)
@@ -20,9 +20,9 @@ const OFFLINE_MIN = 60;        // minute fără poziție = offline (>1h; parcate
 const FUEL_PRICE = 7.5;        // lei/L (estimare pentru costuri)
 const IDLE_BURN_LPH = 1.5;     // L/h consum la ralanti (estimare)
 
-// Ore zecimale → „Xh Ym" (userul vrea ore+minute peste tot în texte, nu „1.6 h").
-// Cifrele din textele agenților se scriu românește: punctul miilor și virgula zecimalelor („1.240 km", „12,5 L") — Alin,
-// 17.11: RA Client scria „Azi: 1240 km". Fără Intl: agenții rulează pe toată flota, o dată pe oră.
+// Ore zecimale → „Xh Ym” (userul vrea ore+minute peste tot în texte, nu „1.6 h”).
+// Cifrele din textele agenților se scriu românește: punctul miilor și virgula zecimalelor („1.240 km”, „12,5 L”) — Alin,
+// 17.11: RA Client scria „Azi: 1240 km”. Fără Intl: agenții rulează pe toată flota, o dată pe oră.
 function nrRo(x, zecimale) {
   const v = Number(x);
   if (!Number.isFinite(v)) return String(x);
@@ -31,8 +31,8 @@ function nrRo(x, zecimale) {
   const intreg = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return (v < 0 && Number(s) !== 0 ? '-' : '') + intreg + (p[1] ? ',' + p[1] : '');
 }
-// Un număr lângă cuvântul lui, pe românește (17.11, Alin: „rezolvă" — „expiră în 25 zile", „1 critice"): singularul la 1,
-// „de" de la 20 în sus, afară de cele care se termină în 01–19 („101 zile", „25 de zile", „1.000 de zile"); cifra cu nrRo.
+// Un număr lângă cuvântul lui, pe românește (17.11, Alin: „rezolvă” — „expiră în 25 zile”, „1 critice”): singularul la 1,
+// „de” de la 20 în sus, afară de cele care se termină în 01–19 („101 zile”, „25 de zile”, „1.000 de zile”); cifra cu nrRo.
 function cate(n, unu, multe) {
   const x = Math.abs(Math.round(Number(n) || 0));
   if (x === 1) return '1 ' + unu;
@@ -42,9 +42,9 @@ function cate(n, unu, multe) {
 function hmH(hours) {
   const s = Math.max(0, Math.round((hours || 0) * 3600));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  return h > 0 ? (m > 0 ? h + ' h ' + m + ' min' : h + ' h') : m + ' min'; // „3 h 10 min" (17.11, Alin: „5. da"), nu „3h 10m\"
+  return h > 0 ? (m > 0 ? h + ' h ' + m + ' min' : h + ' h') : m + ' min'; // „3 h 10 min” (17.11, Alin: „5. da”), nu „3h 10m\"
 }
-const SERVICE_SOON_KM = 1500;  // prag „revizie în curând"
+const SERVICE_SOON_KM = 1500;  // prag „revizie în curând”
 const TACHO_GRACE_MIN = 10;    // minute cu contact ON dar zero semnal tahograf = neconfigurat
 
 // Tipuri de vehicul pentru care se aplică legislația tahograf (Reg. EU 561/2006, 165/2014).
@@ -70,7 +70,7 @@ function fuelReading(p) {
   return null;
 }
 function odoKm(p) { const i = io(p); return num(i.can_total_mileage) != null ? num(i.can_total_mileage) : (num(i.can_total_mileage_counted) != null ? num(i.can_total_mileage_counted) : (num(i.total_odometer) != null ? i.total_odometer / 1000 : null)); }
-// Etichetă completă pentru dispecerizare: „Nume (Nr. înmatriculare)" — arată și numărul de înmatriculare.
+// Etichetă completă pentru dispecerizare: „Nume (Nr. înmatriculare)” — arată și numărul de înmatriculare.
 function labelOf(live, imei) {
   const name = live && live.name ? String(live.name).trim() : '';
   const plate = live && live.plate ? String(live.plate).trim() : '';
@@ -92,8 +92,8 @@ async function _vehLimit(ctx, imei) {
   try { const d = await ctx.db.getDeviceFull(imei); return (d && d.speed_limit) ? Number(d.speed_limit) : fallback; } catch (e) { return fallback; }
 }
 
-// Verifică dacă vehiculul e tip „camion" (intră sub legislația tahografului).
-// „E camion / autobuz?" — după tipul din fișă, cu ACEEAȘI listă ca modulul Tahograf și raportul Condus & repaus
+// Verifică dacă vehiculul e tip „camion” (intră sub legislația tahografului).
+// „E camion / autobuz?” — după tipul din fișă, cu ACEEAȘI listă ca modulul Tahograf și raportul Condus & repaus
 // (tacho.vehiculAreTahograf: autotractor, camion, TIR, autobuz, autocar…). Până pe 07.10 aici era o a treia listă, care
 // lăsa pe dinafară autotractoarele și socotea dubele camioane.
 async function _isTruck(ctx, imei) {
@@ -122,8 +122,8 @@ function _hasAnyTachoSignal(p) {
 //  (2) Scădere combustibil > prag (implicit FUEL_DROP_L = 15L)
 //  (3) Ralanti prelungit > prag (implicit IDLE_MIN_MINUTES = 120 min)
 // Toate pragurile configurabile per companie prin ctx.alertThresholds (cu fallback la constantele globale).
-// „Nu transmite" (RA Watch): mai mult decât pragul firmei (offlineMin, implicit OFFLINE_MIN) și mai puțin de 7 zile — un aparat
-// tăcut de o săptămână e o problemă veche, nu una de azi. O SINGURĂ regulă: RA Watch și „Azi la tine" din RA Insight.
+// „Nu transmite” (RA Watch): mai mult decât pragul firmei (offlineMin, implicit OFFLINE_MIN) și mai puțin de 7 zile — un aparat
+// tăcut de o săptămână e o problemă veche, nu una de azi. O SINGURĂ regulă: RA Watch și „Azi la tine” din RA Insight.
 const FARA_SEMNAL_MAX_MIN = 7 * 24 * 60;
 function esteFaraSemnal(ageMin, offlineMin) {
   const prag = Number.isFinite(offlineMin) && offlineMin > 0 ? offlineMin : OFFLINE_MIN;
@@ -137,15 +137,15 @@ async function raWatch(ctx) {
   const fuelDropPct = Number.isFinite(thresholds.fuelDropPct) && thresholds.fuelDropPct > 0 ? thresholds.fuelDropPct : FUEL_DROP_PCT;
   // Furt combustibil: valoarea goală / 0 înseamnă **DEZACTIVAT**, exact ca în alerta în timp real
   // (server.js checkFuelTheft: `if (!Number.isFinite(X) || X <= 0) return`). Înainte, agentul cădea aici pe
-  // pragul implicit, deci clientul care alegea „Dezactivat (recomandat)" oprea doar notificarea push și
-  // continua să primească de la RA Watch constatări `critical` „posibil furt combustibil".
+  // pragul implicit, deci clientul care alegea „Dezactivat (recomandat)” oprea doar notificarea push și
+  // continua să primească de la RA Watch constatări `critical` „posibil furt combustibil”.
   const _ftRaw = Number(thresholds.fuelTheftL);
   const fuelTheftOff = !(Number.isFinite(_ftRaw) && _ftRaw > 0);
   const fuelTheftL = fuelTheftOff ? 0 : _ftRaw;
   const idleMaxMinPrag = Number.isFinite(thresholds.idleMaxMin) && thresholds.idleMaxMin > 0 ? thresholds.idleMaxMin : IDLE_MIN_MINUTES;
   const tachoGraceMin = Number.isFinite(thresholds.tachoGraceMin) && thresholds.tachoGraceMin > 0 ? thresholds.tachoGraceMin : TACHO_GRACE_MIN;
 
-  // Rezervă pentru detecția „offline": ultima transmisie din DB, pentru vehiculele care au ieșit deja din
+  // Rezervă pentru detecția „offline”: ultima transmisie din DB, pentru vehiculele care au ieșit deja din
   // livePositions (purjare la 24h). O singură interogare pentru toată flota, nu una per vehicul.
   let lastSeenByImei = null;
   try {
@@ -158,7 +158,7 @@ async function raWatch(ctx) {
 
   for (const imei of imeis) {
     const live = livePositions.get(imei);
-    const name = labelOf(live, imei); // numele + numărul (17.11, Alin: „7. hai să rezolvăm acum")
+    const name = labelOf(live, imei); // numele + numărul (17.11, Alin: „7. hai să rezolvăm acum”)
     // (1) Offline. ATENȚIE la sursa de date: `livePositions` e purjat la 24h (LIVE_PURGE_MS), deci garda de
     // 7 zile de mai jos era teoretică — un vehicul dispărut de 3 zile ieșea complet din Map și NU mai producea
     // nicio constatare, exact cazul care contează cel mai mult (tracker furat, deconectat, fără alimentare).
@@ -169,7 +169,7 @@ async function raWatch(ctx) {
       if (esteFaraSemnal(ageMin, offlineMin)) {
         const hours = Math.floor(ageMin / 60), mins = Math.round(ageMin % 60);
         const ageStr = hours > 0 ? (hours + ' h' + (mins ? ' ' + mins + ' min' : '')) : (nrRo(ageMin) + ' min');
-        // Fapt + ce poate face clientul; NU „verifică dispozitivul / alimentarea / SIM-ul": echipamentul e treaba noastră (Alin, 19.10).
+        // Fapt + ce poate face clientul; NU „verifică dispozitivul / alimentarea / SIM-ul”: echipamentul e treaba noastră (Alin, 19.10).
         findings.push({ imei, severity: 'warning', agent: 'watch', fkey: 'offline_' + imei, title: name + ': fără semnal de ' + ageStr, body: 'Vehiculul nu mai trimite poziții de peste ' + nrRo(offlineMin) + ' min. Dacă ar trebui să fie pe drum, sună șoferul; dacă e în service sau parcat într-o hală sau sub pământ, e normal.' });
       }
     }
@@ -191,7 +191,7 @@ async function raWatch(ctx) {
               if (!anySignal) {
                 findings.push({
                   imei, severity: 'warning', agent: 'watch', fkey: 'tacho_missing_' + imei,
-                  // Fără „verifică cablajul": legătura cu tahograful e treaba noastră (Alin, 19.10). Clientului — doar ce ține de el.
+                  // Fără „verifică cablajul”: legătura cu tahograful e treaba noastră (Alin, 19.10). Clientului — doar ce ține de el.
                   title: name + ': nu vin date de la tahograf',
                   body: 'Camion cu contactul pornit de peste ' + nrRo(tachoGraceMin) + ' min, dar nu vin date de la tahograf (viteză, distanță, card șofer). Dacă descărcați datele tahografului de la distanță, cardul de companie trebuie să fie introdus în tahograf.'
                 });
@@ -245,7 +245,7 @@ async function raWatch(ctx) {
                   if (d > FUEL_RETURN_TOL) {
                     const prag = base.unit === 'pct' ? fuelDropPct : fuelTheftL;
                     // `fuelTheftOff` oprește detecția CU TOTUL (și pe litri, și pe procente): utilizatorul a ales
-                    // „Dezactivat", nu „prag 0". Fără garda asta, pragul ar deveni 0 și ar semnala orice scădere.
+                    // „Dezactivat”, nu „prag 0”. Fără garda asta, pragul ar deveni 0 și ar semnala orice scădere.
                     if (!fuelTheftOff && d >= prag && (!theft || d > theft.drop)) theft = { drop: d, unit: base.unit, from: base.value, to: endVal };
                   }
                 }
@@ -307,7 +307,7 @@ async function raCare(ctx) {
   } catch (e) {}
   for (const imei of imeis) {
     const live = livePositions.get(imei); const name = labelOf(live, imei);
-    // Vechimea odometrului: CAN „sticky" (carry-forward) sau poziție mai veche de 48h → etichetăm estimările pe km.
+    // Vechimea odometrului: CAN „sticky” (carry-forward) sau poziție mai veche de 48h → etichetăm estimările pe km.
     const posMs = live && live.timestamp ? new Date(live.timestamp).getTime() : null;
     const odoStale = !!(live && (live.can_stale || (posMs && (now - posMs) > 48 * 3600 * 1000)));
     const staleNote = odoStale ? ' Odometru din ' + roDate(live.can_snapshot_ts || live.timestamp) + ' (vehicul fără date recente).' : '';
@@ -377,7 +377,7 @@ async function raOptimize(ctx) {
     }
     fleetIdleSec += idleSec;
     if (km < 0.5 && driveSec < 60) continue;
-    evaluated++; // vehicul care a rulat efectiv azi → chiar a fost evaluat (pt. mesaj cinstit „au condus eco" vs „fără date")
+    evaluated++; // vehicul care a rulat efectiv azi → chiar a fost evaluat (pt. mesaj cinstit „au condus eco” vs „fără date”)
     const per100 = km > 1 ? 100 / km : 0;
     const speedShare = driveSec > 0 ? speedOverSec / driveSec : 0;
     const idleShare = (driveSec + idleSec) > 0 ? idleSec / (driveSec + idleSec) : 0;
@@ -389,7 +389,7 @@ async function raOptimize(ctx) {
     pen += Math.min(15, idleShare * 40);
     const score = Math.max(0, Math.round(100 - pen));
     if (score < ecoScoreMin) {
-      // Ce a tras scorul jos (aceleași formule ca la penalizare) + sugestie CONCRETĂ per problemă, nu doar „instruire".
+      // Ce a tras scorul jos (aceleași formule ca la penalizare) + sugestie CONCRETĂ per problemă, nu doar „instruire”.
       const comps = [
         { pen: Math.min(35, brake * per100 * 3.0), label: cate(brake, 'frânare bruscă', 'frânări bruște'), tip: 'anticipează traficul și frânează lin, din timp — ține distanță față de mașina din față' },
         { pen: Math.min(30, accel * per100 * 2.5), label: cate(accel, 'accelerare bruscă', 'accelerări bruște'), tip: 'demarează lin, fără apăsări bruște pe accelerație' },
@@ -429,7 +429,7 @@ async function raCompliance(ctx) {
   for (const imei of imeis) {
     // Reg. 561 + tahograf se aplică vehiculelor de peste 3,5 t (camioane/autocare), NU turismelor — aceeași regulă ca raportul
     // Condus & repaus (tacho.supusReg561): tipul din fișă SAU datele de tahograf pe care le trimite mașina.
-    // Pe un autoturism „4h30 continuu" nu e o obligație legală → nu inventăm încălcări care nu există.
+    // Pe un autoturism „4h30 continuu” nu e o obligație legală → nu inventăm încălcări care nu există.
     const live = livePositions.get(imei); const name = labelOf(live, imei);
     if (!tacho.supusReg561(await _isTruck(ctx, imei), !!(live && _hasAnyTachoSignal(live)))) { skipped++; continue; }
     const pts = await ctx.hist(imei); if (pts.length < 5) continue;
@@ -484,7 +484,7 @@ async function raClient(ctx) {
   const unused = Math.max(0, fleetSize - active);
   const topKm = top ? (parseFloat(top.km) || 0) : 0;
   const topName = top ? labelOf(livePositions.get(top.imei), top.imei) : '—'; // cu nr. de înmatriculare, ca peste tot
-  // Comparație cu IERI, pe aceeași fereastră orară (altfel dimineața ar ieși mereu „mai puțin ca ieri").
+  // Comparație cu IERI, pe aceeași fereastră orară (altfel dimineața ar ieși mereu „mai puțin ca ieri”).
   let ydKm = null;
   try {
     const ys = await db.getTripsSummaryForImeis(imeis, new Date(todayStart.getTime() - DAY).toISOString(), new Date(new Date(toIso).getTime() - DAY).toISOString());
@@ -517,8 +517,8 @@ async function raClient(ctx) {
 }
 
 // ─── RA Dispatch — alocare curse (disponibilitate + echilibrare flotă) ───
-// „Liberă acum" (RA Dispatch): a transmis mai recent decât pragul firmei (dispOnlineMin, implicit 65 de minute) și stă pe loc.
-// O SINGURĂ regulă: agentul și „Azi la tine" din RA Insight.
+// „Liberă acum” (RA Dispatch): a transmis mai recent decât pragul firmei (dispOnlineMin, implicit 65 de minute) și stă pe loc.
+// O SINGURĂ regulă: agentul și „Azi la tine” din RA Insight.
 const LIBER_ONLINE_MIN = 65;
 function esteLiber(live, now, onlineMin) {
   if (!live || !live.timestamp) return false;
@@ -565,8 +565,8 @@ const AGENTS = {
 };
 
 // Context comun cu cache de istoric (azi) partajat între agenți, ca să nu reinterogăm DB.
-// „Azi" = ziua pe ceasul ROMÂNIEI (insight.perioada), nu pe al serverului: cu setHours(0) pe UTC, ziua agenților începea
-// la 3 dimineața vara (2 iarna) — o scădere de combustibil de la 2 noaptea nu mai era „azi" pentru RA Watch, iar RA Client
+// „Azi” = ziua pe ceasul ROMÂNIEI (insight.perioada), nu pe al serverului: cu setHours(0) pe UTC, ziua agenților începea
+// la 3 dimineața vara (2 iarna) — o scădere de combustibil de la 2 noaptea nu mai era „azi” pentru RA Watch, iar RA Client
 // număra km-ii zilei de la 3. Prins de proba de noapte (22.10).
 function buildCtx(base) {
   const acum = Date.now();

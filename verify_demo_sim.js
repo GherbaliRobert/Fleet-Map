@@ -4,9 +4,9 @@
 // când nu exista niciun cont demo. Testul verifică ciclul complet: oprit → cont acordat → pornit →
 // termen revocat → oprit, plus cele două capcane care ar fi făcut gardarea inutilă:
 //   1. contul partajat `demo` are `access_until = NULL` și e recreat la FIECARE pornire; o condiție
-//      de forma „NULL sau în viitor" l-ar fi numărat veșnic activ, deci simulatorul n-ar fi stat niciodată;
+//      de forma „NULL sau în viitor” l-ar fi numărat veșnic activ, deci simulatorul n-ar fi stat niciodată;
 //   2. `DEMO_DISABLED=true` trebuie să rămână întrerupător HARD — pe ramura aceea `demoCompanyId` E setat,
-//      deci un „există cont activ → pornește" naiv ar fi repornit exact ce s-a oprit deliberat.
+//      deci un „există cont activ → pornește” naiv ar fi repornit exact ce s-a oprit deliberat.
 const { spawn } = require('child_process');
 const os = require('os'), path = require('path'), fs = require('fs');
 
@@ -75,13 +75,13 @@ async function nPositions(imei) {
     let s = (await req('GET', '/api/admin/demo-sim')).body;
     t('fără conturi demo → simulator OPRIT', s && s.running === false, JSON.stringify(s));
     t('motivul e explicit, nu gol', s && /niciun cont demo activ/i.test(s.reason || ''), s && s.reason);
-    t('nu numără contul partajat „demo" (access_until NULL)', s && s.active === 0, s && ('active=' + s.active));
+    t('nu numără contul partajat „demo” (access_until NULL)', s && s.active === 0, s && ('active=' + s.active));
 
     const hs = await health('demo_sim');
-    t('„Stare producție" raportează simulatorul', !!hs && /oprit/i.test(hs.detail || ''), JSON.stringify(hs));
+    t('„Stare producție” raportează simulatorul', !!hs && /oprit/i.test(hs.detail || ''), JSON.stringify(hs));
     // Starea trebuie calculată LA PORNIRE, nu la prima acțiune administrativă — altfel ecranul
-    // arată „neinițializat" pe un server proaspăt repornit, exact când te uiți la el.
-    t('starea e calculată de la pornire, nu „neinițializat"', s && s.reason !== 'neinițializat', s && s.reason);
+    // arată „neinițializat” pe un server proaspăt repornit, exact când te uiți la el.
+    t('starea e calculată de la pornire, nu „neinițializat”', s && s.reason !== 'neinițializat', s && s.reason);
 
     // Vehiculele demo nu trebuie să apară deloc în flota reală (regresie veche, reverificată)
     const live = await req('GET', '/api/live');
@@ -92,7 +92,7 @@ async function nPositions(imei) {
     const users = (await req('GET', '/api/users')).body;
     const list = Array.isArray(users) ? users : (users && users.items) || [];
     const demoUser = list.find(u => u.username === 'demo');
-    t('contul partajat „demo" există (deținătorul ACL-ului)', !!demoUser, JSON.stringify(list.map(u => u.username)));
+    t('contul partajat „demo” există (deținătorul ACL-ului)', !!demoUser, JSON.stringify(list.map(u => u.username)));
 
     if (demoUser) {
       const up = await req('PUT', '/api/users/' + demoUser.id + '/access-until', { hours: 6 });
@@ -115,7 +115,7 @@ async function nPositions(imei) {
       t('nu mai numără niciun cont activ', s && s.active === 0, s && ('active=' + s.active));
 
       // ── 4. until=null înseamnă acces NELIMITAT, nu revocare — și NU repornește simulatorul ──
-      // (contul devine „fără termen", exact ca `demo` la instalare: nu e un client demo, deci nu contează)
+      // (contul devine „fără termen”, exact ca `demo` la instalare: nu e un client demo, deci nu contează)
       const unl = await req('PUT', '/api/users/' + demoUser.id + '/access-until', { until: null });
       s = (await req('GET', '/api/admin/demo-sim')).body;
       t('until=null (acces nelimitat) NU repornește simulatorul', unl.status === 200 && s && s.running === false, JSON.stringify(s));
@@ -159,7 +159,7 @@ async function nPositions(imei) {
     t('și spune de ce', s2 && /DEMO_DISABLED/.test(s2.reason || ''), s2 && s2.reason);
     const f2 = (await req('POST', '/api/admin/demo-sim', { on: true, hours: 1 })).body;
     t('nici pornirea manuală nu trece peste DEMO_DISABLED', f2 && f2.running === false, JSON.stringify(f2));
-    t('starea e marcată „blocked" → interfața nu arată un buton inutil', f2 && f2.blocked === true, JSON.stringify(f2));
+    t('starea e marcată „blocked” → interfața nu arată un buton inutil', f2 && f2.blocked === true, JSON.stringify(f2));
 
   } catch (e) {
     fail++; console.error('  ❌ CRASH:', e.message);

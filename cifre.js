@@ -1,14 +1,14 @@
-// cifre.js — cifrele în care omul trebuie să aibă încredere (Alin, 08.10: „să aibă grijă cumva să nu dea greșit").
+// cifre.js — cifrele în care omul trebuie să aibă încredere (Alin, 08.10: „să aibă grijă cumva să nu dea greșit”).
 //
-//   1. numere(text)            — cifrele dintr-un text sau dintr-un JSON („4.230" = patru mii, „12,3", „06.10" = două cifre).
+//   1. numere(text)            — cifrele dintr-un text sau dintr-un JSON („4.230” = patru mii, „12,3”, „06.10” = două cifre).
 //                                O folosește verificarea răspunsurilor de mai jos (până pe 04.11 și Scrisoarea de luni, scoasă).
-//   2. negasite(text, date)    — cifrele „flotei" (cu unitate: km, litri, lei, %, l/100 km, km/h) din răspunsul lui RA Insight
+//   2. negasite(text, date)    — cifrele „flotei” (cu unitate: km, litri, lei, %, l/100 km, km/h) din răspunsul lui RA Insight
 //                                care NU se găsesc în datele pe care le-a citit — nici ca atare, nici socotite din ele
 //                                (totaluri, diferențe și procente între două perioade, litri la 100 km, lei pe litru).
 //                                Duratele nu se verifică (vezi mai jos).
 //   3. perioadaDiferita(...)   — perioada citită nu e cea cerută (a cerut 1–7 octombrie, a citit toată luna).
 //   4. consumDeVerificat(...)  — cifre greu de crezut la consum: sub 3 sau peste 40 l/100 km (la camioane: sub 10 sau peste
-//                                70), prețul pe litru sub 3 sau peste 12 lei. Le marchează „de verificat", nu le schimbă.
+//                                70), prețul pe litru sub 3 sau peste 12 lei. Le marchează „de verificat”, nu le schimbă.
 //
 // Curat: fără bază de date și fără server. Pragurile stau AICI și nicăieri altundeva.
 'use strict';
@@ -27,9 +27,9 @@ function numere(t) {
 }
 
 // ─── 2. Cifrele din răspuns, față de datele citite ────────────────────────────────────────────────
-// Mereu pe voie: „la 100 km", pragul EcoDrive de 90 km/h, „Reg. 561/2006" — unități și nume, nu cifre ale flotei.
+// Mereu pe voie: „la 100 km”, pragul EcoDrive de 90 km/h, „Reg. 561/2006” — unități și nume, nu cifre ale flotei.
 const MEREU = [100, 90, 561, 2006];
-// Cifrele mici (până la 12, întregi) nu se verifică: „3 mașini", „2 opriri", „Logan 3" — riscul e mic, zgomotul mare.
+// Cifrele mici (până la 12, întregi) nu se verifică: „3 mașini”, „2 opriri”, „Logan 3” — riscul e mic, zgomotul mare.
 const MICI = 12;
 // După unitatea scrisă lângă cifră știm ce fel de cifră e; la fel, după numele câmpului din date.
 const FELURI = [
@@ -51,7 +51,7 @@ function _felCheie(k) {
   if (/l100|per100|la 100|100 ?km|consum.*100/.test(t)) return 'l100';
   if (/viteza|speed|km\/h|kmh|(^|[^a-z])vit([^a-z]|$)/.test(t)) return 'kmh';   // „Vit. max” din Foaia de parcurs
   if (/procent|pct|%/.test(t)) return 'pct';
-  // banii întâi: „pret_litru_lei" e un preț, nu litri (altfel totalul de litri al listei ieșea umflat cu prețurile)
+  // banii întâi: „pret_litru_lei” e un preț, nu litri (altfel totalul de litri al listei ieșea umflat cu prețurile)
   if (/cost|lei|pret|ron|valoare|suma/.test(t)) return 'lei';
   if (/(^|[^a-z])km([^a-z]|$)|dist|kilometr/.test(t)) return 'km';
   if (/litr|consumed|alimentat|scazut/.test(t)) return 'litri';
@@ -63,9 +63,9 @@ function _numar(v) {
   if (typeof v === 'string' && /^\s*[+−-]?\d/.test(v)) { const n = numere(v.replace(/^\s*[+−-]/, '')); return n.length ? n[0] : null; }
   return null;
 }
-// O celulă dintr-un raport, citită ca NUMĂR (Alin, 15.10: „De verificat" pe cifre bune): rapoartele scriu distanțele cu
-// toFixed(2) — „12.53" —, iar cititorul de text de mai sus îl socotea o dată (12 și 53). Într-o celulă de raport punctul
-// cu zecimale e virgulă zecimală; „1.234,5" (românește) și „12,5" se citesc tot ca numere. Altceva → cititorul de text.
+// O celulă dintr-un raport, citită ca NUMĂR (Alin, 15.10: „De verificat” pe cifre bune): rapoartele scriu distanțele cu
+// toFixed(2) — „12.53” —, iar cititorul de text de mai sus îl socotea o dată (12 și 53). Într-o celulă de raport punctul
+// cu zecimale e virgulă zecimală; „1.234,5” (românește) și „12,5” se citesc tot ca numere. Altceva → cititorul de text.
 function _numarCelula(v) {
   if (typeof v === 'number') return isFinite(v) ? v : null;
   if (typeof v !== 'string') return null;
@@ -75,7 +75,7 @@ function _numarCelula(v) {
   if (/^\d+,\d+$/.test(s)) return Number(s.replace(',', '.'));
   return _numar(v);
 }
-// Cheia după care se adună rândurile unui raport: mașina, șoferul, ziua („05.10.2026 13:42" → „05.10.2026"). Celulele cu
+// Cheia după care se adună rândurile unui raport: mașina, șoferul, ziua („05.10.2026 13:42” → „05.10.2026”). Celulele cu
 // cifre nu sunt chei.
 function _cheieGrup(v) {
   if (typeof v !== 'string' || !v.trim()) return null;
@@ -88,7 +88,7 @@ function _cheieGrup(v) {
 // Ce se poate socoti din date: totalurile unei liste, diferențele și procentele între cifre de același fel venite din
 // locuri DIFERITE (perioada asta față de cea dinainte), partea unei mașini din total, litri la 100 km, lei pe litru.
 // Toate cifrele din date, valoare cu valoare. Până pe 15.10 se citea textul JSON întreg, iar două numere vecine dintr-o
-// listă („40,137" = viteza medie, viteza maximă) ieșeau un singur număr, „40,137" — și 137 km/h nu se mai „găsea".
+// listă („40,137” = viteza medie, viteza maximă) ieșeau un singur număr, „40,137” — și 137 km/h nu se mai „găsea”.
 function _toateNumerele(x, set, adanc) {
   if ((adanc || 0) > 12 || x == null) return;
   if (typeof x === 'number') { if (isFinite(x)) set.add(x); return; }
@@ -112,8 +112,8 @@ function _socotite(date) {
       vs.forEach(function (v) { pune(f, v, loc); adauga(f, v); });
       if (vs.length >= 2) { const s = vs.reduce(function (a, b) { return a + b; }, 0); adauga(f, s); vs.forEach(function (v) { if (s) adauga('pct', v / s * 100); }); }
     });
-    // Sumele pe o cheie (mașina, șoferul, ziua): „B 154 UIP: 5 curse, 59,4 km" e suma rândurilor ei, nu o cifră inventată
-    // (15.10: banda „De verificat" le punea pe toate șase la îndoială).
+    // Sumele pe o cheie (mașina, șoferul, ziua): „B 154 UIP: 5 curse, 59,4 km” e suma rândurilor ei, nu o cifră inventată
+    // (15.10: banda „De verificat” le punea pe toate șase la îndoială).
     cols.forEach(function (c, k) {
       if (felul[k]) return;
       const grup = {};
@@ -132,7 +132,7 @@ function _socotite(date) {
       if (chei.length < 1 || chei.length > 200 || chei.length === rows.length) return;   // o cheie pe rând nu adună nimic
       chei.forEach(function (ch) { const g = grup[ch]; Object.keys(g.s).forEach(function (j) { adauga(felul[j], g.s[j]); }); });
     });
-    // …și pe mașină ȘI zi (prima coloană = mașina, alta = ziua): „B 154 UIP pe 5 octombrie: 59,4 km".
+    // …și pe mașină ȘI zi (prima coloană = mașina, alta = ziua): „B 154 UIP pe 5 octombrie: 59,4 km”.
     if (!felul[0]) cols.forEach(function (c, k) {
       if (k === 0 || felul[k]) return;
       const grup = {};
@@ -207,7 +207,7 @@ function _socotite(date) {
   };
   umbla(date, false);
   // Diferențe și procente între cifre de același fel, din locuri diferite (o listă cu ea însăși nu se compară:
-  // „B 154 UIP față de B 268 ROY" e rar, iar perechile din aceeași listă ar face aproape orice cifră „găsită").
+  // „B 154 UIP față de B 268 ROY” e rar, iar perechile din aceeași listă ar face aproape orice cifră „găsită”).
   Object.keys(grupe).forEach(function (f) {
     const g = grupe[f].slice(0, 60);
     for (let i = 0; i < g.length; i++) for (let j = 0; j < g.length; j++) {
@@ -225,14 +225,14 @@ function _aproape(lista, v, tol) {
   while (lo <= hi) { const m = (lo + hi) >> 1; if (lista[m] < v - tol) lo = m + 1; else if (lista[m] > v + tol) hi = m - 1; else return true; }
   return false;
 }
-// Cifrele cu unitate din răspuns: { text: „702 km", v: 702, zec: 0, fel: 'km' }
+// Cifrele cu unitate din răspuns: { text: „702 km”, v: 702, zec: 0, fel: 'km' }
 function cifreleRaspunsului(text) {
-  // fără semnele de formatare ale răspunsului („**734** km", „**734 km**"): altfel unitatea s-ar citi „km**" sau deloc
+  // fără semnele de formatare ale răspunsului („**734** km”, „**734 km**”): altfel unitatea s-ar citi „km**” sau deloc
   const t = String(text || '').replace(/[*_`]/g, ''), out = [];
   const re = /(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)/g; let m;
   while ((m = re.exec(t))) {
     const tok = m[1], inainte = t.slice(Math.max(0, m.index - 1), m.index), dupa = t.slice(m.index + tok.length, m.index + tok.length + 24);
-    if (/[A-Za-z0-9ăâîșțĂÂÎȘȚ:./]/.test(inainte) || /^[A-Za-z0-9:]/.test(dupa) || /^[.,]\d/.test(dupa)) continue;   // „B112RFG", „13:42", „08.10.2026"
+    if (/[A-Za-z0-9ăâîșțĂÂÎȘȚ:./]/.test(inainte) || /^[A-Za-z0-9:]/.test(dupa) || /^[.,]\d/.test(dupa)) continue;   // „B112RFG”, „13:42”, „08.10.2026”
     const fel = _felUnitate(dupa); if (!fel) continue;
     let v, zec = 0;
     if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(tok)) { const p = tok.replace(/\./g, '').split(','); v = Number(p[0] + (p[1] ? '.' + p[1] : '')); zec = p[1] ? p[1].length : 0; }
@@ -245,16 +245,16 @@ function cifreleRaspunsului(text) {
   }
   return out;
 }
-// Cifrele „flotei" din răspuns care nu se găsesc în date, nici socotite din ele. [] = toate se regăsesc.
-// Duratele NU se verifică: aceeași durată se scrie în prea multe feluri („1h 23m", „83 de minute", „1,4 ore", „01:23"),
-// iar o bandă „de verificat" pusă pe o cifră bună ar strica încrederea mai mult decât ajută.
-// Procentele din întrebarea omului („reduc costurile cu 10%", „cu 15 la sută"), ca numere.
+// Cifrele „flotei” din răspuns care nu se găsesc în date, nici socotite din ele. [] = toate se regăsesc.
+// Duratele NU se verifică: aceeași durată se scrie în prea multe feluri („1h 23m”, „83 de minute”, „1,4 ore”, „01:23”),
+// iar o bandă „de verificat” pusă pe o cifră bună ar strica încrederea mai mult decât ajută.
+// Procentele din întrebarea omului („reduc costurile cu 10%”, „cu 15 la sută”), ca numere.
 function _procenteIntrebare(t) {
   const out = [], re = /(\d+(?:[.,]\d+)?)\s*(?:%|la sut[ăa]|procente)/gi;
   let m; while ((m = re.exec(String(t || ''))) !== null) { const p = parseFloat(m[1].replace(',', '.')); if (p > 0 && p < 100 && out.indexOf(p) < 0) out.push(p); }
   return out;
 }
-// `intrebare` (22.10, proba modelelor): o cifră socotită dintr-un procent cerut de om — „cam 65 de lei" = 10% din 651 — e bună.
+// `intrebare` (22.10, proba modelelor): o cifră socotită dintr-un procent cerut de om — „cam 65 de lei” = 10% din 651 — e bună.
 // Se acceptă partea (v × p%), restul (v − p%) și v + p%, pentru orice cifră din date.
 function negasite(text, date, intrebare) {
   const s = _socotite(date), lipsa = [], vazut = new Set();
@@ -277,7 +277,7 @@ function negasite(text, date, intrebare) {
 
 // ─── 3. Perioada citită față de cea cerută ────────────────────────────────────────────────────────
 // ceruta = { from, to, eticheta } (ce a scris omul); citite = [{ from, to, eticheta }] (ce s-a citit). Capetele se pot
-// abate cu cel mult o oră (ora României / ora serverului); „până acum" se potrivește cu „până acum".
+// abate cu cel mult o oră (ora României / ora serverului); „până acum” se potrivește cu „până acum”.
 const ABATERE_MS = 3600000;
 function _ms(x) { return typeof x === 'number' ? x : Date.parse(x); }
 function perioadaDiferita(ceruta, citite, acum) {
@@ -301,7 +301,7 @@ function perioadaDiferita(ceruta, citite, acum) {
 const CONSUM = { min: 3, max: 40 }, CONSUM_CAMION = { min: 10, max: 70 }, PRET = { min: 3, max: 12 };
 const KM_SIGUR = 50;   // sub atât, un consum ciudat e mai degrabă puțin drum decât o greșeală
 function _nr(v, z) { return Number(v).toLocaleString('ro-RO', { minimumFractionDigits: z || 0, maximumFractionDigits: z || 0 }); }
-// { l100, km, pret, camion, electric } → [] sau textele „de verificat" (fără numele mașinii — îl pune cine le arată).
+// { l100, km, pret, camion, electric } → [] sau textele „de verificat” (fără numele mașinii — îl pune cine le arată).
 function consumDeVerificat(o) {
   o = o || {};
   const out = [];

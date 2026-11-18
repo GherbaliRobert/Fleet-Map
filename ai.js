@@ -6,7 +6,7 @@ const AI_AGENT_MODEL = process.env.AI_AGENT_MODEL || AI_MODEL;
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const soldAi = require('./sold_ai');
 const ANTHROPIC_MODELE_URL = 'https://api.anthropic.com/v1/models/';
-// Orice text scris de model ajunge la om DOAR cu litere românești (Alin, 20.10: „sunt fatale pentru noi"): callClaude și
+// Orice text scris de model ajunge la om DOAR cu litere românești (Alin, 20.10: „sunt fatale pentru noi”): callClaude și
 // runAgent îl curăță aici, o dată pentru toate drumurile (litere.js). `brut: true` îl lasă cum e — doar RA Insight îl cere,
 // ca să ceară întâi o rescriere, și îl curăță el la capăt.
 const litere = require('./litere.js');
@@ -14,14 +14,14 @@ function _curat(t, brut) { return brut ? t : litere.litereRomanesti(t); }
 
 // ─── Modelele pe care le știm, cu prețurile OFICIALE (USD / milion de tokeni), citite de pe
 // platform.claude.com/docs/en/about-claude/pricing pe 08.10.2026. Haiku 5.5: prețul cererilor sub 100.000 de tokeni
-// (ale noastre au câteva mii). `gandire` = modelele 5.x gândesc „adaptiv": li se spune cât (`effort`), iar istoricul
+// (ale noastre au câteva mii). `gandire` = modelele 5.x gândesc „adaptiv”: li se spune cât (`effort`), iar istoricul
 // unei bucle cu unelte NU se mai atinge (vezi runAgent). Un model necunoscut ia prețurile din env (mai jos).
 const MODELE = {
   'claude-haiku-4-5':  { nume: 'Haiku 4.5',  in: 1.00, out: 5.00,  cacheRead: 0.10, cacheWrite: 1.25,  gandire: false },
   'claude-haiku-5-5':  { nume: 'Haiku 5.5',  in: 0.10, out: 0.50,  cacheRead: 0.01, cacheWrite: 0.125, gandire: true },
   'claude-sonnet-5-5': { nume: 'Sonnet 5.5', in: 2.00, out: 10.00, cacheRead: 0.10, cacheWrite: 2.50,  gandire: true },
 };
-// Cât de mult gândesc modelele 5.x la noi: puțin („low" — ce recomandă Anthropic pentru chat). Gândirea intră în
+// Cât de mult gândesc modelele 5.x la noi: puțin („low” — ce recomandă Anthropic pentru chat). Gândirea intră în
 // max_tokens, deci li se dă loc în plus (GANDIRE_LOC); se plătește doar ce se folosește.
 const EFORT = process.env.AI_EFFORT || 'low';
 const GANDIRE_LOC = 2000;
@@ -31,7 +31,7 @@ const PRICE_OUT = Number(process.env.AI_PRICE_OUT_USD_PER_MTOK) || 5.00;
 const PRICE_CACHE_READ = Number(process.env.AI_PRICE_CACHE_READ_USD_PER_MTOK) || 0.10;  // ~10% din input
 const PRICE_CACHE_WRITE = Number(process.env.AI_PRICE_CACHE_WRITE_USD_PER_MTOK) || 1.25; // ~125% din input
 const USD_EUR = Number(process.env.USD_EUR_RATE) || 0.92;
-// „Sursă externă" (28.10): căutarea pe internet se plătește separat de tokeni — 10 $ la 1.000 de căutări, plus paginile găsite,
+// „Sursă externă” (28.10): căutarea pe internet se plătește separat de tokeni — 10 $ la 1.000 de căutări, plus paginile găsite,
 // socotite ca text citit (platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool, citit pe 28.10). O căutare cu
 // eroare nu se plătește. Schimbi prețul doar după pagina oficială.
 const PRET_CAUTARE_USD = 0.01;
@@ -51,7 +51,7 @@ function costUsd(u, model) {
 function costEur(u, model) { return costUsd(u, model) * USD_EUR; }
 // Cererea către API, pe felul modelului: la 5.x, gândire adaptivă cu efortul nostru și loc pentru ea în max_tokens.
 // Haiku 4.5 primește cererea de până acum, neschimbată. `_efort` (28.10, analiza atentă a lui RA Insight): o întrebare grea
-// („de ce", „compară", „ce să fac") gândește mai mult — „medium" — cu loc dublu pentru gândire; câmpul nu pleacă spre API.
+// („de ce”, „compară”, „ce să fac”) gândește mai mult — „medium” — cu loc dublu pentru gândire; câmpul nu pleacă spre API.
 function _corp(b) {
   const p = pret(b.model);
   const ef = b._efort || EFORT;
@@ -60,7 +60,7 @@ function _corp(b) {
   return Object.assign(c, { max_tokens: (Number(b.max_tokens) || 1024) + (ef === 'low' ? GANDIRE_LOC : GANDIRE_LOC * 2), thinking: { type: 'adaptive' }, output_config: { effort: ef } });
 }
 // Textul răspunsului: blocurile `text`, în ordine. La modelele 5.x răspunsul poate începe cu un bloc `thinking`, deci
-// NU se citește „primul bloc".
+// NU se citește „primul bloc”.
 function _text(j) { return ((j && j.content) || []).filter(function (b) { return b && b.type === 'text'; }).map(function (b) { return b.text; }).join('\n').trim(); }
 // Refuzul modelului (`stop_reason: "refusal"`, la modelele 5.x) se spune pe față, nu ca un răspuns gol.
 const TEXT_REFUZ = 'Nu pot răspunde la întrebarea asta. Încearcă s-o formulezi altfel.';
@@ -83,7 +83,7 @@ function setKey(k) { runtimeKey = (k && String(k).trim()) || null; }
 function hasKey() { return !!runtimeKey; }
 function aiEnabled() { return !!runtimeKey; }
 
-// Ce a spus Anthropic la fiecare cerere (04.11, Alin: „control total… după ce schimbă Robert cheile"): un singur ascultător, pus de
+// Ce a spus Anthropic la fiecare cerere (04.11, Alin: „control total… după ce schimbă Robert cheile”): un singur ascultător, pus de
 // server (setLaStare), care ține starea și ne anunță când Anthropic refuză (creditul terminat, limita de cheltuieli, cheia respinsă —
 // sold_ai.felRefuz). ai.js doar spune ce s-a întâmplat: { ok: true } sau { refuz, status, eroare }; eroarea aruncată poartă
 // `refuzAnthropic` (felul), ca RA Insight să răspundă clientului pe butoane în locul unei erori.
@@ -139,7 +139,7 @@ async function callClaude({ system, messages, maxTokens = 800, model, onUsage, b
 // Citirea unei IMAGINI (poză de talon, CIV, RCA…). Până aici tot fișierul vorbea doar text; blocul
 // de imagine e singura noutate. Modelul primește poza + o instrucțiune și întoarce DOAR textul
 // transcris de pe document — extragerea câmpurilor rămâne în docparse.js, pe reguli, gratuit.
-// De ce așa și nu „modelul completează direct câmpurile": transcrierea e sarcina la care modelul
+// De ce așa și nu „modelul completează direct câmpurile”: transcrierea e sarcina la care modelul
 // greșește cel mai puțin, iar regulile noastre sunt verificabile și testate (test_docparse.js).
 // mediaType: 'image/jpeg' | 'image/png' | 'image/webp'.
 async function readImage({ b64, mediaType, prompt, maxTokens = 1500, model, onUsage }) {
@@ -167,7 +167,7 @@ async function readImage({ b64, mediaType, prompt, maxTokens = 1500, model, onUs
 // La modelele 5.x (`gandire`) istoricul buclei NU se atinge: blocurile de gândire sunt legate de tot ce a fost înaintea
 // lor (instrucțiuni, unelte, mesaje), iar o schimbare în urmă le invalidează (pe conturile noi, eroare 400). Deci acolo:
 // cache-ul cozii îl pune API-ul singur (`cache_control` pe cerere), nu mutăm semne pe rezultatele vechi, iar la capăt
-// nu schimbăm instrucțiunile — nota „gata" se adaugă după ultimele rezultate și se cere răspunsul fără unelte
+// nu schimbăm instrucțiunile — nota „gata” se adaugă după ultimele rezultate și se cere răspunsul fără unelte
 // (`tool_choice: none`, uneltele rămân aceleași). Haiku 4.5 merge pe drumul de până acum, neschimbat.
 const NOTA_GATA = 'Gata cu interogările. Răspunde acum pe baza datelor deja adunate.';
 async function runAgent({ system, messages, tools, toolHandlers, model, maxTokens = 1024, maxIters = 5, onUsage, brut, efort }) {
@@ -216,17 +216,17 @@ async function runAgent({ system, messages, tools, toolHandlers, model, maxToken
   return { text: _curat(_text(jf), brut), toolCalls: used };
 }
 
-// ─── „Sursă externă" (28.10; Alin: „da — dar nu-l numim internet, îl numim sursă externă") ───────────────────────────────
+// ─── „Sursă externă” (28.10; Alin: „da — dar nu-l numim internet, îl numim sursă externă”) ───────────────────────────────
 // Căutarea pe internet, într-un apel SEPARAT de RA Insight: primește doar textul căutării (verificat înainte cu
 // sursa_externa.verifica) și instrucțiunile ei — nimic din flotă, nimic din discuție. Unealta de bază, `web_search_20250305`
-// (cea cu „filtrare dinamică" cere execuție de cod, pe care modelele mici n-o au), cel mult `maxCautari` căutări, rezultatele pe
+// (cea cu „filtrare dinamică” cere execuție de cod, pe care modelele mici n-o au), cel mult `maxCautari` căutări, rezultatele pe
 // România. La `pause_turn` (API-ul oprește o căutare lungă) se trimite înapoi, neschimbat, ce a scris modelul până acolo.
 // Întoarce blocurile răspunsului (le citește sursa_externa.citesteRaspuns); consumul, cu numărul de căutări, prin onUsage.
 // Modelul: AI_MODEL_SURSA, altfel modelul lui RA Insight.
 const AI_SURSA_MODEL = process.env.AI_MODEL_SURSA || AI_AGENT_MODEL;
 const CAUTARE_UNEALTA = 'web_search_20250305';
-// Locul căutării: doar fusul orar. Țara „RO" NU e primită de motorul de căutare al Anthropic (29.10, la prima probă adevărată a lui
-// Alin: 400 „Country code RO is not supported"; documentația: `user_location.country` = doar țările motorului lor). Fără țară, căutarea
+// Locul căutării: doar fusul orar. Țara „RO” NU e primită de motorul de căutare al Anthropic (29.10, la prima probă adevărată a lui
+// Alin: 400 „Country code RO is not supported”; documentația: `user_location.country` = doar țările motorului lor). Fără țară, căutarea
 // pleacă tot în română (textul ei) și cu ora României.
 const LOC_CAUTARE = { type: 'approximate', timezone: 'Europe/Bucharest' };
 // O cerere refuzată pentru loc (țara, fusul, orașul) se trimite O DATĂ din nou, fără loc — căutarea merge și așa.

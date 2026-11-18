@@ -1,4 +1,4 @@
-// Piesele mici de interfață din zona „Flota administrată": filele, căutarea, cardurile de cost, grupa
+// Piesele mici de interfață din zona „Flota administrată”: filele, căutarea, cardurile de cost, grupa
 // pliabilă și foaia de confirmare. Aceleași în Mentenanță, Documente, Șoferi, Grupe și Alerte, ca
 // ecranele să arate și să se poarte la fel (pe web au tot un singur aspect comun, .mnt-*).
 import { useState } from 'preact/hooks';
@@ -68,7 +68,7 @@ export function Grupa({ open, onToggle, title, sub, badge, lead, extra, children
   );
 }
 
-// Foaie de confirmare, cu întrebarea scrisă ca pe web. `field` = o casetă (ex. „Cât a costat?").
+// Foaie de confirmare, cu întrebarea scrisă ca pe web. `field` = o casetă (ex. „Cât a costat?”).
 export function Confirma({ title, text, okLabel, danger, field, busy, onOk, onCancel, cancelLabel }: {
   title: string; text: any; okLabel: string; danger?: boolean; busy?: boolean; cancelLabel?: string;
   field?: { label: string; type?: string; value?: any; placeholder?: string };

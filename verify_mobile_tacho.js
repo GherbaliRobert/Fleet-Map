@@ -22,7 +22,7 @@ const WEB = R('./public/index.html');
 const licCats = require('./license_cats.js');
 const tacho = require('./tacho.js');
 
-// ─── contractul „excluse": aceleași chei în server, web și telefon ───
+// ─── contractul „excluse”: aceleași chei în server, web și telefon ───
 sect('1. Cheile trimise de server sunt citite de amândouă interfețele');
 const blocExcluse = (() => {
   const i = SRV.indexOf('excluse: {');
@@ -52,8 +52,8 @@ sect('3. Fișa șoferului ia categoriile de la server, nu din cod');
 T('cere catalogul de categorii', /Api\.licenseCats\(\)/.test(DRV));
 // Bifele se desenează pe grupe (lotul 2): lic.categories.filter(grupă).map(...) — tot din catalog.
 T('bifele se construiesc din catalog, nu dintr-o listă scrisă de mână', /lic\.categories[\s\S]{0,120}?\.map\(/.test(DRV));
-T('„profesionist" vine din catalog', /lic\.pro/.test(DRV) || /new Set\(lic\.pro/.test(DRV));
-T('„card de tahograf" vine din catalog', /lic\.tacho/.test(DRV));
+T('„profesionist” vine din catalog', /lic\.pro/.test(DRV) || /new Set\(lic\.pro/.test(DRV));
+T('„card de tahograf” vine din catalog', /lic\.tacho/.test(DRV));
 const coduriInFisa = (DRV.match(/['"](AM|A1|A2|B1|BE|C1E|C1|CE|D1E|D1|DE|Tb|Tv)['"]/g) || []);
 T('fișa nu conține o listă paralelă de coduri', coduriInFisa.length === 0, coduriInFisa.join(', '));
 

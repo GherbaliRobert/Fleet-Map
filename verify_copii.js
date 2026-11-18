@@ -52,8 +52,8 @@ console.log('\n2. Backup-ul de business: o dată pe zi, noaptea');
   T('dar nu de mai mult de 3 ori pe zi', !backup.backupDue(RO('2026-09-12', 9), Object.assign({}, esec, { tries: 3 })));
   T('refuzul de a urca necriptat nu se reia la fiecare oră', !backup.backupDue(RO('2026-09-12', 9), Object.assign({}, esec, { target: 'refuzat' })));
   T('a doua zi, după refuz, încearcă din nou', backup.backupDue(RO('2026-09-13', 3, 10), Object.assign({}, esec, { target: 'refuzat' })));
-  T('starea salvată de versiunea veche (fără „day") e înțeleasă', !backup.backupDue(RO('2026-09-12', 15), { at: iso(RO('2026-09-12', 3, 5)), ok: true }));
-  T('după un refuz ieri, o eroare azi se reîncearcă (nu rămâne blocată pe „refuzat")', backup.backupDue(RO('2026-09-13', 6), { at: iso(RO('2026-09-13', 3, 5)), ok: false, target: 'eroare', day: '2026-09-13', tries: 1 }));
+  T('starea salvată de versiunea veche (fără „day”) e înțeleasă', !backup.backupDue(RO('2026-09-12', 15), { at: iso(RO('2026-09-12', 3, 5)), ok: true }));
+  T('după un refuz ieri, o eroare azi se reîncearcă (nu rămâne blocată pe „refuzat”)', backup.backupDue(RO('2026-09-13', 6), { at: iso(RO('2026-09-13', 3, 5)), ok: false, target: 'eroare', day: '2026-09-13', tries: 1 }));
   T('un proces oprit în timpul copiei contează ca încercare', !backup.backupDue(RO('2026-09-12', 3, 30), { at: iso(RO('2026-09-12', 3, 5)), ok: false, target: 'în curs', day: '2026-09-12', tries: 1 }));
 }
 
@@ -83,7 +83,7 @@ console.log('\n4. Cum sunt construite (fără text uriaș, fără comprimare car
   T('arhiva așteaptă să treacă o zi întreagă (poziții descărcate târziu)', /POSITIONS_EXPORT_LAG_DAYS/.test(ex));
   const run = functia(bkSrc, 'async function runScheduledBackup(');
   T('încercarea se notează ÎNAINTE de copie (un proces oprit nu reia copia la fiecare pornire)', run.indexOf('saveState(db)') > -1 && run.indexOf('saveState(db)') < run.indexOf('makeBackup(db'));
-  T('un tabel citit pe jumătate nu face copia „reușită"', /incomplete\.length === 0/.test(run));
+  T('un tabel citit pe jumătate nu face copia „reușită”', /incomplete\.length === 0/.test(run));
 }
 
 console.log('\n4b. Ce intră în copie');
@@ -109,7 +109,7 @@ console.log('\n5. Serverul nu mai pornește copiile după fiecare repornire');
 console.log('\n6. Planificatorul REAL din server.js chiar pornește copiile');
 (async () => {
   // Decupăm blocul din server.js și îl rulăm cu un setInterval fals (ține minte funcția, nu așteaptă 10 minute) și cu
-  // un „backup" fals care numără ce i se cere. Așa se vede cablajul, nu doar logica lui backupDue.
+  // un „backup” fals care numără ce i se cere. Așa se vede cablajul, nu doar logica lui backupDue.
   const a = svSrc.indexOf('  let _copieInCurs = false;');
   const b = svSrc.indexOf('}, 10 * 60 * 1000).unref();', a);
   T('blocul planificatorului se găsește în server.js', a > 0 && b > a);

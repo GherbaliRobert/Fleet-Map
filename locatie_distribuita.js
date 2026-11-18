@@ -1,4 +1,4 @@
-// locatie_distribuita.js — „Distribuie locația" (Robert, 21.10): linkul public al unei mașini, ca locația live de pe WhatsApp.
+// locatie_distribuita.js — „Distribuie locația” (Robert, 21.10): linkul public al unei mașini, ca locația live de pe WhatsApp.
 // Oricine are linkul vede mașina pe hartă până expiră; după aceea linkul nu mai există.
 //
 // Aici stau DOAR regulile și textele (curat: fără bază, fără server, fără ceas propriu — `acum` vine de la cine cheamă):
@@ -16,12 +16,12 @@ const DURATE = [
 const MAX_ACTIVE_PE_MASINA = 10;
 // Cât de des își cere pagina publică poziția nouă.
 const SECUNDE_REIMPROSPATARE = 5;
-// Sub viteza asta mașina e „oprită" — aceeași cifră ca la alerta „mișcare în afara programului".
+// Sub viteza asta mașina e „oprită” — aceeași cifră ca la alerta „mișcare în afara programului”.
 const VITEZA_MERS = 3;
 
 function durata(minute) { return DURATE.find((d) => d.minute === Number(minute)) || null; }
 
-// Prelungirea (Robert, 23.10: „să pot prelungi timpul pentru o distribuire" → „da" la varianta c): aceleași trei durate,
+// Prelungirea (Robert, 23.10: „să pot prelungi timpul pentru o distribuire” → „da” la varianta c): aceleași trei durate,
 // ADĂUGATE la ora de final (14:30 + 1 oră = 15:30); linkul rămâne același, deci cine îl are nu primește altul. De câte ori
 // vrei, dar cel mult `MAX_INAINTE_MINUTE` înainte, socotit din clipa prelungirii: un link uitat se stinge tot în cel mult
 // 8 ore, iar un drum lung se urmărește prelungind pe parcurs. Sub un minut câștigat nu e o prelungire.
@@ -36,14 +36,14 @@ function tokenBun(t) { return typeof t === 'string' && /^[A-Za-z0-9_-]{32}$/.tes
 
 function activ(link, acum) { return !!link && Number(link.expira_la) > acum; }
 
-// „20 de minute", dar „15 minute": fără „de" când ultimele două cifre sunt între 1 și 19 (regula din pagină, _raxDe).
+// „20 de minute”, dar „15 minute”: fără „de” când ultimele două cifre sunt între 1 și 19 (regula din pagină, _raxDe).
 function _de(n) { const r = n % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
 function _cate(n, unu, multe) { return n === 1 ? ('1 ' + unu) : (n + _de(n) + multe); }
 
 const _fmtOra = new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' });
 function ora(ms) { return _fmtOra.format(new Date(ms)); }
 
-// Cât mai ține linkul: „încă 14 minute", „încă 7 ore și 59 de minute".
+// Cât mai ține linkul: „încă 14 minute”, „încă 7 ore și 59 de minute”.
 function ramas(expiraLa, acum) {
   const min = Math.ceil((Number(expiraLa) - acum) / 60000);
   if (min <= 0) return 's-a încheiat';
@@ -52,7 +52,7 @@ function ramas(expiraLa, acum) {
   return 'încă ' + _cate(h, 'oră', 'ore') + (m ? ' și ' + _cate(m, 'minut', 'minute') : '');
 }
 
-// De când e poziția: „acum câteva secunde", „acum 2 minute", „acum 3 ore".
+// De când e poziția: „acum câteva secunde”, „acum 2 minute”, „acum 3 ore”.
 function vechime(ts, acum) {
   const s = Math.max(0, Math.round((acum - new Date(ts).getTime()) / 1000));
   if (s < 60) return 'acum câteva secunde';
@@ -71,7 +71,7 @@ function numeMasina(nume, numar) {
   return n || p || 'Vehicul';
 }
 
-// Se mai poate prelungi? (butonul „Prelungește" apare doar atunci)
+// Se mai poate prelungi? (butonul „Prelungește” apare doar atunci)
 function poatePrelungi(expiraLa, acum) {
   const e = Number(expiraLa);
   return e > acum && (acum + MAX_INAINTE_MINUTE * 60000) - e >= _CASTIG_MIN_MS;
@@ -104,7 +104,7 @@ const TEXT_INCHEIAT = 'Linkul a expirat sau a fost oprit.';
 function mesaj(nume, expiraLa, link) { return 'Urmărește live ' + nume + ' pe hartă, până la ' + ora(expiraLa) + ': ' + link; }
 
 // Ce primește pagina publică. `poz` = ultima poziție cunoscută (sau null), `semnal` = cuvintele de vechime ale
-// aplicației când mașina tace („fără semnal de 2 ore"), altfel null. Nimic din ce nu e aici nu pleacă spre public.
+// aplicației când mașina tace („fără semnal de 2 ore”), altfel null. Nimic din ce nu e aici nu pleacă spre public.
 function pentruPagina({ link, poz, nume, numar, firma, semnal }, acum) {
   const r = {
     activ: true,
@@ -124,7 +124,7 @@ function pentruPagina({ link, poz, nume, numar, firma, semnal }, acum) {
     r.pozitie = { lat: Number(poz.latitude), lng: Number(poz.longitude), unghi: Number(poz.angle) || 0, viteza, ts };
     r.tacut = !!semnal;
     r.inMers = !semnal && viteza > VITEZA_MERS;
-    // „tăcut de 45 min" / „fără semnal de 2 ore" (cuvintele Inventarului) → „Fără semnal de 45 min — ultima poziție cunoscută".
+    // „tăcut de 45 min” / „fără semnal de 2 ore” (cuvintele Inventarului) → „Fără semnal de 45 min — ultima poziție cunoscută”.
     r.stare = semnal ? ('Fără semnal ' + String(semnal).replace(/^(tăcut|fără semnal)\s+/, '') + ' — ultima poziție cunoscută')
       : (r.inMers ? ('În mers · ' + viteza + ' km/h') : 'Oprit');
     r.actualizat = 'Poziție ' + vechime(ts, acum);

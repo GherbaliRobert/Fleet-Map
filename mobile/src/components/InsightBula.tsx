@@ -13,14 +13,14 @@ import { imeisEchipa, seOcupaPeButon } from '../lib/cereriEchipa';
 
 export type Laturi = {
   trimite: (t: string, o?: { buton?: boolean }) => void;
-  buton: (b: any, p?: any) => void;          // un buton dintr-o problemă, din `actiuni` sau din „Gata"
-  ruta: (r: string) => void;                 // „Deschide raportul"
-  plus: () => void;                          // „Alege ce vrei să afli" = lista din „+"
+  buton: (b: any, p?: any) => void;          // un buton dintr-o problemă, din `actiuni` sau din „Gata”
+  ruta: (r: string) => void;                 // „Deschide raportul”
+  plus: () => void;                          // „Alege ce vrei să afli” = lista din „+”
   nota: (m: any, v: number) => void;         // 👍 / 👎
   propunere: (m: any, id: any, nou: any, urmator: any) => void;
   editeaza: (t: string) => void;             // pune întrebarea înapoi în casetă
-  pachete?: () => void;                      // „Vezi pachetele": doar administratorul firmei
-  treciLa?: (cod: string) => void;           // „Treci la Pro" (16.11): tot doar administratorul firmei
+  pachete?: () => void;                      // „Vezi pachetele”: doar administratorul firmei
+  treciLa?: (cod: string) => void;           // „Treci la Pro” (16.11): tot doar administratorul firmei
 };
 
 // Copierea: fără clipboard (unele WebView-uri îl refuză), se încearcă pe calea veche.
@@ -64,7 +64,7 @@ function Insigna({ ins }: { ins: any }) {
     </div>
   );
 }
-// „Am înțeles" = un titlu scurt al răspunsului; ce vine din discuție are creierașul mov.
+// „Am înțeles” = un titlu scurt al răspunsului; ce vine din discuție are creierașul mov.
 function Inteles({ lista }: { lista: any[] }) {
   return (
     <div class="ins-tit">
@@ -75,7 +75,7 @@ function Inteles({ lista }: { lista: any[] }) {
     </div>
   );
 }
-// Mesajul pachetului (Start, luna oprită): „Alege ce vrei să afli" = „+"; „Vezi pachetele" doar la administratorul firmei.
+// Mesajul pachetului (Start, luna oprită): „Alege ce vrei să afli” = „+”; „Vezi pachetele” doar la administratorul firmei.
 function CasetaLimita({ text, l, faraPachete, rec }: { text: string; l: Laturi; faraPachete?: boolean; rec?: { cod: string; buton: string } | null }) {
   return (
     <div class="chat-lim">
@@ -88,7 +88,7 @@ function CasetaLimita({ text, l, faraPachete, rec }: { text: string; l: Laturi; 
     </div>
   );
 }
-// Cartonașul unui raport cerut în cuvinte: titlul, cifrele de sus, „Deschide raportul" (Istoric) și „Descarcă Excel".
+// Cartonașul unui raport cerut în cuvinte: titlul, cifrele de sus, „Deschide raportul” (Istoric) și „Descarcă Excel”.
 function CartonasRaport({ rp, l }: { rp: any; l: Laturi }) {
   const [desc, setDesc] = useState(false);
   async function excel() {
@@ -116,7 +116,7 @@ function CartonasRaport({ rp, l }: { rp: any; l: Laturi }) {
     </div>
   );
 }
-// „Sursă externă": sursele căutării (doar http / https, în afara aplicației), când și ce s-a căutat — scrise de server.
+// „Sursă externă”: sursele căutării (doar http / https, în afara aplicației), când și ce s-a căutat — scrise de server.
 function BlocSursa({ se }: { se: any }) {
   const surse = (se.surse || []).filter((s: any) => linkSigur(s.url));
   return (
@@ -131,12 +131,12 @@ function BlocSursa({ se }: { se: any }) {
     </div>
   );
 }
-// „Am găsit o problemă" (web: _chatProbleme): roșu = problemă reală, galben = de știut; butoanele duc exact la locul ei.
+// „Am găsit o problemă” (web: _chatProbleme): roșu = problemă reală, galben = de știut; butoanele duc exact la locul ei.
 function Probleme({ lista, l }: { lista: any[]; l: Laturi }) {
-  // Noi nu trimitem cereri: butonul „Anunță echipa" nu apare la fondator.
+  // Noi nu trimitem cereri: butonul „Anunță echipa” nu apare la fondator.
   const faraEchipa = !!me.value?.isSuper;
   const butoane = (p: any) => butonuriCuDrum(p.butoane, p).filter((b: any) => !(faraEchipa && b.fel === 'echipa'));
-  // O mașină cu o cerere deschisă pe aceeași problemă: în locul butonului, „Echipa RA Track se ocupă · cererea nr. …" (web: _echipaSeOcupa).
+  // O mașină cu o cerere deschisă pe aceeași problemă: în locul butonului, „Echipa RA Track se ocupă · cererea nr. …” (web: _echipaSeOcupa).
   // Se citește la fiecare desenare a casetei, deci și la întoarcerea din fereastră, după trimitere (web: _echipaInlocuieste).
   const imeis = imeisEchipa(lista.reduce((t: any[], p: any) => t.concat(butoane(p)), [])).join(',');
   const [des, setDes] = useState<any>(null);
@@ -172,7 +172,7 @@ function Probleme({ lista, l }: { lista: any[]; l: Laturi }) {
   );
 }
 
-// Răspunsul. Sub un raport cerut: doar cartonașul lui. Copiază · 👍 · 👎 · „Din raportul…" stau mereu la vedere pe telefon.
+// Răspunsul. Sub un raport cerut: doar cartonașul lui. Copiază · 👍 · 👎 · „Din raportul…” stau mereu la vedere pe telefon.
 export function BulaAi({ m, l }: { m: any; l: Laturi }) {
   const plan = planBula(m);
   const actiuni = butonuriCuDrum(plan.actiuni);

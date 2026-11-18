@@ -81,7 +81,7 @@ const CSF = {
   937: '_cf_cruise_control',
   938: '_cf_auto_retarder',
   939: '_cf_manual_retarder',
-  // Numele oficiale ale centurilor sunt derutante („Front Driver's Seatbelt"); ordinea urmează
+  // Numele oficiale ale centurilor sunt derutante („Front Driver's Seatbelt”); ordinea urmează
   // exact ordinea biților din P4 (12 = șofer, 13 = pasager față, 14/15/16 = spate).
   940: '_cf_driver_seatbelt',
   941: '_cf_passenger_seatbelt',
@@ -107,7 +107,7 @@ const ISF = {
   955: '_cf_esp_warning',
   956: '_cf_esp_off',
   957: '_cf_stop_indicator',
-  958: '_cf_oil_pressure_warning',   // oficial „Oil Level Indicator" = martorul de ulei (presiune/nivel)
+  958: '_cf_oil_pressure_warning',   // oficial „Oil Level Indicator” = martorul de ulei (presiune/nivel)
   959: '_cf_coolant_warning',
   960: '_cf_battery_warning',
   961: '_cf_handbrake_warning',
@@ -147,7 +147,7 @@ const ISF = {
 const PE_ID = Object.assign({}, SSF, CSF, ISF);
 
 // Semnale la care 1 înseamnă CONTRARIUL plăcuței. Deocamdată unul singur, dar merită tratat curat:
-// oficial, „SSF Work Mode" e 0 = personal, 1 = serviciu — iar plăcuța noastră se numește „Regim
+// oficial, „SSF Work Mode” e 0 = personal, 1 = serviciu — iar plăcuța noastră se numește „Regim
 // personal". Fără inversare, o mașină de serviciu apărea ca fiind în regim personal (se vedea chiar
 // pe Passat, unde semnalul e 1).
 const INVERS = new Set([904]);

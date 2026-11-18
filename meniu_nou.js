@@ -1,12 +1,12 @@
 'use strict';
-// meniu_nou.js — eticheta „NOU" de lângă un rând din meniu (05.11). Alin: „vreau ca regula în aplicație să apară atunci când
+// meniu_nou.js — eticheta „NOU” de lângă un rând din meniu (05.11). Alin: „vreau ca regula în aplicație să apară atunci când
 // aducem ceva nou în meniu, dar să dispară după 15 zile de la implementare… de când am făcut noi astea; nu trebuie să mai apară
-// NOU acum când intrăm" + „2. da" (la fel pe telefon) + „3. da" (doar eticheta din meniu).
+// NOU acum când intrăm" + „2. da” (la fel pe telefon) + „3. da” (doar eticheta din meniu).
 //
 // O SINGURĂ listă: un rând NOU în meniu primește aici o intrare cu ziua în care a ajuns pe ratrack.ro (ziua României).
 // Eticheta stă ZILE_NOU zile — ziua publicării și încă 14 —, apoi pleacă singură, pe web și pe telefon: serverul trimite în
 // /api/me (`meniuNou`) cheile rândurilor încă noi; pagina pune eticheta pe `#nav-<cheie>`, telefonul pe rândul cu aceeași cheie
-// (Menu.tsx, `item(…, '<cheie>')`). NU scrie „NOU" de mână în meniu, nici pe web, nici pe telefon.
+// (Menu.tsx, `item(…, '<cheie>')`). NU scrie „NOU” de mână în meniu, nici pe web, nici pe telefon.
 const insight = require('./insight');
 
 const ZILE_NOU = 15;
@@ -30,7 +30,7 @@ function eNou(zi, acum) {
   const z = zileDeLa(zi, acum);
   return z != null && z >= 0 && z < ZILE_NOU;
 }
-// Cheile rândurilor care poartă azi „NOU" (pentru /api/me).
+// Cheile rândurilor care poartă azi „NOU” (pentru /api/me).
 function noi(acum) {
   return RANDURI.filter(function (r) { return eNou(r.de_la, acum); }).map(function (r) { return r.cheie; });
 }

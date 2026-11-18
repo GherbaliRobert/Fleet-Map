@@ -1,5 +1,5 @@
-// Mentenanța pe telefon: rândul unei lucrări, fereastra „Lucrare nouă" și acțiunile de pe rând (bifă,
-// creion, coș, „Mută la Documente"). Aceleași piese în ecranul Mentenanță și în fișa mașinii (Service),
+// Mentenanța pe telefon: rândul unei lucrări, fereastra „Lucrare nouă” și acțiunile de pe rând (bifă,
+// creion, coș, „Mută la Documente”). Aceleași piese în ecranul Mentenanță și în fișa mașinii (Service),
 // ca pe web (mntCard + #mnt-modal), ca cele două locuri să nu se depărteze.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
@@ -61,8 +61,8 @@ export function kmAcum(imei: string, lucrari: any[] | null, devs: any[]): number
 
 type Cheie = 'dueDate' | 'dueKm' | 'doneDate' | 'doneKm' | 'intKm' | 'intMo';
 
-// Fereastra „Lucrare nouă" / „Modifici: …". Două moduri, ca pe web: „O programez" (scadență) și
-// „Am făcut-o deja" (data și kilometrajul de atunci). Aplicația propune intervalul și scadența după
+// Fereastra „Lucrare nouă” / „Modifici: …”. Două moduri, ca pe web: „O programez” (scadență) și
+// „Am făcut-o deja” (data și kilometrajul de atunci). Aplicația propune intervalul și scadența după
 // felul mașinii; tot ce propune rămâne editabil, iar un câmp scris de om nu mai e rescris.
 export function MntForm({ edit, imei0, lockImei, devs, cat, lucrari, onClose, onSaved, onIntervale }: {
   edit: any | null; imei0?: string; lockImei?: boolean; devs: any[]; cat: Catalog | null; lucrari: any[] | null;
@@ -143,7 +143,7 @@ export function MntForm({ edit, imei0, lockImei, devs, cat, lucrari, onClose, on
       interval_months: parseInt(v.intMo) || null,
     };
     if (mode === 'done') {
-      // Data aleasă e cea reală, nu „acum": o revizie notată peste o săptămână intră în istoric cu ziua ei.
+      // Data aleasă e cea reală, nu „acum”: o revizie notată peste o săptămână intră în istoric cu ziua ei.
       // Dacă data nu s-a schimbat, păstrăm momentul exact de atunci.
       const d = v.doneDate || null;
       body.status = 'done';

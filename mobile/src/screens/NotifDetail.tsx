@@ -29,7 +29,7 @@ export function NotifDetail() {
   const maxHaloRef = useRef<any>(null); // halo-ul punctului MAX (re-colorat de OSM dacă s-a depășit limita reală)
 
   useEffect(() => {
-    // Răspunsul poate veni după ce omul a plecat de aici („înapoi" înainte de răspuns): atunci nu mai mutăm nicio
+    // Răspunsul poate veni după ce omul a plecat de aici („înapoi” înainte de răspuns): atunci nu mai mutăm nicio
     // adresă — altfel i-am înlocui ecranul pe care a ajuns cu Facturarea sau Dispozitive (revizia lotului 5, 01.10).
     let viu = true;
     Api.notifContext(id).then((x: any) => {
@@ -41,22 +41,22 @@ export function NotifDetail() {
         loc.route('/reports' + (hid !== '' ? ('?histId=' + hid) : ''));
         return;
       }
-      // „Contract care expiră" (ceasul zilnic, doar la noi) → fișa de contract a firmei, unde e „Reînnoiește".
-      // Înlocuiește adresa, ca „Înapoi" să nu te întoarcă aici și de aici iar în fișă.
-      // Detaliul nu se mai desenează, deci n-ar avea butonul „Marchează citit": deschiderea o marchează
-      // citită (e doar o înștiințare, a noastră), altfel rămânea necitită până la „Marchează toate".
+      // „Contract care expiră” (ceasul zilnic, doar la noi) → fișa de contract a firmei, unde e „Reînnoiește”.
+      // Înlocuiește adresa, ca „Înapoi” să nu te întoarcă aici și de aici iar în fișă.
+      // Detaliul nu se mai desenează, deci n-ar avea butonul „Marchează citit”: deschiderea o marchează
+      // citită (e doar o înștiințare, a noastră), altfel rămânea necitită până la „Marchează toate”.
       if (x && x.type === 'contract_expira') {
         if (!x.acknowledged) Api.ackNotification(Number(id)).then(() => refreshUnread()).catch(() => {});
         const cid = x.data && x.data.companyId != null ? x.data.companyId : '';
         loc.route('/admin/contracts' + (cid !== '' ? '/' + cid : ''), true);
         return;
       }
-      // „Aparate noi transmit" și „Montaj de facturat" (30.09, doar la noi) → drept la treaba de făcut, ca pe web
+      // „Aparate noi transmit” și „Montaj de facturat” (30.09, doar la noi) → drept la treaba de făcut, ca pe web
       // (notifAparateNoi / notifMontajDeFacturat): Dispozitive → Neasignate cu aparatele bifate și firma aleasă,
-      // respectiv factura montajului cu lucrările puse; „Cerere demo" → Cereri demo; termenul de montaj → calendarul,
+      // respectiv factura montajului cu lucrările puse; „Cerere demo” → Cereri demo; termenul de montaj → calendarul,
       // pe contractul lui. Adresa o face adresaAnunt (lib/push.ts), aceeași pentru listă
       // și push. Ca la contractul care expiră: detaliul nu se desenează, deci deschiderea îl marchează citit, iar
-      // adresa se înlocuiește, ca „Înapoi" să nu te întoarcă aici.
+      // adresa se înlocuiește, ca „Înapoi” să nu te întoarcă aici.
       const spre = x ? adresaAnunt(x.type, x.data) : null;
       if (spre) {
         if (!x.acknowledged) Api.ackNotification(Number(id)).then(() => refreshUnread()).catch(() => {});
@@ -73,7 +73,7 @@ export function NotifDetail() {
     try { await Api.ackNotification(Number(id)); setAcked(true); refreshUnread(); } catch { /* */ } finally { setAckBusy(false); }
   }
 
-  // „Vezi actul": aplicația rulează din fișierele ei, deci un link „/api/documents/…" nu ajungea la
+  // „Vezi actul”: aplicația rulează din fișierele ei, deci un link „/api/documents/…” nu ajungea la
   // server și nici nu căra tokenul — omul vedea o pagină goală. Deschidem actul EXACT ca fișa mașinii:
   // poza apare aici, sub butoane; PDF-ul se predă vizualizatorului telefonului.
   const [actPoza, setActPoza] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export function NotifDetail() {
   useEffect(() => { setRl(undefined); setRlEst(false); }, [id]);
 
   // Ralanti: hartă + câmpuri diferite (loc + interval staționare, nu panglică de viteză). Discriminator = alertType.
-  const isIdle = !!d && (!!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idl/i.test((d.title || '') + ' ' + (d.body || ''))); // „idl" prinde și „idle" și „Idling" (titlurile RA Watch vechi)
+  const isIdle = !!d && (!!(d.data && d.data.alertType === 'idle_engine') || /ralanti|idl/i.test((d.title || '') + ' ' + (d.body || ''))); // „idl” prinde și „idle” și „Idling” (titlurile RA Watch vechi)
   // Scădere/furt combustibil → loc + de la/la + cantitate (nu panglică de viteză). Discriminator = alertType sau textul.
   const isFuel = !!d && !isIdle && (!!(d.data && (d.data.alertType === 'fuel_theft' || d.data.alertType === 'fuel_drop')) || /scădere\s*(?:combustibil\s*)?[\d.,]+\s*l\b|furt combustibil/i.test((d.title || '') + ' ' + (d.body || '')));
   // Limita legală a drumului (OSM) — DOAR la alerte de viteză (nu la idle/combustibil etc.). Async; punct dublat (endpoint cere ≥2).
@@ -105,7 +105,7 @@ export function NotifDetail() {
   const isZona = !!d && (!!d.geofence || /geofence/i.test((d.data && d.data.alertType) || '') || /zon[ăa]/i.test(d.title || ''));
   // Tensiune scăzută: contează LOCUL unde stă mașina și valoarea, nu segmentul parcurs.
   const isTens = !!d && !isIdle && !isFuel && (/low_voltage/i.test((d.data && d.data.alertType) || '') || /tensiune/i.test(d.title || ''));
-  // Scadențe: n-au poziție. Caseta „Fără poziție GPS" arăta a defecțiune pe o notificare care,
+  // Scadențe: n-au poziție. Caseta „Fără poziție GPS” arăta a defecțiune pe o notificare care,
   // de fapt, e completă — n-are ce căuta pe hartă.
   const isScadenta = !!d && (/document_expiry|maintenance_due/i.test(d.type || '') || (!d.event && /expir|scaden/i.test((d.title || '') + ' ' + (d.body || ''))));
   useEffect(() => {
@@ -274,7 +274,7 @@ export function NotifDetail() {
   const osmRef = d && d.event ? Math.max(d.maxSpeed || 0, d.event.speed || 0) : 0;
   // HH:MM (cu data în față dacă nu e azi) — pt. intervalul de staționare
   // Scadente: zilele se recalculeaza pe server LA ZI (o notificare de acum doua saptamani spunea
-  // „mai ai 30 de zile" cand mai erau 16).
+  // „mai ai 30 de zile” cand mai erau 16).
   const dLoc = (x: string) => { try { return new Date(x).toLocaleDateString('ro-RO'); } catch { return String(x || '—'); } };
   const zileTxt = (z: number) => (z < 0 ? 'EXPIRAT de ' + nrDe(-z, 'zi', 'zile') : z === 0 ? 'EXPIRĂ ASTĂZI' : 'mai ' + (z === 1 ? 'este 1 zi' : 'sunt ' + nrDe(z, 'zi', 'zile')));
   const zileCol = (z: number | null | undefined) => (z == null ? 'var(--text-muted)' : z <= 3 ? 'var(--red)' : z <= 14 ? '#f59e0b' : 'var(--accent)');
@@ -386,7 +386,7 @@ export function NotifDetail() {
   );
 }
 
-// Numele singur nu identifică mașina: poți avea trei „Dacia Logan 3" în flotă. Punem și numărul de
+// Numele singur nu identifică mașina: poți avea trei „Dacia Logan 3” în flotă. Punem și numărul de
 // înmatriculare, luat din flota încărcată (serverul trimite în notificare doar numele) — ca pe web.
 // Dacă numele conține deja numărul, nu-l repetăm. Vehicul nemaiîncărcat (arhivat) → rămâne numele.
 function numeCuNumar(d: any): string {

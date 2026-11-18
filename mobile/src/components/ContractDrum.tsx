@@ -1,16 +1,16 @@
-// „Drumul clientului" (Alin, 24.09: „pare alambicat, trec din aia, ies în aia") — ca _raxDrumHtml pe web.
+// „Drumul clientului” (Alin, 24.09: „pare alambicat, trec din aia, ies în aia”) — ca _raxDrumHtml pe web.
 // Oferta → Trimis la semnat → Semnat → Montajul → Aparatele la firmă → Prima factură.
 //
 // Bucata asta DOAR desenează `drum`, așa cum îl trimite serverul (contracts.drumulClientului, prin
 // `_drumContract`, în /api/contracts și în /overview): pașii, starea fiecăruia (gata / acum / urmeaza /
-// nu_e_cazul), detaliul („pe 24.09", „2 aparate") și câți s-au făcut. Telefonul NU socotește niciun pas și
-// nu ține o copie a listei de pași. Butonul pasului „acum" îl dă cine o folosește (`buton`), din
+// nu_e_cazul), detaliul („pe 24.09”, „2 aparate”) și câți s-au făcut. Telefonul NU socotește niciun pas și
+// nu ține o copie a listei de pași. Butonul pasului „acum” îl dă cine o folosește (`buton`), din
 // `usePasiContract` (ContractPasi.tsx) — aceleași acțiuni ca în lista Contracte, ca pe web (_drumButon).
 // Un contract încheiat (sau lipsă) vine cu `drum: null` → nu se desenează nimic.
 //
-// Termenul de montaj (Alin, 30.09: „aplicația să numere cele 30 de zile"): contractul (cap. V) promite montajul în
+// Termenul de montaj (Alin, 30.09: „aplicația să numere cele 30 de zile”): contractul (cap. V) promite montajul în
 // cel mult 30 de zile de la încasarea avansului. Serverul îl socotește (`drum.termenMontaj`, cu textele gata scrise:
-// „mai sunt 7 zile", „10 din 50 de mașini montate"); aici doar se pune pe față, între pași și pasul următor, când se
+// „mai sunt 7 zile”, „10 din 50 de mașini montate”); aici doar se pune pe față, între pași și pasul următor, când se
 // apropie (portocaliu) sau a trecut (roșu) — ca banda `.drum-termen` de pe web.
 import { dataRo } from '../lib/companii';
 import { Icon } from './Icon';
@@ -33,7 +33,7 @@ function Semn({ stare }: { stare: string }) {
 const STARE_ARIA: Record<string, string> = { gata: 'făcut', acum: 'pasul de acum', urmeaza: 'urmează', nu_e_cazul: 'nu e cazul' };
 
 // Textul benzii — aceleași cuvinte ca pe web (_raxDrumHtml), cu ziua scrisă ca acolo (ora României). Întoarce '' cât
-// termenul e departe (sau montajul e gata): banda apare doar la „curand" și „depasit". Funcție curată, ca proba s-o
+// termenul e departe (sau montajul e gata): banda apare doar la „curand” și „depasit”. Funcție curată, ca proba s-o
 // ruleze lângă pagină, pe drumuri făcute de serverul adevărat.
 export function termenMontajText(tm: any, ziText: (ms: any) => string): string {
   if (!tm || (tm.stare !== 'curand' && tm.stare !== 'depasit')) return '';

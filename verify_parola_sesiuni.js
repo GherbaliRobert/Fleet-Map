@@ -1,4 +1,4 @@
-// verify_parola_sesiuni.js — o parolă schimbată scoate din cont ce era deschis cu cea veche (Robert, 02.11: „rezolvă").
+// verify_parola_sesiuni.js — o parolă schimbată scoate din cont ce era deschis cu cea veche (Robert, 02.11: „rezolvă”).
 //
 //   node verify_parola_sesiuni.js
 //

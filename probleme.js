@@ -1,4 +1,4 @@
-// probleme.js — „Am găsit o problemă", în locul benzii „De verificat" (Alin, 15.10: „de verificat… păi pe bune, ce să
+// probleme.js — „Am găsit o problemă”, în locul benzii „De verificat” (Alin, 15.10: „de verificat… păi pe bune, ce să
 // verific? Am AI… îmi zice clar dacă e greșit ceva sau nu, nu să verific eu… mă duce exact unde e problema… e un detector
 // de probleme AI-ul ăsta, dar și un bun concluzionist și un bun îndrumător").
 //
@@ -6,21 +6,21 @@
 // problemă are: ce e (titlu), dovada (din ce cifre reiese) și butoanele spre locul exact (Traseu la minutul acela, fișa
 // mașinii, raportul). Trei feluri azi:
 //   1. sursaConsum      — de unde vine cifra de consum: MĂSURATĂ (contor, senzor) sau SOCOTITĂ din fișă. Până pe 15.10
-//                         RA Insight spunea „47 L, estimat din nivelul CAN" despre o cifră socotită din fișă.
+//                         RA Insight spunea „47 L, estimat din nivelul CAN” despre o cifră socotită din fișă.
 //   2. problemaSenzor   — nivelul din rezervor stă pe loc pe zeci / sute de km: senzorul nu măsoară nimic.
 //   3. verdictViteza    — o viteză mare e REALĂ (mai multe poziții la rând, drumul se leagă) sau o EROARE DE GPS (un
-//                         singur punct ieșit din șir). Până pe 15.10: „159 km/h — merită verificate".
+//                         singur punct ieșit din șir). Până pe 15.10: „159 km/h — merită verificate”.
 // Curat: fără bază, fără rețea, fără model. Pragurile stau AICI și nicăieri altundeva.
 'use strict';
 const I = require('./insight.js');
-const CE = require('./cereri_echipa.js');   // „Anunță echipa RA Track" (22.10): butonul și nota casetei, un singur loc
+const CE = require('./cereri_echipa.js');   // „Anunță echipa RA Track” (22.10): butonul și nota casetei, un singur loc
 
 const KM_SENZOR = 100;          // pe atâția km un rezervor TREBUIE să scadă vizibil
 const SENZOR_PRAG_L = 1.5;      // nivelul a variat sub atât pe toată perioada = nu se mișcă
 const VITEZA_AUTO = 130;        // cea mai mare limită din România (autostradă)
 const VITEZA_CAMION = 90;       // camioanele și autobuzele (limitatorul lor)
 const PUNCTE_REALE = 2;         // poziții la rând peste prag = viteză reală
-const SALT_GPS_KMH = 250;       // din poziția dinainte în asta, mai repede de atât = punctul a „sărit"
+const SALT_GPS_KMH = 250;       // din poziția dinainte în asta, mai repede de atât = punctul a „sărit”
 
 const ZI = 86400000;
 function nr(v, z) { return Number(v).toLocaleString('ro-RO', { minimumFractionDigits: z || 0, maximumFractionDigits: z || 0 }); }
@@ -37,7 +37,7 @@ function _parti(ms) {
     .formatToParts(new Date(ms)).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; });
   return p;
 }
-// „8 octombrie" și „14:32", pe ora României.
+// „8 octombrie” și „14:32”, pe ora României.
 function ziua(ms) { const p = _parti(ms); return (+p.day) + ' ' + LUNI[+p.month - 1]; }
 function ora(ms) { const p = _parti(ms); return p.hour + ':' + p.minute; }
 
@@ -52,7 +52,7 @@ function sursaConsum(v) {
     ? 'socotit din consumul trecut în fișa mașinii (' + nr(v.consumFisa, 1) + ' l/100 km)'
     : (v.consumImplicit != null ? 'socotit dintr-un consum obișnuit pentru felul mașinii (' + nr(v.consumImplicit, 1) + ' l/100 km), fiindcă fișa n-are consumul trecut' : 'socotit, nu măsurat');
   // Fapte, fără vină pe echipament (Alin, 19.10: „nu trebuie să ne învinuim pe noi… «păi voi nu ați verificat dacă are, eu vă
-  // plătesc»"): aparatul, senzorii și montajul sunt treaba noastră, nu a clientului. NU scrie „senzorul e blocat", „mașina nu trimite".
+  // plătesc»"): aparatul, senzorii și montajul sunt treaba noastră, nu a clientului. NU scrie „senzorul e blocat”, „mașina nu trimite”.
   if (v.nivelBlocat) return { masurat: false, text: 'NU e măsurat: nivelul din rezervor a stat pe ' + nr(v.nivelStart) + ' L toată perioada, deși mașina a mers; ' + dinFisa };
   if (v.sursa === 'Estimat (nivel CAN)') return { masurat: false, text: 'NU e măsurat: nivelul din rezervor nu e destul de precis ca să se poată socoti din el; ' + dinFisa };
   return { masurat: false, text: 'NU e măsurat; ' + dinFisa };
@@ -61,7 +61,7 @@ function sursaConsum(v) {
 // ─── 2. Nivelul din rezervor care nu se schimbă ─────────────────────────────────────────────────────
 // niveluri = citirile de nivel din perioadă (L), km = drumul făcut. true = pe KM_SENZOR km sau mai mult nivelul a variat
 // sub SENZOR_PRAG_L — o mașină care merge consumă, deci din nivel nu se poate socoti consumul. Clientului i se spune DOAR
-// faptul (consumul e socotit, nu măsurat), fără „senzorul e blocat" și fără butoane spre lucruri tehnice (19.10).
+// faptul (consumul e socotit, nu măsurat), fără „senzorul e blocat” și fără butoane spre lucruri tehnice (19.10).
 function nivelBlocat(nivMin, nivMax, km, alimentat) {
   if (nivMin == null || nivMax == null || !(km >= KM_SENZOR)) return false;
   return (nivMax - nivMin) < SENZOR_PRAG_L && !(alimentat >= SENZOR_PRAG_L);
@@ -74,8 +74,8 @@ function problemaSenzor(v, per) {
     titlu: 'Consumul la ' + v.vehicul + ' nu se poate măsura acum',
     dovada: (per && per.eticheta ? 'Pe ' + per.eticheta + ' nivelul din rezervor' : 'Nivelul din rezervor') + ' a stat la ' + nr(v.nivelStart) + ' L, deși mașina a mers ' + nr(v.km) +
       ' km, așa că din el nu se poate măsura consumul. Consumul de aici e ' + s.text.replace(/^NU e măsurat: [^;]*; /, '') + '.',
-    // „Anunță echipa RA Track" e PRIMUL (macheta din 21.10, aprobată 22.10): aparatul e treaba noastră, deci singurul lucru pe care
-    // îl are omul de făcut e să ne anunțe. Sub butoane, nota (`nota`); după trimitere serverul pune în loc „Echipa se ocupă".
+    // „Anunță echipa RA Track” e PRIMUL (macheta din 21.10, aprobată 22.10): aparatul e treaba noastră, deci singurul lucru pe care
+    // îl are omul de făcut e să ne anunțe. Sub butoane, nota (`nota`); după trimitere serverul pune în loc „Echipa se ocupă”.
     butoane: [
       { fel: 'echipa', text: CE.BUTON, problema: 'consum', imei: v.imei },
       { fel: 'raport', text: 'Deschide raportul de consum', tip: 'consumption', imei: v.imei, de: per && per.from, pana: per && per.to }
@@ -84,7 +84,7 @@ function problemaSenzor(v, per) {
   };
 }
 // O mașină care nu transmite (22.10, macheta E1): faptul, ce poate face omul singur (să sune șoferul; în service, într-o hală
-// sau la subsol e normal) și „Anunță echipa RA Track" — fără vină pe aparat. v = { vehicul, imei, tacutMin, ultima, adresa }
+// sau la subsol e normal) și „Anunță echipa RA Track” — fără vină pe aparat. v = { vehicul, imei, tacutMin, ultima, adresa }
 function problemaSemnal(v, acum) {
   return {
     fel: 'semnal', grav: 'galben',
@@ -165,10 +165,10 @@ function problemaViteza(vd, o) {
       de: new Date(zi0).toISOString(), pana: new Date(I.inceputZiRO(+p0.year, +p0.month - 1, +p0.day + 1)).toISOString() }] };
 }
 
-// ─── 4. Fișa mașinii necompletată (Alin, 15.10: „anii de înmatriculare" → „nu sunt disponibili în RA Track") ─────────────
+// ─── 4. Fișa mașinii necompletată (Alin, 15.10: „anii de înmatriculare” → „nu sunt disponibili în RA Track”) ─────────────
 // Când omul întreabă de un câmp din fișă (anul, marca, modelul, combustibilul, rezervorul) și la unele mașini lipsește,
 // i se spune pe față la care și primește butonul spre fila din fișa mașinii unde stă câmpul (din 10.11 fișa e pe file:
-// marca, modelul, anul, combustibilul — „Date tehnice"; rezervorul — „Consum și limite"). Textul e întrebarea normalizată
+// marca, modelul, anul, combustibilul — „Date tehnice”; rezervorul — „Consum și limite”). Textul e întrebarea normalizată
 // (fără diacritice, litere mici); `masini` = [{ nr, imei, necompletat: [nume câmp] }] din list_vehicles.
 const CAMPURI_FISA = [
   ['anul de fabricație', /\b(an|anul|anii|anilor)\b|fabricat|inmatricul/, 'tehnice'],
@@ -188,7 +188,7 @@ function problemaFisa(camp, masini) {
     fel: 'fisa', grav: 'galben',
     titlu: 'Nu e completat în fișa mașinii: ' + camp + (lista.length > 1 ? ' (' + lista.length + ' mașini)' : ''),
     dovada: lista.slice(0, 8).map(function (m) { return m.nr; }).join(', ') + (lista.length > 8 ? ' și încă ' + (lista.length - 8) : '') +
-      '. Se completează din fișa mașinii, fila „' + FILE_FISA[filaCampului(camp)] + '".',
+      '. Se completează din fișa mașinii, fila „' + FILE_FISA[filaCampului(camp)] + '”.',
     butoane: lista.slice(0, 3).map(function (m) { return { fel: 'fisa', text: 'Completează la ' + m.nr, imei: m.imei, fila: filaCampului(camp) }; })
   };
 }

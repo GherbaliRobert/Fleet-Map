@@ -1,26 +1,26 @@
-// verify_contracte_telefon.js — ecranele „Contracte" de pe telefon spun ACELEAȘI cuvinte ca serverul și web-ul.
+// verify_contracte_telefon.js — ecranele „Contracte” de pe telefon spun ACELEAȘI cuvinte ca serverul și web-ul.
 //
 //   node verify_contracte_telefon.js
 //
 // Telefonul are o copie a etichetelor (stările contractului, pașii, stările actului adițional, lucrările și
-// stările montajului, textele „ce urmează", cuvintele lipsurilor): nu poate cere serverul pentru fiecare desen.
-// Copia trebuie să fie IDENTICĂ — altfel un ecran spune „trimis la client" și altul „trimis la semnat". Aceeași
+// stările montajului, textele „ce urmează”, cuvintele lipsurilor): nu poate cere serverul pentru fiecare desen.
+// Copia trebuie să fie IDENTICĂ — altfel un ecran spune „trimis la client” și altul „trimis la semnat”. Aceeași
 // regulă ca proba `verify_contracte.js`, care păzește copia din index.html.
 // Mai verifică și că telefonul NU a copiat reguli de bani (prețul propus pe aparat, tarifele casei) și NU
 // descarcă hârtiile ocolind generatorul serverului, plus că ecranele sunt doar ale super-adminului.
 // Verifică și că propunerile de preț chiar AJUNG la telefon (serverul le trimite, nu doar telefonul le
-// citește), că verdictul „contractul și factura spun același lucru" e identic cu cel de pe web (rulează
+// citește), că verdictul „contractul și factura spun același lucru” e identic cu cel de pe web (rulează
 // ambele funcții pe aceleași cifre, cu tot cu păstrarea istoricului) și că o anexă nu se salvează cu un aparat
 // bifat fără preț.
 // Din 24–28.09 (lotul 3): drumul clientului se DESENEAZĂ din ce trimite serverul (nicio copie a pașilor), pasul
-// următor și fiecare lipsă au butonul lor cu vorbele web-ului, „Trimite la semnat" nu minte fără SMTP,
-// „Completează" scrie doar pe /dosar, textul de după încetare ia cifra de la server, partenerii de montaj stau
+// următor și fiecare lipsă au butonul lor cu vorbele web-ului, „Trimite la semnat” nu minte fără SMTP,
+// „Completează” scrie doar pe /dosar, textul de după încetare ia cifra de la server, partenerii de montaj stau
 // doar în secțiunea Montaj (păzită și ea).
-// Din 29.09: „Completează" după un „Trimite" refuzat nu mai lasă o intrare în plus în istoric (butonul „înapoi"),
-// „E semnat" nu rescrie cu azi data salvată, dosarul nu pierde ce e scris și nesalvat în formular, iar întrebările
-// dosarului se închid la „înapoi". „Emite prima factură" deschide factura UNICĂ (aparate, montaj), nu abonamentul
+// Din 29.09: „Completează” după un „Trimite” refuzat nu mai lasă o intrare în plus în istoric (butonul „înapoi”),
+// „E semnat” nu rescrie cu azi data salvată, dosarul nu pierde ce e scris și nesalvat în formular, iar întrebările
+// dosarului se închid la „înapoi”. „Emite prima factură” deschide factura UNICĂ (aparate, montaj), nu abonamentul
 // lunii — ca raxDrumFactura pe web —, pe aceeași adresă ca butoanele din fila Facturi a fișei firmei.
-// Din 30.09 (lotul 5): la un contract semnat, „Programează montajul" (drumul) și „Programează în calendar" (dosarul) duc
+// Din 30.09 (lotul 5): la un contract semnat, „Programează montajul” (drumul) și „Programează în calendar” (dosarul) duc
 // în calendarul de montaj, ca pe web; la unul nesemnat formularul lucrării din dosar rămâne (el scrie Anexa nr. 2).
 // Nu pornește niciun server și nu are nevoie de TypeScript: citește fișierele ca text.
 const fs = require('fs');
@@ -61,7 +61,7 @@ if (STARI) {
   T('telefonul cunoaște exact aceleași stări ca serverul',
     Object.keys(STARI).sort().join(',') === Object.keys(C.ETICHETE_STARE).sort().join(','), Object.keys(STARI).join(','));
   Object.keys(C.ETICHETE_STARE).forEach((k) =>
-    T('eticheta „' + k + '" e la fel pe telefon', STARI[k] && STARI[k][0] === C.ETICHETE_STARE[k], (STARI[k] || [])[0] + ' ≠ ' + C.ETICHETE_STARE[k]));
+    T('eticheta „' + k + '” e la fel pe telefon', STARI[k] && STARI[k][0] === C.ETICHETE_STARE[k], (STARI[k] || [])[0] + ' ≠ ' + C.ETICHETE_STARE[k]));
   const web = dinWeb('CTR_STARI');
   T('culoarea pastilelor e aceeași ca pe web', !!web && J(web) === J(STARI), J(STARI) + ' ≠ ' + J(web));
 }
@@ -70,13 +70,13 @@ T('găsesc pașii pe telefon', !!PAS);
 if (PAS) {
   Object.keys(C.URMATORUL_PAS).forEach((k) => {
     const s = C.URMATORUL_PAS[k], t = PAS[k];
-    T('după „' + k + '" urmează același pas pe telefon', s == null ? t == null : !!t && t[0] === s[0] && t[1] === s[1], J(t) + ' ≠ ' + J(s));
+    T('după „' + k + '” urmează același pas pe telefon', s == null ? t == null : !!t && t[0] === s[0] && t[1] === s[1], J(t) + ' ≠ ' + J(s));
   });
 }
 const EXPLIC = dinTs('CTR_EXPLIC'), EXPLIC_WEB = dinWeb('CTR_EXPLIC');
-T('găsesc textele „ce urmează" (telefon și web)', !!EXPLIC && !!EXPLIC_WEB);
+T('găsesc textele „ce urmează” (telefon și web)', !!EXPLIC && !!EXPLIC_WEB);
 if (EXPLIC && EXPLIC_WEB) {
-  Object.keys(EXPLIC_WEB).forEach((k) => T('„ce urmează" la „' + k + '" e scris la fel', EXPLIC[k] === EXPLIC_WEB[k], J(EXPLIC[k])));
+  Object.keys(EXPLIC_WEB).forEach((k) => T('„ce urmează” la „' + k + '” e scris la fel', EXPLIC[k] === EXPLIC_WEB[k], J(EXPLIC[k])));
   T('fără texte în plus pe telefon', Object.keys(EXPLIC).length === Object.keys(EXPLIC_WEB).length);
 }
 const DOS = dinTs('DOSAR_FEL'), DOS_WEB = dinWeb('DOSAR_FEL');
@@ -85,7 +85,7 @@ T('culoarea dosarului e aceeași ca pe web', !!DOS && !!DOS_WEB && J(DOS) === J(
 sect('2. Actul adițional: aceleași stări și pași ca pe web');
 const AST = dinTs('ACT_STARI_ET'), AST_WEB = dinWeb('ACT_STARI_ET');
 T('stările actului sunt la fel', !!AST && !!AST_WEB && J(AST) === J(AST_WEB), J(AST) + ' ≠ ' + J(AST_WEB));
-if (AST) Object.keys(AST).forEach((k) => T('starea actului „' + k + '" are același nume ca a contractului', AST[k] === C.ETICHETE_STARE[k], AST[k]));
+if (AST) Object.keys(AST).forEach((k) => T('starea actului „' + k + '” are același nume ca a contractului', AST[k] === C.ETICHETE_STARE[k], AST[k]));
 const APAS = dinTs('ACT_PAS'), APAS_WEB = dinWeb('ACT_PAS');
 T('pașii actului sunt la fel', !!APAS && !!APAS_WEB && J(APAS) === J(APAS_WEB), J(APAS) + ' ≠ ' + J(APAS_WEB));
 
@@ -96,24 +96,24 @@ if (Array.isArray(TIP)) {
   T('aceleași lucrări, în aceeași ordine', TIP.map((t) => t[0]).join(',') === M.TIPURI.map((t) => t.k).join(','), TIP.map((t) => t[0]).join(','));
   M.TIPURI.forEach((t) => {
     const x = TIP.find((y) => y[0] === t.k) || [];
-    T('lucrarea „' + t.k + '": același nume și aceeași unitate', x[1] === t.et && x[2] === t.um, J(x));
+    T('lucrarea „' + t.k + '”: același nume și aceeași unitate', x[1] === t.et && x[2] === t.um, J(x));
   });
 }
 const MST = dinTs('MONTAJ_STARI');
 T('găsesc stările lucrărilor pe telefon', !!MST);
 if (MST) {
   T('aceleași stări, în ordinea în care se întâmplă', Object.keys(MST).join(',') === M.STARI.join(','), Object.keys(MST).join(','));
-  M.STARI.forEach((k) => T('starea lucrării „' + k + '" e scrisă la fel', MST[k] === M.ETICHETE_STARE[k], MST[k] + ' ≠ ' + M.ETICHETE_STARE[k]));
+  M.STARI.forEach((k) => T('starea lucrării „' + k + '” e scrisă la fel', MST[k] === M.ETICHETE_STARE[k], MST[k] + ' ≠ ' + M.ETICHETE_STARE[k]));
 }
 
-sect('4. „24 DE luni": acordul cu numerele, ca pe hârtie (contracts.numar)');
+sect('4. „24 DE luni”: acordul cu numerele, ca pe hârtie (contracts.numar)');
 const fDe = /export function de\(n: any\): string \{([\s\S]*?)\n\}/.exec(lib);
 T('găsesc funcția de acord pe telefon', !!fDe);
 if (fDe) {
   const de = new Function('n', fDe[1]);
   const gresite = [];
   for (let n = 2; n <= 250; n++) if (n + de(n) + 'luni' !== C.numar(n, 'lună', 'luni')) gresite.push(n);
-  T('„N luni" se scrie ca pe hârtie pentru 2…250', !gresite.length, gresite.slice(0, 10).join(','));
+  T('„N luni” se scrie ca pe hârtie pentru 2…250', !gresite.length, gresite.slice(0, 10).join(','));
 }
 
 sect('5. Telefonul nu hotărăște singur bani și nu ocolește generatorul de hârtii');
@@ -135,15 +135,15 @@ const fisaTsx = citeste('mobile/src/screens/CompanySheet.tsx'), mjTsx = citeste(
 const mjLib = citeste('mobile/src/lib/montajSectiune.ts'), endp = citeste('mobile/src/api/endpoints.ts');
 // Doar ecranele contractelor clienților (fără Montaj, care are partenerii lui).
 const totCtr = [listTsx, detTsx, uiTsx, anexaTsx, acteTsx, drumTsx, pasiTsx, lib].join('\n');
-// Codul fără comentarii: „nicio copie a regulii" se caută în cod — un comentariu care spune de unde vine
-// regula („contracts.drumulClientului", „stareDosar") e bine-venit.
-// (Un comentariu începe la început de rând / după spațiu / după „{" din JSX — nu în „image/*" dintr-un `accept=`.)
+// Codul fără comentarii: „nicio copie a regulii” se caută în cod — un comentariu care spune de unde vine
+// regula („contracts.drumulClientului”, „stareDosar”) e bine-venit.
+// (Un comentariu începe la început de rând / după spațiu / după „{" din JSX — nu în „image/*” dintr-un `accept=`.)
 const faraComentarii = (s) => s.replace(/(^|[\s{])\/\*[\s\S]*?\*\//g, '$1').replace(/(^|[\s;{}(])\/\/[^\n]*/g, '$1');
 const codCtr = faraComentarii(totCtr + '\n' + fisaTsx);
-// Regula „cu CAN → prețul CAN, FMS → prețul FMS" și tarifele casei stau pe server (pret_sugerat / „Prețurile noastre").
+// Regula „cu CAN → prețul CAN, FMS → prețul FMS” și tarifele casei stau pe server (pret_sugerat / „Prețurile noastre”).
 ['priceCanRON', 'priceNoneRON', 'priceFmsRON', 'pricePerVehicleRON', '_OF_PRETURI_DEF', '_ofTarifeDeBaza'].forEach((k) =>
-  T('nicio copie de tarif pe telefon: „' + k + '"', tot.indexOf(k) < 0));
-// Numele rândurilor din „Prețurile noastre" (mGps…) pot apărea — telefonul le cere serverului după nume —,
+  T('nicio copie de tarif pe telefon: „' + k + '”', tot.indexOf(k) < 0));
+// Numele rândurilor din „Prețurile noastre” (mGps…) pot apărea — telefonul le cere serverului după nume —,
 // dar niciodată cu o cifră lângă ele (ar fi o copie a tarifului, care ar rămâne în urmă).
 const cifra = /\b(m(Gps|LvCan|CanInc|Fms|Uninstall|Replace|Travel)|p(Plain|Can|Fms))\s*:\s*\d/.exec(tot);
 T('niciun tarif scris cu cifre pe telefon', !cifra, cifra && cifra[0]);
@@ -156,10 +156,10 @@ T('găsesc /api/companies/:id/overview în server.js', !!blocOv);
 T('SERVERUL trimite prețul propus pe fiecare aparat (`pret_sugerat` în vehicles din /overview) — lipsește din server.js',
   /\bpret_sugerat\s*[:=]/.test(blocOv));
 // Până atunci (și oricând lipsește prețul): anexa nu pleacă cu un aparat bifat fără preț.
-T('„Salvează anexa" refuză un aparat bifat fără preț (Anexa nr. 1)', /faraPret\(rd\)/.test(anexaTsx) && /Scrie abonamentul lunar pentru/.test(anexaTsx));
+T('„Salvează anexa” refuză un aparat bifat fără preț (Anexa nr. 1)', /faraPret\(rd\)/.test(anexaTsx) && /Scrie abonamentul lunar pentru/.test(anexaTsx));
 T('actul adițional refuză un aparat bifat fără preț (anexa nouă)', /Scrie abonamentul lunar pentru/.test(acteTsx));
 
-// 5b. Tariful casei la montaj: /overview (`tarife_montaj`) SAU „Prețurile noastre" din calculatorul serverului.
+// 5b. Tariful casei la montaj: /overview (`tarife_montaj`) SAU „Prețurile noastre” din calculatorul serverului.
 T('tarifele de montaj ale casei vin de la server (tarife_montaj)', /tarife_montaj/.test(detTsx));
 const srvTarife = /\btarife_montaj\s*:/.test(blocOv);
 const RAND = dinTs('MONTAJ_RAND_TARIF');
@@ -167,16 +167,16 @@ const casaWeb = {};
 const mCasa = /function _raxMontTarifeOferta\(\) \{[\s\S]*?var casa = (\{[^}]*\});/.exec(html);
 if (mCasa) mCasa[1].replace(/(\w+):\s*p\.(\w+)/g, (_, k, v) => { casaWeb[k] = v; });
 T('găsesc potrivirea lucrare → tarif pe web (_raxMontTarifeOferta)', Object.keys(casaWeb).length > 0);
-T('potrivirea lucrare → rândul din „Prețurile noastre" e aceeași ca pe web', !!RAND && ordonat(RAND) === ordonat(casaWeb), ordonat(RAND) + ' ≠ ' + ordonat(casaWeb));
+T('potrivirea lucrare → rândul din „Prețurile noastre” e aceeași ca pe web', !!RAND && ordonat(RAND) === ordonat(casaWeb), ordonat(RAND) + ' ≠ ' + ordonat(casaWeb));
 if (RAND) {
   T('fiecare lucrare de montaj are rândul ei de tarif', M.TIPURI.every((t) => !!RAND[t.k]), M.TIPURI.map((t) => t.k).filter((k) => !RAND[k]).join(','));
-  Object.keys(RAND).forEach((k) => T('rândul „' + RAND[k] + '" există în „Prețurile noastre" (web)', new RegExp("\\['" + RAND[k] + "',").test(html)));
+  Object.keys(RAND).forEach((k) => T('rândul „' + RAND[k] + '” există în „Prețurile noastre” (web)', new RegExp("\\['" + RAND[k] + "',").test(html)));
 }
 const calcPreturi = /if \(b\.preturi\)/.test(srv) && /out\.preturi = \{ grupuri/.test(srv);
 const telCere = /Api\.offerCalc\(\{ preturi: true \}\)/.test(montajTsx) && /tarifeMontajCasa\(/.test(montajTsx);
 T('tariful casei AJUNGE la telefon: /overview trimite `tarife_montaj` SAU fișa îl cere calculatorului de pe server (`preturi`)',
   srvTarife || (calcPreturi && telCere), 'overview: ' + srvTarife + ' · calculator: ' + calcPreturi + ' · telefonul îl cere: ' + telCere);
-T('„Salvează lucrarea" refuză un rând cu bucăți și fără preț pentru client', /Scrie prețul pentru client la/.test(montajTsx));
+T('„Salvează lucrarea” refuză un rând cu bucăți și fără preț pentru client', /Scrie prețul pentru client la/.test(montajTsx));
 
 // 5c. Contract ↔ factură: același verdict, aceleași propoziții și același rând al păstrării ca pe web, pe aceleași cifre.
 const fWeb = /function _raxCtrComparatie\(cmp\) \{[\s\S]*?\r?\n    \}\r?\n/.exec(html);
@@ -185,15 +185,15 @@ const fNr = /export function nrMasini\(n: any\): string \{([\s\S]*?)\n\}/.exec(l
 const fLuni = /export function luniText\(n: any\): string \{ ([^\n]*) \}/.exec(lib);
 T('găsesc verdictul pe web (_raxCtrComparatie) și pe telefon (verdictComparatie)', !!fWeb && !!fTel && !!fNr && !!fDe && !!fLuni);
 T('fișa de pe telefon folosește verdictul comun', /verdictComparatie\(cmp\)/.test(anexaTsx) && !/Math\.abs\(/.test(anexaTsx));
-T('rândul RA Insight: pachetul din contract lângă factură, ca pe web; rândul vechi „pe cont" a ieșit de pe amândouă',
+T('rândul RA Insight: pachetul din contract lângă factură, ca pe web; rândul vechi „pe cont” a ieșit de pe amândouă',
   /RA Insight: contractul — pachetul <b>\{ai\.contractNume \|\| ''\}<\/b>/.test(anexaTsx) && html.indexOf("'<div>RA Insight: contractul — pachetul <b>'") >= 0 &&
   !/contractPretCont|facturaConturi|pe cont în contract/.test(anexaTsx + lib) && !/contractPretCont|facturaConturi|pe cont în contract/.test(html));
 ['Contractul și factura spun același lucru', 'Contractul și factura nu spun același lucru', 'Anexa nr. 1 e goală', 'Factura pornește după montaj']
-  .forEach((t) => T('titlul „' + t + '" e scris la fel', anexaTsx.indexOf(t) >= 0 && html.indexOf(t) >= 0));
-// Păstrarea istoricului (24.09): rândul ei apare și în cutia „după montaj", și în cea obișnuită; cutia de dinainte
+  .forEach((t) => T('titlul „' + t + '” e scris la fel', anexaTsx.indexOf(t) >= 0 && html.indexOf(t) >= 0));
+// Păstrarea istoricului (24.09): rândul ei apare și în cutia „după montaj”, și în cea obișnuită; cutia de dinainte
 // de montaj se face portocalie DOAR când păstrarea nu se potrivește — ca pe web.
-T('rândul „Păstrarea istoricului" e în ambele cutii ale comparației', (anexaTsx.match(/<RandPastrare t=\{v\.pastrare\} \/>/g) || []).length === 2);
-T('cutia „Factura pornește după montaj" se face portocalie la o păstrare nepotrivită',
+T('rândul „Păstrarea istoricului” e în ambele cutii ale comparației', (anexaTsx.match(/<RandPastrare t=\{v\.pastrare\} \/>/g) || []).length === 2);
+T('cutia „Factura pornește după montaj” se face portocalie la o păstrare nepotrivită',
   /v\.fel === 'dupaMontaj'[\s\S]{0,200}'ctr-band' \+ \(v\.probleme\.length \? ' warn' : ''\)/.test(anexaTsx));
 // Ce ajunge pe factură spune serverul (`nefacturate`): telefonul nu scoate și nu adaugă rânduri (ex. chiria).
 T('telefonul nu alege singur ce rânduri se facturează', !/fel\s*[!=]==?\s*'(chirie|ret|ai)'/.test(codCtr));
@@ -229,7 +229,7 @@ if (fWeb && fTel && fNr && fDe && fLuni) {
       return { fel, probleme, pastrare };
     };
     const cazuri = [null, {}, { masini: null }];
-    // Pachetul RA Insight (regula veche, „pe cont", a ieșit pe 11.11): la fel; altul pe factură; nimic pe factură; Start (inclus);
+    // Pachetul RA Insight (regula veche, „pe cont”, a ieșit pe 11.11): la fel; altul pe factură; nimic pe factură; Start (inclus);
     // o diferență sub un ban.
     const aiuri = [null,
       { pachet: true, contractNume: 'Pro', contractLei: 20, facturaNume: 'RA Insight Pro', facturaLei: 20 },
@@ -237,7 +237,7 @@ if (fWeb && fTel && fNr && fDe && fLuni) {
       { pachet: true, contractNume: 'Basic', contractLei: 10, facturaNume: null, facturaLei: 0 },
       { pachet: true, contractNume: 'Start', contractLei: 0, facturaNume: null, facturaLei: 0 },
       { pachet: true, contractNume: 'Pro', contractLei: 20, facturaNume: 'RA Insight Pro', facturaLei: 20.004 }];
-    const nefuri = [[], [{ nume: 'Serviciu lunar', lei: 50 }], [{ nume: 'A', lei: 1 }, { nume: 'B „x"', lei: 2.5 }]];
+    const nefuri = [[], [{ nume: 'Serviciu lunar', lei: 50 }], [{ nume: 'A', lei: 1 }, { nume: 'B „x”', lei: 2.5 }]];
     // Păstrarea istoricului (comparatie.pastrare): lipsă; firma ține MAI PUȚIN decât contractul (s-ar șterge mai
     // devreme — cazul din audit); totul la fel; firma ține mai mult și factura pune în plus; setări stricate pe firmă
     // (`firmaLuni: null`) cu o diferență sub un ban; doar banii diferă.
@@ -266,11 +266,11 @@ if (fWeb && fTel && fNr && fDe && fLuni) {
     });
     T('verdictul, propozițiile și rândul păstrării sunt identice cu web-ul, pe ' + cazuri.length + ' de cazuri', !gresite.length, gresite.length + ' diferite; primul: ' + gresite[0]);
     // Proba chiar a atins ramurile noi (nu doar a trecut pe lângă ele).
-    T('cazurile au rândul păstrării și cutii „după montaj" portocalii', cuPastrare > 1000 && dupaMontajRau > 100, cuPastrare + ' / ' + dupaMontajRau);
-    // Cazul din audit: firma ține 12 luni, contractul promite 24 — nu are voie să spună „același lucru".
+    T('cazurile au rândul păstrării și cutii „după montaj” portocalii', cuPastrare > 1000 && dupaMontajRau > 100, cuPastrare + ' / ' + dupaMontajRau);
+    // Cazul din audit: firma ține 12 luni, contractul promite 24 — nu are voie să spună „același lucru”.
     const audit = tel({ masini: { contract: { lei: 90, nr: 3 }, factura: { lei: 90, nr: 3 } }, raInsight: null, nefacturate: [],
       total: { contract: 140, factura: 90 }, pastrare: { contractLuni: 24, contractLei: 50, firmaLuni: 12, facturaLei: 0 } });
-    T('„firma ține mai puțin decât s-a semnat" iese NEPOTRIVIRE, nu „spun același lucru"', audit && audit.fel === 'diferit' && audit.probleme.length === 2, J(audit));
+    T('„firma ține mai puțin decât s-a semnat” iese NEPOTRIVIRE, nu „spun același lucru”', audit && audit.fel === 'diferit' && audit.probleme.length === 2, J(audit));
   }
 }
 
@@ -279,26 +279,26 @@ T('niciun link direct spre /api/ în ecranele de contracte', !/href=\{?['"`][^'"
 T('nicio cerere fetch() ocolind clientul API', !/\bfetch\(/.test(tot));
 T('Vezi/Descarcă trec prin salveazaDeLaServer', /salveazaDeLaServer\(/.test(uiTsx));
 T('niciun PDF desenat pe telefon', !/jspdf|pdfkit|new jsPDF/i.test(tot));
-T('„s-a descărcat" nu se spune pe telefon, unde foaia de partajare poate fi închisă fără salvare',
+T('„s-a descărcat” nu se spune pe telefon, unde foaia de partajare poate fi închisă fără salvare',
   /spuneDescarcat = !Capacitor\.isNativePlatform\(\)/.test(uiTsx) &&
   (uiTsx.match(/showToast\([^;]*s-a descărcat/g) || []).length === (uiTsx.match(/spuneDescarcat\) showToast\(ce \+ ' s-a descărcat/g) || []).length);
 
-sect('5e. Foile de lucru nu se pierd la „înapoi" (Android) și fișa rămâne la zi');
+sect('5e. Foile de lucru nu se pierd la „înapoi” (Android) și fișa rămâne la zi');
 [['actul adițional', acteTsx], ['lucrarea de montaj', montajTsx], ['partenerul de montaj', partTsx]].forEach(([n, s]) =>
-  T('foaia pentru ' + n + ' e păzită la „înapoi"', /useInapoiInchide\(!!(form|edit), inchide\)/.test(s) && /Închizi fără să salvezi\?/.test(s)));
-T('foile „E semnat" și „Completează" (lista și dosarul) sunt păzite la „înapoi"',
+  T('foaia pentru ' + n + ' e păzită la „înapoi”', /useInapoiInchide\(!!(form|edit), inchide\)/.test(s) && /Închizi fără să salvezi\?/.test(s)));
+T('foile „E semnat” și „Completează” (lista și dosarul) sunt păzite la „înapoi”',
   /function SemnatFoaie[\s\S]*?useInapoiInchide\(true, inchide\)/.test(pasiTsx) && /function CompleteazaFirma[\s\S]*?useInapoiInchide\(true, inchide\)/.test(pasiTsx) &&
   /Închizi fără să salvezi\?/.test(pasiTsx));
-T('întrebările de pe rând (Aprobă, Trimite, Pune data…) se închid la „înapoi", nu pleacă din ecran', /useInapoiInchide\(!!dlg && /.test(pasiTsx));
-T('întrebările dosarului (semnat, încheiat, șterge, scoate fișierul) se închid la „înapoi", nu pleacă din dosar',
+T('întrebările de pe rând (Aprobă, Trimite, Pune data…) se închid la „înapoi”, nu pleacă din ecran', /useInapoiInchide\(!!dlg && /.test(pasiTsx));
+T('întrebările dosarului (semnat, încheiat, șterge, scoate fișierul) se închid la „înapoi”, nu pleacă din dosar',
   /useInapoiInchide\(!!dialog, \(\) => \{ if \(busy\) return false; setDialog\(''\); return true; \}\)/.test(detTsx));
-T('foile secțiunii Montaj (editarea contractului, „E semnat") sunt păzite la „înapoi"',
+T('foile secțiunii Montaj (editarea contractului, „E semnat”) sunt păzite la „înapoi”',
   /function EditContract[\s\S]*?useInapoiInchide\(/.test(mjTsx) && /function SemnatFoaie[\s\S]*?useInapoiInchide\(/.test(mjTsx));
 T('un act de prelungire salvat / șters / trecut mai departe reîncarcă toată fișa',
   (acteTsx.match(/if \(prelungire\) onFisa\(\); else incarca\(\);/g) || []).length >= 2 && /ePrelungire\(a\)\) onFisa\(\)/.test(acteTsx));
 const notif = citeste('mobile/src/screens/NotifDetail.tsx');
 const iCtr = notif.indexOf("x.type === 'contract_expira'");
-T('notificarea „contract care expiră" se marchează citită înainte de mutarea în fișă',
+T('notificarea „contract care expiră” se marchează citită înainte de mutarea în fișă',
   iCtr > 0 && /Api\.ackNotification\(Number\(id\)\)/.test(notif.slice(iCtr, iCtr + 400)) && /refreshUnread\(\)/.test(notif.slice(iCtr, iCtr + 400)));
 
 sect('6. Doar super-adminul ajunge aici');
@@ -308,9 +308,9 @@ T('ruta fișei e păzită (doarSuper)', /doarSuper\(ContractDetail,/.test(app) &
 T('ruta secțiunii Montaj e păzită (doarSuper)', /doarSuper\(Montaj,/.test(app) && /path="\/admin\/montaj" component=\{P\.montaj\}/.test(app));
 const iSuper = menu.indexOf('{u?.isSuper && ('), iRand = menu.indexOf("'Contracte'");
 const iSfarsit = menu.indexOf('Cont & setări');
-T('rândul „Contracte" din meniu stă sub „Platformă (super-admin)"', iSuper > 0 && iRand > iSuper && iRand < iSfarsit);
+T('rândul „Contracte” din meniu stă sub „Platformă (super-admin)”', iSuper > 0 && iRand > iSuper && iRand < iSfarsit);
 const iComp = menu.indexOf("'Companii'"), iMontaj = menu.indexOf("'Montaj'");
-T('rândul „Montaj" stă imediat sub „Companii", doar la super-admin (ca pe web)',
+T('rândul „Montaj” stă imediat sub „Companii”, doar la super-admin (ca pe web)',
   iSuper > 0 && iComp > iSuper && iMontaj > iComp && iMontaj < iSfarsit && (menu.slice(iComp, iMontaj).match(/item\(/g) || []).length === 1);
 ['/api/contracts', '/api/contracts/:id', '/api/contracts/:id/reinnoire', '/api/contracts/:id/acte', '/api/acte/:id', '/api/montaj/parteneri', '/api/companies/:id/montaje',
   '/api/contracts/:id/trimite', '/api/contracts/:id/file', '/api/companies/:id/dosar', '/api/companies/:id/overview',
@@ -319,7 +319,7 @@ T('rândul „Montaj" stă imediat sub „Companii", doar la super-admin (ca pe 
   .forEach((r) => T('serverul păzește ' + r + ' (requireSuperadmin)', new RegExp("app\\.(get|post|put|delete)\\('" + r.replace(/[/:]/g, (x) => '\\' + x) + "', requireAuth, requireSuperadmin").test(srv)));
 
 sect('7. Drumul clientului: se desenează din ce trimite serverul, cu butonul pasului următor (24.09)');
-T('drumul se desenează din `drum.pasi` al serverului, cu „gata din din"', /drum\.pasi/.test(drumTsx) && /drum\.gata/.test(drumTsx) && /drum\.din/.test(drumTsx));
+T('drumul se desenează din `drum.pasi` al serverului, cu „gata din din”', /drum\.pasi/.test(drumTsx) && /drum\.gata/.test(drumTsx) && /drum\.din/.test(drumTsx));
 const etPasi = C.PASI_DRUM.map((p) => p[1]);
 const copii = etPasi.filter((e) => new RegExp("['\"`]" + e + "['\"`]").test(codCtr));
 T('nicio etichetă de pas scrisă pe telefon (vin din contracts.PASI_DRUM, prin server)', !copii.length, copii.join(', '));
@@ -330,22 +330,22 @@ T('în dosar, drumul stă între cutia dosarului și capul contractului (ca pe w
 T('serverul trimite același drum în listă și în fișă (_drumContract)', /drum: _drumContract\(c, drumDate\)/.test(srv) && /drum: contract && contract\.status !== 'incheiat' \? _drumContract\(contract,/.test(srv));
 const fnBtnWeb = html.slice(html.indexOf('function _drumButon('), html.indexOf('// Linia de pași din fila Contract'));
 ['Aprobă contractul', 'Trimite la semnat', 'Am trimis-o', 'E semnat', 'Programează montajul', 'Adoptă aparatele', 'Emite prima factură'].forEach((t) =>
-  T('butonul drumului „' + t + '" e scris la fel ca pe web (_drumButon)', fnBtnWeb.indexOf(t) >= 0 && pasiTsx.indexOf("'" + t + "'") >= 0));
-T('pe web și pe telefon, „Pasul următor" / „Toți pașii sunt făcuți"', html.indexOf('Pasul următor: <strong>') >= 0 && /Pasul următor: <b>/.test(drumTsx) &&
+  T('butonul drumului „' + t + '” e scris la fel ca pe web (_drumButon)', fnBtnWeb.indexOf(t) >= 0 && pasiTsx.indexOf("'" + t + "'") >= 0));
+T('pe web și pe telefon, „Pasul următor” / „Toți pașii sunt făcuți”', html.indexOf('Pasul următor: <strong>') >= 0 && /Pasul următor: <b>/.test(drumTsx) &&
   html.indexOf('Toți pașii sunt făcuți.') >= 0 && drumTsx.indexOf('Toți pașii sunt făcuți.') >= 0);
 const mRuta = /export const RUTA_NEASIGNATE = '([^']+)'/.exec(lib);
 const devTsx = citeste('mobile/src/screens/AdminDevices.tsx');
-T('„Adoptă aparatele" duce în Dispozitive → Neasignate, cu filtrul pus înainte (ecranul îl citește)',
+T('„Adoptă aparatele” duce în Dispozitive → Neasignate, cu filtrul pus înainte (ecranul îl citește)',
   !!mRuta && mRuta[1] === '/admin/devices?filtru=neasignate' && /neasignate:\s*'unassigned'/.test(devTsx));
 T('drumul și anexa goală folosesc aceeași adresă', /loc\.route\(RUTA_NEASIGNATE\)/.test(pasiTsx) && /loc\.route\(RUTA_NEASIGNATE\)/.test(anexaTsx));
 T('nicio adopție de aparat din ecranele de contract (adopția stă DOAR în Dispozitive, decizia din 17.09)', !/moveDevice|\/company['`]/.test(codCtr));
-// „Emite prima factură" (29.09): „Generează factură" cu firma aleasă și pe factura UNICĂ (aparate, montaj — din
+// „Emite prima factură” (29.09): „Generează factură” cu firma aleasă și pe factura UNICĂ (aparate, montaj — din
 // contract), nu pe abonamentul lunii. Web: raxDrumFactura → raxOpenGenInvoice(companyId, 'unica'). Pe telefon,
 // adresa o face O SINGURĂ funcție (rutaFactura, lib/factura.ts), pe care o folosește și fila Facturi a fișei;
 // Facturare citește firma și felul din adresă și deschide fereastra pe felul cerut.
 const billTsx = citeste('mobile/src/screens/Billing.tsx'), factTs = citeste('mobile/src/lib/factura.ts');
 const webDrumFact = html.slice(html.indexOf('window.raxDrumFactura = '), html.indexOf('function _ctrePasHtml('));
-T('pe web, „Emite prima factură" deschide factura UNICĂ (raxOpenGenInvoice(companyId, \'unica\'))',
+T('pe web, „Emite prima factură” deschide factura UNICĂ (raxOpenGenInvoice(companyId, \'unica\'))',
   webDrumFact.length > 0 && /raxOpenGenInvoice\(companyId, 'unica'\)/.test(webDrumFact));
 // Funcțiile din lib/factura.ts, rulate (fără tipuri): adresa făcută de telefon și felul citit înapoi din ea.
 function dinFactura(nume) {
@@ -370,21 +370,21 @@ if (rutaFactura && felDinAdresa) {
   T('adresa abonamentului (și cea veche, fără fel) se citește ca abonamentul lunii',
     qsA.get('factura') === '7' && felDinAdresa(qsA.get('fel') || undefined) === 'abonament' && felDinAdresa(undefined) === 'abonament', adrA);
 }
-T('„Emite prima factură" trece prin rutaPrimaFactura → rutaFactura(…, \'unica\') din lib/factura.ts (o singură adresă)',
+T('„Emite prima factură” trece prin rutaPrimaFactura → rutaFactura(…, \'unica\') din lib/factura.ts (o singură adresă)',
   /import \{[^}]*\brutaFactura\b[^}]*\} from '\.\.\/lib\/factura'/.test(pasiTsx) &&
   /export const rutaPrimaFactura = \(companyId: any\) => rutaFactura\(companyId, 'unica'\);/.test(pasiTsx) &&
   /buton\('report', 'Emite prima factură', \(\) => loc\.route\(rutaPrimaFactura\(c\.company_id\)\)\)/.test(pasiTsx) &&
   !/'\/billing\?/.test(faraComentarii(pasiTsx)));
-T('Facturare citește firma și felul din adresă și deschide „Generează factură" pe felul cerut',
+T('Facturare citește firma și felul din adresă și deschide „Generează factură” pe felul cerut',
   /loc\.query/.test(billTsx) && /\.factura\b/.test(billTsx) && /felDinAdresa\([^)]*\.fel\)/.test(billTsx) &&
   /<GenerateInvoiceSheet[\s\S]{0,300}?preset=\{[\s\S]{0,200}?felInitial=\{/.test(billTsx));
-T('Facturare își curăță adresa (înlocuind-o), ca „înapoi" să ducă în fișă, pe fila de pe care ai plecat',
+T('Facturare își curăță adresa (înlocuind-o), ca „înapoi” să ducă în fișă, pe fila de pe care ai plecat',
   /loc\.route\('\/billing', true\)/.test(billTsx) &&
   /const alegeFila = \(k: string\) => \{ setFila\(k\); if \(k !== filaCeruta\) loc\.route\(rutaFisa\(id, k\), true\); \};/.test(fisaTsx));
-T('în dosar, „Aprobă contractul" salvează întâi formularul (ca raxCtrTreci)', /aproba: \(\) => treci\('aprobat'\)/.test(detTsx));
+T('în dosar, „Aprobă contractul” salvează întâi formularul (ca raxCtrTreci)', /aproba: \(\) => treci\('aprobat'\)/.test(detTsx));
 
 // Montajul (Alin, 30.09): la un contract SEMNAT se programează DOAR în calendar (Business → Montaj), unde stau regulile
-// lui — câte mașini au rămas din Anexa nr. 2, instalatorul, stocul, „montată" cu mai puține care întoarce restul. Până
+// lui — câte mașini au rămas din Anexa nr. 2, instalatorul, stocul, „montată” cu mai puține care întoarce restul. Până
 // atunci telefonul deschidea din drum formularul lucrării din dosar (`?lucrare=noua`, POST /api/companies/:id/montaje)
 // și le ocolea pe toate. La un contract NESEMNAT formularul din dosar rămâne: el scrie Anexa nr. 2 (web: raxMontajRandeaza).
 sect('7a. Montajul: contract semnat → calendarul; nesemnat → formularul din dosar (30.09)');
@@ -398,15 +398,15 @@ const functieWeb = (reper) => {
 };
 // Pe web: butonul drumului → raxDrumMontaj, care deschide calendarul pe firma clientului.
 const webDrumMontaj = functieWeb('window.raxDrumMontaj = function (companyId) {');
-T('pe web, „Programează montajul" din drum duce în calendar (raxDrumMontaj → fila „calendar" din Montaj)',
+T('pe web, „Programează montajul” din drum duce în calendar (raxDrumMontaj → fila „calendar” din Montaj)',
   /if \(cheie === 'montaj'\) return '<button class="' \+ cls \+ '" onclick="raxDrumMontaj\(' \+ companyId \+ '\)">/.test(fnBtnWeb) &&
   /_raxMj\.fila = 'calendar';/.test(webDrumMontaj) && /_raxMj\.cal\.pre = companyId;/.test(webDrumMontaj) && /raxAdminTab\('montaj'\)/.test(webDrumMontaj));
 T('pe telefon, același buton (listă, dosar, fișa firmei) duce în calendar, pe contractul clientului',
   /if \(cheie === 'montaj'\) return buton\('wrench', 'Programează montajul', \(\) => loc\.route\(rutaCalendarMontaj\(c\.id\)\)\);/.test(pasiTsx));
-// Butonul drumului e mereu pentru un contract semnat: pasul „Montajul" ajunge „acum" abia după „Semnat" (regula serverului).
+// Butonul drumului e mereu pentru un contract semnat: pasul „Montajul” ajunge „acum” abia după „Semnat” (regula serverului).
 const drumLa = (st) => C.drumulClientului({ contract: { status: st, montaj: { items: [{ tip: 'gps', buc: 2 }] } }, areOferta: true,
   montaje: { total: 0, executate: 0 }, aparate: 0, facturi: 0 });
-T('pasul „Montajul" e cel de acum doar la un contract semnat (serverul), deci butonul drumului nu ocolește anexa unuia nesemnat',
+T('pasul „Montajul” e cel de acum doar la un contract semnat (serverul), deci butonul drumului nu ocolește anexa unuia nesemnat',
   ['ciorna', 'aprobat', 'trimis', 'incheiat'].every((st) => drumLa(st).urmatorul !== 'montaj') && drumLa('activ').urmatorul === 'montaj');
 // Adresa calendarului e UNA, în lib/calendarMontaj.ts (ecranul Montaj citește din ea fila și contractul), rulată aici.
 const mRutaCal = /export const rutaCalendarMontaj = \(contractId: any\) => ([^;\n]+);/.exec(calLib);
@@ -414,7 +414,7 @@ let rutaCal = null; try { rutaCal = mRutaCal ? new Function('contractId', 'retur
 T('găsesc și pot rula rutaCalendarMontaj (lib/calendarMontaj.ts)', !!rutaCal);
 if (rutaCal) {
   const u = String(rutaCal(42)), q = new URLSearchParams(u.split('?')[1] || '');
-  T('adresa calendarului: /admin/montaj, fila „calendar", contractul cerut', u.indexOf('/admin/montaj?') === 0 && q.get('fila') === 'calendar' && q.get('contract') === '42', u);
+  T('adresa calendarului: /admin/montaj, fila „calendar”, contractul cerut', u.indexOf('/admin/montaj?') === 0 && q.get('fila') === 'calendar' && q.get('contract') === '42', u);
 }
 T('drumul și dosarul iau adresa de acolo (nicio a doua scriere a ei în ecranele contractelor)',
   /import \{ rutaCalendarMontaj \} from '\.\.\/lib\/calendarMontaj';/.test(pasiTsx) && /import \{ rutaCalendarMontaj \} from '\.\.\/lib\/calendarMontaj';/.test(montajTsx) &&
@@ -444,18 +444,18 @@ if (fnRandeaza && progTel) {
     if (w !== t) dif.push(J(k) + ' → web ' + w + ', telefon ' + t);
   });
   T('sub lucrări, același buton ca pe web, pe fiecare stare: semnat → calendarul, altfel formularul', !dif.length, dif.join(' | '));
-  T('… adică doar contractul în vigoare („activ") trimite în calendar', progTel({ status: 'activ' }) === true && !progTel({ status: 'trimis' }) && !progTel({ status: 'incheiat' }) && !progTel(null));
+  T('… adică doar contractul în vigoare („activ”) trimite în calendar', progTel({ status: 'activ' }) === true && !progTel({ status: 'trimis' }) && !progTel({ status: 'incheiat' }) && !progTel(null));
 }
-T('pe telefon, sub lucrări: „Programează în calendar" (în calendar) sau „Lucrare de montaj" (formularul), din aceeași regulă',
+T('pe telefon, sub lucrări: „Programează în calendar” (în calendar) sau „Lucrare de montaj” (formularul), din aceeași regulă',
   /\{programeazaInCalendar\(contract\)\s*\?\s*<button class="ctr-btn pri"[^\n]*onClick=\{\(\) => loc\.route\(rutaCalendarMontaj\(contract\.id\)\)\}><Icon name="calendar" size=\{16\} \/> Programează în calendar<\/button>\s*:\s*<button class="ctr-btn"[^\n]*onClick=\{\(\) => deschide\(null\)\}>[^\n]*'Lucrare de montaj'\}<\/button>\}/.test(montajTsx));
 T('formularul unei lucrări NOI se deschide doar de acolo (nicio altă cale spre el)', (montajTsx.match(/deschide\(null\)/g) || []).length === 1);
-T('„Programează în calendar" e scris la fel ca pe web', html.indexOf('<i class="fas fa-calendar-plus"></i> Programează în calendar</button>') > 0 && montajTsx.indexOf('Programează în calendar</button>') > 0);
-T('„Modifică" pe o lucrare rămâne (formularul, pentru editare), ca pe web', /onClick=\{\(\) => deschide\(m\)\}><Icon name="edit" size=\{15\} \/> Modifică/.test(montajTsx) && /raxMontajEdit\(' \+ m\.id \+ '\)/.test(html));
+T('„Programează în calendar” e scris la fel ca pe web', html.indexOf('<i class="fas fa-calendar-plus"></i> Programează în calendar</button>') > 0 && montajTsx.indexOf('Programează în calendar</button>') > 0);
+T('„Modifică” pe o lucrare rămâne (formularul, pentru editare), ca pe web', /onClick=\{\(\) => deschide\(m\)\}><Icon name="edit" size=\{15\} \/> Modifică/.test(montajTsx) && /raxMontajEdit\(' \+ m\.id \+ '\)/.test(html));
 
-sect('7b. Dosarul nu pierde ce ai scris în „Datele contractului" (29.09)');
-// „Trimite la semnat" emailează PDF-ul din contractul SALVAT, iar „E semnat" îl încuie: ce era scris și nesalvat
+sect('7b. Dosarul nu pierde ce ai scris în „Datele contractului” (29.09)');
+// „Trimite la semnat” emailează PDF-ul din contractul SALVAT, iar „E semnat” îl încuie: ce era scris și nesalvat
 // pleca greșit la client, respectiv se pierdea pentru totdeauna (după semnare, doar act adițional).
-T('în dosar, „Trimite la semnat" / „Am trimis-o" / „E semnat" salvează întâi formularul, fără să-i schimbe starea',
+T('în dosar, „Trimite la semnat” / „Am trimis-o” / „E semnat” salvează întâi formularul, fără să-i schimbe starea',
   /\bsalveazaIntai,/.test(detTsx) && /async function salveazaIntai\(rand: any\)[^\n]*\{\s*if \(!nesalvat\(\)\) return rand;\s*const o = await salveaza\(c\.status\);/.test(detTsx) &&
   /function nesalvat\(\): boolean \{[\s\S]{0,200}formDin\(c, \[\]\)[\s\S]{0,200}k !== 'status' && form\[k\] !== s\[k\]/.test(detTsx));
 T('… iar în foaie, cele trei trec toate prin salvarea de dinainte (deschide → o.salveazaIntai), pe contractul proaspăt',
@@ -463,7 +463,7 @@ T('… iar în foaie, cele trei trec toate prin salvarea de dinainte (deschide �
   /buton\('mail', 'Trimite la semnat', \(\) => deschide\('trimite', c\)\)/.test(pasiTsx) && /buton\('mail', 'Am trimis-o', \(\) => deschide\('amtrimis', c\)\)/.test(pasiTsx) &&
   /buton\('fileSignature', 'E semnat', \(\) => deschide\('semnat', c\)\)/.test(pasiTsx) && !/setDlg\(\{ fel: '(trimite|amtrimis|semnat)'/.test(pasiTsx));
 T('salvarea dosarului întoarce fișa proaspătă (pasul de după nu lucrează pe contractul vechi)', /try \{ return await incarca\(\); \} finally \{ setBusy\(false\); \}/.test(detTsx));
-T('reîncărcarea după montaj, anexă, „Completează", un act sau un fișier păstrează ce ai scris (reincarca), nu golește formularul',
+T('reîncărcarea după montaj, anexă, „Completează”, un act sau un fișier păstrează ce ai scris (reincarca), nu golește formularul',
   /laSchimbat: reincarca/.test(detTsx) && /<AnexaEditor[^\n]*onSalvat=\{reincarca\}/.test(detTsx) && /<ContractMontaj[^\n]*onSalvat=\{reincarca\}/.test(detTsx) &&
   /<ContractActe[^\n]*onFisa=\{reincarca\}/.test(detTsx) && !/onSalvat=\{incarca\}|onFisa=\{incarca\}|laSchimbat: incarca\b/.test(detTsx));
 const fCu = /function cuCeAiScris\(nou: any, acum: any, vechi: any\): Form \{\n([\s\S]*?)\n\}/.exec(detTsx);
@@ -472,8 +472,8 @@ if (fCu) {
   let cu = null; try { cu = new Function('nou', 'acum', 'vechi', fCu[1]); } catch (e) { cu = null; }
   T('cuCeAiScris se poate rula', !!cu);
   if (cu) {
-    // Venise: C-1, 12 luni, starea „aprobat". Omul a scris C-7 și a mutat lista „Unde e contractul" pe „în lucru".
-    // Între timp serverul spune: data semnării pusă, 24 de luni, starea „trimis" (pasul a trecut).
+    // Venise: C-1, 12 luni, starea „aprobat”. Omul a scris C-7 și a mutat lista „Unde e contractul” pe „în lucru”.
+    // Între timp serverul spune: data semnării pusă, 24 de luni, starea „trimis” (pasul a trecut).
     const vechi = { nr: 'C-1', signed: '', months: '12', rep: 'Ion', status: 'aprobat' };
     const acum = { nr: 'C-7', signed: '', months: '12', rep: 'Ion', status: 'ciorna' };
     const nou = { nr: 'C-1', signed: '2026-09-20', months: '24', rep: 'Ion', status: 'trimis' };
@@ -484,74 +484,74 @@ if (fCu) {
   }
 }
 
-sect('8. Pasul următor pe rând și „Trimite la semnat" (24.09)');
-T('„Trimite la semnat" cere serverului (Api.trimiteContract → POST /api/contracts/:id/trimite)',
+sect('8. Pasul următor pe rând și „Trimite la semnat” (24.09)');
+T('„Trimite la semnat” cere serverului (Api.trimiteContract → POST /api/contracts/:id/trimite)',
   /trimiteContract:[\s\S]{0,200}`\/api\/contracts\/\$\{id\}\/trimite`, \{ method: 'POST'/.test(endp) && /Api\.trimiteContract\(/.test(pasiTsx));
 T('lista păstrează `trimite_pe_email` de la server', /trimite: !!\(j && j\.trimite_pe_email\)/.test(listTsx) && /trimite_pe_email\?: boolean/.test(endp));
-T('fără SMTP butonul nu minte: „Trimite la semnat" DOAR cu `trimite_pe_email`, altfel „Am trimis-o" (în listă, dosar și fișă)',
+T('fără SMTP butonul nu minte: „Trimite la semnat” DOAR cu `trimite_pe_email`, altfel „Am trimis-o” (în listă, dosar și fișă)',
   /trimiteSauAmTrimis = \(c: any\) => \(o\.trimitePeEmail\s*\?\s*buton\('mail', 'Trimite la semnat'[^\n]*\n\s*:\s*<>\{buton\('mail', 'Am trimis-o'/.test(pasiTsx) &&
   /o\.trimitePeEmail \? buton\('refresh', 'Retrimite'/.test(pasiTsx) && (pasiTsx.match(/'Trimite la semnat'/g) || []).length === 1 &&
   /trimitePeEmail: !!\(d && d\.trimite_pe_email\)/.test(detTsx) && /trimitePeEmail: !!o\.trimite_pe_email/.test(fisaTsx));
 T('pasul următor și lipsurile sunt pe fiecare rând din listă; întrebările lor sunt pe ecran (listă, dosar, fișă)',
   /\{pasi\.pas\(c\)\}/.test(listTsx) && /const linii = pasi\.lipsuri\(c\);/.test(listTsx) &&
   /\{pasi\.ui\}/.test(listTsx) && /\{pasi\.ui\}/.test(detTsx) && /\{pasi\.ui\}/.test(fisaTsx));
-// „Completează" se deschide DUPĂ ce s-a închis întrebarea „Trimite", nu în locul ei (29.09): două foi păzite schimbate
+// „Completează” se deschide DUPĂ ce s-a închis întrebarea „Trimite”, nu în locul ei (29.09): două foi păzite schimbate
 // în aceeași randare lăsau în istoric intrarea întrebării (foaia nouă, copil, își punea intrarea înaintea curățeniei
-// ei), iar după ce închideai „Completează", următorul „înapoi" de pe Android nu mai făcea nimic.
+// ei), iar după ce închideai „Completează”, următorul „înapoi” de pe Android nu mai făcea nimic.
 // (Încercat pe Preact-ul aplicației, cu inapoiFoaie.ts adevărat: schimbul în aceeași randare lasă intrarea; închis
 // întâi și deschis în randarea următoare, nu.)
 const fnTrimite = (/async function trimite\(c: any[\s\S]*?\n  \}\n/.exec(pasiTsx) || [''])[0];
-T('„Trimite" refuzat pentru goluri pe hârtie deschide „Completează" (ca pe web)',
+T('„Trimite” refuzat pentru goluri pe hârtie deschide „Completează” (ca pe web)',
   /e\?\.status === 400 && lipsuriFirma\(c\)\.length\) setDupa\(\{ fel: 'completeaza'/.test(fnTrimite));
 T('… abia după ce s-a închis întrebarea: foaia nu ia locul întrebării în aceeași randare, ci se deschide din efect, doar fără întrebare deschisă',
   !!fnTrimite && /setDlg\(null\);/.test(fnTrimite) && !/setDlg\(\{ fel: 'completeaza'/.test(fnTrimite) &&
   /useInapoiInchide\(!!dlg && /.test(pasiTsx) && /useEffect\(\(\) => \{\s*if \(!dupa \|\| dlg\) return;\s*setDlg\(dupa\);\s*setDupa\(null\);\s*\}, \[dupa, dlg\]\);/.test(pasiTsx));
-T('„E semnat" propune ziua deja scrisă în contract, apoi azi (nu rescrie cu azi data salvată)',
+T('„E semnat” propune ziua deja scrisă în contract, apoi azi (nu rescrie cu azi data salvată)',
   /function SemnatFoaie[\s\S]*?useState\(\(\) => inputZi\(c\.signed_at\) \|\| azi\(\)\)/.test(pasiTsx));
-T('fără SMTP (503) ecranul se reîncarcă, ca butonul să devină „Am trimis-o"', /e\?\.status === 503\) o\.laSchimbat\(\)/.test(pasiTsx));
-T('după semnare, rândul spune pasul drumului („urmează: … · N/M pași"), ca pe web',
+T('fără SMTP (503) ecranul se reîncarcă, ca butonul să devină „Am trimis-o”', /e\?\.status === 503\) o\.laSchimbat\(\)/.test(pasiTsx));
+T('după semnare, rândul spune pasul drumului („urmează: … · N/M pași”), ca pe web',
   /urmează: ' \+ esc\(String\(p\.eticheta \|\| ''\)\.toLowerCase\(\)\) \+ ' · ' \+ dr\.gata \+ '\/' \+ dr\.din \+ ' pași/.test(html) &&
   /'urmează: ' \+ String\(p\.eticheta \|\| ''\)\.toLowerCase\(\) \+ ' · ' \+ dr\.gata \+ '\/' \+ dr\.din \+ ' pași'/.test(pasiTsx));
-T('„trimis pe … la …" sub stare, ca pe web', /trimis pe ' \+ _zile\(c\.sent_at\) \+ \(c\.sent_to \? ' la ' \+ esc\(c\.sent_to\)/.test(html) &&
+T('„trimis pe … la …” sub stare, ca pe web', /trimis pe ' \+ _zile\(c\.sent_at\) \+ \(c\.sent_to \? ' la ' \+ esc\(c\.sent_to\)/.test(html) &&
   /'trimis pe ' \+ zile\(c\.sent_at\) \+ \(c\.sent_to \? ' la ' \+ c\.sent_to/.test(pasiTsx));
 ['Aprobi contractul ', 'Din clipa asta hârtia nu mai e ciornă: se poate trimite la semnat.',
-  'L-ai trimis tu clientului (email, WhatsApp)?\\n\\nContractul trece pe „trimis la client". Când vine semnat, apeși „E semnat" și îl încarci.',
-  ' pleacă pe email, cu PDF-ul atașat, ca să-l semneze. Răspunsul lor — contractul semnat — vine la adresa noastră.\\n\\nCând îl primești, apeși „E semnat" și îl încarci.',
+  'L-ai trimis tu clientului (email, WhatsApp)?\\n\\nContractul trece pe „trimis la client”. Când vine semnat, apeși „E semnat” și îl încarci.',
+  ' pleacă pe email, cu PDF-ul atașat, ca să-l semneze. Răspunsul lor — contractul semnat — vine la adresa noastră.\\n\\nCând îl primești, apeși „E semnat” și îl încarci.',
   'Ce zi a fost semnat contractul?',
   ' e semnat de amândoi?\\n\\nAlegi fișierul semnat primit de la client. Din clipa asta contractul nu se mai modifică: orice schimbare se face prin act adițional.',
-  'Contract aprobat ✓ — urmează „Trimite la semnat"', 'Marcat „trimis la client" ✓', 'Data semnării pusă ✓', 'Contract semnat și în dosar ✓',
+  'Contract aprobat ✓ — urmează „Trimite la semnat”', 'Marcat „trimis la client” ✓', 'Data semnării pusă ✓', 'Contract semnat și în dosar ✓',
   'Datele firmei sunt în dosar ✓', ' e în dosar ✓', 'Adresa clientului', 'Da, l-am trimis', 'Alege fișierul semnat']
-  .forEach((t) => T('„' + t.replace(/\\n/g, ' ').trim().slice(0, 60) + '…" e scris la fel ca pe web', html.indexOf(t) >= 0 && pasiTsx.indexOf(t) >= 0));
+  .forEach((t) => T('„' + t.replace(/\\n/g, ' ').trim().slice(0, 60) + '…” e scris la fel ca pe web', html.indexOf(t) >= 0 && pasiTsx.indexOf(t) >= 0));
 T('ziua semnării din listă se scrie la prânz, ca pe web (Date.parse(zi + "T12:00:00"), un singur ajutor)',
   /ziLaPranz\(/.test(pasiTsx) && !/(^|[^\w])zi\(/.test(pasiTsx) && /Date\.parse\(v \+ 'T12:00:00'\)/.test(mjLib) && !/export function ziPranz/.test(lib));
 
-sect('9. Butonul fiecărei lipse și „Completează" (24.09)');
+sect('9. Butonul fiecărei lipse și „Completează” (24.09)');
 const ET = dinTs('LIPSA_ET');
 const mEt = /var etich = function \(k\) \{ return \((\{[^}]*\})\)\[k\] \|\| k; \};/.exec(html);
 let etWeb = null; try { etWeb = mEt ? new Function('return (' + mEt[1] + ');')() : null; } catch (e) { etWeb = null; }
 T('cuvintele lipsurilor sunt aceleași ca pe web (etich din _ctreLipsuriHtml)', !!ET && !!etWeb && ordonat(ET) === ordonat(etWeb), ordonat(ET) + ' ≠ ' + ordonat(etWeb));
 const FIRMA = dinTs('LIPSA_FIRMA'), FIRMA_WEB = dinWeb('CTRE_FIRMA');
-T('„Completează" acoperă aceleași lipsuri ca pe web (CTRE_FIRMA)', !!FIRMA && !!FIRMA_WEB && J(FIRMA) === J(FIRMA_WEB), J(FIRMA) + ' ≠ ' + J(FIRMA_WEB));
-T('… adică exact golurile pentru care serverul refuză „Trimite la semnat"', /\['cui', 'sediu', 'reprezentant'\]\.indexOf\(k\) >= 0/.test(srv) && J(FIRMA) === J(['cui', 'sediu', 'reprezentant']));
+T('„Completează” acoperă aceleași lipsuri ca pe web (CTRE_FIRMA)', !!FIRMA && !!FIRMA_WEB && J(FIRMA) === J(FIRMA_WEB), J(FIRMA) + ' ≠ ' + J(FIRMA_WEB));
+T('… adică exact golurile pentru care serverul refuză „Trimite la semnat”', /\['cui', 'sediu', 'reprezentant'\]\.indexOf\(k\) >= 0/.test(srv) && J(FIRMA) === J(['cui', 'sediu', 'reprezentant']));
 const fnLipsWeb = html.slice(html.indexOf('function _ctreLipsuriHtml('), html.indexOf('// ─── Drumul clientului, cu pașii bifați'));
 ['lipsește data semnării', 'lipsește contractul semnat (PDF)', 'lipsește acordul GDPR semnat', 'Completează', 'Pune data', 'Încarcă semnat', 'Încarcă acordul']
-  .forEach((t) => T('„' + t + '" e pe rând, scris ca pe web', fnLipsWeb.indexOf(t) >= 0 && pasiTsx.indexOf(t) >= 0));
+  .forEach((t) => T('„' + t + '” e pe rând, scris ca pe web', fnLipsWeb.indexOf(t) >= 0 && pasiTsx.indexOf(t) >= 0));
 T('ce lipsește spune DOAR serverul (`dosar.lipsuri`), nimic socotit pe telefon', /c\.dosar && c\.dosar\.lipsuri/.test(pasiTsx) && !/stareDosar|\bLIPSURI\b/.test(codCtr));
-T('la un contract nesemnat, „Dosar" arată doar lipsurile (fără pastila „lipsește ceva")', listTsx.indexOf('lipsește ceva') < 0 && /pasi\.lipsuri\(c\)/.test(listTsx));
-T('„Completează" scrie pe ruta /dosar (doar cheile trimise), NU pe PUT /api/companies/:id (care golește ce vine gol)',
+T('la un contract nesemnat, „Dosar” arată doar lipsurile (fără pastila „lipsește ceva”)', listTsx.indexOf('lipsește ceva') < 0 && /pasi\.lipsuri\(c\)/.test(listTsx));
+T('„Completează” scrie pe ruta /dosar (doar cheile trimise), NU pe PUT /api/companies/:id (care golește ce vine gol)',
   /Api\.completeazaDosar\(/.test(pasiTsx) && !/Api\.updateCompany\(/.test(codCtr) &&
   /completeazaDosar:[\s\S]{0,300}`\/api\/companies\/\$\{companyId\}\/dosar`, \{ method: 'PUT'/.test(endp));
-T('„Completează" trimite doar ce s-a schimbat (legal_rep = null când numele se golește)',
+T('„Completează” trimite doar ce s-a schimbat (legal_rep = null când numele se golește)',
   /if \(t\(f\.cui\) !== t\(start\.cui\)\) corp\.cui/.test(pasiTsx) && /if \(t\(f\.name\) !== t\(start\.name\)\) corp\.name/.test(pasiTsx) &&
   /corp\.legal_rep = t\(f\.rep\) \? \{ name: t\(f\.rep\), role: t\(f\.reprole\) \} : null/.test(pasiTsx));
-T('„Completează" are „ANAF" și spune pe față o firmă radiată / inactivă',
+T('„Completează” are „ANAF” și spune pe față o firmă radiată / inactivă',
   /Api\.anafFirma\(/.test(pasiTsx) && pasiTsx.indexOf('firma apare RADIATĂ la ANAF') >= 0 && pasiTsx.indexOf('firma e declarată INACTIVĂ') >= 0 &&
   html.indexOf('firma apare RADIATĂ la ANAF') >= 0);
 ['Datele firmei pentru contract', 'Email (aici pleacă contractul)', 'Reprezentant legal', 'Nr. Reg. Com.'].forEach((t) =>
-  T('„Completează": „' + t + '", ca pe web', html.indexOf(t) >= 0 && pasiTsx.indexOf(t) >= 0));
-T('„Completează" se deschide și din cutia dosarului (dosar + fișa firmei)', /pasi\.completeaza\(rand\)/.test(detTsx) && /pasi\.completeaza\(rand\)/.test(fisaTsx));
+  T('„Completează”: „' + t + '”, ca pe web', html.indexOf(t) >= 0 && pasiTsx.indexOf(t) >= 0));
+T('„Completează” se deschide și din cutia dosarului (dosar + fișa firmei)', /pasi\.completeaza\(rand\)/.test(detTsx) && /pasi\.completeaza\(rand\)/.test(fisaTsx));
 
-sect('10. La încheiere: „arhivează aparatele" — cifra vine de la server (24.09)');
+sect('10. La încheiere: „arhivează aparatele” — cifra vine de la server (24.09)');
 const fDI = /export function dupaIncetare\(n: any\): string \{\n([\s\S]*?)\n\}/.exec(lib);
 const fDIC = /export function dupaIncetareConfirm\(n: any\): string \{\n([\s\S]*?)\n\}/.exec(lib);
 const mW1 = /explic \+= '( Arhivează aparatele[^']*)' \+\s*d\.date_dupa_incetare_zile \+ _raxDe\(d\.date_dupa_incetare_zile\) \+ '([^']*)';/.exec(html);
@@ -566,21 +566,21 @@ if (fDI && fDIC && mW1 && mW2 && fDe) {
     if (di(n, de) !== mW1[1] + n + de(n) + mW1[2]) gresite.push('cutia la ' + n);
     if (dic(n, de) !== unesc(mW2[1]) + n + de(n) + mW2[2]) gresite.push('întrebarea la ' + n);
   });
-  T('„ce urmează" și întrebarea de la „Încheie contractul" spun ce spune web-ul, pentru orice cifră', !gresite.length, gresite.join(', '));
-  T('fără cifră de la server nu se scrie nimic (nu se inventează „30")', di(undefined, de) === '' && dic(null, de) === '' && di(0, de) === '');
+  T('„ce urmează” și întrebarea de la „Încheie contractul” spun ce spune web-ul, pentru orice cifră', !gresite.length, gresite.join(', '));
+  T('fără cifră de la server nu se scrie nimic (nu se inventează „30”)', di(undefined, de) === '' && dic(null, de) === '' && di(0, de) === '');
 }
-T('dosarul ia cifra de la server (date_dupa_incetare_zile), fără „30 de zile" scris de mână',
+T('dosarul ia cifra de la server (date_dupa_incetare_zile), fără „30 de zile” scris de mână',
   /dupaIncetare\(d\.date_dupa_incetare_zile\)/.test(detTsx) && /dupaIncetareConfirm\(d && d\.date_dupa_incetare_zile\)/.test(detTsx) &&
   !/\b30 de zile\b/.test(codCtr));
 T('fișa firmei o spune la un contract încheiat', /dupaIncetare\(o\.date_dupa_incetare_zile\)/.test(fisaTsx));
 T('serverul trimite cifra din contracts.js (o singură cifră, și pe hârtie)', /date_dupa_incetare_zile: contracte\.ZILE_DATE_DUPA_INCETARE/.test(srv));
 
 sect('11. Aparate închiriate: durata minimă o spune serverul (25.09)');
-T('dosarul arată durata minimă a chiriei cu cifra din anexă (annex.chirie.luniMin), fără „24" scris de mână',
+T('dosarul arată durata minimă a chiriei cu cifra din anexă (annex.chirie.luniMin), fără „24” scris de mână',
   /c\.annex\.chirie\.luniMin/.test(detTsx) && !/cel puțin 24/.test(detTsx));
 
 sect('12. Montaj: partenerii stau DOAR în secțiunea lor; aceleași vorbe ca pe web (24.09)');
-T('„Contracte" nu mai desenează partenerii de montaj', !/ParteneriMontaj/.test(listTsx));
+T('„Contracte” nu mai desenează partenerii de montaj', !/ParteneriMontaj/.test(listTsx));
 T('partenerii sunt în secțiunea Montaj', /<ParteneriMontaj/.test(mjTsx));
 const fMj = /export function mjStare\(status: string\): \[string, string\] \{\n([\s\S]*?)\n\}/.exec(mjLib);
 const fMjWeb = /function _mjStare\(status\) \{([\s\S]*?)\n    \}/.exec(html);
@@ -591,12 +591,12 @@ if (fMj && fMjWeb && STARI) {
   const toate = Object.keys(C.ETICHETE_STARE).concat(['necunoscut']);
   const dif = toate.filter((k) => J(tel(k, STARI)) !== J(web(k, CS_WEB)));
   T('stările contractului cu partenerul se scriu ca pe web, pentru toate stările', !dif.length, dif.join(','));
-  T('„trimis la partener" (nu „la client"), fără să se atingă CTR_STARI', tel('trimis', STARI)[0] === 'trimis la partener' && STARI.trimis[0] === 'trimis la client');
+  T('„trimis la partener” (nu „la client”), fără să se atingă CTR_STARI', tel('trimis', STARI)[0] === 'trimis la partener' && STARI.trimis[0] === 'trimis la client');
 }
 const MJL = dinTs('MJ_LIPSA', mjLib), MJL_WEB = dinWeb('MJ_LIPSA');
 T('lipsurile contractului cu partenerul se scriu ca pe web (MJ_LIPSA)', !!MJL && !!MJL_WEB && ordonat(MJL) === ordonat(MJL_WEB), ordonat(MJL) + ' ≠ ' + ordonat(MJL_WEB));
-T('la „Cine execută", un partener inactiv rămâne doar pe lucrările lui', /p\.active !== false \|\| String\(p\.id\) === edit\.p0/.test(montajTsx));
-T('fișa partenerului trimite „Stare" (active) și spune că pleacă și contractele lui nesemnate',
+T('la „Cine execută”, un partener inactiv rămâne doar pe lucrările lui', /p\.active !== false \|\| String\(p\.id\) === edit\.p0/.test(montajTsx));
+T('fișa partenerului trimite „Stare” (active) și spune că pleacă și contractele lui nesemnate',
   /\bactive:/.test(partTsx) && partTsx.indexOf('contractele lui nesemnate se șterg') >= 0 && html.indexOf('contractele lui nesemnate se șterg') >= 0);
 T('datele contractelor cu partenerii se scriu la prânz (ziLaPranz), nu la miezul nopții',
   /ziLaPranz\(/.test(mjTsx) && !/(^|[^\w])zi\(/.test(mjTsx) && /T12:00:00/.test(mjLib));

@@ -3,23 +3,23 @@
 //   node verify_ramuri.js
 //
 // Păzește:
-//   1. textele (ramuri.js): „a expirat pe 03.10 (acum 4 zile)", „expiră mâine", „mai are 420 de km (la 150.000 km)", ordinea
+//   1. textele (ramuri.js): „a expirat pe 03.10 (acum 4 zile)”, „expiră mâine”, „mai are 420 de km (la 150.000 km)”, ordinea
 //      (cele trecute de termen întâi, cele mai vechi primele; apoi cele mai apropiate), numărătoarea, preavizul firmei;
-//      Combustibil pe cifre făcute de mână: costul, sortarea, „peste normă" doar pe consum măsurat, cu destul drum, față de
+//      Combustibil pe cifre făcute de mână: costul, sortarea, „peste normă” doar pe consum măsurat, cu destul drum, față de
 //      cel mai mare consum din fișă; luna dinainte; scăderile (cea mai nouă întâi, ora României); recomandările;
 //   2. pe server pornit: Mentenanță & acte strânge ÎNTR-O listă actele, reviziile (pe dată și pe km) și permisele, cu
 //      ACELEAȘI stări ca listele Documente / Mentenanță; altă firmă nu se vede; fără loc RA Insight → 403; numerele de lângă
-//      ramuri; „Rezolvă" duce în ecranele Management; pagina nu socotește;
-//   3. pe server pornit: Combustibil spune ACELEAȘI cifre ca rapoartele Consum, Costuri și „Alimentări & scăderi" pentru
+//      ramuri; „Rezolvă” duce în ecranele Management; pagina nu socotește;
+//   3. pe server pornit: Combustibil spune ACELEAȘI cifre ca rapoartele Consum, Costuri și „Alimentări & scăderi” pentru
 //      aceeași perioadă (km, litri, L/100 km, sursa, prețul, costul, alimentările, scăderile), și pentru luna dinainte; grupa;
 //      altă firmă; fără loc RA Insight → 403. Drumurile stau pe 15 ale lunilor trecute — proba nu depinde de ziua de azi;
-//   4. Ore de condus: regula pe cifre făcute de mână (pe șofer, încălcările raportului, „nu se aplică" la autoturisme, săptămâna
-//      dinainte, recomandările, pragurile din „Cum se socotește" legate de codul raportului); pe server pornit, ACELEAȘI ore și
-//      încălcări ca raportul „Condus & repaus (Reg. 561)", fiecare zi pe șoferul care avea mașina atunci (nu pe cel de azi).
-//   5. Scrisoarea de luni: SCOASĂ pe 04.11 (Alin: „o scoatem de tot") — nicio tură, nicio pagină, niciun anunț; telefonul vechi
-//      primește 410 cu textul care spune unde găsește același lucru („Azi la tine", rapoartele programate).
+//   4. Ore de condus: regula pe cifre făcute de mână (pe șofer, încălcările raportului, „nu se aplică” la autoturisme, săptămâna
+//      dinainte, recomandările, pragurile din „Cum se socotește” legate de codul raportului); pe server pornit, ACELEAȘI ore și
+//      încălcări ca raportul „Condus & repaus (Reg. 561)”, fiecare zi pe șoferul care avea mașina atunci (nu pe cel de azi).
+//   5. Scrisoarea de luni: SCOASĂ pe 04.11 (Alin: „o scoatem de tot”) — nicio tură, nicio pagină, niciun anunț; telefonul vechi
+//      primește 410 cu textul care spune unde găsește același lucru („Azi la tine”, rapoartele programate).
 //   6. Cele 5 găsite pe drum (07.10): preavizul și starea termenelor dintr-un singur loc (liste, RA Care, raportul
-//      „Scadențe"), o singură regulă „Reg. 561 se aplică" (agent, raport, Tahograf), km din „Statistici consum" ca la Consum,
+//      „Scadențe”), o singură regulă „Reg. 561 se aplică” (agent, raport, Tahograf), km din „Statistici consum” ca la Consum,
 //      limitele pe săptămâni întregi și cea de 90 de ore în două săptămâni — pe reguli și pe server pornit.
 'use strict';
 process.env.GEOCODE_URL = 'http://127.0.0.1:9/reverse';
@@ -36,19 +36,19 @@ let ok = 0, rele = 0;
 const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele++; console.log('  ✗ ' + n + (d !== undefined ? '  → ' + d : '')); } };
 const ZI = 86400000;
 const iso = (x) => new Date(x).toISOString();
-// O zi „AAAA-LL-ZZ" la N zile de azi (pe UTC, ca o coloană DATE citită de server, care merge pe UTC).
+// O zi „AAAA-LL-ZZ” la N zile de azi (pe UTC, ca o coloană DATE citită de server, care merge pe UTC).
 const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
 
 (async () => {
   console.log('1. Textele (ramuri.js)');
   const ACUM = Date.parse('2026-10-07T10:00:00Z');
-  T('„a expirat pe 03.10 (acum 4 zile)"', RM.candData(-4, '2026-10-03', ACUM, true) === 'a expirat pe 03.10 (acum 4 zile)', RM.candData(-4, '2026-10-03', ACUM, true));
-  T('„expiră azi" / „expiră mâine (08.10)" / „expiră pe 12.10 — peste 5 zile" / „peste 20 de zile"',
+  T('„a expirat pe 03.10 (acum 4 zile)”', RM.candData(-4, '2026-10-03', ACUM, true) === 'a expirat pe 03.10 (acum 4 zile)', RM.candData(-4, '2026-10-03', ACUM, true));
+  T('„expiră azi” / „expiră mâine (08.10)” / „expiră pe 12.10 — peste 5 zile” / „peste 20 de zile”',
     RM.candData(0, '2026-10-07', ACUM, true) === 'expiră azi' && RM.candData(1, '2026-10-08', ACUM, true) === 'expiră mâine (08.10)' &&
     RM.candData(5, '2026-10-12', ACUM, true) === 'expiră pe 12.10 — peste 5 zile' && /peste 20 de zile$/.test(RM.candData(20, '2026-10-27', ACUM, true)));
-  T('o revizie „e scadentă" și „a trecut de termen" (nu „expiră")', RM.candData(3, '2026-10-10', ACUM, false) === 'e scadentă pe 10.10 — peste 3 zile' && /^a trecut de termen pe/.test(RM.candData(-2, '2026-10-05', ACUM, false)));
+  T('o revizie „e scadentă” și „a trecut de termen” (nu „expiră”)', RM.candData(3, '2026-10-10', ACUM, false) === 'e scadentă pe 10.10 — peste 3 zile' && /^a trecut de termen pe/.test(RM.candData(-2, '2026-10-05', ACUM, false)));
   T('anul se scrie doar când nu e anul de acum', RM.zz('2027-01-05', ACUM) === '05.01.2027' && RM.zz('2026-12-05', ACUM) === '05.12');
-  T('km: „mai are 420 de km (la 150.000 km)" / „a trecut de kilometrajul ei cu 120 de km"', RM.candKm(420, 150000) === 'mai are 420 de km (la 150.000 km)' && /^a trecut de kilometrajul ei cu 120 de km/.test(RM.candKm(-120, 150000)), RM.candKm(-120, 150000));
+  T('km: „mai are 420 de km (la 150.000 km)” / „a trecut de kilometrajul ei cu 120 de km”', RM.candKm(420, 150000) === 'mai are 420 de km (la 150.000 km)' && /^a trecut de kilometrajul ei cu 120 de km/.test(RM.candKm(-120, 150000)), RM.candKm(-120, 150000));
   const rev = RM.candRand({ fel: 'revizie', zile: 40, data: '2026-11-16', kmRamasi: 300, laKm: 150000 }, ACUM);
   T('o revizie cu dată și km: întâi partea mai urgentă (300 km înaintea a 40 de zile)', /^mai are 300 de km/.test(rev) && / · e scadentă pe 16\.11/.test(rev), rev);
   const zile = (n) => RM.zilePana(new Date(ACUM + n * ZI - 3600000).toISOString().slice(0, 10), ACUM);
@@ -60,17 +60,17 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const rz = RM.rezumatMentenanta([{ stare: 'depasit', fel: 'act' }, { stare: 'curand', fel: 'revizie' }, { stare: 'curand', fel: 'permis' }], 2);
   T('numărătoarea: trecute, care vin, pe feluri, fără dată', rz.depasite === 1 && rz.curand === 2 && rz.acte === 1 && rz.revizii === 1 && rz.permise === 1 && rz.faraData === 2);
   const ex = RM.explicatiiMentenanta({ docDays: 21, days: 7, km: 800, permis: 30 });
-  T('„Cum se socotește" spune preavizul FIRMEI (21 de zile la acte, 7 zile / 800 de km la revizii)', /cu 21 de zile înainte de expirare/.test(ex[0].text) && /cu 7 zile sau 800 de km/.test(ex[0].text) && /RA Care/.test(ex[2].text), ex[0].text);
+  T('„Cum se socotește” spune preavizul FIRMEI (21 de zile la acte, 7 zile / 800 de km la revizii)', /cu 21 de zile înainte de expirare/.test(ex[0].text) && /cu 7 zile sau 800 de km/.test(ex[0].text) && /RA Care/.test(ex[2].text), ex[0].text);
 
   const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   const fn = (nume) => (SRV.split('async function ' + nume + '(')[1] || '').split(/\napp\.|\nasync function |\nfunction /)[0];
   T('stările sunt ALE LISTELOR (maintenanceDueState / documentDueState, cu preavizul firmei) — nu o a doua regulă', /maintenanceDueState\(m, odo, leads\.of\(m\.company_id\)\)/.test(fn('_ramMentenanta')) && /documentDueState\(doc, leads\.of\(doc\.company_id\)\.docDays\)/.test(fn('_ramMentenanta')));
   T('permisele: același prag ca anunțul lor (NOTIFY_EXPIRY_DAYS, 30)', /_permisZilePreaviz\(\)/.test(fn('_ramMentenanta')) && /process\.env\.NOTIFY_EXPIRY_DAYS\) \|\| 30/.test(SRV.split('function _permisZilePreaviz')[1] || ''));
   T('mașinile: aceeași regulă ca toate ramurile (_ramFlota: acces + fără arhivate)', /canAccessImei\(req, d\.imei\) && d\.status !== 'archived'/.test(fn('_ramFlota')) && /await _ramFlota\(req\)/.test(fn('_ramMentenanta')) && /await _ramFlota\(req\)/.test(fn('_sdFlota')));
-  T('pagina și RA Insight cer lista prin ACEEAȘI funcție (_ramMentenanta: ruta, unealta, numerele, „Azi la tine")', (SRV.match(/await _ramMentenanta\(req\)/g) || []).length === 4);
+  T('pagina și RA Insight cer lista prin ACEEAȘI funcție (_ramMentenanta: ruta, unealta, numerele, „Azi la tine”)', (SRV.match(/await _ramMentenanta\(req\)/g) || []).length === 4);
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  const bloc = (PAG.split('// ─── Ramura „Mentenanță & acte"')[1] || '').split('window.insightSdIntreaba')[0];
-  T('pagina: ramura se arată și are pagina ei; „Rezolvă" = ecranele din Management (goManage)', /k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true/.test(PAG) && /if \(S\.ramura === 'mentenanta'\) return deseneazaMentenanta\(main\);/.test(PAG) && /goManage\(ecran\)/.test(bloc));
+  const bloc = (PAG.split('// ─── Ramura „Mentenanță & acte”')[1] || '').split('window.insightSdIntreaba')[0];
+  T('pagina: ramura se arată și are pagina ei; „Rezolvă” = ecranele din Management (goManage)', /k: 'mentenanta', et: 'Mentenanță & acte', ic: 'fa-screwdriver-wrench', gata: true/.test(PAG) && /if \(S\.ramura === 'mentenanta'\) return deseneazaMentenanta\(main\);/.test(PAG) && /goManage\(ecran\)/.test(bloc));
   T('pagina nu socotește: o singură cerere, fără zile sau praguri scrise în ea', (bloc.match(/'\/api\/insight\/mentenanta'/g) || []).length === 1 && !/\b(14|30|500)\b/.test(bloc) && !/zilePana|Math\.ceil/.test(bloc));
   const ih = bloc.match(/innerHTML = [^;]*;/g) || [];
   T('pagina: textele serverului se pun cu textContent (innerHTML doar pentru iconițe)', ih.length >= 3 && ih.every((x) => !/\.(cand|cine|ce|text|titlu|message|error)\b/.test(x)), ih.join(' | '));
@@ -96,9 +96,9 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const pe = (k) => cb.masini.filter((m) => m.imei === k)[0] || {};
   T('mașinile: costul = litri × preț (600 / 280 / 144 / 43 de lei), cele mai scumpe întâi; mașina fără drum (D) nu apare', cb.masini.map((m) => m.imei + m.cost).join(' ') === 'A600 B280 E144 C43', cb.masini.map((m) => m.imei + m.cost).join(' '));
   T('flota: 1.850 km, 144 de litri, 1.067 lei, 7,8 L la 100 km, 1 din 4 estimată (28% din litri)', cb.flota.km === 1850 && cb.flota.litri === 144 && cb.flota.cost === 1067 && cb.flota.l100 === 7.8 && cb.flota.masini === 4 && cb.flota.estimate === 1 && cb.flota.procentEstimat === 28, JSON.stringify(cb.flota));
-  T('„peste normă" doar pe consum MĂSURAT, cu destul drum și cu normă în fișă: A (+23%) da; B (estimat), C (50 km), E (fără normă) nu', pe('A').peste === 23 && pe('B').peste === null && pe('C').peste === null && pe('E').peste === null && cb.pesteNorma.map((m) => m.imei).join() === 'A', JSON.stringify(cb.pesteNorma.map((m) => [m.imei, m.peste])));
-  T('luna dinainte, aceleași zile: 75 de litri, 554 de lei; „+513 lei față de 1–7 septembrie (+93%)"; pe mașină „+82 de lei" / „+7 lei"', cb.inainte.litri === 75 && cb.inainte.cost === 554 && cb.fata.fel === 'atentie' && cb.fata.cost === '+513 lei față de 1–7 septembrie (+93%)' && cb.fata.l100 === 'pe 1–7 septembrie: 8 L la 100 km' && pe('A').fata.text === '+82 de lei' && pe('C').fata.text === '+7 lei' && pe('B').fata === null && pe('E').fata === null, JSON.stringify([cb.fata, pe('A').fata, pe('C').fata]));
-  T('scăderile: cea mai nouă întâi, pe ora României („06.10, 02:14"), cu locul pe hartă; a unei mașini din altă parte (Z) nu', cb.scaderi.map((x) => x.imei + ' ' + x.cand).join(' | ') === 'A 06.10, 02:14 | C 03.10, 11:00' && cb.scaderi[0].lat === 46.2 && cb.scaderi[0].lng === 21.4 && cb.scaderi[0].eticheta === 'Mașina A', JSON.stringify(cb.scaderi.map((x) => [x.imei, x.cand])));
+  T('„peste normă” doar pe consum MĂSURAT, cu destul drum și cu normă în fișă: A (+23%) da; B (estimat), C (50 km), E (fără normă) nu', pe('A').peste === 23 && pe('B').peste === null && pe('C').peste === null && pe('E').peste === null && cb.pesteNorma.map((m) => m.imei).join() === 'A', JSON.stringify(cb.pesteNorma.map((m) => [m.imei, m.peste])));
+  T('luna dinainte, aceleași zile: 75 de litri, 554 de lei; „+513 lei față de 1–7 septembrie (+93%)”; pe mașină „+82 de lei” / „+7 lei”', cb.inainte.litri === 75 && cb.inainte.cost === 554 && cb.fata.fel === 'atentie' && cb.fata.cost === '+513 lei față de 1–7 septembrie (+93%)' && cb.fata.l100 === 'pe 1–7 septembrie: 8 L la 100 km' && pe('A').fata.text === '+82 de lei' && pe('C').fata.text === '+7 lei' && pe('B').fata === null && pe('E').fata === null, JSON.stringify([cb.fata, pe('A').fata, pe('C').fata]));
+  T('scăderile: cea mai nouă întâi, pe ora României („06.10, 02:14”), cu locul pe hartă; a unei mașini din altă parte (Z) nu', cb.scaderi.map((x) => x.imei + ' ' + x.cand).join(' | ') === 'A 06.10, 02:14 | C 03.10, 11:00' && cb.scaderi[0].lat === 46.2 && cb.scaderi[0].lng === 21.4 && cb.scaderi[0].eticheta === 'Mașina A', JSON.stringify(cb.scaderi.map((x) => [x.imei, x.cand])));
   T('evenimentele: 1 alimentare (50 de litri), 2 scăderi (37 de litri)', JSON.stringify(cb.evenimente) === JSON.stringify({ alimentari: 1, litriAlimentati: 50, scaderi: 2, litriScazuti: 37 }), JSON.stringify(cb.evenimente));
   const rec = cb.recomandari.map((x) => x.fel + ': ' + x.text);
   T('recomandările: consumul peste normă, scăderea cea mai nouă (cu motorul oprit), cifrele estimate, mașina fără normă', rec.length === 4 &&
@@ -106,24 +106,24 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
     /^atentie: 2 scăderi suspecte de combustibil; cea mai nouă: Mașina A, 06\.10, 02:14, 25 de litri \(de la 60 la 35\), cu motorul oprit\./.test(rec[1]) &&
     /^info: La 1 din 4 mașini consumul e ESTIMAT/.test(rec[2]) && /^info: Mașina E n-are consumul trecut în fișă — .* la „Consum oraș” și „Consum afară”\.$/.test(rec[3]), rec.join('\n      '));
   const cb0 = RM.alcatuiesteCombustibil({ masini: [{ imei: 'A', eticheta: 'A' }], cm: { A: { dist: 200, consumed: 14, price: 7, per100: 7, estimated: false, source: 'CAN', norma: 7 } }, cmI: { A: { dist: 0, consumed: 0, price: 7 } }, ev: [], panaAzi: false, etInainte: 'august 2026', inaintePregatita: true });
-  T('luna dinainte fără drum: „fără drum în august 2026 — nimic de comparat"; totul în normă → o singură recomandare, „bun"', cb0.fata.cost === 'fără drum în august 2026 — nimic de comparat' && cb0.recomandari.length === 1 && cb0.recomandari[0].fel === 'bun', JSON.stringify([cb0.fata, cb0.recomandari]));
+  T('luna dinainte fără drum: „fără drum în august 2026 — nimic de comparat”; totul în normă → o singură recomandare, „bun”', cb0.fata.cost === 'fără drum în august 2026 — nimic de comparat' && cb0.recomandari.length === 1 && cb0.recomandari[0].fel === 'bun', JSON.stringify([cb0.fata, cb0.recomandari]));
   const cb1 = RM.alcatuiesteCombustibil({ masini: [{ imei: 'A', eticheta: 'A' }], cm: { A: { dist: 200, consumed: 14, price: 7, per100: 7, estimated: false, source: 'CAN', norma: 7 } }, cmI: {}, ev: [], panaAzi: false, etInainte: 'august 2026', inaintePregatita: false });
   T('cât luna dinainte nu e citită: nicio comparație (nu una inventată)', cb1.inainte === null && cb1.fata === null && cb1.masini[0].fata === null);
   const exC = RM.explicatiiCombustibil({ dropMin: 15 }).map((x) => x.titlu + ': ' + x.text).join('\n');
-  T('„Cum se socotește": sursa litrilor, prețul, pragul de normă (100 de km, 15%, cel mai mare consum din fișă), scăderea de cel puțin 15 litri', /Aceeași socoteală ca rapoartele Consum și Costuri/.test(exC) && /cu cel puțin 100 de km de drum și cu peste 15% față de cel mai mare consum trecut în fișă/.test(exC) && /cel puțin 15 litri/.test(exC), exC);
+  T('„Cum se socotește”: sursa litrilor, prețul, pragul de normă (100 de km, 15%, cel mai mare consum din fișă), scăderea de cel puțin 15 litri', /Aceeași socoteală ca rapoartele Consum și Costuri/.test(exC) && /cu cel puțin 100 de km de drum și cu peste 15% față de cel mai mare consum trecut în fișă/.test(exC) && /cel puțin 15 litri/.test(exC), exC);
   const RP = fs.readFileSync(path.join(__dirname, 'reports.js'), 'utf8');
   T('norma din fișă = cel mai mare consum trecut (oraș sau afară), luat de motorul rapoartelor', /cMax: Math\.max\(parseFloat\(d\.consumption_road\) \|\| 0, parseFloat\(d\.consumption_city\) \|\| 0\) \|\| null/.test(RP) && /norma: c\.cMax \|\| null/.test(RP));
   const fC = fn('_ramCombustibil');
-  T('cifrele vin din MOTORUL RAPOARTELOR, cu opțiunile ecranului Rapoarte (Consum / Costuri + „Alimentări & scăderi")', /reports\._ajutor\.consumptionMap\(db, imeis, iso\(p\.de\), iso\(p\.pana\), opts\)/.test(fC) && /reports\._ajutor\.consumptionMap\(db, imeis, iso\(p\.deI\), iso\(p\.panaI\), opts\)/.test(fC) && /reports\.runReport\(db, 'fuel', imeis, iso\(p\.de\), iso\(p\.pana\), opts/.test(fC) && /_optiuniRaport\(\{\}, f\.cs\)/.test(fC) && /await _ramFlota\(req\)/.test(fC));
+  T('cifrele vin din MOTORUL RAPOARTELOR, cu opțiunile ecranului Rapoarte (Consum / Costuri + „Alimentări & scăderi”)', /reports\._ajutor\.consumptionMap\(db, imeis, iso\(p\.de\), iso\(p\.pana\), opts\)/.test(fC) && /reports\._ajutor\.consumptionMap\(db, imeis, iso\(p\.deI\), iso\(p\.panaI\), opts\)/.test(fC) && /reports\.runReport\(db, 'fuel', imeis, iso\(p\.de\), iso\(p\.pana\), opts/.test(fC) && /_optiuniRaport\(\{\}, f\.cs\)/.test(fC) && /await _ramFlota\(req\)/.test(fC));
   T('pagina și RA Insight cer cifrele prin ACEEAȘI funcție (_ramCombustibil: ruta, unealta, numerele)', (SRV.match(/await _ramCombustibil\(req, /g) || []).length === 3);
-  const blocC = (PAG.split('// ─── Ramura „Combustibil"')[1] || '').split('// Ecranul unde se rezolvă un rând')[0];
+  const blocC = (PAG.split('// ─── Ramura „Combustibil”')[1] || '').split('// Ecranul unde se rezolvă un rând')[0];
   T('pagina: ramura se arată și are pagina ei', /k: 'combustibil', et: 'Combustibil', ic: 'fa-gas-pump', gata: true/.test(PAG) && /if \(S\.ramura === 'combustibil'\) return deseneazaCombustibil\(main, S\.cbLuna\);/.test(PAG) && blocC.length > 1000);
-  T('pagina nu socotește: o singură cerere; „peste normă" = lista serverului (pesteNorma), fără praguri scrise în ea', (blocC.match(/'\/api\/insight\/combustibil'/g) || []).length === 1 && /j\.pesteNorma/.test(blocC) && !/0\.15|\b15\b|KM_MIN|>= ?100\b|\* ?j\.|\.price\b/.test(blocC), (blocC.match(/0\.15|\b15\b|KM_MIN|>= ?100\b/g) || []).join(','));
+  T('pagina nu socotește: o singură cerere; „peste normă” = lista serverului (pesteNorma), fără praguri scrise în ea', (blocC.match(/'\/api\/insight\/combustibil'/g) || []).length === 1 && /j\.pesteNorma/.test(blocC) && !/0\.15|\b15\b|KM_MIN|>= ?100\b|\* ?j\.|\.price\b/.test(blocC), (blocC.match(/0\.15|\b15\b|KM_MIN|>= ?100\b/g) || []).join(','));
   const ihC = blocC.match(/innerHTML = [^;]*;/g) || [];
   T('pagina: textele serverului se pun cu textContent (innerHTML doar pentru iconițe)', ihC.length >= 4 && ihC.every((x) => !/\.(cand|loc|eticheta|text|titlu|message|error|cost|fata|sursa)\b/.test(x)), ihC.join(' | '));
 
   console.log('\n1c. Ore de condus — regula (ramuri.js), pe cifre făcute de mână');
-  T('durata: „38 h 20 min", „45 min", „9 h"; ziua: „luni, 05.10"', RM.durata(38 * 3600 + 20 * 60) === '38 h 20 min' && RM.durata(45 * 60) === '45 min' && RM.durata(9 * 3600) === '9 h' && RM.ziText('2026-10-05', ACUM) === 'luni, 05.10');
+  T('durata: „38 h 20 min”, „45 min”, „9 h”; ziua: „luni, 05.10”', RM.durata(38 * 3600 + 20 * 60) === '38 h 20 min' && RM.durata(45 * 60) === '45 min' && RM.durata(9 * 3600) === '9 h' && RM.ziText('2026-10-05', ACUM) === 'luni, 05.10');
   const H = 3600;
   const VH = [
     { cheie: 'd1', sofer: 'Ion Popescu', driverId: 1, zi: '2026-10-05', condusSec: 5 * H + 1200, continuuMaxSec: 5 * H + 1200, incalcari: ['condus continuu 5 h 20 min'], supus: true, sursa: 'GPS', masini: ['TM 77 RAT · Volvo FH'] },
@@ -135,36 +135,36 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   ];
   const oc = RM.alcatuiesteOreCondus({ valori: VH, valoriInainte: [{ condusSec: 2 * H }], azi: '2026-10-07', eticheta: '5 octombrie – azi', etInainte: '28–30 septembrie', panaAzi: true, inaintePregatita: true, acum: ACUM });
   const so = (n) => oc.soferi.filter((x) => x.nume === n)[0] || {};
-  T('pe șofer: orele adunate pe săptămână, zilele cu condus, „azi"; cine n-a condus deloc nu apare', so('Ion Popescu').condusSec === 6 * H + 1200 && so('Ion Popescu').zile === 2 && so('Ion Popescu').text.azi === '1 h' && so('Gheorghe Marin').text.azi === '—' && !oc.soferi.some((x) => x.nume === 'Vasile Pop'), JSON.stringify(oc.soferi.map((x) => [x.nume, x.condusSec, x.zile, x.text.azi])));
+  T('pe șofer: orele adunate pe săptămână, zilele cu condus, „azi”; cine n-a condus deloc nu apare', so('Ion Popescu').condusSec === 6 * H + 1200 && so('Ion Popescu').zile === 2 && so('Ion Popescu').text.azi === '1 h' && so('Gheorghe Marin').text.azi === '—' && !oc.soferi.some((x) => x.nume === 'Vasile Pop'), JSON.stringify(oc.soferi.map((x) => [x.nume, x.condusSec, x.zile, x.text.azi])));
   T('ordinea: cine are încălcări întâi, apoi șoferii după ore, mașinile fără șofer la urmă', oc.soferi.map((x) => x.cheie).join() === 'd1,d2,d3,v_9', oc.soferi.map((x) => x.cheie).join());
-  T('cea mai lungă zi și condusul fără pauză, cu ziua lor; sursa „tahograf" / „estimat din GPS"', so('Gheorghe Marin').text.ziMax === '8 h 10 min' && so('Gheorghe Marin').text.ziMaxZi === 'marți, 06.10' && so('Gheorghe Marin').text.continuuMax === '4 h 9 min' && so('Gheorghe Marin').text.sursa === 'tahograf' && so('Ion Popescu').text.sursa === 'estimat din GPS');
+  T('cea mai lungă zi și condusul fără pauză, cu ziua lor; sursa „tahograf” / „estimat din GPS”', so('Gheorghe Marin').text.ziMax === '8 h 10 min' && so('Gheorghe Marin').text.ziMaxZi === 'marți, 06.10' && so('Gheorghe Marin').text.continuuMax === '4 h 9 min' && so('Gheorghe Marin').text.sursa === 'tahograf' && so('Ion Popescu').text.sursa === 'estimat din GPS');
   T('încălcările sunt ALE RAPORTULUI (aceleași cuvinte), cu ziua; autoturismul și mașina fără șofer: Reg. 561 nu se aplică', oc.incalcari.length === 1 && oc.incalcari[0].ce === 'condus continuu 5 h 20 min' && oc.incalcari[0].ziText === 'luni, 05.10' && so('Maria Ionescu').supus === false && so('CJ 12 RAT · Transit').faraSofer === true);
   T('flota: 17 h 30 min (6 h 20 + 8 h 10 + 2 h + 1 h), 3 șoferi + 1 mașină fără șofer, 1 încălcare la un șofer, 1 din 4 cu tahograf', oc.flota.text === '17 h 30 min' && oc.flota.soferi === 3 && oc.flota.faraSofer === 1 && oc.flota.incalcari === 1 && oc.flota.cuIncalcari === 1 && oc.flota.tahograf === 1 && oc.flota.ziMax.nume === 'Gheorghe Marin' && oc.flota.continuuMax.nume === 'Ion Popescu', JSON.stringify(oc.flota));
-  T('săptămâna dinainte: doar orele, fără judecată („+15 h 30 min față de 28–30 septembrie", info)', oc.fata.fel === 'info' && oc.fata.text === '+15 h 30 min față de 28–30 septembrie' && oc.inainte.text === '2 h', JSON.stringify(oc.fata));
+  T('săptămâna dinainte: doar orele, fără judecată („+15 h 30 min față de 28–30 septembrie”, info)', oc.fata.fel === 'info' && oc.fata.text === '+15 h 30 min față de 28–30 septembrie' && oc.inainte.text === '2 h', JSON.stringify(oc.fata));
   const rh = oc.recomandari.map((x) => x.fel + ': ' + x.text);
   T('recomandările: încălcarea lui Ion (estimare din GPS → verifică pe tahograf), orele estimate, mașina fără șofer', rh.length === 3 && /^atentie: Ion Popescu: o încălcare a Reg\. 561 — condus continuu 5 h 20 min \(luni, 05\.10\)\. E o estimare din GPS: verifică pe tahograf/.test(rh[0]) && /^info: La un șofer orele sunt estimate din GPS/.test(rh[1]) && /^info: O mașină a mers fără șofer trecut/.test(rh[2]), rh.join('\n      '));
   const oc2 = RM.alcatuiesteOreCondus({ valori: [VH[2]], valoriInainte: [], azi: null, eticheta: '28 septembrie – 4 octombrie', etInainte: '21–27 septembrie', panaAzi: false, inaintePregatita: true, acum: ACUM });
-  T('fără încălcări la camioane: „Nicio încălcare a Reg. 561 în …" (bun); săptămâna trecută n-are coloana „azi"', oc2.recomandari.length === 1 && oc2.recomandari[0].fel === 'bun' && /Nicio încălcare a Reg\. 561 în 28 septembrie – 4 octombrie/.test(oc2.recomandari[0].text) && oc2.soferi[0].azi === null && oc2.fata.text === 'fără condus în 21–27 septembrie — nimic de comparat', JSON.stringify([oc2.recomandari, oc2.fata]));
+  T('fără încălcări la camioane: „Nicio încălcare a Reg. 561 în …” (bun); săptămâna trecută n-are coloana „azi”', oc2.recomandari.length === 1 && oc2.recomandari[0].fel === 'bun' && /Nicio încălcare a Reg\. 561 în 28 septembrie – 4 octombrie/.test(oc2.recomandari[0].text) && oc2.soferi[0].azi === null && oc2.fata.text === 'fără condus în 21–27 septembrie — nimic de comparat', JSON.stringify([oc2.recomandari, oc2.fata]));
   const oc3 = RM.alcatuiesteOreCondus({ valori: [VH[3]], valoriInainte: [], azi: null, eticheta: 'x', etInainte: 'y', panaAzi: false, inaintePregatita: true, acum: ACUM });
-  T('doar autoturisme: spune că Reg. 561 nu se aplică (nu „nicio încălcare")', oc3.recomandari.length === 1 && /nu se aplică la autoturisme/.test(oc3.recomandari[0].text) && oc3.recomandari[0].fel === 'info');
+  T('doar autoturisme: spune că Reg. 561 nu se aplică (nu „nicio încălcare”)', oc3.recomandari.length === 1 && /nu se aplică la autoturisme/.test(oc3.recomandari[0].text) && oc3.recomandari[0].fel === 'info');
   const exH = RM.explicatiiOreCondus().map((x) => x.text).join(' ');
   const fH = (RP.split('async function rHos(')[1] || '').split('\nasync function ')[0];
-  T('„Cum se socotește" spune pragurile RAPORTULUI (4h30 / 45 de minute / 10 și 9 ore / 56 de ore / repaus 9 ore doar cu tahograful) — legate de codul lui', /peste 4h30 fără o pauză de 45 de minute/.test(exH) && /peste 10 ore, sau peste 9 ore/.test(exH) && /peste 56 de ore/.test(exH) && /sub 9 ore se verifică doar cu tahograful/.test(exH) &&
+  T('„Cum se socotește” spune pragurile RAPORTULUI (4h30 / 45 de minute / 10 și 9 ore / 56 de ore / repaus 9 ore doar cu tahograful) — legate de codul lui', /peste 4h30 fără o pauză de 45 de minute/.test(exH) && /peste 10 ore, sau peste 9 ore/.test(exH) && /peste 56 de ore/.test(exH) && /sub 9 ore se verifică doar cu tahograful/.test(exH) &&
     /d\.contMax > 4\.5/.test(fH) && /restRun >= 45 \* 60/.test(fH) && /dh > 10/.test(fH) && /dh > 9/.test(fH) && /weekExt\[wk\] > 2/.test(fH) && /\/ 3600 > 56/.test(fH) && /if \(rh < 9\)/.test(fH) && /useTacho && d\.drive > 0/.test(fH));
   T('raportul pune fiecare zi pe șoferul de atunci (istoricul șoferilor), ca EcoDrive pe șofer', /db\.istoricSoferi\(imeis\)/.test(fH) && /condus\.soferLa\(iv\)/.test(fH) && /valori\.push\(\{ cheie: key/.test(fH));
   const fO = fn('_ramOreCondus');
-  T('cifrele vin din raportul „Condus & repaus" (runReport hos), cu opțiunile ecranului Rapoarte, pentru săptămână și pentru cea dinainte', /reports\.runReport\(db, 'hos', imeis, iso\(p\.de\), iso\(p\.pana\), opts, scope\)/.test(fO) && /reports\.runReport\(db, 'hos', imeis, iso\(p\.deI\), iso\(p\.panaI\), opts, scope\)/.test(fO) && /_optiuniRaport\(\{\}, f\.cs\)/.test(fO) && /await _ramFlota\(req\)/.test(fO));
+  T('cifrele vin din raportul „Condus & repaus” (runReport hos), cu opțiunile ecranului Rapoarte, pentru săptămână și pentru cea dinainte', /reports\.runReport\(db, 'hos', imeis, iso\(p\.de\), iso\(p\.pana\), opts, scope\)/.test(fO) && /reports\.runReport\(db, 'hos', imeis, iso\(p\.deI\), iso\(p\.panaI\), opts, scope\)/.test(fO) && /_optiuniRaport\(\{\}, f\.cs\)/.test(fO) && /await _ramFlota\(req\)/.test(fO));
   T('pagina și RA Insight cer orele prin ACEEAȘI funcție (_ramOreCondus: ruta, unealta, numerele)', (SRV.match(/await _ramOreCondus\(req, /g) || []).length === 3);
-  const blocH = (PAG.split('// ─── Ramura „Ore de condus"')[1] || '').split('// Ecranul unde se rezolvă un rând')[0];
+  const blocH = (PAG.split('// ─── Ramura „Ore de condus”')[1] || '').split('// Ecranul unde se rezolvă un rând')[0];
   T('pagina: ramura se arată și are pagina ei', /k: 'orecondus', et: 'Ore de condus', ic: 'fa-stopwatch', gata: true/.test(PAG) && /if \(S\.ramura === 'orecondus'\) return deseneazaOreCondus\(main, S\.hcSapt\);/.test(PAG) && blocH.length > 1000);
   T('pagina nu socotește: o singură cerere, fără praguri (4,5 / 9 / 10 / 56 de ore) și fără socoteli de ore', (blocH.match(/'\/api\/insight\/ore-condus'/g) || []).length === 1 && !/\b(4\.5|270|540|56)\b|\/ ?3600|\* ?3600/.test(blocH), (blocH.match(/\b(4\.5|270|540|56)\b|\/ ?3600|\* ?3600/g) || []).join(','));
   const ihH = blocH.match(/innerHTML = [^;]*;/g) || [];
   T('pagina: textele serverului se pun cu textContent (innerHTML doar pentru iconițe)', ihH.length >= 4 && ihH.every((x) => !/\.(text|nume|ce|ziText|eticheta|atentie|message|error|optiune)\b/.test(x)), ihH.join(' | '));
 
-  console.log('\n1d. Scrisoarea de luni — scoasă pe 04.11 (Alin: „o scoatem de tot")');
+  console.log('\n1d. Scrisoarea de luni — scoasă pe 04.11 (Alin: „o scoatem de tot”)');
   T('nicio regulă de-a ei în ramuri.js și nicio tură în server', typeof RM.fapteScrisoare === 'undefined' && typeof RM.textulTrece === 'undefined' &&
     !/scrisoareaDeLuniTick|_fapteScrisoare|_scrieScrisoarea|SCRISOARE_ORA/.test(SRV) && !/runScrisoare/.test(SRV));
-  T('pagina: nicio ramură „Scrisoarea de luni", nicio pagină a ei; un anunț vechi duce doar în RA Insight', !/k: 'scrisoare'/.test(PAG) && !/deseneazaScrisoare|insightDeschideScrisoarea/.test(PAG) &&
+  T('pagina: nicio ramură „Scrisoarea de luni”, nicio pagină a ei; un anunț vechi duce doar în RA Insight', !/k: 'scrisoare'/.test(PAG) && !/deseneazaScrisoare|insightDeschideScrisoarea/.test(PAG) &&
     /d\.type === 'scrisoare_luni'\) \{ closeNotifDetail\(\); if \(typeof showView === 'function'\) showView\('insight'\); return; \}/.test(PAG));
   T('scrisorile deja trimise și anunțurile lor se șterg o dată, la pornire; ștergerea la 12 luni rămâne (tabela e goală)', /async function _scrisoriSterse\(\)/.test(SRV) && /DELETE FROM scrisori_luni RETURNING id/.test(SRV) &&
     /DELETE FROM notifications WHERE type = 'scrisoare_luni'/.test(SRV) && /await db\.stergeScrisoriMaiVechiDe\(luni\)/.test(SRV));
@@ -175,27 +175,27 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   T('preavizul: acte 30 de zile, revizii 14 zile / 500 km; firma îl schimbă, o valoare proastă cade pe cea globală', JSON.stringify(PV.dinPraguri({})) === JSON.stringify({ days: 14, km: 500, docDays: 30 }) &&
     PV.peFirme({ docDaysLead: 21 }, [{ id: 5, praguri: { docDaysLead: 7, careKmLead: 'x' } }]).of(5).docDays === 7 && PV.peFirme({ docDaysLead: 21 }, [{ id: 5, praguri: { careKmLead: 'x' } }]).of(5).km === 500 &&
     PV.peFirme({ docDaysLead: 21 }, []).of(9).docDays === 21);
-  T('starea unui act: 20 de zile = „curând" la 30 de preaviz, „în regulă" la 7; trecut = „expirat"; fără dată = „none"', PV.stareAct({ expiry_date: ZZ(20) }, 30, ACUM) === 'soon' && PV.stareAct({ expiry_date: ZZ(20) }, 7, ACUM) === 'ok' && PV.stareAct({ expiry_date: ZZ(-2) }, 30, ACUM) === 'expired' && PV.stareAct({}, 30, ACUM) === 'none');
-  T('starea unei revizii: 400 km rămași = „curând" la 500, „în regulă" la 300; 0 km = depășită; închisă = în regulă', PV.stareRevizie({ due_km: 150000 }, 149600, { km: 500 }, ACUM) === 'due_soon' && PV.stareRevizie({ due_km: 150000 }, 149600, { km: 300 }, ACUM) === 'ok' &&
+  T('starea unui act: 20 de zile = „curând” la 30 de preaviz, „în regulă” la 7; trecut = „expirat”; fără dată = „none”', PV.stareAct({ expiry_date: ZZ(20) }, 30, ACUM) === 'soon' && PV.stareAct({ expiry_date: ZZ(20) }, 7, ACUM) === 'ok' && PV.stareAct({ expiry_date: ZZ(-2) }, 30, ACUM) === 'expired' && PV.stareAct({}, 30, ACUM) === 'none');
+  T('starea unei revizii: 400 km rămași = „curând” la 500, „în regulă” la 300; 0 km = depășită; închisă = în regulă', PV.stareRevizie({ due_km: 150000 }, 149600, { km: 500 }, ACUM) === 'due_soon' && PV.stareRevizie({ due_km: 150000 }, 149600, { km: 300 }, ACUM) === 'ok' &&
     PV.stareRevizie({ due_km: 150000 }, 150000, {}, ACUM) === 'overdue' && PV.stareRevizie({ due_date: ZZ(-1), status: 'done' }, null, {}, ACUM) === 'ok');
   const care = async (th, docs, mnt) => (await AG.AGENTS.care.run({ imeis: ['C1'], livePositions: new Map(), companyId: 1, alertThresholds: th,
     db: { getVehicleDocuments: async () => docs, getMaintenance: async () => mnt } })).findings;
   const fc1 = await care({}, [{ id: 1, imei: 'C1', doc_type: 'RCA', expiry_date: new Date(Date.now() + 20 * ZI).toISOString() }], [{ id: 2, imei: 'C1', type: 'Revizie', due_date: new Date(Date.now() + 20 * ZI).toISOString(), status: 'pending' }]);
   const fc2 = await care({ docDaysLead: 10 }, [{ id: 1, imei: 'C1', doc_type: 'RCA', expiry_date: new Date(Date.now() + 20 * ZI).toISOString() }], []);
-  // 17.11 (Alin: „rezolvă"): agentul scrie „20 de zile" (cate din agents.js), nu „20 zile".
+  // 17.11 (Alin: „rezolvă”): agentul scrie „20 de zile” (cate din agents.js), nu „20 zile”.
   T('agentul RA Care: RCA-ul care expiră în 20 de zile e anunțat (preavizul actelor, 30 — era 14); revizia de peste 20 de zile nu (14); cu preavizul firmei de 10 zile, nici RCA-ul', fc1.some((f) => /RCA expiră în 20 de zile/.test(f.title)) && !fc1.some((f) => /Revizie/.test(f.title)) && fc2.length === 0, JSON.stringify([fc1.map((f) => f.title), fc2.map((f) => f.title)]));
   const AGS = fs.readFileSync(path.join(__dirname, 'agents.js'), 'utf8'), RPS = fs.readFileSync(path.join(__dirname, 'reports.js'), 'utf8');
   T('o singură sursă: listele (maintenanceDueState / documentDueState), preavizul firmelor și RA Care trec prin preaviz.js', /function maintenanceDueState\(m, odo, leads\) \{ return preaviz\.stareRevizie\(m, odo, leads\); \}/.test(SRV) && /function documentDueState\(d, leadDays\) \{ return preaviz\.stareAct\(d, leadDays\); \}/.test(SRV) &&
     /return preaviz\.peFirme\(await _getGlobalAlertThresholds\(\), firme\);/.test(SRV) && /const lead = preaviz\.dinPraguri\(thresholds\);/.test(AGS) && /days <= docDaysLead/.test(AGS) && !/: 14;\n/.test(AGS.split('async function raCare(')[1].split('\nasync function ')[0]));
   const fDue = (RPS.split('async function rDocServiceDue(')[1] || '').split('\nasync function ')[0];
-  T('raportul „Scadențe": starea listelor, cu preavizul FIECĂREI firme (nu 7 / 30 de zile, 500 / 2.000 km scrise în el)', /preaviz\.stareAct\(d, lead\.of\(d\.company_id\)\.docDays, acum\)/.test(fDue) && /preaviz\.stareRevizie\(\{ due_date: m\.due_date \}, null, L, acum\)/.test(fDue) && /preaviz\.stareRevizie\(\{ due_km: m\.due_km \}, odo, L, acum\)/.test(fDue) && !/2000|_dueStatus/.test(fDue) && !/function _dueStatus/.test(RPS));
-  T('„Reg. 561 se aplică": o regulă (tipul din fișă — lista modulului Tahograf — sau datele de tahograf): „Auto" și „Duba" nu, „Autotractor" și „autocar" da',
+  T('raportul „Scadențe”: starea listelor, cu preavizul FIECĂREI firme (nu 7 / 30 de zile, 500 / 2.000 km scrise în el)', /preaviz\.stareAct\(d, lead\.of\(d\.company_id\)\.docDays, acum\)/.test(fDue) && /preaviz\.stareRevizie\(\{ due_date: m\.due_date \}, null, L, acum\)/.test(fDue) && /preaviz\.stareRevizie\(\{ due_km: m\.due_km \}, odo, L, acum\)/.test(fDue) && !/2000|_dueStatus/.test(fDue) && !/function _dueStatus/.test(RPS));
+  T('„Reg. 561 se aplică”: o regulă (tipul din fișă — lista modulului Tahograf — sau datele de tahograf): „Auto” și „Duba” nu, „Autotractor” și „autocar” da',
     TH.supusReg561('Auto', false) === false && TH.supusReg561('Duba', false) === false && TH.supusReg561('Autotractor', false) === true && TH.supusReg561('autocar', false) === true && TH.supusReg561('Auto', true) === true && TH.supusReg561(true, false) === true);
   T('…folosită de agentul RA Compliance, de raportul Condus & repaus (deci și de ramura Ore de condus) și de Tahograf; a treia listă a agentului a plecat',
     /tacho\.supusReg561\(await _isTruck\(ctx, imei\), !!\(live && _hasAnyTachoSignal\(live\)\)\)/.test(AGS) && /tacho\.vehiculAreTahograf\(d\.vehicle_type\)/.test(AGS) && !/TACHO_TRUCK_TYPES/.test(AGS) &&
     /tacho\.supusReg561\(\(devMap\[i\] \|\| \{\}\)\.vehicle_type, useTacho\)/.test(fH) && !/car\|autoturism\|van\|autoutilitar/.test(fH));
   const fStat = (RPS.split('async function fuelStats(')[1] || '').split('\nasync function ')[0];
-  T('„Statistici consum": km socotiți ca la raportul Consum (doar între poziții la cel mult 5 minute)', /dt > 0 && dt <= 300 && dd < MAX_STEP_KM/.test(fStat) && /dt > 0 && dt <= 300 && dd < MAX_STEP_KM/.test((RPS.split('async function _consumptionMap(')[1] || '').split('\nasync function ')[0]));
+  T('„Statistici consum”: km socotiți ca la raportul Consum (doar între poziții la cel mult 5 minute)', /dt > 0 && dt <= 300 && dd < MAX_STEP_KM/.test(fStat) && /dt > 0 && dt <= 300 && dd < MAX_STEP_KM/.test((RPS.split('async function _consumptionMap(')[1] || '').split('\nasync function ')[0]));
   T('orele de condus: săptămânile întregi (zilele de dinainte, citite pe pagini) și 90 de ore în două săptămâni; legenda raportului o spune', /fiecarePozitie\(db, imei, preDe, from,/.test(fH) && /const pre = inainte\[key\]/.test(fH) && /doua \/ 3600 > 90/.test(fH) &&
     /\['Două săptămâni', 'Cel mult 90 de ore în două săptămâni la rând/.test(RPS) && !/limita pe 2 săptămâni \(90h\) nu sunt incluse/.test(RPS) && /peste 90 de ore în două săptămâni la rând/.test(exH), exH);
 
@@ -262,7 +262,7 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const are = (ce, cine) => rd.filter((x) => x.ce === ce && (!cine || String(x.cine).indexOf(cine) >= 0))[0];
   T('lista are tot ce trebuie, într-o ordine: ITP expirat, revizia Caddy-ului, apoi RCA, uleiul (400 km), permisul lui Ion', p.status === 200 && rd.length === 5 &&
     rd[0].ce === 'ITP' && rd[0].stare === 'depasit' && rd[1].ce === 'Revizie generală' && rd[1].stare === 'depasit' && rd.slice(2).every((x) => x.stare === 'curand'), JSON.stringify(rd.map((x) => [x.ce, x.stare, x.cand])));
-  T('„când", în cuvinte: „a expirat … (acum 3 zile)", „expiră … peste 5 zile", „mai are 400 de km (la 150.000 km)", „expiră … peste 10 zile"',
+  T('„când”, în cuvinte: „a expirat … (acum 3 zile)”, „expiră … peste 5 zile”, „mai are 400 de km (la 150.000 km)”, „expiră … peste 10 zile”',
     /acum 3 zile\)$/.test((are('ITP') || {}).cand) && /peste 5 zile$/.test((are('RCA') || {}).cand) && (are('Schimb ulei + filtru') || {}).cand === 'mai are 400 de km (la 150.000 km)' && /peste 10 zile$/.test((are('Permis de conducere') || {}).cand),
     JSON.stringify(rd.map((x) => x.cand)));
   T('mașina scrisă cu numărul și numele; permisul cu numele șoferului; fiecare cu ecranul unde se rezolvă', /B 154 UIP/.test((are('ITP') || {}).cine) && (are('Permis de conducere') || {}).cine === 'Ion Popescu' &&
@@ -273,12 +273,12 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const ld = (await json('GET', '/api/documents', ckSef)).j, lm = (await json('GET', '/api/maintenance', ckSef)).j;
   const stD = (tip) => ((Array.isArray(ld) ? ld : []).filter((x) => x.doc_type === tip)[0] || {})._due;
   const stM = (tip) => ((Array.isArray(lm) ? lm : []).filter((x) => x.type === tip)[0] || {})._due;
-  T('aceleași stări ca listele: ITP „expired", RCA „soon", rovinieta „ok"; uleiul „due_soon", revizia „overdue"', stD('ITP') === 'expired' && stD('RCA') === 'soon' && stD('Rovinietă') === 'ok' && stM('Schimb ulei + filtru') === 'due_soon' && stM('Revizie generală') === 'overdue',
+  T('aceleași stări ca listele: ITP „expired”, RCA „soon”, rovinieta „ok”; uleiul „due_soon”, revizia „overdue”', stD('ITP') === 'expired' && stD('RCA') === 'soon' && stD('Rovinietă') === 'ok' && stM('Schimb ulei + filtru') === 'due_soon' && stM('Revizie generală') === 'overdue',
     [stD('ITP'), stD('RCA'), stD('Rovinietă'), stM('Schimb ulei + filtru'), stM('Revizie generală')].join(','));
   // Preavizul firmei: actele la 7 zile → RCA-ul de peste 5 zile rămâne, uleiul cu preaviz de 300 km iese din listă
   const pr = await json('PUT', '/api/companies/me/settings', ckSef, { alert_thresholds: { docDaysLead: 7, careKmLead: 300 } });
   const p2 = await json('GET', '/api/insight/mentenanta', ckSef);
-  T('preavizul firmei schimbă lista (acte la 7 zile, revizii la 300 de km: uleiul cu 400 de km ieșit) și „Cum se socotește"', pr.status === 200 && !(p2.j.randuri || []).some((x) => x.ce === 'Schimb ulei + filtru') && (p2.j.randuri || []).some((x) => x.ce === 'RCA') && /cu 7 zile înainte de expirare/.test(((p2.j.explicatii || [])[0] || {}).text || '') && /300 de km/.test(((p2.j.explicatii || [])[0] || {}).text || ''),
+  T('preavizul firmei schimbă lista (acte la 7 zile, revizii la 300 de km: uleiul cu 400 de km ieșit) și „Cum se socotește”', pr.status === 200 && !(p2.j.randuri || []).some((x) => x.ce === 'Schimb ulei + filtru') && (p2.j.randuri || []).some((x) => x.ce === 'RCA') && /cu 7 zile înainte de expirare/.test(((p2.j.explicatii || [])[0] || {}).text || '') && /300 de km/.test(((p2.j.explicatii || [])[0] || {}).text || ''),
     pr.status + ' ' + JSON.stringify((p2.j.randuri || []).map((x) => x.ce)) + ' ' + JSON.stringify((p2.j.explicatii || [])[0]));
   const pF = await json('GET', '/api/insight/mentenanta', ckFara);
   T('fără loc RA Insight: 403, fără lista', pF.status === 403 && !pF.j.randuri, pF.status);
@@ -289,7 +289,7 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   T('…iar Safe Drive n-are număr cât luna nu e socotită (deschiderea secțiunii nu pornește socoteala)', nr.j.safedrive === undefined, JSON.stringify(nr.j));
 
   // ─── 3. Combustibil, pe server pornit: ACELEAȘI cifre ca rapoartele, pentru aceeași perioadă ────────────
-  console.log('\n3. Combustibil — aceleași cifre ca rapoartele Consum, Costuri și „Alimentări & scăderi"');
+  console.log('\n3. Combustibil — aceleași cifre ca rapoartele Consum, Costuri și „Alimentări & scăderi”');
   const SD = require('./safe_drive');
   // Lunile trecute (ora României), întregi: drumurile stau pe 15 ale lor — departe de capete, deci proba nu depinde de azi.
   const lunaAzi = SD.lunaDe(Date.now()), L1 = SD.lunaDinainte(lunaAzi), L2 = SD.lunaDinainte(L1);
@@ -339,24 +339,24 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const evR = ((rFuel && rFuel.valori) || []).filter((e) => e.imei === V[0] || e.imei === V[1]);
   const scR = evR.filter((e) => e.fel === 'scadere'), alR = evR.filter((e) => e.fel === 'alimentare');
   const sc = (c1.j.scaderi || [])[0] || {};
-  T('alimentările și scăderile = raportul „Alimentări & scăderi" (1 alimentare de ~30 L, 1 scădere de 20 L)', alR.length === 1 && scR.length === 1 && c1.j.evenimente.alimentari === 1 && c1.j.evenimente.scaderi === 1 &&
+  T('alimentările și scăderile = raportul „Alimentări & scăderi” (1 alimentare de ~30 L, 1 scădere de 20 L)', alR.length === 1 && scR.length === 1 && c1.j.evenimente.alimentari === 1 && c1.j.evenimente.scaderi === 1 &&
     c1.j.evenimente.litriAlimentati === Math.round(alR[0].litri) && sc.litri === scR[0].litri && sc.litri === 20 && sc.de === scR[0].de && sc.la === scR[0].la && sc.ts === scR[0].ts, JSON.stringify([c1.j.evenimente, sc, scR, alR.map((e) => e.litri)]));
   const oraRO = new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }).format(new Date(t1 + 179 * 60000));
   T('scăderea: cu motorul oprit, la ora României (' + oraRO + ' pe 15), cu locul pe hartă', sc.motorPornit === false && sc.cand === '15.' + L1.slice(5) + ', ' + oraRO && typeof sc.lat === 'number' && typeof sc.lng === 'number' && /B 154 UIP/.test(sc.eticheta || ''), JSON.stringify(sc));
-  T('„peste normă": Loganul (CAN, 109 km, peste cei 8 L din fișă — cel mai mare consum trecut); Caddy-ul (estimat) nu', (c1.j.pesteNorma || []).map((m) => m.imei).join() === V[0] && m0.norma === 8 && m0.peste === Math.round((m0.l100 / 8 - 1) * 100) && m0.peste > 30 && m1.peste === null, JSON.stringify([m0.norma, m0.l100, m0.peste, m1.peste]));
+  T('„peste normă”: Loganul (CAN, 109 km, peste cei 8 L din fișă — cel mai mare consum trecut); Caddy-ul (estimat) nu', (c1.j.pesteNorma || []).map((m) => m.imei).join() === V[0] && m0.norma === 8 && m0.peste === Math.round((m0.l100 / 8 - 1) * 100) && m0.peste > 30 && m1.peste === null, JSON.stringify([m0.norma, m0.l100, m0.peste, m1.peste]));
   const rc = (c1.j.recomandari || []).map((x) => x.text);
   T('recomandările: Loganul peste normă, scăderea cu motorul oprit, Caddy-ul estimat', /^B 154 UIP · Dacia Logan 3 a consumat .* L la 100 km, cu \d+% peste/.test(rc[0] || '') && /O scădere suspectă de combustibil; cea mai nouă: B 154 UIP · Dacia Logan 3, 15\./.test(rc[1] || '') && /cu motorul oprit/.test(rc[1] || '') && /La 1 din 2 mașini consumul e ESTIMAT/.test(rc[2] || ''), rc.join(' || '));
   const lit2 = vi(rCons2, V[0]).litri, cost2 = vi(rCost2, V[0]).cost;
   T('luna dinainte (' + L2 + ', întreagă) = rapoartele pe luna aceea: litri și cost', c1.j.inainte && c1.j.inainte.litri === Math.round(lit2) && c1.j.inainte.cost === cost2 && c1.j.inainte.km === vi(rCons2, V[0]).km && c1.j.fata && c1.j.fata.fel === 'atentie' && c1.j.fata.cost.indexOf(c1.j.inainte.eticheta) > 0,
     JSON.stringify([c1.j.inainte, lit2, cost2, c1.j.fata]));
   T('pe mașină, față de luna dinainte: Loganul are comparație, Caddy-ul (fără drum atunci) nu', m0.fata && m0.fata.fel === 'atentie' && /^\+/.test(m0.fata.text) && m1.fata === null, JSON.stringify([m0.fata, m1.fata]));
-  T('„Cum se socotește": patru explicații, cu pragul de scădere al rapoartelor (10 litri)', (c1.j.explicatii || []).length === 4 && /cel puțin 10 litri/.test(JSON.stringify(c1.j.explicatii)));
+  T('„Cum se socotește”: patru explicații, cu pragul de scădere al rapoartelor (10 litri)', (c1.j.explicatii || []).length === 4 && /cel puțin 10 litri/.test(JSON.stringify(c1.j.explicatii)));
   T('altă firmă nu apare (Focus-ul ei a mers luna trecută)', c1.text.indexOf('CJ 01 ALT') < 0);
   // Grupa: Caddy-ul singur într-o grupă
   const gr = (await json('POST', '/api/groups', ckSef, { name: 'Utilitare' })).j;
   await json('PUT', '/api/devices/' + V[1] + '/assign', ckSef, { group_id: gr.id });
   const cG = await cbPagina(ckSef, '?luna=' + L1 + '&grupa=' + gr.id);
-  T('grupa „Utilitare": doar Caddy-ul; grupa aleasă și lista grupelor vin de la server', cG.status === 200 && cG.j.grupaAleasa === gr.id && (cG.j.masini || []).length === 1 && cG.j.masini[0].imei === V[1] && (cG.j.grupe || []).some((g) => g.id === gr.id) && (cG.j.scaderi || []).length === 0, JSON.stringify([cG.j.grupaAleasa, (cG.j.masini || []).map((m) => m.eticheta), (cG.j.grupe || []).map((g) => g.eticheta)]));
+  T('grupa „Utilitare”: doar Caddy-ul; grupa aleasă și lista grupelor vin de la server', cG.status === 200 && cG.j.grupaAleasa === gr.id && (cG.j.masini || []).length === 1 && cG.j.masini[0].imei === V[1] && (cG.j.grupe || []).some((g) => g.id === gr.id) && (cG.j.scaderi || []).length === 0, JSON.stringify([cG.j.grupaAleasa, (cG.j.masini || []).map((m) => m.eticheta), (cG.j.grupe || []).map((g) => g.eticheta)]));
   const cA = await cbPagina(ckAlt, '?luna=' + L1);
   T('cealaltă firmă își vede DOAR Focus-ul ei', cA.status === 200 && (cA.j.masini || []).length === 1 && /CJ 01 ALT/.test(cA.j.masini[0].eticheta) && cA.text.indexOf('B 154 UIP') < 0, JSON.stringify((cA.j.masini || []).map((m) => m.eticheta)));
   const cF = await json('GET', '/api/insight/combustibil?luna=' + L1, ckFara);
@@ -366,8 +366,8 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const nrC = await json('GET', '/api/insight/ramuri', ckSef);
   T('numărul de lângă Combustibil = scăderi + mașini peste normă, în luna de acum (deja socotită)', cAcum.status === 200 && cAcum.j.lunaAleasa === lunaAzi && !cAcum.j.pregatire && nrC.j.combustibil === (cAcum.j.scaderi || []).length + (cAcum.j.pesteNorma || []).length, JSON.stringify([nrC.j, cAcum.j.lunaAleasa, (cAcum.j.masini || []).length]));
 
-  // ─── 4. Ore de condus, pe server pornit: ACELEAȘI ore și încălcări ca raportul „Condus & repaus (Reg. 561)" ──────
-  console.log('\n4. Ore de condus — aceleași ore și încălcări ca raportul „Condus & repaus (Reg. 561)"');
+  // ─── 4. Ore de condus, pe server pornit: ACELEAȘI ore și încălcări ca raportul „Condus & repaus (Reg. 561)” ──────
+  console.log('\n4. Ore de condus — aceleași ore și încălcări ca raportul „Condus & repaus (Reg. 561)”');
   const C4 = require('./condus');
   const ziPlus = (z, n) => { const d = new Date(z + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   const aziRO = C4.zi(Date.now()), luniAcum = ziPlus(aziRO, -C4.ziSapt(aziRO)), luniT = ziPlus(luniAcum, -7), luniTT = ziPlus(luniAcum, -14);
@@ -405,23 +405,23 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const sh = (n) => (h1.j.soferi || []).filter((x) => x.nume === n)[0] || {};
   const oreRap = (n) => vH.filter((x) => x.sofer === n).reduce((a, x) => a + x.condusSec, 0);
   T('săptămâna trecută: Gheorghe (camionul) și Ion (Loganul); săptămâna aleasă e cea cerută', h1.status === 200 && h1.j.saptamanaAleasa === luniT && (h1.j.soferi || []).length === 2 && sh('Gheorghe Marin').condusSec > 0 && sh('Ion Popescu').condusSec > 0, h1.status + ' ' + JSON.stringify((h1.j.soferi || []).map((x) => [x.nume, x.text && x.text.condus])));
-  T('orele = raportul „Condus & repaus", pe fiecare șofer', sh('Gheorghe Marin').condusSec === oreRap('Gheorghe Marin') && sh('Ion Popescu').condusSec === oreRap('Ion Popescu') && h1.j.flota.condusSec === vH.reduce((a, x) => a + x.condusSec, 0), JSON.stringify([sh('Gheorghe Marin').condusSec, oreRap('Gheorghe Marin'), sh('Ion Popescu').condusSec, oreRap('Ion Popescu')]));
+  T('orele = raportul „Condus & repaus”, pe fiecare șofer', sh('Gheorghe Marin').condusSec === oreRap('Gheorghe Marin') && sh('Ion Popescu').condusSec === oreRap('Ion Popescu') && h1.j.flota.condusSec === vH.reduce((a, x) => a + x.condusSec, 0), JSON.stringify([sh('Gheorghe Marin').condusSec, oreRap('Gheorghe Marin'), sh('Ion Popescu').condusSec, oreRap('Ion Popescu')]));
   T('fiecare zi pe șoferul care avea camionul ATUNCI: Gheorghe, nu Vasile (care l-a preluat azi) — și în raport, și în ramură', !(h1.j.soferi || []).some((x) => x.nume === 'Vasile Pop') && vH.some((x) => x.sofer === 'Gheorghe Marin') && !vH.some((x) => x.sofer === 'Vasile Pop') && (rH.rows || []).some((r) => r[0] === 'Gheorghe Marin'), JSON.stringify((rH.rows || []).map((r) => [r[0], r[2], r[3]])));
   const incR = [].concat(...vH.map((x) => (x.incalcari || []).map((c) => x.sofer + '|' + x.zi + '|' + c)));
   T('încălcările = ale raportului (o singură: luni, condus continuu peste 4h30)', (h1.j.incalcari || []).length === 1 && JSON.stringify((h1.j.incalcari || []).map((x) => x.nume + '|' + x.zi + '|' + x.ce)) === JSON.stringify(incR) && /^condus continuu 5 h/.test(h1.j.incalcari[0].ce) && h1.j.incalcari[0].zi === luniT, JSON.stringify([h1.j.incalcari, incR]));
-  T('Gheorghe: 2 zile, cea mai lungă miercuri (peste 8 h, în regulă), fără pauză cel mai mult luni; Ion: „nu se aplică" (autoturism)', sh('Gheorghe Marin').zile === 2 && sh('Gheorghe Marin').ziMax.zi === ziPlus(luniT, 2) && sh('Gheorghe Marin').ziMax.sec > 8 * 3600 && sh('Gheorghe Marin').continuuMax.zi === luniT && sh('Gheorghe Marin').supus === true && sh('Ion Popescu').supus === false && sh('Ion Popescu').incalcari === 0, JSON.stringify([sh('Gheorghe Marin').ziMax, sh('Gheorghe Marin').continuuMax, sh('Ion Popescu').supus]));
+  T('Gheorghe: 2 zile, cea mai lungă miercuri (peste 8 h, în regulă), fără pauză cel mai mult luni; Ion: „nu se aplică” (autoturism)', sh('Gheorghe Marin').zile === 2 && sh('Gheorghe Marin').ziMax.zi === ziPlus(luniT, 2) && sh('Gheorghe Marin').ziMax.sec > 8 * 3600 && sh('Gheorghe Marin').continuuMax.zi === luniT && sh('Gheorghe Marin').supus === true && sh('Ion Popescu').supus === false && sh('Ion Popescu').incalcari === 0, JSON.stringify([sh('Gheorghe Marin').ziMax, sh('Gheorghe Marin').continuuMax, sh('Ion Popescu').supus]));
   // Săptămâna dinainte se compară cu raportul pe ACEA săptămână: în primele zile ale lunii, drumurile din secțiunea 3 (pe 15 ale lunii
   // trecute) cad tot în ea (01.11: Loganul și Caddy-ul pe 15.10, în 12–18 octombrie), deci totalul flotei nu e doar camionul.
   const rHT = (await json('GET', '/api/reports/hos?from=' + encodeURIComponent(new Date(SD.inceput(luniTT)).toISOString()) + '&to=' + encodeURIComponent(deH), ckSef)).j;
   const vHT = (rHT && rHT.valori) || [];
   const ghT = vHT.filter((x) => x.sofer === 'Gheorghe Marin').reduce((a, x) => a + x.condusSec, 0);
-  T('săptămâna dinainte (cu două în urmă): aceleași ore ca raportul pe săptămâna aceea — camionul lui Gheorghe 1 h și ceva — și „+… față de …"', h1.j.inainte &&
+  T('săptămâna dinainte (cu două în urmă): aceleași ore ca raportul pe săptămâna aceea — camionul lui Gheorghe 1 h și ceva — și „+… față de …”', h1.j.inainte &&
     h1.j.inainte.condusSec === vHT.reduce((a, x) => a + x.condusSec, 0) && ghT > 3600 && ghT < 2 * 3600 && /^\+/.test(h1.j.fata.text) && h1.j.fata.text.indexOf(h1.j.inainte.eticheta) > 0,
     JSON.stringify([h1.j.inainte, h1.j.fata, ghT, vHT.map((x) => [x.sofer, x.zi, x.condusSec])]));
   T('recomandarea: încălcarea lui Gheorghe, cu ziua, și că e o estimare din GPS', /^Gheorghe Marin: o încălcare a Reg\. 561 — condus continuu 5 h/.test(((h1.j.recomandari || [])[0] || {}).text || '') && /estimare din GPS/.test(((h1.j.recomandari || [])[0] || {}).text || ''), JSON.stringify(h1.j.recomandari));
-  T('lista săptămânilor: 4, cea de acum întâi („Săptămâna asta · …")', (h1.j.saptamani || []).length === 4 && h1.j.saptamani[0].saptamana === luniAcum && /^Săptămâna asta · /.test(h1.j.saptamani[0].optiune) && h1.j.saptamani[1].saptamana === luniT && /^Săptămâna trecută · /.test(h1.j.saptamani[1].optiune), JSON.stringify(h1.j.saptamani));
+  T('lista săptămânilor: 4, cea de acum întâi („Săptămâna asta · …”)', (h1.j.saptamani || []).length === 4 && h1.j.saptamani[0].saptamana === luniAcum && /^Săptămâna asta · /.test(h1.j.saptamani[0].optiune) && h1.j.saptamani[1].saptamana === luniT && /^Săptămâna trecută · /.test(h1.j.saptamani[1].optiune), JSON.stringify(h1.j.saptamani));
   const hG = await hcPagina(ckSef, '?saptamana=' + luniT + '&grupa=' + grC.id);
-  T('grupa „Camioane": doar Gheorghe', hG.status === 200 && hG.j.grupaAleasa === grC.id && (hG.j.soferi || []).map((x) => x.nume).join() === 'Gheorghe Marin', JSON.stringify((hG.j.soferi || []).map((x) => x.nume)));
+  T('grupa „Camioane”: doar Gheorghe', hG.status === 200 && hG.j.grupaAleasa === grC.id && (hG.j.soferi || []).map((x) => x.nume).join() === 'Gheorghe Marin', JSON.stringify((hG.j.soferi || []).map((x) => x.nume)));
   const hA = await hcPagina(ckAlt, '?saptamana=' + luniT);
   T('cealaltă firmă nu vede camionul și șoferii noștri', hA.status === 200 && hA.text.indexOf('TM 77 RAT') < 0 && hA.text.indexOf('Gheorghe') < 0, hA.text.slice(0, 160));
   const hF = await json('GET', '/api/insight/ore-condus?saptamana=' + luniT, ckFara);
@@ -433,23 +433,23 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   // ─── 5. Scrisoarea de luni: scoasă (04.11) — pe server pornit ────────────────────────────────────────
   console.log('\n5. Scrisoarea de luni — scoasă: telefonul vechi primește 410, cu unde găsește același lucru');
   const ls = await json('GET', '/api/insight/scrisori', ckSef), ls1 = await json('GET', '/api/insight/scrisori/1', ckSef);
-  T('lista și o scrisoare: 410, cu textul pentru om („Azi la tine", rapoartele programate)', ls.status === 410 && ls1.status === 410 && ls.j.scoasa === true && /„Azi la tine”/.test(ls.j.error || '') && /Rapoarte/.test(ls.j.error || ''), ls.status + ' ' + JSON.stringify(ls.j));
+  T('lista și o scrisoare: 410, cu textul pentru om („Azi la tine”, rapoartele programate)', ls.status === 410 && ls1.status === 410 && ls.j.scoasa === true && /„Azi la tine”/.test(ls.j.error || '') && /Rapoarte/.test(ls.j.error || ''), ls.status + ' ' + JSON.stringify(ls.j));
   T('numerele de lângă pagini nu mai au scrisoarea', (await json('GET', '/api/insight/ramuri', ckSef)).j.scrisoare === undefined);
   const t1s = await json('POST', '/api/test/ceasuri', S, { acum: SD.inceput(luniAcum) + 8 * 3600000 + 60000, scrisori: true });
   T('lunea la 8: nicio tură de scrisori (ceasul probei nu mai are ce porni)', t1s.status === 200 && t1s.j.scrisori === undefined, JSON.stringify(t1s.j).slice(0, 200));
 
   // ─── 6. Cele 5 găsite pe drum, pe server pornit ──────────────────────────────────────────────────────────────
   console.log('\n6. Cele 5 găsite pe drum — pe server pornit');
-  // Raportul „Scadențe": firma noastră are preavizul la acte de 7 zile și la revizii de 300 km (secțiunea 2).
+  // Raportul „Scadențe”: firma noastră are preavizul la acte de 7 zile și la revizii de 300 km (secțiunea 2).
   await json('POST', '/api/documents', ckSef, { imei: V[1], doc_type: 'Tahograf', expiry_date: ziPeste(20) });
   const scadR = (await json('GET', '/api/reports/due?all=1&from=' + encodeURIComponent(new Date().toISOString()) + '&to=' + encodeURIComponent(new Date(Date.now() + 400 * ZI).toISOString()), ckSef)).j;
-  const col = (r, nume) => (r.columns || []).indexOf(nume);   // coloanele după nume (raportul primește și „Șofer")
+  const col = (r, nume) => (r.columns || []).indexOf(nume);   // coloanele după nume (raportul primește și „Șofer”)
   const stare = (tip) => (((scadR.rows || []).filter((r) => r[col(scadR, 'Tip')] === tip)[0]) || [])[col(scadR, 'Stare')];
-  T('„Scadențe" pe preavizul FIRMEI (acte 7 zile, revizii 300 km): ITP expirat = Depășit, RCA peste 5 zile = Critic, tahograful peste 20 de zile = OK (pragul vechi îl punea „Curând"), uleiul cu 400 km rămași = OK',
+  T('„Scadențe” pe preavizul FIRMEI (acte 7 zile, revizii 300 km): ITP expirat = Depășit, RCA peste 5 zile = Critic, tahograful peste 20 de zile = OK (pragul vechi îl punea „Curând”), uleiul cu 400 km rămași = OK',
     stare('ITP') === 'Depășit' && stare('RCA') === 'Critic' && stare('Tahograf') === 'OK' && stare('Rovinietă') === 'OK' && stare('Schimb ulei + filtru') === 'OK' && stare('Revizie generală') === 'Depășit', JSON.stringify((scadR.rows || []).map((r) => [r[col(scadR, 'Tip')], r[col(scadR, 'Stare')]])));
   const ldS = (await json('GET', '/api/documents', ckSef)).j;
   const dueL = (tip) => ((Array.isArray(ldS) ? ldS : []).filter((x) => x.doc_type === tip)[0] || {})._due;
-  T('…aceleași stări ca lista Documente: Tahograf „ok", RCA „soon", ITP „expired"', dueL('Tahograf') === 'ok' && dueL('RCA') === 'soon' && dueL('ITP') === 'expired', [dueL('Tahograf'), dueL('RCA'), dueL('ITP')].join(','));
+  T('…aceleași stări ca lista Documente: Tahograf „ok”, RCA „soon”, ITP „expired”', dueL('Tahograf') === 'ok' && dueL('RCA') === 'soon' && dueL('ITP') === 'expired', [dueL('Tahograf'), dueL('RCA'), dueL('ITP')].join(','));
   const scadA = (await json('GET', '/api/reports/due?all=1&from=' + encodeURIComponent(new Date().toISOString()) + '&to=' + encodeURIComponent(new Date(Date.now() + 400 * ZI).toISOString()), ckAlt)).j;
   T('…iar cealaltă firmă, cu preavizul de pornire, își vede ITP-ul ei Depășit și nimic de-al nostru', (scadA.rows || []).length === 1 && scadA.rows[0][col(scadA, 'Stare')] === 'Depășit' && JSON.stringify(scadA).indexOf('B 154 UIP') < 0, JSON.stringify(scadA.rows));
   // Orele de condus: un al doilea camion, 12 ore pe zi, luni–vineri, în ultimele două săptămâni (din 30 în 30 de minute).
@@ -471,7 +471,7 @@ const ziPeste = (n) => new Date(Date.now() + n * ZI).toISOString().slice(0, 10);
   const hR = (await json('GET', '/api/reports/hos?from=' + encodeURIComponent(new Date(SD.inceput(miercuri)).toISOString()) + '&to=' + encodeURIComponent(new Date(SD.inceput(luniAcum)).toISOString()), ckSef)).j;
   const incMi = (hR.valori || []).filter((x) => x.sofer === 'Mihai Stan');
   const peZi = (z) => ((incMi.filter((x) => x.zi === z)[0] || {}).incalcari || []).join(' | ');
-  T('perioada pornește MIERCURI, dar săptămâna se socotește întreagă: luni–marți (24 h) + miercuri–vineri = 60 h → „condus săptămânal peste 56 de ore" vineri (înainte: doar 36 h, fără încălcare)', /condus săptămânal peste 56 de ore/.test(peZi(ziPlus(luniT, 4))) && incMi.length === 3, JSON.stringify(incMi.map((x) => [x.zi, x.incalcari])));
+  T('perioada pornește MIERCURI, dar săptămâna se socotește întreagă: luni–marți (24 h) + miercuri–vineri = 60 h → „condus săptămânal peste 56 de ore” vineri (înainte: doar 36 h, fără încălcare)', /condus săptămânal peste 56 de ore/.test(peZi(ziPlus(luniT, 4))) && incMi.length === 3, JSON.stringify(incMi.map((x) => [x.zi, x.incalcari])));
   T('90 de ore în două săptămâni la rând: săptămâna dinainte (60 h) + luni–miercuri (36 h) = 96 h → încălcarea miercuri', /condus în două săptămâni la rând 96 h \(peste 90 de ore\)/.test(peZi(miercuri)) && !/două săptămâni/.test(peZi(ziPlus(luniT, 3))), peZi(miercuri));
   T('autotractorul intră la Reg. 561 (tipul din fișă), autoturismul nu', incMi.every((x) => x.supus) && ((hR.valori || []).filter((x) => x.sofer === 'Ion Popescu')[0] || { supus: false }).supus === false, JSON.stringify((hR.valori || []).map((x) => [x.sofer, x.supus])));
 

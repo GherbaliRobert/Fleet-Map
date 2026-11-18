@@ -42,22 +42,22 @@ T('ce se scrie: 24 de luni, prețul rotunjit la bani', JSON.stringify(cp({ luni:
 T('un număr stricat NU se ghicește (undefined → cererea se refuză)', cp({ luni: 'x' }) === undefined && cp({ luni: 999 }) === undefined && cp('24') === undefined);
 T('anexa semnată ține câte luni s-au cumpărat', C.facAnexa([], { monthlyTotal: 10, pastrareLuni: 24 }).pastrareLuni === 24);
 T('...dar nu și cele 12 incluse (nu e nimic de semnat în plus)', C.facAnexa([], { monthlyTotal: 10, pastrareLuni: 12 }).pastrareLuni === undefined);
-T('„Salvează anexa" nu pierde lunile semnate', C.dinAnexaDePastrat({ pastrareLuni: 36, servicii: [] }).pastrareLuni === 36);
+T('„Salvează anexa” nu pierde lunile semnate', C.dinAnexaDePastrat({ pastrareLuni: 36, servicii: [] }).pastrareLuni === 36);
 
 sect('2. Ecranul de ofertă spune aceleași cifre ca serverul');
 const incEcran = parseInt((html.match(/var _OF_LUNI_INCLUSE = (\d+), _OF_LUNI_MAX = (\d+);/) || [])[1], 10);
 const maxEcran = parseInt((html.match(/var _OF_LUNI_INCLUSE = (\d+), _OF_LUNI_MAX = (\d+);/) || [])[2], 10);
 T('cele incluse, în pagină = pe server', incEcran === C.LUNI_ISTORIC_INCLUSE, incEcran + ' vs ' + C.LUNI_ISTORIC_INCLUSE);
 T('plafonul, în pagină = pe server', maxEcran === C.LUNI_ISTORIC_MAX, maxEcran + ' vs ' + C.LUNI_ISTORIC_MAX);
-T('oferta pornește pe „12 luni (incluse)", nu pe 6', /<option value="12">12 luni \(incluse\)<\/option>/.test(html) && !/6 luni \(inclus\)/.test(fara(html)));
+T('oferta pornește pe „12 luni (incluse)”, nu pe 6', /<option value="12">12 luni \(incluse\)<\/option>/.test(html) && !/6 luni \(inclus\)/.test(fara(html)));
 T('și nicio ofertă nouă nu se mai naște pe 6', !/retTier: '6'/.test(html) && !/g\('of-ret'\) \|\| '6'/.test(html));
 T('12 luni n-au câmp de preț (sunt incluse)', !/'of-ret12'|'of-ret6'/.test(html) && !/\bret6:|\bret12:/.test(html));
-T('nici în lista „Prețurile noastre" de pe server', !/'ret6'|'ret12'/.test(fara(server.slice(server.indexOf('const TARIF_CHEI'), server.indexOf('const TARIF_CHEI') + 600))));
+T('nici în lista „Prețurile noastre” de pe server', !/'ret6'|'ret12'/.test(fara(server.slice(server.indexOf('const TARIF_CHEI'), server.indexOf('const TARIF_CHEI') + 600))));
 
 // Socoteala, rulată pe cod ADEVĂRAT (decupat din pagină), cu un document de carton.
 function decupez(nume) {
-  const a = html.indexOf('// ── începe „' + nume + '"'), b = html.indexOf('// ── sfârșit „' + nume + '" ──');
-  if (a < 0 || b < 0) { console.log('✗ nu găsesc blocul „' + nume + '"'); process.exit(1); }
+  const a = html.indexOf('// ── începe „' + nume + '”'), b = html.indexOf('// ── sfârșit „' + nume + '” ──');
+  if (a < 0 || b < 0) { console.log('✗ nu găsesc blocul „' + nume + '”'); process.exit(1); }
   return html.slice(a, b);
 }
 const _rDe = new Function(html.slice(html.indexOf('function _rDe(n)'), html.indexOf('// Aceleași sume, dar pentru celule de tabel:')) + '\n; return _rDe;')();
@@ -76,18 +76,18 @@ T('o ofertă veche pe 6 luni se socotește pe cele 12 incluse, fără bani', !re
 T('24 de luni: rândul de plată, cu prețul de listă (50)', !!retDin(o24) && retDin(o24).total === 50 && retDin(o24).label === 'Păstrare date 24 de luni', JSON.stringify(retDin(o24)));
 T('...și cu LUNILE pe rând (merg la contract și pe firmă)', !!retDin(o24) && retDin(o24).luni === 24);
 T('36 de luni: 100 de lei', !!retDin(o36) && retDin(o36).total === 100 && retDin(o36).luni === 36);
-T('alt număr (18): rândul lui, „18 luni"', CALC({ getElementById: () => null }, {}, () => {}, 5, null, null, _rDe, _raxDe)._ofRetLabel({ retTier: 'custom', retCustomMonths: 18 }) === '18 luni');
+T('alt număr (18): rândul lui, „18 luni”', CALC({ getElementById: () => null }, {}, () => {}, 5, null, null, _rDe, _raxDe)._ofRetLabel({ retTier: 'custom', retCustomMonths: 18 }) === '18 luni');
 T('alt număr sub 12 → cele 12 incluse, fără bani', !retDin(oMic));
 T('alt număr uriaș → plafonul', CALC({ getElementById: () => null }, {}, () => {}, 5, null, null, _rDe, _raxDe)._ofRetLuni({ retTier: 'custom', retCustomMonths: 999 }) === 60);
 T('prețul lunar crește exact cu prețul păstrării', Math.abs((o24.monthly - o12.monthly) - 50) < 0.001 && !retDin(oAlt) === (Number(oAlt.p.retCustom) > 0 ? false : true));
-T('„Client nou din ofertă" duce lunile mai departe', /inclus: !!l\.inclus, luni: l\.luni \|\| null/.test(html));
+T('„Client nou din ofertă” duce lunile mai departe', /inclus: !!l\.inclus, luni: l\.luni \|\| null/.test(html));
 
 sect('3. Hârtia ofertei spune mereu cât se păstrează');
 const incluse = new Function('require', 'contracte',
   PD.slice(PD.indexOf('function _ofDe(n)'), PD.indexOf('// ─── Hârtia ───')) + '\n; return _ofIncluse;')(require, C);
 const cu = (o) => incluse(Object.assign({}, o)).filter((r) => /^Păstrarea istoricului/.test(r))[0];
-T('ofertă fără cifră (ecran vechi) → „12 luni", nu tace', cu({}) === 'Păstrarea istoricului: 12 luni de la înregistrare', cu({}));
-T('ofertă de 24 de luni → „24 de luni"', cu({ retentie: '24 de luni' }) === 'Păstrarea istoricului: 24 de luni de la înregistrare');
+T('ofertă fără cifră (ecran vechi) → „12 luni”, nu tace', cu({}) === 'Păstrarea istoricului: 12 luni de la înregistrare', cu({}));
+T('ofertă de 24 de luni → „24 de luni”', cu({ retentie: '24 de luni' }) === 'Păstrarea istoricului: 24 de luni de la înregistrare');
 T('rândul vine imediat după istoricul deplasărilor', (function () { const L = incluse({}); return L.indexOf(cu({})) === L.findIndex((r) => /^Istoricul deplasărilor/.test(r)) + 1; })());
 T('nu mai există rândul vechi, condiționat', !/Păstrarea datelor istorice timp de/.test(PD));
 
@@ -112,9 +112,9 @@ function contractText(firmaSettings, annexExtra) {
   });
   return texte.join(' ');
 }
-T('fără nimic cumpărat: „12 luni"', /istoricul vehiculelor \(pozițiile, cursele și alertele\) se păstrează 12 luni de la înregistrare, apoi se șterge automat/.test(contractText({})));
-T('firma cu 24 de luni: „24 de luni"', /se păstrează 24 de luni de la înregistrare/.test(contractText({ pastrare: { luni: 24, pretRON: 50 } })));
-T('anexa semnată bate setarea de azi (36 semnate, 24 pe firmă → „36 de luni")', /se păstrează 36 de luni de la înregistrare/.test(contractText({ pastrare: { luni: 24, pretRON: 50 } }, { pastrareLuni: 36 })));
+T('fără nimic cumpărat: „12 luni”', /istoricul vehiculelor \(pozițiile, cursele și alertele\) se păstrează 12 luni de la înregistrare, apoi se șterge automat/.test(contractText({})));
+T('firma cu 24 de luni: „24 de luni”', /se păstrează 24 de luni de la înregistrare/.test(contractText({ pastrare: { luni: 24, pretRON: 50 } })));
+T('anexa semnată bate setarea de azi (36 semnate, 24 pe firmă → „36 de luni”)', /se păstrează 36 de luni de la înregistrare/.test(contractText({ pastrare: { luni: 24, pretRON: 50 } }, { pastrareLuni: 36 })));
 T('și acordul GDPR spune aceeași durată', /Durata: pe toată durata contractului; istoricul se păstrează 24 de luni/.test(contractText({ pastrare: { luni: 24 } })));
 
 sect('5. Ștergerea: după firmă, fără politica veche de 180 de zile');
@@ -123,14 +123,14 @@ T('politica TimescaleDB veche se SCOATE la pornire', /remove_retention_policy\('
 T('și nu se mai pune alta (o singură vârstă pentru toți)', !/add_retention_policy/.test(fara(dbSrc)));
 T('dacă nu se poate scoate, se spune pe ecran (roșu), nu tace', /politicaVeche/.test(tsBloc) && /ts\.politicaVeche\) \? 'crit'/.test(server));
 T('POSITION_RETENTION_DAYS nu mai hotărăște nimic', !/parseInt\(process\.env\.POSITION_RETENTION_DAYS\)/.test(fara(server)) && !/POSITION_RETENTION_DAYS/.test(fara(dbSrc)));
-T('...dar dacă a rămas setată, „Stare producție" o arată', /isSet\(process\.env\.POSITION_RETENTION_DAYS\)/.test(server));
+T('...dar dacă a rămas setată, „Stare producție” o arată', /isSet\(process\.env\.POSITION_RETENTION_DAYS\)/.test(server));
 T('ștergerea rulează MEREU (nu doar cu o variabilă setată)', /const runPastrare = \(\) => stergeIstoriculVechi\(\)/.test(server) && /setInterval\(runPastrare, 6 \* 60 \* 60 \* 1000\)/.test(server));
 const fnSterg = dbSrc.slice(dbSrc.indexOf('async function stergeIstoricMaiVechiDe('), dbSrc.indexOf('async function scoateBucatiMaiVechiDe('));
 T('mașină cu mașină, după IMEI (coloana după care se comprimă)', /WHERE imei = \$1 AND timestamp </.test(fnSterg));
 T('pe loturi după TIMP, nu după ctid (pe hypertable ctid nu e unic)', !/ctid/.test(fara(fnSterg)));
 T('și curse, și alerte, cu același prag', /DELETE FROM trips WHERE imei = \$1 AND start_time </.test(fnSterg) && /DELETE FROM alert_history WHERE imei = \$1 AND triggered_at </.test(fnSterg));
 const fnDel = dbSrc.slice(dbSrc.indexOf('async function deleteDeviceCompletely('), dbSrc.indexOf('// Coloane editabile din fișa vehiculului'));
-T('„Șterge definitiv" un aparat nu mai atinge pozițiile ALTOR mașini (fără ctid)', !/ctid/.test(fara(fnDel)) && /_stergeImeiPeLoturi\(t, imei\)/.test(fnDel));
+T('„Șterge definitiv” un aparat nu mai atinge pozițiile ALTOR mașini (fără ctid)', !/ctid/.test(fara(fnDel)) && /_stergeImeiPeLoturi\(t, imei\)/.test(fnDel));
 const fnJob = server.slice(server.indexOf('async function stergeIstoriculVechi('), server.indexOf("app.post('/api/admin/istoric/sterge-vechi'"));
 T('setări stricate → firma e SĂRITĂ, nu coborâtă la 12', /if \(!p\) \{ raport\.sarite\+\+/.test(fnJob));
 T('bucățile întregi se scot doar după o trecere completă', /if \(!raport\.epuizat && raport\.aparate\)/.test(fnJob));
@@ -143,7 +143,7 @@ T('oferta acceptată o scrie singură pe firmă', /const pastrare = _pastrareDin
 T('...și în anexa contractului', /pastrareLuni: \(_pastrareDinOferta\(oferta, dinOferta\) \|\| \{\}\)\.luni \|\| null/.test(server));
 T('ecranul cere confirmare la o coborâre (șterge date)', /if \(luni < inainte\.luni\) \{/.test(html) && /okLabel: 'Scad și șterg'/.test(html));
 T('contractul și factura se compară și la păstrare', /var ps = cmp\.pastrare;/.test(html) && /pastrare: \(retContract\.length/.test(server));
-T('păstrarea NU mai apare ca „în contract, dar nu pe factură"', /x\.fel !== 'ai' && x\.fel !== 'ret'/.test(server));
+T('păstrarea NU mai apare ca „în contract, dar nu pe factură”', /x\.fel !== 'ai' && x\.fel !== 'ret'/.test(server));
 
 sect('6b. Jurnalul de audit: 12 luni, apoi se șterge (Alin, 24.09)');
 T('cifra e 12 luni, într-un singur loc', C.LUNI_JURNAL_AUDIT === 12);
@@ -166,7 +166,7 @@ T('subiectele emailului formularului sunt scrise o dată (FORMULAR_SUBIECTE), la
 
 // ─── 7. Pe server pornit ─────────────────────────────────────────────────────────────────────
 // Variabila veche e SETATĂ la 180, dinadins: istoricul de 7 luni trebuie să rămână (12 luni incluse),
-// iar „Stare producție" trebuie să spună că variabila nu mai e folosită.
+// iar „Stare producție” trebuie să spună că variabila nu mai e folosită.
 const PORT = 3224, DIR = '.pastrare-ci-db';
 const envS = { ...process.env, NODE_ENV: 'test', SEED_TEST: '1', ADMIN_PASSWORD: 'test1234', STRICT_DEVICES: 'false',
   SESSION_SECRET: 'ci_past', PORT: String(PORT), TCP_PORT: '5224', PGLITE_DIR: DIR + '/pgdata', POSITION_RETENTION_DAYS: '180' };
@@ -250,7 +250,7 @@ function gata() {
   for (const k of ['A', 'C']) await R('PUT', '/api/devices/' + imei[k] + '/abonament', { de_la: _zi });
   const dr = (await R('POST', '/api/invoices/draft', { companyId: fC.id })).j || {};
   const rP = (dr.lines || []).filter((l) => /^Păstrarea istoricului/.test(l.desc))[0];
-  T('pe factură: „Păstrarea istoricului — 36 de luni", 100 de lei, pe luna întreagă', !!rP && /^Păstrarea istoricului — 36 de luni — [a-z]+ \d{4}$/.test(rP.desc) && rP.net === 100, JSON.stringify(dr.lines));
+  T('pe factură: „Păstrarea istoricului — 36 de luni”, 100 de lei, pe luna întreagă', !!rP && /^Păstrarea istoricului — 36 de luni — [a-z]+ \d{4}$/.test(rP.desc) && rP.net === 100, JSON.stringify(dr.lines));
   const drA = (await R('POST', '/api/invoices/draft', { companyId: fA.id })).j || {};
   T('firma pe cele 12 incluse n-are rând de păstrare', !(drA.lines || []).some((l) => /^Păstrarea istoricului/.test(l.desc)));
 
@@ -263,7 +263,7 @@ function gata() {
       vehicule: [{ fel: 'plain', nume: 'Vehicule GPS (fără CAN)', cant: 10, pret: 29, total: 290 }],
       servicii: [{ fel: 'ret', luni: 24, nume: 'Păstrare date 24 de luni', cant: 1, pret: 50, total: 50 }] } });
   T('contractul din ofertă ține cele 24 de luni în anexă', cD.s === 200 && cD.j.annex && cD.j.annex.pastrareLuni === 24, cD.s + ' ' + JSON.stringify(cD.j && cD.j.annex));
-  // De pe 01.10 (lista lui Robert, pct. 10) „Contract ↔ factură" socotește partea facturii ca factura: nimic până
+  // De pe 01.10 (lista lui Robert, pct. 10) „Contract ↔ factură” socotește partea facturii ca factura: nimic până
   // pornește prima mașină (păstrarea pornește odată cu ea). Firma din ofertă primește deci o mașină pornită — ca A și C
   // mai sus —, ca să aibă ce compara.
   const imeiD = '35' + String(Date.now()).slice(-13);
@@ -274,7 +274,7 @@ function gata() {
   T('contract, firmă și factură spun același lucru', ovD.comparatie && ovD.comparatie.pastrare && ovD.comparatie.pastrare.contractLuni === 24 &&
     ovD.comparatie.pastrare.firmaLuni === 24 && ovD.comparatie.pastrare.facturaLei === 50 && ovD.comparatie.pastrare.contractLei === 50,
     JSON.stringify(ovD.comparatie && ovD.comparatie.pastrare));
-  T('păstrarea nu mai stă la „nefacturate"', ovD.comparatie && !(ovD.comparatie.nefacturate || []).some((x) => /Păstrare/.test(x.nume)));
+  T('păstrarea nu mai stă la „nefacturate”', ovD.comparatie && !(ovD.comparatie.nefacturate || []).some((x) => /Păstrare/.test(x.nume)));
 
   // Cererile din formularul de contact (18.11): cele de acum 13 luni pleacă, cu copiile emailului lor; cele de acum 11 rămân, la fel
   // emailurile vechi care nu sunt ale formularului.
@@ -299,7 +299,7 @@ function gata() {
   // Stare producție
   const h = (await R('GET', '/api/admin/health')).j || {};
   const rd = (h.checks || []).filter((x) => x.key === 'retention')[0];
-  T('„Stare producție" spune regula și ultima rulare', !!rd && /12 luni pentru toți, incluse/.test(rd.detail) && /ultima rulare acum/.test(rd.detail), rd && rd.detail);
+  T('„Stare producție” spune regula și ultima rulare', !!rd && /12 luni pentru toți, incluse/.test(rd.detail) && /ultima rulare acum/.test(rd.detail), rd && rd.detail);
   const re = (h.checks || []).filter((x) => x.key === 'retention_env')[0];
   T('...și că POSITION_RETENTION_DAYS a rămas degeaba (portocaliu)', !!re && re.level === 'warn' && /nu mai e folosită/.test(re.detail));
   gata();

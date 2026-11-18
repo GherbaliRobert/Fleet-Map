@@ -3511,6 +3511,13 @@ regulamentul).
 - NU lipi „h" / „m" / „z" de cifră într-un text nou. Păzit de **`verify_durate.js`** (în `npm test`): formele, sortarea, și caută forma veche în
   server, pagină și telefon (fără comentarii).
 
+## Ghilimelele: „…”, peste tot (18.11; Alin: „fă-le cum le-ai propus”, punctul 7 găsit pe drum)
+Site-ul le avea deja „…” (3f din `verify_site_public.js`); din 18.11 și aplicația: pagina, serverul (mesaje, anunțuri, emailuri, hârtii),
+ghidul lui RA Insight, telefonul — și COMENTARIILE din cod, fiindcă reperele dintre comentarii („// ── începe „X” ──”) le caută serverul
+(`_ofDecupeaza`, `incarcare_pdf.js`) și probele după text. Un text nou: „X”, nu „X". Într-un atribut HTML delimitat de ghilimele drepte, o
+ghilimea dreaptă de închidere tăia textul (titlul unui buton ieșea pe jumătate). Expresiile de căutare (`/[^"”]/`) nu se ating. Păzit de
+**`verify_ghilimele.js`** (în `npm test`; caută forma veche în tot codul, fără `[ ] ^ | \ $ { }` între ghilimele).
+
 ## Agenții AI pe prima pagină: telefonul (17.11; Alin, la cele trei machete: „hai să facem varianta B să o testez")
 Macheta: https://claude.ai/artifact/E2G99v9is5kxgLpF2HKowC (varianta B). Partea 2 a capitolului „Inteligență artificială": în stânga șase butoane
 (`.agd-b[data-k]`, în pagină: iconița din aplicație, numele, textul de pe site), în dreapta un telefon cu pagina agentului din aplicație.

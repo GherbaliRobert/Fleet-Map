@@ -1,4 +1,4 @@
-// „Cereri de la clienți" pe telefon (02.11) — lista NOASTRĂ, ca pe web (Business › „Cereri de la clienți", blocul cu același nume): ce a
+// „Cereri de la clienți” pe telefon (02.11) — lista NOASTRĂ, ca pe web (Business › „Cereri de la clienți”, blocul cu același nume): ce a
 // trimis clientul, cine e și cum îl găsim, ce s-a întâmplat (scris de aplicație), datele aparatului (doar pentru noi), „Pare rezolvată
 // singură", programarea și ce i-am scris. Toate textele și butoanele le dă serverul (cereri_echipa.pentruNoi), după stare; aici doar se
 // pun, ca TEXT. Fiecare trecere se face o dată: a doua apăsare (a celuilalt fondator) primește refuzul serverului („Cererea a fost deja

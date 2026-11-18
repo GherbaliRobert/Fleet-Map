@@ -33,7 +33,7 @@
 .cfm-t .cfm-l { font-size: 10.5px; line-height: 1.15; color: var(--text-secondary); }
 .cfm-t .cfm-s { font-size: 10.5px; font-weight: 800; color: var(--c); margin-top: auto; }
 .cfm-t.lit { border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--bg-dark)); }
-/* Necitit: adaptorul poate da semnalul, dar nu știm poziția bitului. Nu-l confunda cu „stins/OK". */
+/* Necitit: adaptorul poate da semnalul, dar nu știm poziția bitului. Nu-l confunda cu „stins/OK”. */
 .cfm-t.nd { border-style: dashed; opacity: .75; }
 .cfm-t.nd .cfm-s { font-weight: 600; font-style: italic; }
 .cfm-note { font-size: 11px; line-height: 1.35; color: var(--text-muted); margin: 2px 0 8px; }
@@ -52,7 +52,7 @@
 .cfm-b.b-note { background: transparent; border: 1px dashed var(--border, #33415580); color: var(--muted, #94a3b8); font-weight: 600; }
 
 /* ─── Așezarea pe BENZI (redesenare 02.09) ────────────────────────────────────────────────
-   Înainte: grupe pliabile pe categorii („Lumini", „Camion"…). Avea sens cât se arătau toate
+   Înainte: grupe pliabile pe categorii („Lumini”, „Camion”…). Avea sens cât se arătau toate
    plăcuțele. De când se văd doar cele active, categoriile rămâneau aproape goale. Acum se așază
    după cât de mult cer atenție: starea mașinii · martori · deschis · pornite. Regula e în
    lib/canflags.ts (canBenzi), iar ordinea benzii de stare vine de la server. */

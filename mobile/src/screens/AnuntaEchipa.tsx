@@ -1,6 +1,6 @@
-// „Anunță echipa RA Track" pe telefon (02.11) — fereastra de pe web (blocul cu același nume, #ce-ov): „Cerere nouă" / „Cererile tale",
-// confirmarea cu pașii. Pe telefon e un ecran întreg, cu adresa lui, ca „înapoi" să ducă de unde ai venit și ca un anunț să aibă unde
-// să ducă. O singură cerere (POST /api/cereri-echipa); termenul, ce se trimite, pașii și „Cererile tale" vin de la server și se pun ca
+// „Anunță echipa RA Track” pe telefon (02.11) — fereastra de pe web (blocul cu același nume, #ce-ov): „Cerere nouă” / „Cererile tale”,
+// confirmarea cu pașii. Pe telefon e un ecran întreg, cu adresa lui, ca „înapoi” să ducă de unde ai venit și ca un anunț să aibă unde
+// să ducă. O singură cerere (POST /api/cereri-echipa); termenul, ce se trimite, pașii și „Cererile tale” vin de la server și se pun ca
 // TEXT. Trei uși, ca pe web: butonul din casetele RA Insight, fișa mașinii și meniul. Fondatorii n-au ușă: dacă ajung totuși aici (un
 // anunț vechi), serverul le spune `platforma` și fereastra îi duce la lista lor.
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -36,7 +36,7 @@ function Camp({ l, sub, children }: { l: string; sub?: string; children: any }) 
   );
 }
 
-// „Cerere nouă": mașina, ce a scris aplicația, mesajul, când poate veni cineva, cum îl găsim, ce se trimite.
+// „Cerere nouă”: mașina, ce a scris aplicația, mesajul, când poate veni cineva, cum îl găsim, ce se trimite.
 export function FormularCerere({ m, o, f, lista, err, pune }: { m: any; o: any; f: Form; lista: any[]; err: string; pune: (x: Partial<Form>) => void }) {
   const imeiAles = o.imei;
   const dm = dupaMasina(m, !imeiAles && !f.masina);
@@ -85,7 +85,7 @@ export function FormularCerere({ m, o, f, lista, err, pune }: { m: any; o: any; 
   );
 }
 
-// După trimitere (200, sau 409 „se ocupă deja"): ce s-a întâmplat, pașii, unde o găsește.
+// După trimitere (200, sau 409 „se ocupă deja”): ce s-a întâmplat, pașii, unde o găsește.
 export function ConfirmareCerere({ m, j }: { m: any; j: any }) {
   const p = planTrimisa(m, j);
   return (
@@ -107,7 +107,7 @@ export function ConfirmareCerere({ m, j }: { m: any; j: any }) {
   );
 }
 
-// „Cererile tale".
+// „Cererile tale”.
 export function ListaCererilor({ m }: { m: any }) {
   const p = planLista(m);
   return (

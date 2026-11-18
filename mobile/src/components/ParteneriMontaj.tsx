@@ -1,18 +1,18 @@
-// Partenerii de montaj — firmele care montează în locul nostru. Stau DOAR în secțiunea „Montaj" (Business), fila
+// Partenerii de montaj — firmele care montează în locul nostru. Stau DOAR în secțiunea „Montaj” (Business), fila
 // Parteneri (a doua, după Calendar), ca pe web (raxLoadMontaj → _raxParteneriCorp / raxPartEdit / raxPartAnaf /
 // raxPartSalveaza / raxPartSterge), și NU apar nicăieri în ce vede clientul. Tarifele lor se propun singure la fiecare
 // lucrare de montaj și intră în contractul cu partenerul (Anexa nr. 1). Modificarea e tot POST, cu id; serverul scrie
-// DOAR cheile trimise. „Ne facturează" (lunar / săptămânal, 30.09) e ritmul în care facturăm și noi clientului
+// DOAR cheile trimise. „Ne facturează” (lunar / săptămânal, 30.09) e ritmul în care facturăm și noi clientului
 // montajul făcut de el; se vede pe rândul lui și intră în contractul cu el.
 //
 // Fișa are tot ce trebuie pe hârtia contractului: CUI (cu ANAF), Reg. Com., sediu, reprezentant, email (acolo pleacă
-// contractul), telefon, IBAN, bancă, zonă — plus „Stare": un partener cu contract SEMNAT nu se șterge (serverul
-// răspunde 409), se trece pe „inactiv". Inactivul nu se mai propune la lucrări noi.
+// contractul), telefon, IBAN, bancă, zonă — plus „Stare”: un partener cu contract SEMNAT nu se șterge (serverul
+// răspunde 409), se trece pe „inactiv”. Inactivul nu se mai propune la lucrări noi.
 //
-// Ecranul Montaj îi dă lista, contractele (pentru pastila „contract: …" și „Fă contract") și îi cere să deschidă fișa
-// unui partener („Completează" din fila Contracte); după salvarea fișei deschise ASTFEL îi dă înapoi partenerul, așa
+// Ecranul Montaj îi dă lista, contractele (pentru pastila „contract: …” și „Fă contract”) și îi cere să deschidă fișa
+// unui partener („Completează” din fila Contracte); după salvarea fișei deschise ASTFEL îi dă înapoi partenerul, așa
 // cum l-a scris serverul (`onSalvatDeschis`). Fără listă primită, componenta și-o încarcă singură.
-// Butonul „înapoi" de pe Android închide foaia partenerului (întreabă dacă s-a scris ceva) sau întrebarea de
+// Butonul „înapoi” de pe Android închide foaia partenerului (întreabă dacă s-a scris ceva) sau întrebarea de
 // ștergere, nu ecranul.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
@@ -41,10 +41,10 @@ const s = (v: any) => (v == null ? '' : String(v));
 
 export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaContract, deschide, onDeschis, onSalvatDeschis }: {
   lista?: any[] | null;                 // din ecranul Montaj (o singură încărcare); lipsă = se încarcă singură
-  contracte?: any[] | null;             // contractele cu partenerii: pastila „contract: …" / „fără contract"
+  contracte?: any[] | null;             // contractele cu partenerii: pastila „contract: …” / „fără contract”
   onSchimbat?: () => void;              // după salvare / ștergere, ecranul reîncarcă tot
   onFaContract?: (partenerId: number) => void;
-  deschide?: number | null;             // fișa de deschis singură („Completează" din fila Contracte)
+  deschide?: number | null;             // fișa de deschis singură („Completează” din fila Contracte)
   onDeschis?: () => void;
   onSalvatDeschis?: (p: any) => void;   // fișa deschisă prin `deschide` s-a salvat — partenerul întors de server
 } = {}) {
@@ -57,8 +57,8 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
   const [del, setDel] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
   const [dupaSalvare, setDupaSalvare] = useState<any | null>(null); // partenerul salvat din fișa deschisă la cerere
-  const start = useRef(''); // formularul cum s-a deschis — „înapoi" întreabă doar dacă s-a schimbat ceva
-  const laCerere = useRef(false); // fișa de acum a deschis-o „Completează" (prin `deschide`), nu un rând din listă
+  const start = useRef(''); // formularul cum s-a deschis — „înapoi” întreabă doar dacă s-a schimbat ceva
+  const laCerere = useRef(false); // fișa de acum a deschis-o „Completează” (prin `deschide`), nu un rând din listă
   // Numărul fișei deschise: crește la fiecare deschidere și închidere. Un răspuns ANAF sosit după ce fișa s-a
   // închis — sau după ce s-a deschis a ALTUI partener — nu mai are unde să se scrie: altfel CUI-ul, sediul și
   // numele firmei A ar ajunge pe fișa lui B (și, la salvare, pe contractul lui B). ANAF poate răspunde în 8 s.
@@ -87,10 +87,10 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
     setMsg('');
     setEdit(e);
   }
-  // Orice închidere a fișei (X, fundal, „înapoi", Renunț, salvare) trece pe aici: întrebarea ANAF încă pe drum
+  // Orice închidere a fișei (X, fundal, „înapoi”, Renunț, salvare) trece pe aici: întrebarea ANAF încă pe drum
   // rămâne fără fișă.
   function inchideFoaia() { anafNr.current++; laCerere.current = false; setEdit(null); }
-  // „Completează" din fila Contracte: fișa partenerului se deschide singură, după ce sosește lista.
+  // „Completează” din fila Contracte: fișa partenerului se deschide singură, după ce sosește lista.
   useEffect(() => {
     if (deschide == null || !lista) return;
     const p = lista.find((x) => Number(x.id) === Number(deschide));
@@ -99,7 +99,7 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
     if (onDeschis) onDeschis();
   }, [deschide, lista]);
 
-  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi" de pe Android.
+  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi” de pe Android.
   function inchide(): boolean {
     if (!edit) return true;
     if (busy) return false;
@@ -108,12 +108,12 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
     return true;
   }
   useInapoiInchide(!!edit, inchide);
-  // La fel întrebarea „Șterge partenerul": „înapoi" o închide pe ea, nu ecranul Montaj. Cât se șterge, rămâne.
+  // La fel întrebarea „Șterge partenerul”: „înapoi” o închide pe ea, nu ecranul Montaj. Cât se șterge, rămâne.
   // (Nu se deschide niciodată peste fișa partenerului.)
   useInapoiInchide(!!del, () => { if (busy) return false; setDel(null); return true; });
-  // Pasul următor (ex. „Reia tarifele" în contract) se anunță ecranului abia DUPĂ ce fișa s-a închis și și-a scos
+  // Pasul următor (ex. „Reia tarifele” în contract) se anunță ecranului abia DUPĂ ce fișa s-a închis și și-a scos
   // intrarea din istoric — curățenia pazei de mai sus rulează înaintea acestui efect. Anunțat în aceeași clipă,
-  // întrebarea ecranului își punea intrarea peste a fișei, iar „înapoi" rămânea cu una în plus (măsurat, 29.09).
+  // întrebarea ecranului își punea intrarea peste a fișei, iar „înapoi” rămânea cu una în plus (măsurat, 29.09).
   useEffect(() => {
     if (!dupaSalvare || edit) return;
     const p = dupaSalvare;
@@ -121,7 +121,7 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
     if (onSalvatDeschis) onSalvatDeschis(p);
   }, [dupaSalvare, edit]);
 
-  // „ANAF": completează doar ce vine (numele, Reg. Com., sediul, CUI-ul curat), ca pe web (raxPartAnaf) — și doar
+  // „ANAF”: completează doar ce vine (numele, Reg. Com., sediul, CUI-ul curat), ca pe web (raxPartAnaf) — și doar
   // pe fișa care a pus întrebarea (`anafNr`).
   async function cautaAnaf() {
     if (!edit || (anaf && anaf.cauta)) return;
@@ -163,7 +163,7 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
       inchideFoaia();
       showToast('Partener salvat ✓');
       incarca();
-      // Fișa deschisă din „Ce lipsește" al unui contract: ecranul poate propune pasul următor (ex. tarifele în
+      // Fișa deschisă din „Ce lipsește” al unui contract: ecranul poate propune pasul următor (ex. tarifele în
       // contract) — după ce fișa s-a închis de tot (efectul de mai sus).
       if (cerut && onSalvatDeschis) setDupaSalvare(j || {});
     } catch (e: any) {
@@ -181,7 +181,7 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
       showToast(n ? 'Partener șters, cu ' + nrDe(n, 'contract nesemnat', 'contracte nesemnate') : 'Partener șters');
       incarca();
     } catch (e: any) {
-      // 409: are un contract semnat — nu se șterge, se trece pe „inactiv". Mesajul serverului, ca atare.
+      // 409: are un contract semnat — nu se șterge, se trece pe „inactiv”. Mesajul serverului, ca atare.
       setDel(null);
       showToast(e?.message || 'Eroare', true);
     } finally { setBusy(false); }
@@ -205,7 +205,7 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
           {lista.map((p: any) => {
             const c = cuContracte ? contractulPartenerului(contracte, p.id) : null;
             const st = c ? mjStare(c.status) : null;
-            const sub = subPartener(p); // … · „ne facturează lunar / săptămânal", ca pe web
+            const sub = subPartener(p); // … · „ne facturează lunar / săptămânal”, ca pe web
             return (
               <div class="ctr-row">
                 <div class="ctr-row-top">
@@ -264,14 +264,14 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
                 {camp('Banca', 'bank', '')}
                 {camp('Zona în care lucrează', 'zona', 'ex. Timiș, Arad, Hunedoara')}
                 {camp('Persoana de contact', 'contact', 'nume · telefon')}
-                {/* „Inactiv" e capătul unui partener cu istoric: cel cu contract semnat nu se șterge (hârtia rămâne în dosar). */}
+                {/* „Inactiv” e capătul unui partener cu istoric: cel cu contract semnat nu se șterge (hârtia rămâne în dosar). */}
                 <div class="fld"><label>Stare</label>
                   <select value={edit.activ} onChange={(e: any) => sf('activ', e.target.value)}>
                     <option value="1">activ</option>
                     <option value="0">inactiv — nu mai lucrăm cu el</option>
                   </select>
                 </div>
-                {/* Ritmul lui (Alin, 30.09): montajul făcut de el îl facturăm clientului în același ritm, „ca să nu fim pe pierdere". */}
+                {/* Ritmul lui (Alin, 30.09): montajul făcut de el îl facturăm clientului în același ritm, „ca să nu fim pe pierdere”. */}
                 <div class="fld"><label>Ne facturează</label>
                   <select value={edit.ritm} onChange={(e: any) => sf('ritm', e.target.value)}>
                     <option value="lunar">lunar</option>
@@ -301,7 +301,7 @@ export function ParteneriMontaj({ lista: listaData, contracte, onSchimbat, onFaC
       )}
       {del && (
         <Confirma title="Șterge partenerul" danger busy={busy} okLabel="Șterge"
-          text={'Ștergi partenerul? Lucrările deja salvate rămân, dar fără numele lui, iar contractele lui nesemnate se șterg și ele.\n\nUn partener cu contract semnat nu se șterge — hârtia rămâne în dosar. Pe el îl treci pe „inactiv", din fișa lui.'}
+          text={'Ștergi partenerul? Lucrările deja salvate rămân, dar fără numele lui, iar contractele lui nesemnate se șterg și ele.\n\nUn partener cu contract semnat nu se șterge — hârtia rămâne în dosar. Pe el îl treci pe „inactiv”, din fișa lui.'}
           onOk={sterge} onCancel={() => { if (!busy) setDel(null); }} />
       )}
     </>

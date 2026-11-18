@@ -1,12 +1,12 @@
-// verify_setari.js — ecranul „Administrare → Setări", casa clientului.
+// verify_setari.js — ecranul „Administrare → Setări”, casa clientului.
 //
 //   node verify_setari.js
 //
 // Setările au devenit locul unde clientul își administrează firma. Două lucruri se pot strica tăcut,
 // și amândouă sunt urâte:
 //   • un capitol ajunge sub ochii cui nu are voie (sau, invers, dispecerul rămâne fără preferințele
-//     lui) — de asta „cine ce vede" e o funcție pură, `setCapitole`, verificată aici pe roluri reale;
-//   • ecranele „Utilizatori" și „Facturile mele" există O SINGURĂ dată în pagină. Setările le
+//     lui) — de asta „cine ce vede” e o funcție pură, `setCapitole`, verificată aici pe roluri reale;
+//   • ecranele „Utilizatori” și „Facturile mele” există O SINGURĂ dată în pagină. Setările le
 //     ÎMPRUMUTĂ (mută nodul). Dacă panoul de administrare nu le cere înapoi, el deschide o filă
 //     GOALĂ, fără nicio eroare în consolă. Proba de la punctul 3 apără exact asta.
 //
@@ -40,7 +40,7 @@ const SUPER = { manageUsers: true, manageFleet: true, isSuper: true };
 
 sect('2. Fiecare rol vede exact ce e al lui');
 // Dispecerul e cazul care ne-a scos problema la iveală: până acum nu ajungea DELOC la Setări, deși
-// fila „Preferințe" scrie negru pe alb „se aplică doar contului tău".
+// fila „Preferințe” scrie negru pe alb „se aplică doar contului tău”.
 T('dispecerul ajunge la preferințele lui', chei(DISPECER).indexOf('prefs') >= 0, chei(DISPECER).join(', '));
 T('și la NIMIC altceva', chei(DISPECER).length === 1, chei(DISPECER).join(', '));
 T('viewer-ul la fel', chei(VIEWER).join(',') === 'prefs', chei(VIEWER).join(', '));
@@ -51,13 +51,13 @@ T('și nu vede regulile firmei', chei(MANAGER).indexOf('reguli') < 0 && chei(MAN
 
 const A = chei(ADMIN_FIRMA);
 ['prefs', 'utilizatori', 'reguli', 'program', 'combustibil', 'facturi', 'api'].forEach(k =>
-  T('adminul firmei are „' + k + '"', A.indexOf(k) >= 0, A.join(', ')));
+  T('adminul firmei are „' + k + '”', A.indexOf(k) >= 0, A.join(', ')));
 T('adminul firmei NU vede catalogul de coduri (e global, al platformei)', A.indexOf('iocatalog') < 0, A.join(', '));
 
 const S = chei(SUPER);
 T('noi vedem catalogul de coduri', S.indexOf('iocatalog') >= 0, S.join(', '));
-// „Facturile mele" e factura pe care i-o emitem NOI clientului. La noi n-are ce căuta: avem Facturarea întreagă.
-T('noi NU avem „Facturile mele"', S.indexOf('facturi') < 0, S.join(', '));
+// „Facturile mele” e factura pe care i-o emitem NOI clientului. La noi n-are ce căuta: avem Facturarea întreagă.
+T('noi NU avem „Facturile mele”', S.indexOf('facturi') < 0, S.join(', '));
 
 sect('3. Meniul nu are titluri goale');
 [VIEWER, DISPECER, MANAGER, ADMIN_FIRMA, SUPER].forEach(function (p, k) {
@@ -82,7 +82,7 @@ T('niciun capitol nu duce în gol', !faraPanou.length, faraPanou.join(', '));
 T('niciun panou rătăcit, fără capitol', !faraCapitol.length, faraCapitol.join(', '));
 
 sect('5. Ecranele împrumutate se dau înapoi');
-// „Utilizatori" și „Facturile mele" trăiesc în panoul de administrare. Setările mută nodul la ele;
+// „Utilizatori” și „Facturile mele” trăiesc în panoul de administrare. Setările mută nodul la ele;
 // dacă panoul nu-l cere înapoi, el arată o filă goală și nimeni nu vede nicio eroare.
 const i2 = html.indexOf('    var _setImprumut = {};');
 const j2 = html.indexOf("    var _setCap = 'prefs';", i2);
@@ -111,13 +111,13 @@ T('panoul de administrare chiar cere ecranele înapoi',
 
 sect('6. Setările nu mai sunt ascunse rolurilor mici');
 // Setarile erau ingropate intr-un grup marcat fleet-only → un dispecer nu vedea nici macar butonul,
-// desi „Preferinte" scrie negru pe alb ca se aplica doar contului lui. Acum Setari e buton propriu:
+// desi „Preferinte” scrie negru pe alb ca se aplica doar contului lui. Acum Setari e buton propriu:
 // proba verifica sa nu capete iar vreo poarta care sa-l ascunda rolurilor mici.
 const butSetari = (html.match(/<button[^>]*id="nav-setari"[^>]*>/) || [''])[0];
 T('butonul Setari exista in meniu', !!butSetari, butSetari);
 T('si nu e ascuns rolurilor mici (fara fleet-only / users-only / data-super)',
   !!butSetari && !/fleet-only|users-only|companies-only|data-super/.test(butSetari), butSetari);
-// Fondatorul are „Utilizatori" in meniul LUI (lista de pe toata platforma), clientul il are in
+// Fondatorul are „Utilizatori” in meniul LUI (lista de pe toata platforma), clientul il are in
 // Setari (oamenii firmei lui). Nu e o usa dubla: sunt in verticale diferite, deci nimeni nu vede
 // doua drumuri spre acelasi ecran. Proba pazeste tocmai asta.
 T('drumul nostru spre Utilizatori e in verticala noastra',
@@ -127,16 +127,16 @@ T('clientul NU are un al doilea drum spre Utilizatori',
 
 sect('7. Comutatorul de verticala (Fondator / Partener) - SCHELA, SE SCOATE LA LANSARE');
 // ⚠ TEMPORAR (03.09.2026): secțiunea asta se șterge odată cu comutatorul din index.html.
-// Vezi JURNAL-MODIFICARI.md → „A. Blocante".
+// Vezi JURNAL-MODIFICARI.md → „A. Blocante”.
 // Noi testăm aplicația din două poziții și ne încurcăm între ele. Comutatorul schimbă DOAR ce se
 // afișează. Cele două lucruri care nu au voie să se strice niciodată:
 //   • privirea împrumutată să nu DEA drepturi cuiva care nu le are (ar fi o gaură, nu o unealtă);
 //   • privirea să nu ajungă la server — acolo se cere mereu dreptul REAL.
-const k1 = html.indexOf('    // ── începe „Comutatorul de privire"');
+const k1 = html.indexOf('    // ── începe „Comutatorul de privire”');
 const k2 = html.indexOf('    var _setImprumut = {};', k1);
 T('găsesc comutatorul între repere', k1 > 0 && k2 > k1, 'k1=' + k1 + ' k2=' + k2);
 if (k1 > 0 && k2 > k1) {
-  // DOM de carton + un „browser" cu memorie, cât să meargă codul real.
+  // DOM de carton + un „browser” cu memorie, cât să meargă codul real.
   const noduri = { 'set-nav': { innerHTML: '' } };
   // Pentru vertAplica: un meniu de carton (doua randuri, cate una pe verticala) + cutia din bara.
   const randNav = (v) => { const cl = new Set(); return { get vert() { return v; }, getAttribute: () => v,
@@ -174,7 +174,7 @@ if (k1 > 0 && k2 > k1) {
 
   // a) Privirea nu inventează drepturi.
   T('privirea de firmă scoate steagul de fondator', C.privireCa(SUPER, 'firma').isSuper === false);
-  T('pe fondator, „fondator" lasă drepturile exact cum erau', C.privireCa(SUPER, 'fondator') === SUPER);
+  T('pe fondator, „fondator” lasă drepturile exact cum erau', C.privireCa(SUPER, 'fondator') === SUPER);
   T('unui admin de firmă nu i se schimbă nimic, oricare ar fi privirea',
     C.privireCa(ADMIN_FIRMA, 'firma') === ADMIN_FIRMA && C.privireCa(ADMIN_FIRMA, 'fondator') === ADMIN_FIRMA);
   T('unui dispecer nu i se dă nimic pe furiș', C.privireCa(DISPECER, 'firma') === DISPECER);
@@ -185,11 +185,11 @@ if (k1 > 0 && k2 > k1) {
   T('privirea împrumutată dă fix meniul unui admin de firmă',
     imprumutat.join(',') === chei(ADMIN_FIRMA).join(','), imprumutat.join(', '));
   T('deci capitolul nostru dispare din el', imprumutat.indexOf('iocatalog') < 0, imprumutat.join(', '));
-  T('și apar „Facturile mele", pe care clientul le are', imprumutat.indexOf('facturi') >= 0, imprumutat.join(', '));
+  T('și apar „Facturile mele”, pe care clientul le are', imprumutat.indexOf('facturi') >= 0, imprumutat.join(', '));
 
-  // c) Memoria browserului: orice altceva decât „firma" înseamnă fondator.
+  // c) Memoria browserului: orice altceva decât „firma” înseamnă fondator.
   T('memorie goală → fondator', C.ochi(memorie(null)) === 'fondator');
-  T('memorie cu „firma" → firma', C.ochi(memorie('firma')) === 'firma');
+  T('memorie cu „firma” → firma', C.ochi(memorie('firma')) === 'firma');
   T('memorie cu gunoi → fondator', C.ochi(memorie('ceva')) === 'fondator');
   T('browser care refuză memoria (mod privat) → fondator',
     C.ochi({ getItem: () => { throw new Error('blocat'); } }) === 'fondator');
@@ -231,7 +231,7 @@ if (k1 > 0 && k2 > k1) {
     C3.aterizeaza(ecranAles);
     return C3.unde();
   };
-  // „Acasă" = chatul asistentului fondatorilor (macheta „tot un chat", Alin, 30.10), nu mai e pagina cu cartonașe.
+  // „Acasă” = chatul asistentului fondatorilor (macheta „tot un chat”, Alin, 30.10), nu mai e pagina cu cartonașe.
   T('noi aterizam pe Acasa (chatul asistentului), nu pe harta', ateriza(true, null, null) === 'asistent', ateriza(true, null, null));
   T('chiar daca preferinta zice altceva (ecranele ei nici nu se vad la noi)',
     ateriza(true, null, 'rapoarte') === 'asistent', ateriza(true, null, 'rapoarte'));
@@ -243,9 +243,9 @@ if (k1 > 0 && k2 > k1) {
 
   // e) Meniul aplicatiei e impartit pe verticale, iar Setarile au iesit din Administrare.
   ['gestiune', 'module', 'business', 'sistem'].forEach(function (g) {
-    T('grupa „' + g + '" e a noastra', new RegExp('data-vert="fondator"[^>]*data-group="' + g + '"').test(html));
+    T('grupa „' + g + '” e a noastra', new RegExp('data-vert="fondator"[^>]*data-group="' + g + '"').test(html));
   });
-  T('nu mai exista invelisul „Administrare" (sectiunile au urcat in meniu)',
+  T('nu mai exista invelisul „Administrare” (sectiunile au urcat in meniu)',
     !/data-group="administrare"/.test(html));
   T('meniul dinauntru al panoului nu se mai vede',
     /<nav id="admin-side"[^>]*style="display:none;"/.test(html));
@@ -278,7 +278,7 @@ if (k1 > 0 && k2 > k1) {
   T('pe "Partener", capitolul de platforma dispare din Setari', !/data-scap="iocatalog"/.test(noduri['set-nav'].innerHTML));
   T('si apar "Facturile mele", ca la client', /data-scap="facturi"/.test(noduri['set-nav'].innerHTML));
 
-  // g) Firma în care „stă" fondatorul cât e în privirea clientului (ecranul Utilizatori).
+  // g) Firma în care „stă” fondatorul cât e în privirea clientului (ecranul Utilizatori).
   const USERI = [
     { id: 1, username: 'noi@ratrack.ro', company_id: null },                                  // cont de platformă
     { id: 2, username: 'a@x.ro', company_id: 7, company_name: 'Transport Zebra' },
@@ -314,21 +314,21 @@ T('Setările se încarcă pe drepturile reale, nu pe cele împrumutate',
 T('serverul nu știe și nu poate ști de comutator',
   !/ra_set_ochi|setPrivireCa/.test(fs.readFileSync('./server.js', 'utf8')));
 
-sect('8. „Toată echipa" (fostă „Regulile firmei"): nume + starea „fără firmă"');
-// „Regulile firmei" era ambiguu chiar din contul nostru: „firma" a cui, a noastră sau a
-// clientului? Și „Ce văd toți" nu spunea ce se regăsește acolo. Alin, 03.09.
-T('grupa se numește „Toată echipa"', M.SET_MENIU.some(x => x.grup === 'Toată echipa'));
-T('nu mai există „Regulile firmei"', !M.SET_MENIU.some(x => x.grup === 'Regulile firmei'));
+sect('8. „Toată echipa” (fostă „Regulile firmei”): nume + starea „fără firmă”');
+// „Regulile firmei” era ambiguu chiar din contul nostru: „firma” a cui, a noastră sau a
+// clientului? Și „Ce văd toți” nu spunea ce se regăsește acolo. Alin, 03.09.
+T('grupa se numește „Toată echipa”', M.SET_MENIU.some(x => x.grup === 'Toată echipa'));
+T('nu mai există „Regulile firmei”', !M.SET_MENIU.some(x => x.grup === 'Regulile firmei'));
 const capReguli = M.SET_MENIU.filter(x => x.k === 'reguli')[0];
-T('capitolul „reguli" se cheamă „Afișaj pentru toți"', !!capReguli && capReguli.et === 'Afișaj pentru toți', capReguli && capReguli.et);
+T('capitolul „reguli” se cheamă „Afișaj pentru toți”', !!capReguli && capReguli.et === 'Afișaj pentru toți', capReguli && capReguli.et);
 
-// Bug adevărat, nu doar de nume: un cont de platformă (fără firmă) vedea la „Ce văd toți" / „Program
-// de lucru" / „Prețuri combustibil" formulare normale — dar la „Salvează", serverul refuza cu 400
-// („Super-adminul nu are companie proprie"), fiindcă nu exista nicio firmă unde să scrie. Aceeași
+// Bug adevărat, nu doar de nume: un cont de platformă (fără firmă) vedea la „Ce văd toți” / „Program
+// de lucru" / „Prețuri combustibil” formulare normale — dar la „Salvează”, serverul refuza cu 400
+// („Super-adminul nu are companie proprie”), fiindcă nu exista nicio firmă unde să scrie. Aceeași
 // idee ca la Roluri: se spune de la ÎNCEPUT, nu după ce omul completează ceva degeaba.
 const rg1 = html.indexOf('function regFaraFirmaHtml(caPartener) {');
 const rg2 = html.indexOf('\n    }', rg1) + 6;
-T('găsesc explicația pentru „Toată echipa" fără firmă', rg1 > 0, 'rg1=' + rg1);
+T('găsesc explicația pentru „Toată echipa” fără firmă', rg1 > 0, 'rg1=' + rg1);
 if (rg1 > 0) {
   const facRG = new Function(html.slice(rg1, rg2) + '\n; return regFaraFirmaHtml;')();
   const RG = facRG(false), RGP = facRG(true);
@@ -339,9 +339,9 @@ if (rg1 > 0) {
   T('spune că nici comutatorul nu ajută (aceeași lecție ca la Roluri)', /[Cc]omutatorul de sus nu schimbă asta/.test(RG) && /[Cc]omutatorul de sus nu schimbă asta/.test(RGP));
   T('nu lasă niciun buton de apăsat degeaba', !/<button/.test(RG), RG);
 }
-T('„Ce văd toți" / „Program de lucru" ies devreme pentru contul de platformă, ÎNAINTE de fetch',
+T('„Ce văd toți” / „Program de lucru” ies devreme pentru contul de platformă, ÎNAINTE de fetch',
   /currentUser\.isSuper && !currentUser\.companyId\)[\s\S]{0,320}?if \(coBox\) coBox\.innerHTML = regFaraFirmaHtml\([\s\S]{0,120}?if \(wsBox\) wsBox\.innerHTML = regFaraFirmaHtml\([\s\S]{0,60}?return;/.test(html));
-T('fila „Prețuri combustibil" trece prin comutatorul care verifică firma',
+T('fila „Prețuri combustibil” trece prin comutatorul care verifică firma',
   /name === 'combustibil'\) usTabCombustibil\(\)/.test(html));
 T('comutatorul de combustibil arată explicația și ascunde formularul pentru contul de platformă',
   /faraFirma \? '' : 'none'[\s\S]{0,200}?faraFirma \? 'none' : ''/.test(html));
@@ -349,14 +349,14 @@ T('și NU cere prețurile de la server cât timp arată explicația',
   /if \(!faraFirma && window\.usLoadFuelPrices\) window\.usLoadFuelPrices\(\);/.test(html));
 
 sect('9. Iconițele grupelor din meniul nostru nu se repetă');
-// Trei din cele patru grupe aveau iconițe folosite deja în altă parte: „monede" era și la Business
-// și la „Preț combustibil", „șurubelniță+cheie" și la Sistem și pe butonul Fondator din bara de sus,
+// Trei din cele patru grupe aveau iconițe folosite deja în altă parte: „monede” era și la Business
+// și la „Preț combustibil”, „șurubelniță+cheie” și la Sistem și pe butonul Fondator din bara de sus,
 // iar clădirea apare în tot meniul. Când capul de grupă are aceeași iconiță ca un rând de altundeva,
 // ochiul nu mai deosebește grupa de rândurile ei. Alin, 07.09: puzzle / servietă / roți dințate.
 //
 // Regula pe care o ține proba asta (nu numele iconițelor — alea se pot schimba oricând):
 // iconița unui cap de grupă poate fi refolosită DOAR de un rând din propria ei grupă. Așa rămâne
-// permisă perechea Gestiune ↔ „Companii" (se citește ca familie: toate firmele / o firmă), dar nu
+// permisă perechea Gestiune ↔ „Companii” (se citește ca familie: toate firmele / o firmă), dar nu
 // se mai poate strecura o iconiță comună cu altă grupă sau cu verticala clientului.
 const nv1 = html.indexOf('<nav id="navrail">');
 const nv2 = html.indexOf('</nav>', nv1);
@@ -380,10 +380,10 @@ if (nv1 > 0 && nv2 > nv1) {
     new Set(grupe.map(x => x.ic)).size === grupe.length, grupe.map(x => x.nume + '=' + x.ic).join(', '));
   grupe.forEach(x => {
     const inGrupa = (x.corp.match(new RegExp('<i class="fas ' + x.ic + '"', 'g')) || []).length;
-    T('„' + x.nume + '" (' + x.ic + ') nu e refolosită în afara grupei ei',
+    T('„' + x.nume + '” (' + x.ic + ') nu e refolosită în afara grupei ei',
       numar(x.ic) === inGrupa, 'în tot meniul: ' + numar(x.ic) + ', în grupa ei: ' + inGrupa);
   });
-  // Butonul „Fondator" din comutatorul de sus e tot un cap de verticală: nici el nu are voie
+  // Butonul „Fondator” din comutatorul de sus e tot un cap de verticală: nici el nu are voie
   // să poarte iconița vreunei grupe. (Se șterge odată cu comutatorul — vezi secțiunea 7.)
   const com = /<i class="fas (fa-[a-z0-9-]+)"><\/i><span>Fondator<\/span>/.exec(html);
   T('butonul Fondator din bara de sus nu poartă iconița niciunei grupe',

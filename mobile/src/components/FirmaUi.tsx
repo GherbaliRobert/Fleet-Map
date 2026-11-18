@@ -37,7 +37,7 @@ export function FmScreen({ titlu, children, dreapta }: { titlu: string; children
 }
 
 // Poarta ecranelor de firmă, aceeași regulă ca rândul din meniu:
-//  • fără dreptul cerut → pagina calmă „nu e pentru rolul tău" (se putea ajunge aici dintr-un link vechi);
+//  • fără dreptul cerut → pagina calmă „nu e pentru rolul tău” (se putea ajunge aici dintr-un link vechi);
 //  • contul de PLATFORMĂ (fără firmă) → explicația, ca pe web: reglajele astea se scriu într-o firmă, iar
 //    serverul refuză oricum salvarea. Mai bine spus de la început decât după ce omul completează un formular.
 // Întoarce null când omul poate intra.
@@ -75,7 +75,7 @@ function PaginaCalma({ icon, titlu, text }: { icon: 'lock' | 'layers'; titlu: st
   );
 }
 
-// Fără diacritice și cu litere mici: „stefan" îl găsește pe „Ștefan" (ca pe web, _usrFaraDiacritice).
+// Fără diacritice și cu litere mici: „stefan” îl găsește pe „Ștefan” (ca pe web, _usrFaraDiacritice).
 export function faraDiacritice(s: unknown): string {
   return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }

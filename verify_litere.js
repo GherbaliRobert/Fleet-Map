@@ -3,11 +3,11 @@
 //
 //   node verify_litere.js
 //
-// Pe 19.10 un răspuns RA Insight a scris „октомбrie 2026". Atunci am pus o rescriere și o curățare DOAR în RA Insight; pe 20.10
-// am găsit încă două drumuri pe care textul modelului ajungea la client necurățat: „Rezumă cu RA Insight" (sub un raport) și
+// Pe 19.10 un răspuns RA Insight a scris „октомбrie 2026”. Atunci am pus o rescriere și o curățare DOAR în RA Insight; pe 20.10
+// am găsit încă două drumuri pe care textul modelului ajungea la client necurățat: „Rezumă cu RA Insight” (sub un raport) și
 // rezumatul agenților. Acum regula stă într-un singur loc (litere.js), iar ai.js o pune pe ORICE răspuns al modelului.
 // Aici: regula pe multe cazuri, ai.js cu API-ul simulat în proces, drumurile din server (citite din sursă) și, pe server pornit
-// cu modelul simulat (nu se cheltuie nimic), „Rezumă cu RA Insight" și rezumatul agenților cu un răspuns plin de litere rusești.
+// cu modelul simulat (nu se cheltuie nimic), „Rezumă cu RA Insight” și rezumatul agenților cu un răspuns plin de litere rusești.
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path');
 const { spawn } = require('child_process');
@@ -16,7 +16,7 @@ const L = require('./litere.js');
 
 let ok = 0, rele = 0;
 const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele++; console.log('  ✗ ' + n + (d !== undefined ? '  → ' + d : '')); } };
-// O literă din alt alfabet decât cel latin (sau o literă latină „lată") — ce nu trebuie să vadă clientul niciodată.
+// O literă din alt alfabet decât cel latin (sau o literă latină „lată”) — ce nu trebuie să vadă clientul niciodată.
 const STRAIN = /(?=\p{L})[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]|[Ａ-Ｚａ-ｚ]/u;
 
 // ─── 1. Regula (litere.js) ────────────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ console.log('\n2. ai.js: orice răspuns al modelului trece prin litere.js');
   };
   try {
     const t1 = await AI.callClaude({ system: 's', messages: [{ role: 'user', content: 'x' }] });
-    T('callClaude: răspunsul vine cu litere românești („октомбrie" → „octombrie")', t1 === 'Consum pe octombrie: 7,5 l/100 km.', t1);
+    T('callClaude: răspunsul vine cu litere românești („октомбrie” → „octombrie”)', t1 === 'Consum pe octombrie: 7,5 l/100 km.', t1);
     const t2 = await AI.callClaude({ system: 's', messages: [{ role: 'user', content: 'x' }], brut: true });
     T('…`brut: true` îl lasă cum l-a scris modelul (doar RA Insight îl cere, ca să ceară întâi o rescriere)', t2 === 'Consum pe октомбrie: 7,5 l/100 km.', t2);
     const r3 = await AI.runAgent({ system: 's', messages: [{ role: 'user', content: 'x' }], tools: [], toolHandlers: {} });
@@ -102,12 +102,12 @@ console.log('\n2. ai.js: orice răspuns al modelului trece prin litere.js');
   const bruturi = []; let k = -1; while ((k = SRV.indexOf('brut: true', k + 1)) >= 0) bruturi.push(k);
   T('`brut: true` stă DOAR în RA Insight (răspunsul dintâi și rescrierea), care curăță el la capăt, mereu',
     bruturi.length === 2 && bruturi.every((x) => x > iRa && x < iDupa) && /\n    reply = insight\.litereRomanesti\(reply\);/.test(SRV.slice(iRa, iDupa)), JSON.stringify({ n: bruturi.length }));
-  T('„Rezumă cu RA Insight" și rezumatul agenților primesc regulile de scris ale lui RA Insight (litere românești, echipamentul e treaba noastră)',
+  T('„Rezumă cu RA Insight” și rezumatul agenților primesc regulile de scris ale lui RA Insight (litere românești, echipamentul e treaba noastră)',
     (SRV.match(/insight\.SCRISUL, insight\.ECHIPAMENTUL\]\.join\('\\n\\n'\)/g) || []).length === 2);
   // Scrisoarea de luni a ieșit pe 04.11: nu mai are ce curăța (nici scrisul, nici citirea ei).
   T('Scrisoarea de luni nu mai e (nici scrisul, nici citirea ei)', !/scrisDe: 'model'/.test(SRV) && !/fapte: x\.fapte/.test(SRV));
-  // Din 29.10 aceeași citire scoate și titlul „Din sursă externă" (sursaExterna.faraTitluri), peste literele curățate.
-  T('mesajele salvate înainte (ca cel cu „октомбrie" din poza lui Alin) se curăță la citire; ce a scris omul rămâne', /if \(m\.rol !== 'user'\) m\.text = sursaExterna\.faraTitluri\(insight\.litereRomanesti\(m\.text\)\);/.test(SRV));
+  // Din 29.10 aceeași citire scoate și titlul „Din sursă externă” (sursaExterna.faraTitluri), peste literele curățate.
+  T('mesajele salvate înainte (ca cel cu „октомбrie” din poza lui Alin) se curăță la citire; ce a scris omul rămâne', /if \(m\.rol !== 'user'\) m\.text = sursaExterna\.faraTitluri\(insight\.litereRomanesti\(m\.text\)\);/.test(SRV));
   T('…și nu mai ajung nici în istoricul pe care îl citește modelul la întrebarea următoare',
     I.istoricPentruModel([{ rol: 'user', text: 'consum?' }, { rol: 'assistant', text: 'Pe октомбrie: 7 l.' }, { rol: 'user', text: 'și ieri?' }])[1].content === 'Pe octombrie: 7 l.');
 
@@ -178,7 +178,7 @@ console.log('\n2. ai.js: orice răspuns al modelului trece prin litere.js');
     coada([text('**Rezumat:** • B 154 UIP a mers 120 км pe октомбrie. • Ştiu că 中文 consumul e bun.')]);
     const rz = await json('POST', '/api/ai/report-summary', ck, { type: 'utilization', report: { title: 'Utilizare', columns: ['Vehicul', 'Km'], rows: [['B 154 UIP', '120']] } });
     const c1 = cereri().slice(n1)[0] || {};
-    T('„Rezumă cu RA Insight": modelul a scris cu litere rusești și chinezești, clientul primește numai litere românești',
+    T('„Rezumă cu RA Insight”: modelul a scris cu litere rusești și chinezești, clientul primește numai litere românești',
       rz.status === 200 && !STRAIN.test(rz.j.summary || '') && /octombrie/.test(rz.j.summary || '') && /Știu/.test(rz.j.summary || ''), JSON.stringify({ s: rz.status, t: rz.j.summary, e: rz.j.error }));
     T('…iar modelul a primit regulile de scris (numai litere românești, echipamentul e treaba noastră)', /numai cu litere românești/.test(sistem(c1)) && /ECHIPAMENTUL:/.test(sistem(c1)), sistem(c1).slice(0, 160));
 

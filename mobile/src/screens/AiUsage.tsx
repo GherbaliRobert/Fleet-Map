@@ -16,10 +16,10 @@ import { useInapoiInchide } from '../lib/inapoiFoaie';
 import './admin.css';
 import './fondator.css';
 
-// „RA Insight · control" (fondatorii), ca pe web (raxLoadAiUsage): patru cifre sus, „Ce cere atenție", un rând pe firmă cu amănuntul la
-// o apăsare, soldul Anthropic, „Sursă externă" pe toată platforma și istoricul pe 12 luni (buton „Istoric", oprit din start, alegerea
+// „RA Insight · control” (fondatorii), ca pe web (raxLoadAiUsage): patru cifre sus, „Ce cere atenție”, un rând pe firmă cu amănuntul la
+// o apăsare, soldul Anthropic, „Sursă externă” pe toată platforma și istoricul pe 12 luni (buton „Istoric”, oprit din start, alegerea
 // se ține minte). Toate sumele în lei și €, după cursul trimis de server. Telefonul nu socotește bani: vezi components/insightBani.ts.
-// „Proba modelelor" și „Cheia Anthropic" rămân pe web (cer un ecran mare, respectiv Dashboard platformă, pe care telefonul nu-l are).
+// „Proba modelelor” și „Cheia Anthropic” rămân pe web (cer un ecran mare, respectiv Dashboard platformă, pe care telefonul nu-l are).
 const PREF_ISTORIC = 'raAiuIstoric';
 const n = (v: any) => Number(v) || 0;
 
@@ -95,7 +95,7 @@ export function AiUsage() {
   }
   useEffect(() => {
     reload();
-    // „Istoric" e oprit din start; alegerea se ține minte pe telefonul ăsta.
+    // „Istoric” e oprit din start; alegerea se ține minte pe telefonul ăsta.
     Preferences.get({ key: PREF_ISTORIC }).then((r) => setIst(r.value === '1')).catch(() => {});
   }, []);
   function comutaIstoric() {
@@ -109,7 +109,7 @@ export function AiUsage() {
     catch (e: any) { showToast((e && e.message) || 'Eroare', true); }
     setBusy(false);
   }
-  // „Sursă externă" pe toată platforma (web: raxAiSursa): serverul întreabă pe loc Anthropic dacă modelul primește căutarea.
+  // „Sursă externă” pe toată platforma (web: raxAiSursa): serverul întreabă pe loc Anthropic dacă modelul primește căutarea.
   async function puneSursa(x: any) {
     setBusy(true);
     try {
@@ -135,7 +135,7 @@ export function AiUsage() {
   const luni = luniCuViata(istoric);
   const st = statIstoric(luni, fx, d && d.istoricStat);
   const neincasatTot = st.neincasatLei;
-  // O firmă cu un pachet cu AI la 0 lei: banda duce în fișa ei, la fila „Acces" (pachetul și prețul lui); mai multe: lista de firme.
+  // O firmă cu un pachet cu AI la 0 lei: banda duce în fișa ei, la fila „Acces” (pachetul și prețul lui); mai multe: lista de firme.
   const spreFirme = (l: any[]) => loc.route(l.length === 1 ? adresaFirmei(l[0].id, 'acces') : '/admin/companies');
 
   return (
@@ -291,7 +291,7 @@ export function AiUsage() {
                       </div>
                     </div>
                   </div>
-                  <div class="fd-note aiu-nota">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele, proformele și facturile anulate nu intră, storno-urile scad. Luna curentă, până se emite factura, e <b>estimată</b> din pachetele firmelor (scrie pe ea) și NU intră în total. „Ne-a costat" e plata către model, convertită în lei la cursul de azi.</div>
+                  <div class="fd-note aiu-nota">Cifrele vin din <b>facturile emise</b> (fără TVA) — ciornele, proformele și facturile anulate nu intră, storno-urile scad. Luna curentă, până se emite factura, e <b>estimată</b> din pachetele firmelor (scrie pe ea) și NU intră în total. „Ne-a costat” e plata către model, convertită în lei la cursul de azi.</div>
                 </>
               )
             )}

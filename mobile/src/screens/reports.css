@@ -58,7 +58,7 @@
 .sh-plate { color: var(--text-muted); font-size: 11px; }
 
 /* Tab-uri Rapoarte | RA Insight */
-/* „Rezumă cu RA Insight" și rezumatul de deasupra raportului; eticheta din Istoric (ca pe web: .rep-rezumat, .rh-ins). */
+/* „Rezumă cu RA Insight” și rezumatul de deasupra raportului; eticheta din Istoric (ca pe web: .rep-rezumat, .rh-ins). */
 .rp-rez-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 14px 0; width: calc(100% - 28px); padding: 10px; border-radius: 10px; background: var(--accent); color: #06210F; font-weight: 800; font-size: 13.5px; }
 .rp-rez-btn:disabled { opacity: .6; }
 .rp-rez-btn .spin { width: 16px; height: 16px; border-width: 2px; }

@@ -8,7 +8,7 @@ import './admin.css';
 import './detail.css'; // .sheet*
 import './fondator.css';
 
-// „Chei API" (Sistem) — ca pe web (openApiKeys): cheile de integrare, cu cine le poartă și când s-au folosit.
+// „Chei API” (Sistem) — ca pe web (openApiKeys): cheile de integrare, cu cine le poartă și când s-au folosit.
 // Hotărât pe 03.09: cheile le dăm NOI, la cerere. Ruta de pe telefon e doar pentru super-admin (App.tsx);
 // serverul lasă și adminul de firmă (requireAdmin) — nu se atinge. Cheia în clar apare O SINGURĂ DATĂ.
 //
@@ -68,7 +68,7 @@ export function ApiKeys() {
     } catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setBusy(false); }
   }
   async function revoca(k: any) {
-    if (!confirm('Revoci această cheie? Integrarea care o folosește va pierde accesul imediat.\n(Cheia rămâne în listă, marcată „revocată", pentru audit.)')) return;
+    if (!confirm('Revoci această cheie? Integrarea care o folosește va pierde accesul imediat.\n(Cheia rămâne în listă, marcată „revocată”, pentru audit.)')) return;
     try { await Api.revokeApiKey(k.id); showToast('Cheie revocată'); reload(); } catch (e: any) { showToast(e?.message || 'Eroare', true); }
   }
   async function sterge(k: any) {
@@ -132,7 +132,7 @@ export function ApiKeys() {
             ))}
           </div>
         )}
-        <Banda ton="info" icon="alertO">Cheile le dăm noi, la cerere. „Revocă" oprește cheia și o păstrează în listă pentru audit; „Șterge definitiv" o scoate de tot.</Banda>
+        <Banda ton="info" icon="alertO">Cheile le dăm noi, la cerere. „Revocă” oprește cheia și o păstrează în listă pentru audit; „Șterge definitiv” o scoate de tot.</Banda>
       </div>
 
       {nou && (

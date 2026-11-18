@@ -7,9 +7,9 @@ import { salveazaDeLaServer } from '../lib/export';
 import './detail.css';
 import './admin.css';
 
-// Panoul Mail (Robert, 12.10: „noi adminii să avem un panou de mail" — „și pe telefon, bineînțeles"), ca pe web
-// (Business → Mail): etapa 1 „Trimise" + „Scrie", etapa 2 „Primite" + „Răspunde"; 13.10: „Răspunde tuturor", „Redirecționează",
-// semnătura și chenarul cu sigla (pus de server); apoi (Robert: „un mail cât mai complet") dosarele Primite · Trimise · Ciorne ·
+// Panoul Mail (Robert, 12.10: „noi adminii să avem un panou de mail” — „și pe telefon, bineînțeles”), ca pe web
+// (Business → Mail): etapa 1 „Trimise” + „Scrie”, etapa 2 „Primite” + „Răspunde”; 13.10: „Răspunde tuturor”, „Redirecționează”,
+// semnătura și chenarul cu sigla (pus de server); apoi (Robert: „un mail cât mai complet”) dosarele Primite · Trimise · Ciorne ·
 // Spam · Coș, bifele cu acțiuni pe mai multe deodată, steaua, butoanele direct pe rând, ciornele salvate singure și adresele
 // sugerate. Telefonul NU hotărăște nimic: ce adrese vezi (adresa comună + a ta), câte sunt necitite, starea fiecărui email,
 // spațiul ocupat, felul emailului, ce face o acțiune și textul de după, câte zile stă ceva în Coș / Spam și ce se pune în
@@ -182,26 +182,26 @@ export function Mail() {
     nou({ ciorna: c.id, raspunsLa: c.raspunsLa, tuturor: c.tuturor, de_la: c.de_la, catre: c.catre, cc: c.cc, subiect: c.subiect, text: c.text,
       redir: c.redirectioneazaPrimit ? { primit: c.redirectioneazaPrimit } : (c.redirectioneazaTrimis ? { trimis: c.redirectioneazaTrimis } : null) });
   }
-  // „Răspunde": adresa, destinatarul, subiectul și mesajul citat le-a pus serverul (pentruRaspuns).
+  // „Răspunde”: adresa, destinatarul, subiectul și mesajul citat le-a pus serverul (pentruRaspuns).
   function raspunde(d = deschis) {
     const p = d?.pentruRaspuns; if (!p) return;
     nou({ ...p, raspunsLa: d.id });
     setDeschis(null);
   }
-  // „Răspunde tuturor": Cc-ul (toți din „Către" și „Cc", fără adresele noastre) îl alege serverul (pentruRaspunsTuturor).
+  // „Răspunde tuturor”: Cc-ul (toți din „Către” și „Cc”, fără adresele noastre) îl alege serverul (pentruRaspunsTuturor).
   function raspundeTuturor() {
     const p = deschis?.pentruRaspunsTuturor; if (!p) return;
     nou({ ...p, raspunsLa: deschis.id, tuturor: true });
     setDeschis(null);
   }
-  // „Redirecționează": un email primit (atașamentele lui merg și ele) sau unul trimis de noi (doar textul).
+  // „Redirecționează”: un email primit (atașamentele lui merg și ele) sau unul trimis de noi (doar textul).
   function redirectioneaza(d = deschis) {
     const p = d?.pentruRedirectionare; if (!p) return;
     nou({ de_la: p.de_la, catre: '', subiect: p.subiect, text: p.text, redir: d.primit ? { primit: d.id } : { trimis: d.id },
       atasamenteRedir: p.atasamente || [], faraAtasamente: !!p.faraAtasamente });
     setDeschis(null);
   }
-  // „Răspunde" / „Redirecționează" direct de pe rând: emailul se citește întâi (ce se pune în fereastră îl scrie serverul).
+  // „Răspunde” / „Redirecționează” direct de pe rând: emailul se citește întâi (ce se pune în fereastră îl scrie serverul).
   async function rapidRaspunde(m: any) {
     try { const d = await Api.mailPrimit(m.id); raspunde({ ...d, primit: true }); incarcaMeta(); setLista((v) => (v || []).map((x) => (x._s === 'primit' && x.id === m.id ? { ...x, citit: true } : x))); }
     catch (e: any) { showToast(e?.message || 'Emailul nu se poate deschide.', true); }
@@ -210,7 +210,7 @@ export function Mail() {
     try { const d = m._s === 'trimis' ? await Api.mailTrimis(m.id) : { ...(await Api.mailPrimit(m.id)), primit: true }; redirectioneaza(d); }
     catch (e: any) { showToast(e?.message || 'Emailul nu se poate deschide.', true); }
   }
-  // Ciorna se salvează singură, la o clipă după ultima literă (Robert, 13.10: „3. a"). Fără atașamente.
+  // Ciorna se salvează singură, la o clipă după ultima literă (Robert, 13.10: „3. a”). Fără atașamente.
   function setF(p: Partial<Form>) {
     setForm((f) => ({ ...f, ...p }));
     clearTimeout(ciornaT.current);
@@ -233,7 +233,7 @@ export function Mail() {
     if (ciornaT.current) { clearTimeout(ciornaT.current); ciornaT.current = null; await salveazaCiorna(); }   // ce era de salvat pleacă acum
     if (tab === 'ciorne') reload(); else incarcaMeta();
   }
-  // Adresele sugerate sub „Către" / „Cc" (Robert: „3. b"): după ultima adresă scrisă (după virgulă); le alege serverul.
+  // Adresele sugerate sub „Către” / „Cc” (Robert: „3. b”): după ultima adresă scrisă (după virgulă); le alege serverul.
   function laAdresa(c: 'catre' | 'cc', v: string) {
     setF({ [c]: v } as any);
     clearTimeout(sugT.current);
@@ -361,8 +361,8 @@ export function Mail() {
     : tab === 'trimise' ? [['stea', 'Stea'], ['sterge', 'Șterge']]
     : tab === 'cos' ? [['recupereaza', 'Recuperează'], ['definitiv', 'Șterge definitiv']]
     : [['ciorne', 'Șterge']];
-  const notaDosar = tab === 'spam' ? 'Aici ajung singure emailurile expeditorilor pe care i-ați marcat ca spam' + (zile ? '; se șterg singure după ' + zile + ' de zile' : '') + '. „Nu e spam" le mută înapoi în Primite.'
-    : tab === 'cos' ? 'Emailurile șterse stau aici' + (zile ? ' ' + zile + ' de zile, apoi se șterg singure' : '') + '. „Recuperează" le pune înapoi de unde au venit.'
+  const notaDosar = tab === 'spam' ? 'Aici ajung singure emailurile expeditorilor pe care i-ați marcat ca spam' + (zile ? '; se șterg singure după ' + zile + ' de zile' : '') + '. „Nu e spam” le mută înapoi în Primite.'
+    : tab === 'cos' ? 'Emailurile șterse stau aici' + (zile ? ' ' + zile + ' de zile, apoi se șterg singure' : '') + '. „Recuperează” le pune înapoi de unde au venit.'
     : tab === 'ciorne' ? 'Ciornele se salvează singure cât scrii (fără atașamente) și sunt doar ale tale.' : '';
   const cuCautare = tab === 'primite' || tab === 'trimise' || tab === 'spam';
   // Butoanele care țin de dosar, în fereastra unui email deschis (ca _mailActeDeschis pe web).
@@ -457,7 +457,7 @@ export function Mail() {
             {lista && lista.length === 0 && !err && <div class="adm-empty"><Icon name="mail" size={40} class="ic" /><div>{cauta ? 'Nimic găsit.' : GOL[tab]}</div></div>}
             {lista && lista.length > 0 && (
               <div class="adm-list">
-                {/* Bara de deasupra listei: „Selectează tot", iar cu ceva bifat — câte și acțiunile dosarului. Stă mereu pe loc și
+                {/* Bara de deasupra listei: „Selectează tot”, iar cu ceva bifat — câte și acțiunile dosarului. Stă mereu pe loc și
                     rămâne lipită sus cât derulezi (ca prima bifă să nu împingă lista). */}
                 <div style={'position:sticky;top:0;z-index:2;display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:48px;box-sizing:border-box;padding:7px 10px 7px 13px;margin-bottom:8px;border-radius:12px;background:var(--bg-panel);font-size:13px;color:var(--text-primary);border:1px solid ' + (ales.length ? 'var(--accent)' : 'var(--border)')}>
                   <label style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary);margin-right:4px">
@@ -509,7 +509,7 @@ export function Mail() {
                     </div>
                   )}
                   {/* HTML-ul emailului stă într-un cadru izolat: fără scripturi, fără linkuri, fără acces la aplicație.
-                      Imaginile din afară, doar la „Arată imaginile" (altfel expeditorul ar afla când l-ai deschis). */}
+                      Imaginile din afară, doar la „Arată imaginile” (altfel expeditorul ar afla când l-ai deschis). */}
                   {deschis.html
                     ? <iframe sandbox="" referrerpolicy="no-referrer" title="Conținutul emailului" style="width:100%;min-height:380px;border:1px solid var(--border);border-radius:10px;background:#fff"
                         srcdoc={csp(imagini) + '<meta name="referrer" content="no-referrer">' + deschis.html} />

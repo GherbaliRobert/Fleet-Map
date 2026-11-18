@@ -4,15 +4,15 @@
 //   node verify_email_stare.js
 //
 // Brevo refuza serverul după o publicare (Railway îi schimbă adresa, Brevo blochează din oficiu adresele necunoscute: 401
-// „unrecognised IP address"), iar aplicația nu spunea nimănui: raportul programat înghițea eroarea, „Stare producție" era verde.
+// „unrecognised IP address”), iar aplicația nu spunea nimănui: raportul programat înghițea eroarea, „Stare producție” era verde.
 // Ce păzește (cu un Brevo FALS, local — nu pleacă niciun email adevărat):
 //   1. regulile: motivul pe înțeles (IP, cheie, limită, rețea); starea programării după o trimitere (reîncercare după 30, 60,
-//      120 de minute, apoi „n-a putut pleca"); textul de pe ecran (amănuntul erorii doar la noi);
+//      120 de minute, apoi „n-a putut pleca”); textul de pe ecran (amănuntul erorii doar la noi);
 //   2. mailer.js ține minte ultimul email plecat și ultimul refuzat;
 //   3. pe server pornit: Foaie de parcurs programată la 6, Brevo refuză → reîncercări (raportul o singură dată în Istoric),
-//      lista arată de ce, noi primim anunțul (fără email), „Stare producție" e roșie cu ce e de făcut; după 4 încercări,
-//      omul află că emailul n-a plecat; a doua zi Brevo primește → „a plecat"; o reîncercare reușită trimite raportul păstrat;
-//      clientul nu vede eroarea exactă; „Trimite acum" spune pe față ce s-a întâmplat.
+//      lista arată de ce, noi primim anunțul (fără email), „Stare producție” e roșie cu ce e de făcut; după 4 încercări,
+//      omul află că emailul n-a plecat; a doua zi Brevo primește → „a plecat”; o reîncercare reușită trimite raportul păstrat;
+//      clientul nu vede eroarea exactă; „Trimite acum” spune pe față ce s-a întâmplat.
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -49,9 +49,9 @@ const fals = http.createServer((req, res) => {
   const mailer = require('./mailer');
   const rs = require('./report_schedules');
   const mIp = mailer.motiv('Brevo 401: ' + MESAJ_IP);
-  T('Brevo 401 „unrecognised IP" → motivul: adresa serverului, cu ce e de făcut în Brevo', mIp.fel === 'ip' && /Railway/.test(mIp.scurt) && /Authorised IPs/.test(mIp.ceFaceti), JSON.stringify(mIp));
+  T('Brevo 401 „unrecognised IP” → motivul: adresa serverului, cu ce e de făcut în Brevo', mIp.fel === 'ip' && /Railway/.test(mIp.scurt) && /Authorised IPs/.test(mIp.ceFaceti), JSON.stringify(mIp));
   T('alt 401 → cheia sau contul', mailer.motiv('Brevo 401: Key not found').fel === 'cheie');
-  T('rețeaua → „n-a răspuns la timp"', mailer.motiv('Brevo: The operation was aborted due to timeout').fel === 'retea');
+  T('rețeaua → „n-a răspuns la timp”', mailer.motiv('Brevo: The operation was aborted due to timeout').fel === 'retea');
   T('limita contului → planul Brevo', mailer.motiv('Brevo 402: not enough credits').fel === 'limita');
 
   const s = { id: 7, frequency: 'daily', hour: 6, report_type: 'trips', email_raport_id: null };
@@ -64,9 +64,9 @@ const fals = http.createServer((req, res) => {
   T('a doua → peste 60, a treia → peste 120 de minute', st2.next.getTime() === acum.getTime() + 60 * 60000 && st2.reincercari === 2 &&
     st3.next.getTime() === acum.getTime() + 120 * 60000 && st3.reincercari === 3);
   const st4 = rs.stareDupa(picat, 3, acum, s);
-  T('a patra picată → „n-a putut pleca", se renunță până mâine la 6', st4.stare === 'esuat' && st4.renunta === true && st4.reincercari === 0 &&
+  T('a patra picată → „n-a putut pleca”, se renunță până mâine la 6', st4.stare === 'esuat' && st4.renunta === true && st4.reincercari === 0 &&
     st4.next.toISOString() === '2026-10-23T03:00:00.000Z', JSON.stringify(st4));
-  T('a plecat → „trimis"; fără destinatar → doar în Istoric; fără mașini; eroare la raport',
+  T('a plecat → „trimis”; fără destinatar → doar în Istoric; fără mașini; eroare la raport',
     rs.stareDupa({ ok: true, recipients: ['a@b.ro'], emailSent: true }, 0, acum, s).stare === 'trimis' &&
     rs.stareDupa({ ok: true, recipients: [], emailSent: false }, 0, acum, s).stare === 'fara_destinatar' &&
     rs.stareDupa({ ok: false, reason: 'fără vehicule accesibile' }, 0, acum, s).stare === 'fara_vehicule' &&
@@ -76,14 +76,14 @@ const fals = http.createServer((req, res) => {
   T('textul pentru client: n-a plecat, ora reîncercării, raportul e în Istoric — fără Brevo', /n-a plecat; încercăm din nou la 06:31/.test(tCl) && /Istoric/.test(tCl) && !/Brevo|401/.test(tCl), tCl);
   T('textul pentru noi: și eroarea exactă', /unrecognised IP/.test(tNoi), tNoi);
   const tEs = rs.textStare({ ultima_stare: 'esuat', ultima_eroare: 'Brevo 401', last_run: acum.toISOString() }, false);
-  T('„n-a putut pleca": raportul e în Istoric, echipa RA Track a fost anunțată', /n-a putut pleca/.test(tEs) && /Echipa RA Track a fost anunțată/.test(tEs) && !/Brevo/.test(tEs), tEs);
+  T('„n-a putut pleca”: raportul e în Istoric, echipa RA Track a fost anunțată', /n-a putut pleca/.test(tEs) && /Echipa RA Track a fost anunțată/.test(tEs) && !/Brevo/.test(tEs), tEs);
   T('o programare fără stare (de dinainte de 22.10) → fără text', rs.textStare({ last_run: acum.toISOString() }, true) === null);
 
-  // Perioada pe zilele ROMÂNIEI (27.10, Alin: „da"): până atunci „ieri" mergea de la 02:00 la 02:00 (vara 03:00), un raport programat
+  // Perioada pe zilele ROMÂNIEI (27.10, Alin: „da”): până atunci „ieri” mergea de la 02:00 la 02:00 (vara 03:00), un raport programat
   // la 01:00 lua ziua de alaltăieri, iar subiectul emailului tăia data din ora UTC.
   const per = (p, t) => rs.resolvePeriod(p, new Date(t)), et = (x) => rs.perioadaEmail(x.from, x.to);
   const ieriV = per('yesterday', '2026-10-22T03:01:00Z');   // 06:01 în România, vara
-  T('„ieri" = de la miezul nopții la miezul nopții României (vara: 21:00 → 21:00 UTC), în email „21.10.2026"',
+  T('„ieri” = de la miezul nopții la miezul nopții României (vara: 21:00 → 21:00 UTC), în email „21.10.2026”',
     ieriV.from === '2026-10-20T21:00:00.000Z' && ieriV.to === '2026-10-21T21:00:00.000Z' && et(ieriV) === '21.10.2026', JSON.stringify(ieriV) + ' ' + et(ieriV));
   const ora1 = per('yesterday', '2026-10-22T22:00:30Z');    // 01:00 pe 23.10 în România
   T('programat la 01:00 noaptea → ziua de ieri (22.10), nu cea de alaltăieri', ora1.from === '2026-10-21T21:00:00.000Z' && ora1.to === '2026-10-22T21:00:00.000Z' && et(ora1) === '22.10.2026', JSON.stringify(ora1));
@@ -92,14 +92,14 @@ const fals = http.createServer((req, res) => {
   const iarna = per('yesterday', '2026-12-10T04:00:00Z');
   T('iarna: 22:00 → 22:00 UTC (09.12.2026)', iarna.from === '2026-12-08T22:00:00.000Z' && iarna.to === '2026-12-09T22:00:00.000Z' && et(iarna) === '09.12.2026', JSON.stringify(iarna));
   const anNou = per('yesterday', '2027-01-01T04:00:00Z');
-  T('pe 1 ianuarie, „ieri" = 31.12.2026', anNou.from === '2026-12-30T22:00:00.000Z' && anNou.to === '2026-12-31T22:00:00.000Z' && et(anNou) === '31.12.2026', JSON.stringify(anNou));
+  T('pe 1 ianuarie, „ieri” = 31.12.2026', anNou.from === '2026-12-30T22:00:00.000Z' && anNou.to === '2026-12-31T22:00:00.000Z' && et(anNou) === '31.12.2026', JSON.stringify(anNou));
   const lunaT = per('lastmonth', '2026-11-01T04:00:00Z');
-  T('„luna trecută" pe 1 noiembrie = 1–31 octombrie pe ora României (începe vara, se termină iarna)', lunaT.from === '2026-09-30T21:00:00.000Z' && lunaT.to === '2026-10-31T22:00:00.000Z' &&
+  T('„luna trecută” pe 1 noiembrie = 1–31 octombrie pe ora României (începe vara, se termină iarna)', lunaT.from === '2026-09-30T21:00:00.000Z' && lunaT.to === '2026-10-31T22:00:00.000Z' &&
     et(lunaT) === '01.10.2026 – 31.10.2026', JSON.stringify(lunaT) + ' ' + et(lunaT));
   const dec = per('lastmonth', '2027-01-01T05:00:00Z');
-  T('„luna trecută" pe 1 ianuarie = decembrie 2026', dec.from === '2026-11-30T22:00:00.000Z' && dec.to === '2026-12-31T22:00:00.000Z' && et(dec) === '01.12.2026 – 31.12.2026', JSON.stringify(dec));
+  T('„luna trecută” pe 1 ianuarie = decembrie 2026', dec.from === '2026-11-30T22:00:00.000Z' && dec.to === '2026-12-31T22:00:00.000Z' && et(dec) === '01.12.2026 – 31.12.2026', JSON.stringify(dec));
   const lunaA = per('thismonth', '2026-10-22T03:01:00Z'), sapt = per('last7', '2026-10-22T03:01:00Z');
-  T('„luna asta" de la 1 a lunii României până acum; „ultimele 7 zile" rămân o fereastră care se termină acum',
+  T('„luna asta” de la 1 a lunii României până acum; „ultimele 7 zile” rămân o fereastră care se termină acum',
     lunaA.from === '2026-09-30T21:00:00.000Z' && lunaA.to === '2026-10-22T03:01:00.000Z' && et(lunaA) === '01.10.2026 – 22.10.2026' &&
     sapt.from === '2026-10-15T03:01:00.000Z' && sapt.to === '2026-10-22T03:01:00.000Z' && et(sapt) === '15.10.2026 – 22.10.2026', JSON.stringify([lunaA, sapt]));
   const RS = fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8');
@@ -165,14 +165,14 @@ const fals = http.createServer((req, res) => {
     const n0 = primite.length;
     let k = await tick(t0);
     p = await rand0();
-    T('Brevo refuză → stare „reincercare", următoarea încercare peste 30 de minute', p.ultima_stare === 'reincercare' && Number(p.email_reincercari) === 1 &&
+    T('Brevo refuză → stare „reincercare”, următoarea încercare peste 30 de minute', p.ultima_stare === 'reincercare' && Number(p.email_reincercari) === 1 &&
       new Date(p.next_run).getTime() === t0 + 30 * 60000, JSON.stringify({ k: k.j, p }).slice(0, 400));
     T('lista arată de ce (la noi, cu eroarea exactă)', /n-a plecat; încercăm din nou la/.test(p.stare_text || '') && /unrecognised IP/.test(p.stare_text || '') && /unrecognised IP/.test(p.ultima_eroare || ''), p.stare_text);
     T('raportul e în Istoric o singură dată', (await istoric()) === 1);
     const notif = ((await json('GET', '/api/notifications?limit=50', S)).j || []).filter((x) => x.type === 'email_esuat');
-    T('noi primim anunțul „Emailurile nu pleacă", cu ce e de făcut în Brevo', notif.length === 1 && /Railway/.test(notif[0].body) && /Authorised IPs/.test(notif[0].body), JSON.stringify(notif).slice(0, 300));
+    T('noi primim anunțul „Emailurile nu pleacă”, cu ce e de făcut în Brevo', notif.length === 1 && /Railway/.test(notif[0].body) && /Authorised IPs/.test(notif[0].body), JSON.stringify(notif).slice(0, 300));
     const h = await json('GET', '/api/admin/health', S);
-    T('„Stare producție": roșu — emailul e pus, DAR ultimul n-a plecat, cu motivul și ce e de făcut',
+    T('„Stare producție”: roșu — emailul e pus, DAR ultimul n-a plecat, cu motivul și ce e de făcut',
       /DAR ultimul email n-a plecat/.test(h.t) && /Authorised IPs/.test(h.t), h.t.slice(0, 300));
     T('nicio încercare n-a plecat spre Brevo cu succes', primite.length === n0);
 
@@ -185,11 +185,11 @@ const fals = http.createServer((req, res) => {
     await tick(t0 + 210 * 60000);
     p = await rand0();
     // Ora 6 a zilei următoare o socotește aplicația (pe 25.10 se trece la ora de iarnă: +24 h n-ar fi ora 6).
-    T('a patra picată → „n-a putut pleca", următoarea rulare mâine dimineață', p.ultima_stare === 'esuat' && Number(p.email_reincercari) === 0 &&
+    T('a patra picată → „n-a putut pleca”, următoarea rulare mâine dimineață', p.ultima_stare === 'esuat' && Number(p.email_reincercari) === 0 &&
       new Date(p.next_run).getTime() === rs.computeNextRun('daily', 6, new Date(t0 + 210 * 60000)).getTime(), JSON.stringify(p).slice(0, 300));
     T('…și tot un singur raport în Istoric (reîncercările l-au refolosit)', (await istoric()) === 1);
     const notif2 = ((await json('GET', '/api/notifications?limit=50', S)).j || []);
-    T('omul care a programat află: „Emailul cu raportul n-a putut pleca", echipa RA Track a fost anunțată',
+    T('omul care a programat află: „Emailul cu raportul n-a putut pleca”, echipa RA Track a fost anunțată',
       notif2.some((x) => x.type === 'report_email_esuat' && /echipa RA Track a fost anunțată/.test(x.body)));
     T('anunțul nostru nu se repetă la fiecare email (cel mult unul la 6 ore)', notif2.filter((x) => x.type === 'email_esuat').length === 1);
 
@@ -203,11 +203,11 @@ const fals = http.createServer((req, res) => {
     T('a doua zi: emailul pleacă, cu Foaia de parcurs atașată', p.ultima_stare === 'trimis' && em.to && em.to[0].email === 'alin@firma-raport.ro' &&
       /^RA-Track - Raport Foaie de parcurs/.test(((em.attachment || [])[0] || {}).name || ''), JSON.stringify({ p, em: em.subject }).slice(0, 300));
     const ziRo = (ms) => new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(ms));
-    T('subiectul spune ziua de ieri pe ora României („Foaie de parcurs — ' + ziRo(t1 - 864e5) + '")', em.subject === '[RA Track] Foaie de parcurs — ' + ziRo(t1 - 864e5) &&
+    T('subiectul spune ziua de ieri pe ora României („Foaie de parcurs — ' + ziRo(t1 - 864e5) + '”)', em.subject === '[RA Track] Foaie de parcurs — ' + ziRo(t1 - 864e5) &&
       /^Raport „Foaie de parcurs” · \d{2}\.\d{2}\.\d{4}\n/.test(em.textContent || ''), JSON.stringify({ s: em.subject, t: String(em.textContent || '').slice(0, 120) }));
-    T('…lista spune „a plecat pe email"', /a plecat pe email/.test(p.stare_text || ''), p.stare_text);
+    T('…lista spune „a plecat pe email”', /a plecat pe email/.test(p.stare_text || ''), p.stare_text);
     const h2 = await json('GET', '/api/admin/health', S);
-    T('„Stare producție" redevine verde, cu ultimul email plecat', /activ — Brevo, de la RA Track <noreply@ratrack\.ro> · ultimul email plecat:/.test(h2.t) && !/DAR ultimul email/.test(h2.t), h2.t.slice(0, 300));
+    T('„Stare producție” redevine verde, cu ultimul email plecat', /activ — Brevo, de la RA Track <noreply@ratrack\.ro> · ultimul email plecat:/.test(h2.t) && !/DAR ultimul email/.test(h2.t), h2.t.slice(0, 300));
 
     // A treia zi: prima încercare pică, reîncercarea reușește — și trimite raportul păstrat, fără să-l facă din nou
     mod = 'ip';
@@ -219,17 +219,17 @@ const fals = http.createServer((req, res) => {
     await tick(t2 + 30 * 60000);
     p = await rand0();
     const em2 = primite.slice(n2)[0] || {};
-    T('reîncercarea reușită: emailul pleacă, starea e „trimis", rularea următoare e mâine', p.ultima_stare === 'trimis' && Number(p.email_reincercari) === 0 &&
+    T('reîncercarea reușită: emailul pleacă, starea e „trimis”, rularea următoare e mâine', p.ultima_stare === 'trimis' && Number(p.email_reincercari) === 0 &&
       (em2.attachment || []).length === 1 && new Date(p.next_run).getTime() === rs.computeNextRun('daily', 6, new Date(t2 + 30 * 60000)).getTime(), JSON.stringify({ st: p.ultima_stare, rc: p.email_reincercari, err: p.ultima_eroare, lr: p.last_run, nr: p.next_run, t2: new Date(t2).toISOString(), at: (em2.attachment || []).length, n: primite.length - n2 }));
     T('…cu raportul din Istoric, nu unul nou', (await istoric()) === ist2);
 
-    // „Trimite acum", cu Brevo care refuză
+    // „Trimite acum”, cu Brevo care refuză
     mod = 'ip';
     const urm = p.next_run;
     const ra = await json('POST', '/api/report-schedules/' + id + '/run', S);
-    T('„Trimite acum": spune pe față că emailul n-a plecat și de ce (la noi)', ra.status === 200 && /^emailul n-a plecat: Brevo 401/.test(ra.j.emailText || ''), JSON.stringify(ra.j).slice(0, 300));
+    T('„Trimite acum”: spune pe față că emailul n-a plecat și de ce (la noi)', ra.status === 200 && /^emailul n-a plecat: Brevo 401/.test(ra.j.emailText || ''), JSON.stringify(ra.j).slice(0, 300));
     p = await rand0();
-    T('…și starea programării se schimbă („n-a putut pleca"), fără să mute rularea de mâine', p.ultima_stare === 'esuat' && p.next_run === urm);
+    T('…și starea programării se schimbă („n-a putut pleca”), fără să mute rularea de mâine', p.ultima_stare === 'esuat' && p.next_run === urm);
 
     // Clientul: fără eroarea exactă
     const { puneParola } = require('./test_parola');
@@ -245,7 +245,7 @@ const fals = http.createServer((req, res) => {
     T('clientul vede starea pe înțeles, fără eroarea exactă', !!idC && pc.ultima_stare === 'reincercare' && /n-a plecat; încercăm din nou la/.test(pc.stare_text || '') &&
       !/Brevo|401|unrecognised/.test(JSON.stringify(pc)), JSON.stringify({ sc: scC.t.slice(0, 120), pc }).slice(0, 300));
     const rc = await json('POST', '/api/report-schedules/' + idC + '/run', C);
-    T('„Trimite acum" la client: „echipa RA Track a fost anunțată", fără Brevo', rc.status === 200 && rc.j.emailText === 'emailul n-a plecat; echipa RA Track a fost anunțată' &&
+    T('„Trimite acum” la client: „echipa RA Track a fost anunțată”, fără Brevo', rc.status === 200 && rc.j.emailText === 'emailul n-a plecat; echipa RA Track a fost anunțată' &&
       !/Brevo|401/.test(JSON.stringify(rc.j)), JSON.stringify(rc.j).slice(0, 300));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');

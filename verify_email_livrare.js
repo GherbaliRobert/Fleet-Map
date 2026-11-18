@@ -3,15 +3,15 @@
 //
 //   node verify_email_livrare.js
 //
-// Aplicația îl preda lui Brevo și scria „a plecat pe email"; ce urma (livrat la Yahoo, refuzat, adresa blocată la Brevo, spam) nu
+// Aplicația îl preda lui Brevo și scria „a plecat pe email”; ce urma (livrat la Yahoo, refuzat, adresa blocată la Brevo, spam) nu
 // știa nimeni. Ce păzește (cu un Brevo FALS, local — nu pleacă niciun email adevărat):
 //   1. regulile (livrare.js): evenimentele Brevo → starea noastră, oricum ar fi scrise; ce e lămurit, ce se mai întreabă; textele
 //      (adresa și motivul doar la noi; clientul află doar că n-a ajuns și că am fost anunțați);
 //   2. mailer.js: întreabă evenimentele după id-ul emailului, deblochează o adresă, verifică Brevo fără să trimită nimic;
-//   3. pe server pornit: verificarea de la pornire (Brevo refuză serverul → „Stare producție" roșie și anunțul nostru, fără niciun
-//      email trimis); raportul programat pleacă → Brevo spune „blocat" → rândul programării spune de ce (la noi, cu „Deblochează la
-//      Brevo"), clientul vede doar că n-a ajuns, noi și omul programării suntem anunțați o singură dată; „Deblochează" scoate
-//      adresa; a doua zi „livrat"; un email din panoul Mail refuzat de serverul destinatarului ne anunță și el.
+//   3. pe server pornit: verificarea de la pornire (Brevo refuză serverul → „Stare producție” roșie și anunțul nostru, fără niciun
+//      email trimis); raportul programat pleacă → Brevo spune „blocat” → rândul programării spune de ce (la noi, cu „Deblochează la
+//      Brevo"), clientul vede doar că n-a ajuns, noi și omul programării suntem anunțați o singură dată; „Deblochează” scoate
+//      adresa; a doua zi „livrat”; un email din panoul Mail refuzat de serverul destinatarului ne anunță și el.
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -26,7 +26,7 @@ const MESAJ_IP = 'We have detected you are using an unrecognised IP address 34.5
 // ─── Brevo fals: trimitere, cont, evenimente, adrese blocate ───
 let contMod = 'ok', nrMesaj = 0;
 const trimise = [], cereriEv = [], deblocate = [];
-const evPe = {};   // messageId → evenimentele pe care le „știe" Brevo
+const evPe = {};   // messageId → evenimentele pe care le „știe” Brevo
 let evMod = 'ok';  // 'ok' | '400' (cere o perioadă: răspunde 400 fără days)
 const fals = http.createServer((req, res) => {
   let b = ''; req.on('data', (c) => { b += c; });
@@ -72,13 +72,13 @@ const fals = http.createServer((req, res) => {
     JSON.stringify(Object.keys(M).map((k) => k + '=' + lv.stareEveniment(k))));
   const E = (ev, d, reason) => ({ event: ev, date: d, reason: reason });
   const s1 = lv.stareDinEvenimente([E('requests', '2026-10-28T05:02:01Z'), E('deferred', '2026-10-28T05:02:10Z', 'TSS04'), E('delivered', '2026-10-28T05:40:00Z')]);
-  T('amânat, apoi livrat → „livrat", cu ora livrării', s1.stare === 'livrat' && s1.la === Date.parse('2026-10-28T05:40:00Z'), JSON.stringify(s1));
+  T('amânat, apoi livrat → „livrat”, cu ora livrării', s1.stare === 'livrat' && s1.la === Date.parse('2026-10-28T05:40:00Z'), JSON.stringify(s1));
   const s2 = lv.stareDinEvenimente([E('requests', '2026-10-28T05:02:01Z'), E('blocked', '2026-10-28T05:02:02Z', 'hardBounce')]);
-  T('blocat la Brevo → „blocat", cu motivul', s2.stare === 'blocat' && s2.motiv === 'hardBounce', JSON.stringify(s2));
-  T('livrat, apoi marcat spam → „spam"', lv.stareDinEvenimente([E('delivered', '2026-10-28T05:03:00Z'), E('spam', '2026-10-28T09:00:00Z')]).stare === 'spam');
+  T('blocat la Brevo → „blocat”, cu motivul', s2.stare === 'blocat' && s2.motiv === 'hardBounce', JSON.stringify(s2));
+  T('livrat, apoi marcat spam → „spam”', lv.stareDinEvenimente([E('delivered', '2026-10-28T05:03:00Z'), E('spam', '2026-10-28T09:00:00Z')]).stare === 'spam');
   const s4 = lv.stareDinEvenimente([E('hardBounces', '2026-10-28T05:02:10Z', '554 5.7.9 Message not accepted for policy reasons')]);
-  T('refuzat definitiv → „respins", cu motivul serverului destinatarului', s4.stare === 'respins' && /policy/.test(s4.motiv), JSON.stringify(s4));
-  T('doar primit de Brevo → „trimis"; nimic → „necunoscut"', lv.stareDinEvenimente([E('requests', '2026-10-28T05:02:01Z')]).stare === 'trimis' &&
+  T('refuzat definitiv → „respins”, cu motivul serverului destinatarului', s4.stare === 'respins' && /policy/.test(s4.motiv), JSON.stringify(s4));
+  T('doar primit de Brevo → „trimis”; nimic → „necunoscut”', lv.stareDinEvenimente([E('requests', '2026-10-28T05:02:01Z')]).stare === 'trimis' &&
     lv.stareDinEvenimente([]).stare === 'necunoscut' && lv.stareDinEvenimente(null).stare === 'necunoscut');
   const acum = Date.parse('2026-10-28T08:00:00Z');
   T('se mai întreabă: nelămurit și proaspăt; nu: lămurit, mai vechi de 3 zile, întrebat acum 3 minute',
@@ -87,19 +87,19 @@ const fals = http.createServer((req, res) => {
     !lv.deVerificat({ stare: 'trimis', trimis_la: acum - 3600e3, verificat_la: acum - 3 * 60e3 }, acum));
   const bl = [{ catre: 'alin.tilvar@yahoo.com', stare: 'blocat', motiv: 'hardBounce', ref: 'sched:4' }];
   const rzN = lv.rezumat(bl, true), rzC = lv.rezumat(bl, false);
-  T('la noi: adresa, de ce, și „Deblochează la Brevo"', rzN.fel === 'rau' && /alin\.tilvar@yahoo\.com/.test(rzN.text) && /lista lui de adrese blocate/.test(rzN.text) &&
+  T('la noi: adresa, de ce, și „Deblochează la Brevo”', rzN.fel === 'rau' && /alin\.tilvar@yahoo\.com/.test(rzN.text) && /lista lui de adrese blocate/.test(rzN.text) &&
     /Deblochează la Brevo/.test(rzN.text) && rzN.blocate[0] === 'alin.tilvar@yahoo.com', JSON.stringify(rzN));
   T('la client: doar că n-a ajuns și că echipa RA Track a fost anunțată — fără adresă, fără Brevo, fără motiv', rzC.fel === 'rau' &&
     rzC.text === 'nu a ajuns la destinatar; echipa RA Track a fost anunțată' && !rzC.blocate.length, JSON.stringify(rzC));
   const ok2 = lv.rezumat([{ catre: 'a@firma.ro', stare: 'livrat', la: Date.parse('2026-10-28T05:03:00Z') }, { catre: 'b@firma.ro', stare: 'deschis' }], true);
-  T('toate livrate → „livrat la toate cele 2 adrese"; una → „livrat la yahoo.com (07:03)"', ok2.fel === 'ok' && ok2.text === 'livrat la toate cele 2 adrese' &&
+  T('toate livrate → „livrat la toate cele 2 adrese”; una → „livrat la yahoo.com (07:03)”', ok2.fel === 'ok' && ok2.text === 'livrat la toate cele 2 adrese' &&
     lv.rezumat([{ catre: 'x@yahoo.com', stare: 'livrat', la: Date.parse('2026-10-28T05:03:00Z') }], true).text === 'livrat la yahoo.com (07:03)', JSON.stringify(ok2));
-  T('încă fără răspuns → „asteapta" (la client fără text în plus)', lv.rezumat([{ catre: 'a@b.ro', stare: 'trimis' }], true).fel === 'asteapta' &&
+  T('încă fără răspuns → „asteapta” (la client fără text în plus)', lv.rezumat([{ catre: 'a@b.ro', stare: 'trimis' }], true).fel === 'asteapta' &&
     lv.rezumat([{ catre: 'a@b.ro', stare: 'trimis' }], false).text === '');
-  const an = lv.anunt([Object.assign({ unde: '„Foaia de dimineață"' }, bl[0])]);
-  T('anunțul nostru: unde, ce s-a întâmplat, și unde e butonul (nu „de aici")', an && an.titlu === 'Un email n-a ajuns la destinatar' && /„Foaia de dimineață"/.test(an.body) &&
+  const an = lv.anunt([Object.assign({ unde: '„Foaia de dimineață”' }, bl[0])]);
+  T('anunțul nostru: unde, ce s-a întâmplat, și unde e butonul (nu „de aici”)', an && an.titlu === 'Un email n-a ajuns la destinatar' && /„Foaia de dimineață”/.test(an.body) &&
     /Rapoarte › Programări/.test(an.body) && !/de aici/.test(an.body), JSON.stringify(an));
-  T('două emailuri → „2 emailuri n-au ajuns la destinatar"', lv.anunt([bl[0], { catre: 'z@y.ro', stare: 'invalid' }]).titlu === '2 emailuri n-au ajuns la destinatar');
+  T('două emailuri → „2 emailuri n-au ajuns la destinatar”', lv.anunt([bl[0], { catre: 'z@y.ro', stare: 'invalid' }]).titlu === '2 emailuri n-au ajuns la destinatar');
   const toateTextele = ['livrat', 'deschis', 'amanat', 'trimis', 'respins', 'blocat', 'spam', 'invalid', 'eroare', 'deblocat'].map((st) => lv.textPentruNoi({ catre: 'a@b.ro', stare: st }) + ' ' + lv.ceFacem({ stare: st }));
   T('textele sunt în română: fără numele englezești ale evenimentelor', toateTextele.every((t) => !/\b(delivered|bounce|blocked|deferred|requests)\b/i.test(t)), toateTextele.join(' | '));
 
@@ -123,17 +123,17 @@ const fals = http.createServer((req, res) => {
   T('dacă Brevo cere o perioadă (400), se cere din nou cu 7 zile', ev2.ok && cereriEv[cereriEv.length - 1].days === '7', JSON.stringify(cereriEv.slice(-2)));
   evMod = 'ok';
   const db1 = await mailer.deblocheaza('Alin.Tilvar@Yahoo.com');
-  T('„Deblochează": Brevo primește cererea pentru adresa respectivă', db1.ok && deblocate[0] === 'Alin.Tilvar@Yahoo.com', JSON.stringify({ db1, deblocate }));
+  T('„Deblochează”: Brevo primește cererea pentru adresa respectivă', db1.ok && deblocate[0] === 'Alin.Tilvar@Yahoo.com', JSON.stringify({ db1, deblocate }));
   T('o adresă stricată nu pleacă spre Brevo', (await mailer.deblocheaza('nu-e-email')).ok === false && deblocate.length === 1);
   contMod = 'ip';
   const v1 = await mailer.verify();
-  T('verificarea fără email: refuzul adresei serverului, cu mesajul lui Brevo (motivul: „ip")', v1.ok === false && /unrecognised IP/.test(v1.error) && mailer.motiv(v1.error).fel === 'ip', JSON.stringify(v1));
+  T('verificarea fără email: refuzul adresei serverului, cu mesajul lui Brevo (motivul: „ip”)', v1.ok === false && /unrecognised IP/.test(v1.error) && mailer.motiv(v1.error).fel === 'ip', JSON.stringify(v1));
   contMod = 'ok';
   T('…și când Brevo primește serverul: ok', (await mailer.verify()).ok === true);
   T('verificarea nu a trimis niciun email', trimise.length === 1);
 
   // ─── 3. Pe server pornit ─────────────────────────────────────────────────────────────────────────────
-  console.log('\n3. Pe server pornit: verificarea de la pornire, raportul care n-a ajuns, „Deblochează", emailul din panoul Mail');
+  console.log('\n3. Pe server pornit: verificarea de la pornire, raportul care n-a ajuns, „Deblochează”, emailul din panoul Mail');
   contMod = 'ip';   // Brevo refuză serverul încă de la pornire
   const PORT = 3356, TCP = 5356, B = 'http://127.0.0.1:' + PORT;
   const DIR = path.join(os.tmpdir(), 'rax_livrare_' + Date.now());
@@ -163,16 +163,16 @@ const fals = http.createServer((req, res) => {
     const nTrimise0 = trimise.length;
     let h = { t: '' };
     for (let i = 0; i < 20; i++) { h = await json('GET', '/api/admin/health', S); if (/la verificarea de/.test(h.t)) break; await sleep(500); }
-    T('la pornire, fără niciun email: „Stare producție" roșie — Brevo refuză serverul, cu ce e de făcut',
+    T('la pornire, fără niciun email: „Stare producție” roșie — Brevo refuză serverul, cu ce e de făcut',
       /DAR la verificarea de [^)]*\(fără niciun email trimis\) Brevo a refuzat serverul/.test(h.t) && /Authorised IPs/.test(h.t), (h.t.match(/"smtp"[^}]*}/) || [h.t.slice(0, 300)])[0]);
     const nPornire = ((await json('GET', '/api/notifications?limit=50', S)).j || []).filter((x) => x.type === 'email_esuat');
-    T('…și anunțul nostru pe loc: „Emailurile nu vor putea pleca", verificat fără email', nPornire.length === 1 && /fără niciun email trimis/.test(nPornire[0].body) && /Authorised IPs/.test(nPornire[0].body),
+    T('…și anunțul nostru pe loc: „Emailurile nu vor putea pleca”, verificat fără email', nPornire.length === 1 && /fără niciun email trimis/.test(nPornire[0].body) && /Authorised IPs/.test(nPornire[0].body),
       JSON.stringify(nPornire).slice(0, 300));
     T('verificarea n-a trimis niciun email', trimise.length === nTrimise0);
     contMod = 'ok';
     const vf = await json('POST', '/api/test/ceasuri', S, { verificareEmail: true });
     h = await json('GET', '/api/admin/health', S);
-    T('Brevo primește din nou serverul → rândul spune „Brevo primește serverul (verificat …, fără email trimis)"', vf.j.verificareEmail && vf.j.verificareEmail.ok === true &&
+    T('Brevo primește din nou serverul → rândul spune „Brevo primește serverul (verificat …, fără email trimis)”', vf.j.verificareEmail && vf.j.verificareEmail.ok === true &&
       /Brevo primește serverul \(verificat [^)]*, fără email trimis\)/.test(h.t) && !/Brevo a refuzat serverul/.test(h.t), (h.t.match(/"smtp"[^}]*}/) || [h.t.slice(0, 300)])[0]);
 
     // Raportul programat al unei firme
@@ -200,10 +200,10 @@ const fals = http.createServer((req, res) => {
     const em = trimise[n0] || {};
     T('la 7: raportul pleacă spre Brevo', trimise.length === n0 + 1 && em.to && em.to[0].email === 'alin.tilvar@yahoo.com', JSON.stringify(em.to));
     p = await randS();
-    T('imediat după: la noi „a plecat pe email · Brevo l-a primit; încă nu știm dacă a ajuns", gri', /a plecat pe email · Brevo l-a primit; încă nu știm dacă a ajuns la alin\.tilvar@yahoo\.com/.test(p.stare_text || '') &&
+    T('imediat după: la noi „a plecat pe email · Brevo l-a primit; încă nu știm dacă a ajuns”, gri', /a plecat pe email · Brevo l-a primit; încă nu știm dacă a ajuns la alin\.tilvar@yahoo\.com/.test(p.stare_text || '') &&
       p.livrare_fel === 'asteapta', JSON.stringify({ t: p.stare_text, f: p.livrare_fel }));
     let pc = await randC();
-    T('…la client doar „a plecat pe email."', /a plecat pe email\.$/.test(pc.stare_text || '') && !/Brevo/.test(JSON.stringify(pc)), pc.stare_text);
+    T('…la client doar „a plecat pe email.”', /a plecat pe email\.$/.test(pc.stare_text || '') && !/Brevo/.test(JSON.stringify(pc)), pc.stare_text);
 
     // Brevo spune: adresa e blocată
     evPe[em._id] = [{ event: 'requests', date: new Date(t0).toISOString(), email: 'alin.tilvar@yahoo.com' },
@@ -211,32 +211,32 @@ const fals = http.createServer((req, res) => {
     const lv1 = await json('POST', '/api/test/ceasuri', S, { livrare: true });
     T('aplicația întreabă Brevo ce s-a întâmplat (doar citește)', lv1.j.livrare && lv1.j.livrare.verificate >= 1 && lv1.j.livrare.rele === 1 && cereriEv.some((x) => x.id === em._id), JSON.stringify(lv1.j.livrare));
     p = await randS();
-    T('la noi: „a plecat pe email, dar Brevo nu mai trimite la alin.tilvar@yahoo.com: adresa e pe lista lui de adrese blocate", roșu, cu butonul',
+    T('la noi: „a plecat pe email, dar Brevo nu mai trimite la alin.tilvar@yahoo.com: adresa e pe lista lui de adrese blocate”, roșu, cu butonul',
       /a plecat pe email, dar Brevo nu mai trimite la alin\.tilvar@yahoo\.com: adresa e pe lista lui de adrese blocate/.test(p.stare_text || '') &&
       p.livrare_fel === 'rau' && Array.isArray(p.livrare_blocate) && p.livrare_blocate[0] === 'alin.tilvar@yahoo.com', JSON.stringify({ t: p.stare_text, f: p.livrare_fel, b: p.livrare_blocate }));
     pc = await randC();
-    T('la client: „a plecat pe email, dar nu a ajuns la destinatar; echipa RA Track a fost anunțată" — fără adresă, fără Brevo, fără buton',
+    T('la client: „a plecat pe email, dar nu a ajuns la destinatar; echipa RA Track a fost anunțată” — fără adresă, fără Brevo, fără buton',
       pc.stare_text && /a plecat pe email, dar nu a ajuns la destinatar; echipa RA Track a fost anunțată\.$/.test(pc.stare_text) && pc.livrare_fel === 'rau' &&
       !pc.livrare_blocate && !/Brevo|blocat|hard bounce/i.test(JSON.stringify(pc)), JSON.stringify(pc).slice(0, 300));
     const notifS = ((await json('GET', '/api/notifications?limit=50', S)).j || []).filter((x) => x.type === 'email_nelivrat');
-    T('noi primim anunțul „Un email n-a ajuns la destinatar", cu programarea și unde e butonul', notifS.length === 1 && /„Foaia de dimineață"/.test(notifS[0].body) &&
+    T('noi primim anunțul „Un email n-a ajuns la destinatar”, cu programarea și unde e butonul', notifS.length === 1 && /„Foaia de dimineață”/.test(notifS[0].body) &&
       /Rapoarte › Programări/.test(notifS[0].body), JSON.stringify(notifS).slice(0, 300));
     const notifC = ((await json('GET', '/api/notifications?limit=50', C)).j || []).filter((x) => x.type === 'report_email_nelivrat');
-    T('omul programării află: „Emailul cu raportul n-a ajuns", raportul e în Istoric — fără adresă și fără motiv', notifC.length === 1 && /n-a ajuns/.test(notifC[0].title) &&
+    T('omul programării află: „Emailul cu raportul n-a ajuns”, raportul e în Istoric — fără adresă și fără motiv', notifC.length === 1 && /n-a ajuns/.test(notifC[0].title) &&
       /Istoric rapoarte/.test(notifC[0].body) && !/yahoo|Brevo|blocat/i.test(notifC[0].body), JSON.stringify(notifC).slice(0, 300));
     h = await json('GET', '/api/admin/health', S);
-    T('„Stare producție": portocaliu — ultimul email lămurit n-a ajuns, de ce, ce e de făcut', /DAR ultimul email lămurit n-a ajuns/.test(h.t) && /lista lui de adrese blocate/.test(h.t),
+    T('„Stare producție”: portocaliu — ultimul email lămurit n-a ajuns, de ce, ce e de făcut', /DAR ultimul email lămurit n-a ajuns/.test(h.t) && /lista lui de adrese blocate/.test(h.t),
       (h.t.match(/"smtp"[^}]*}/) || [h.t.slice(0, 300)])[0]);
     const lv2 = await json('POST', '/api/test/ceasuri', S, { livrare: true });
     const notifS2 = ((await json('GET', '/api/notifications?limit=50', S)).j || []).filter((x) => x.type === 'email_nelivrat');
     T('un email lămurit nu se mai întreabă și nu ne anunță a doua oară', lv2.j.livrare && lv2.j.livrare.verificate === 0 && notifS2.length === 1, JSON.stringify(lv2.j.livrare));
 
-    // „Deblochează la Brevo"
+    // „Deblochează la Brevo”
     const dbC = await json('POST', '/api/admin/email/deblocheaza', C, { email: 'alin.tilvar@yahoo.com' });
     T('clientul nu poate debloca (doar noi)', dbC.status === 403, String(dbC.status));
     const nDeb = deblocate.length;
     const dbS = await json('POST', '/api/admin/email/deblocheaza', S, { email: 'alin.tilvar@yahoo.com' });
-    T('„Deblochează la Brevo": Brevo scoate adresa, iar aplicația o spune', dbS.status === 200 && deblocate.length === nDeb + 1 && deblocate[deblocate.length - 1] === 'alin.tilvar@yahoo.com' &&
+    T('„Deblochează la Brevo”: Brevo scoate adresa, iar aplicația o spune', dbS.status === 200 && deblocate.length === nDeb + 1 && deblocate[deblocate.length - 1] === 'alin.tilvar@yahoo.com' &&
       /a fost scoasă de pe lista de adrese blocate la Brevo/.test(dbS.j.text || ''), JSON.stringify(dbS.j));
     p = await randS();
     T('…rândul programării nu mai e roșu și spune că următorul email pleacă normal', p.livrare_fel !== 'rau' && !p.livrare_blocate &&
@@ -251,10 +251,10 @@ const fals = http.createServer((req, res) => {
       { event: 'delivered', date: new Date(t1 + 60000).toISOString(), email: 'alin.tilvar@yahoo.com' }];
     await json('POST', '/api/test/ceasuri', S, { livrare: true });
     p = await randS(); pc = await randC();
-    T('a doua zi: „a plecat pe email · livrat la yahoo.com (ora)" la noi; „a ajuns la destinatar" la client', /a plecat pe email · livrat la yahoo\.com \(\d{2}:\d{2}\)\./.test(p.stare_text || '') &&
+    T('a doua zi: „a plecat pe email · livrat la yahoo.com (ora)” la noi; „a ajuns la destinatar” la client', /a plecat pe email · livrat la yahoo\.com \(\d{2}:\d{2}\)\./.test(p.stare_text || '') &&
       p.livrare_fel === 'ok' && /a plecat pe email · a ajuns la destinatar\./.test(pc.stare_text || ''), JSON.stringify({ s: p.stare_text, c: pc.stare_text }));
     h = await json('GET', '/api/admin/health', S);
-    T('„Stare producție" redevine verde, cu ultimul email livrat', /ultimul email livrat:/.test(h.t) && !/DAR ultimul email/.test(h.t), (h.t.match(/"smtp"[^}]*}/) || [h.t.slice(0, 300)])[0]);
+    T('„Stare producție” redevine verde, cu ultimul email livrat', /ultimul email livrat:/.test(h.t) && !/DAR ultimul email/.test(h.t), (h.t.match(/"smtp"[^}]*}/) || [h.t.slice(0, 300)])[0]);
 
     // Un email din panoul Mail, refuzat de serverul destinatarului
     const nm = trimise.length;
@@ -264,7 +264,7 @@ const fals = http.createServer((req, res) => {
     evPe[em3._id] = [{ event: 'hardBounces', date: new Date().toISOString(), email: 'nu.exista@client.ro', reason: '550 5.1.1 The email account that you tried to reach does not exist' }];
     await json('POST', '/api/test/ceasuri', S, { livrare: true });
     const notifS3 = ((await json('GET', '/api/notifications?limit=50', S)).j || []).filter((x) => x.type === 'email_nelivrat');
-    T('…refuzat de serverul destinatarului → anunțul nostru spune felul („Mesaj"), adresa și motivul', notifS3.length === 2 && /Mesaj: serverul de email al lui nu\.exista@client\.ro l-a refuzat \(550 5\.1\.1/.test(notifS3[0].body),
+    T('…refuzat de serverul destinatarului → anunțul nostru spune felul („Mesaj”), adresa și motivul', notifS3.length === 2 && /Mesaj: serverul de email al lui nu\.exista@client\.ro l-a refuzat \(550 5\.1\.1/.test(notifS3[0].body),
       JSON.stringify(notifS3.map((x) => x.body)).slice(0, 400));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
 
@@ -280,7 +280,7 @@ const fals = http.createServer((req, res) => {
   T('verificarea pornește singură la pornire și din oră în oră; întrebarea de livrare la 5 minute', /setTimeout\(\(\) => _verificaEmailServer\(\)/.test(SRV) &&
     /setInterval\(\(\) => _verificaEmailServer\(\)\.catch\(\(\) => \{\}\), 60 \* 60 \* 1000\)/.test(SRV) && /setInterval\(\(\) => livrareEmailTick\(\)\.catch\(\(\) => \{\}\), 5 \* 60 \* 1000\)/.test(SRV));
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  T('pagina: culoarea după livrare și butonul „Deblochează la Brevo" (adresa din atribut, nu din cod)', /sch-st-' \+ E\(cls\)/.test(PAG) && /data-email="' \+ E\(em\) \+ '" onclick="schedDeblocheaza\(this\.dataset\.email, this\)"/.test(PAG));
+  T('pagina: culoarea după livrare și butonul „Deblochează la Brevo” (adresa din atribut, nu din cod)', /sch-st-' \+ E\(cls\)/.test(PAG) && /data-email="' \+ E\(em\) \+ '" onclick="schedDeblocheaza\(this\.dataset\.email, this\)"/.test(PAG));
   const CSS = fs.readFileSync(path.join(__dirname, 'public', 'css', 'app.css'), 'utf8');
   T('culorile noi au pereche pe tema închisă', /\.sch-next\.sch-st-nelivrat \{/.test(CSS) && /body\.dark \.sch-next\.sch-st-nelivrat \{/.test(CSS) && /body\.dark \.sch-debloc \{/.test(CSS));
 

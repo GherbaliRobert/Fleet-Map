@@ -1,7 +1,7 @@
-/* Agenții AI — telefonul de prezentare de pe prima pagină (17.11; Alin, la machete: „hai să facem varianta B să o testez").
+/* Agenții AI — telefonul de prezentare de pe prima pagină (17.11; Alin, la machete: „hai să facem varianta B să o testez”).
    Stilul pentru public/js/agenti-demo.js. Rama telefonului e a telefonului RA Insight (.ri-tel, .ri-scr… din ra-insight-demo.css),
-   ca cele două telefoane ale paginii să fie la fel; ecranul are culorile paginii „Agenți AI" din aplicație, pe tema ÎNCHISĂ
-   (app.css: body.dark). Totul e pe clase „agd-", ca să nu se bată cu foaia paginii. Fontul se moștenește (Nunito). */
+   ca cele două telefoane ale paginii să fie la fel; ecranul are culorile paginii „Agenți AI” din aplicație, pe tema ÎNCHISĂ
+   (app.css: body.dark). Totul e pe clase „agd-”, ca să nu se bată cu foaia paginii. Fontul se moștenește (Nunito). */
 .agd { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 34px; align-items: center; margin-top: 4px; }
 .agd-lista { display: grid; gap: 10px; }
 .agd-b { -webkit-appearance: none; appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid;
@@ -83,8 +83,8 @@
 .agd-f span { min-width: 0; }
 .agd-f b { color: #C2CAD6; }
 
-/* Tableta și telefonul (≤ 1000 px; 18.11): în locul butoanelor și al telefonului desenat, cartonașele paginii „Agenți AI" din
-   aplicație (agenti-demo.js → cartonase). Tableta: două coloane, „Vezi ce a găsit azi"; telefonul (≤ 620 px): un rând pe agent. */
+/* Tableta și telefonul (≤ 1000 px; 18.11): în locul butoanelor și al telefonului desenat, cartonașele paginii „Agenți AI” din
+   aplicație (agenti-demo.js → cartonase). Tableta: două coloane, „Vezi ce a găsit azi”; telefonul (≤ 620 px): un rând pe agent. */
 .agd-cart { display: none; }
 .agd-cart-ind { display: none; margin: 0 0 8px; font-size: 13px; color: #9AA4B2; }
 .agd-cart-l { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }

@@ -12,13 +12,13 @@ import '../screens/detail.css';
 import '../screens/firma.css';
 import '../screens/companii.css';
 
-// Fișa unei firme (fondatori): foaia „Editează datele companiei" și fila „Acces" (până pe 12.10, foaia „Module & limite").
+// Fișa unei firme (fondatori): foaia „Editează datele companiei” și fila „Acces” (până pe 12.10, foaia „Module & limite”).
 // Aceleași câmpuri, texte și rute ca pe web (raxEditCompany / raxOpenCompanyConfig).
 
 const nul = (v: any) => { const s = String(v == null ? '' : v).trim(); return s || null; };
 
 // ─── Editarea datelor companiei ───────────────────────────────────────────────────────────────
-// Toate câmpurile, ca pe web: datele juridice, contactul, persoanele de contact și „Companie activă".
+// Toate câmpurile, ca pe web: datele juridice, contactul, persoanele de contact și „Companie activă”.
 // Serverul schimbă doar cheile trimise (db.updateCompany, din 23.09); aici se trimit toate, cu golul ca null.
 export function CompanyEditSheet({ company, onClose, onSaved }: { company: any; onClose: () => void; onSaved: () => void }) {
   const c = company || {};
@@ -109,7 +109,7 @@ export function CompanyEditSheet({ company, onClose, onSaved }: { company: any; 
 }
 
 // ─── Module & limite ─────────────────────────────────────────────────────────────────────────
-// Oferta firmei (trimite la „Abonament & plăți"), pachetul RA Insight, cele 4 module și cei 6 agenți AI.
+// Oferta firmei (trimite la „Abonament & plăți”), pachetul RA Insight, cele 4 module și cei 6 agenți AI.
 // Numele agenților NU se scriu pe telefon: vin de la server (/api/agents). ⚠ Ruta aia arată agenții
 // FIRMEI CONTULUI care întreabă, nu catalogul platformei: un super-admin rămas legat de o firmă (conturi
 // promovate înainte de 13.09) primește doar agenții aprinși acolo. Ca un agent stins la noi să nu dispară
@@ -132,9 +132,9 @@ function agentiDeAratat(catalog: AgentRand[] | null, cfg: any): AgentRand[] {
   impliciti.concat(scrisi).forEach((k: any) => pune(k));
   return out;
 }
-// ─── Fila „Acces" a fișei firmei (12.10): pachetul RA Insight, modulele și agenții AI ───────────────────────────────────────
-// Până pe 12.10 era foaia „Module & limite"; acum e o filă a fișei, ca pe web (fila „Acces", _raxRenderCfg). Modulele
-// vin din lib/companii (MODULE_FIRMA, legate de web prin verify_firma_stare.js), iar „automat / ales de noi" din ce
+// ─── Fila „Acces” a fișei firmei (12.10): pachetul RA Insight, modulele și agenții AI ───────────────────────────────────────
+// Până pe 12.10 era foaia „Module & limite”; acum e o filă a fișei, ca pe web (fila „Acces”, _raxRenderCfg). Modulele
+// vin din lib/companii (MODULE_FIRMA, legate de web prin verify_firma_stare.js), iar „automat / ales de noi” din ce
 // spune serverul (features_setate, dupa_flota, flota_grea) — telefonul nu socotește flota a doua oară.
 export function CompanyAcces({ companyId, onChanged, onOferta }: {
   companyId: number; onChanged: () => void; onOferta: () => void;
@@ -149,7 +149,7 @@ export function CompanyAcces({ companyId, onChanged, onOferta }: {
   const [pkAles, setPkAles] = useState<any | null>(null);   // { p: pachetul ales, t: textul ferestrei, de la server }
   useInapoiInchide(!!pkAles, () => { setPkAles(null); return true; });
 
-  // Răspunsul serverului e adevărul: comutatoarele și „automat / ales de noi".
+  // Răspunsul serverului e adevărul: comutatoarele și „automat / ales de noi”.
   function dupaRaspuns(r: any) {
     if (r && r.features) setFeats(Object.assign({}, r.features));
     if (r && r.features_setate) setSetate(Object.assign({}, r.features_setate));
@@ -181,7 +181,7 @@ export function CompanyAcces({ companyId, onChanged, onOferta }: {
       onChanged();
     } catch (e: any) { setFeats(prev); showToast(e?.message || 'Eroare', true); }
   }
-  // „Înapoi la automat": cheia iese din setările firmei, iar modulul merge iar după flotă (ca pe web: raxCfgAutomat).
+  // „Înapoi la automat”: cheia iese din setările firmei, iar modulul merge iar după flotă (ca pe web: raxCfgAutomat).
   async function automat(key: string) {
     try {
       const r: any = await Api.setCompanyFeatures(companyId, { [key]: null });
@@ -265,7 +265,7 @@ export function CompanyAcces({ companyId, onChanged, onOferta }: {
           <div class="fm-sec">Agenți AI{agOff ? <span style="color:var(--co-warn);text-transform:none;letter-spacing:0;font-weight:700"> (modul oprit → niciunul nu rulează)</span> : null}</div>
           {catalog == null && <div class="spin" style="margin:8px auto" />}
           {catalog != null && lista.length === 0 && <div class="co-note">{agOff
-            ? 'Pornește modulul „Agenți AI" de mai sus — apoi agenții apar aici.'
+            ? 'Pornește modulul „Agenți AI” de mai sus — apoi agenții apar aici.'
             : 'Lista agenților nu s-a putut încărca.'}</div>}
           {catalog != null && lista.map((a) => {
             const on = ags.indexOf(a.key) >= 0;

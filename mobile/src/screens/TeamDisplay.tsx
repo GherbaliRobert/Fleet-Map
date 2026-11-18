@@ -5,7 +5,7 @@ import { Icon } from '../components/Icon';
 import { FmMsg, FmScreen, poartaFirma, type FmMesaj } from '../components/FirmaUi';
 import './admin.css'; // .sw
 
-// „Afișaj pentru toți" (web: Setări → Toată echipa), pentru adminul firmei: valorile de PORNIRE ale firmei.
+// „Afișaj pentru toți” (web: Setări → Toată echipa), pentru adminul firmei: valorile de PORNIRE ale firmei.
 // Aceleași șase reglaje, cu aceleași cuvinte ca pe web (US_TOGGLES, cheile cu unde = 'ambele' sau 'firma').
 // Fiecare comutare se salvează pe loc și trimite DOAR cheia schimbată — serverul le îmbină cu cele de acum.
 // O cheie nesetată se arată pornită (așa e din fabrică).
@@ -22,10 +22,10 @@ const REGLAJE: { k: string; label: string; desc: string }[] = [
   { k: 'replay_marker', label: 'Arată mașina care se plimbă pe traseu',
     desc: 'Punctul care merge pe drum când redai istoricul, ca la un film.' },
   { k: 'geocoded_address', label: 'Arată adresa, nu coordonatele',
-    desc: 'În panoul de detalii scrie strada și localitatea, în loc de cifre („45.75, 21.22").' },
+    desc: 'În panoul de detalii scrie strada și localitatea, în loc de cifre („45.75, 21.22”).' },
   { k: 'show_driver_names', label: 'Arată numele șoferilor',
     desc: 'Numele omului de la volan, în listă și în panoul de detalii.' },
-  { k: 'tab_camion', label: 'Fila „Camion" din fișa vehiculului',
+  { k: 'tab_camion', label: 'Fila „Camion” din fișa vehiculului',
     desc: 'Tara, masele maxime și sarcinile pe axe. Apare oricum doar la camioane, autotractoare și remorci — de aici o scoți de tot, dacă firma nu are așa ceva.' },
   { k: 'tab_sonde', label: 'Filele pentru sondele de combustibil',
     desc: 'Calibrarea sondei. Apar oricum doar la mașinile care au sondă montată — de aici le scoți de tot.' },

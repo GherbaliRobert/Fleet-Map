@@ -1,11 +1,11 @@
 // verify_fisa_insight.js — fișa lui RA Insight despre fiecare om (11.11; fisa_insight.js)
-// Alin: „să memoreze cam ce discută fiecare user cu el… să-și facă o idee ce i se potrivește"; fișa rămâne cât omul are cont (nu
+// Alin: „să memoreze cam ce discută fiecare user cu el… să-și facă o idee ce i se potrivește”; fișa rămâne cât omul are cont (nu
 // pleacă odată cu conversațiile șterse la 12 luni); ștergerea totală DOAR din Setări → Preferințe, cu confirmare; în discuție doar
-// lucruri anume („uită că…"), iar „uită tot" scris într-o discuție NU șterge nimic.
-//   1. regulile (fără server): ce se păstrează, numele mașinilor, ce înțelege din discuție, ce scoate „uită că…";
+// lucruri anume („uită că…”), iar „uită tot” scris într-o discuție NU șterge nimic.
+//   1. regulile (fără server): ce se păstrează, numele mașinilor, ce înțelege din discuție, ce scoate „uită că…”;
 //   2. în cod: unde se citește, unde se scrie, ce se salvează, ce vede pagina;
-//   3. pe server pornit, cu modelul simulat (nu se cheltuie nimic): tura de noapte, „ce știi despre mine?", „Unde e Loganul?",
-//      „uită că…", „uită tot", butonul din Preferințe, conversațiile șterse la 12 luni, contul scos din firmă, firma pe Start.
+//   3. pe server pornit, cu modelul simulat (nu se cheltuie nimic): tura de noapte, „ce știi despre mine?”, „Unde e Loganul?”,
+//      „uită că…”, „uită tot”, butonul din Preferințe, conversațiile șterse la 12 luni, contul scos din firmă, firma pe Start.
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path');
 const { spawn } = require('child_process');
@@ -26,7 +26,7 @@ const fisa = F.curata({
   nume: [{ spune: 'Loganul', numar: 'B 204 UIP' }, { spune: 'camionul mare', numar: 'b77tir' }, { spune: 'mașina lui tata', numar: 'B 999 XYZ' }, { spune: 'B 154 UIP', numar: 'B 154 UIP' }]
 }, FLOTA.map((x) => x.nr));
 T('curata: rămân doar rândurile bune (fără telefon, email, sănătate, CNP, dubluri, rânduri prea lungi)', fisa.randuri.length === 2 && fisa.randuri[0] === 'Întreabă des de consumul lui B 77 TIR.', JSON.stringify(fisa.randuri));
-T('curata: numele doar cu mașini ale firmei, scrise cum le scrie aplicația (b77tir → B 77 TIR); numărul nu e un „nume"',
+T('curata: numele doar cu mașini ale firmei, scrise cum le scrie aplicația (b77tir → B 77 TIR); numărul nu e un „nume”',
   fisa.nume.length === 2 && fisa.nume[1].numar === 'B 77 TIR' && !fisa.nume.some((x) => x.numar === 'B 999 XYZ'), JSON.stringify(fisa.nume));
 const mult = F.curata({ randuri: Array.from({ length: 30 }, (_, i) => 'Rândul numărul ' + (i + 1) + '.') }, []);
 T('curata: cel mult ' + F.MAX_RANDURI + ' rânduri', mult.randuri.length === F.MAX_RANDURI);
@@ -34,25 +34,25 @@ T('dinRaspuns: JSON-ul și când modelul mai scrie ceva în jur; altfel nimic', 
 
 const amb = { masini: [], ambigue: [{ cheie: 'logan' }] };
 const nm = (q, g) => F.aplicaNume(q, fisa, FLOTA, g || amb).text;
-T('aplicaNume: „Unde e Loganul?" → B 204 UIP (și „Loganului", „Loganu\'")',
+T('aplicaNume: „Unde e Loganul?” → B 204 UIP (și „Loganului”, „Loganu\'")',
   nm('Unde e Loganul?') === 'Unde e B 204 UIP?' && nm('Câți km a făcut Loganului ieri?') === 'Câți km a făcut B 204 UIP ieri?' && nm("Unde e Loganu' acum") === 'Unde e B 204 UIP acum');
-T('aplicaNume: un nume din mai multe cuvinte („camionul mare")', nm('Unde e camionul mare?') === 'Unde e B 77 TIR?');
-T('aplicaNume: un număr scris în text câștigă („Loganul B 154 UIP")', nm('Unde e Loganul B 154 UIP?') === 'Unde e Loganul B 154 UIP?');
-T('aplicaNume: o mașină numită limpede („Dacia Logan 3") rămâne a ei', F.aplicaNume('Dacia Logan 3 unde e?', fisa, FLOTA, { masini: [{}], ambigue: [] }).text === 'Dacia Logan 3 unde e?');
+T('aplicaNume: un nume din mai multe cuvinte („camionul mare”)', nm('Unde e camionul mare?') === 'Unde e B 77 TIR?');
+T('aplicaNume: un număr scris în text câștigă („Loganul B 154 UIP”)', nm('Unde e Loganul B 154 UIP?') === 'Unde e Loganul B 154 UIP?');
+T('aplicaNume: o mașină numită limpede („Dacia Logan 3”) rămâne a ei', F.aplicaNume('Dacia Logan 3 unde e?', fisa, FLOTA, { masini: [{}], ambigue: [] }).text === 'Dacia Logan 3 unde e?');
 T('aplicaNume: doar mașinile la care omul are acces', F.aplicaNume('Unde e Loganul?', fisa, FLOTA.filter((x) => x.nr !== 'B 204 UIP'), amb).text === 'Unde e Loganul?');
 
 const cer = (q) => JSON.stringify(F.cerere(q));
-T('cerere: „ce știi despre mine?" în mai multe forme', ['Ce știi despre mine?', 'ce mai stii tu despre mine', 'Ce ai reținut despre mine?', 'te rog ce știi despre mine'].every((q) => (F.cerere(q) || {}).fel === 'ce_stii'));
-T('cerere: „uită tot" NU e o ștergere (doar trimite la Preferințe)', ['Uită tot', 'uită tot ce știi despre mine', 'Te rog să uiți tot'].every((q) => (F.cerere(q) || {}).fel === 'uita_tot'), cer('Te rog să uiți tot'));
-T('cerere: „uită asta" / „șterge discuția asta" = discuția de acum', ['Uită asta', 'uită discuția asta', 'Șterge conversația asta', 'uită ce ți-am spus'].every((q) => (F.cerere(q) || {}).fel === 'uita_discutia'));
-T('cerere: „uită că …" = ceva anume', (F.cerere('Te rog uită că Loganul e B 204') || {}).fel === 'uita' && (F.cerere('Nu mai ține minte că vreau tabel') || {}).fel === 'uita');
-T('cerere: „uită-te la…" (= privește) nu e o cerere; nici o întrebare obișnuită', F.cerere('Uită-te la consumul lui B 77 TIR') === null && F.cerere('Uitați-vă la Logan') === null && F.cerere('Câți km a făcut Loganul?') === null);
+T('cerere: „ce știi despre mine?” în mai multe forme', ['Ce știi despre mine?', 'ce mai stii tu despre mine', 'Ce ai reținut despre mine?', 'te rog ce știi despre mine'].every((q) => (F.cerere(q) || {}).fel === 'ce_stii'));
+T('cerere: „uită tot” NU e o ștergere (doar trimite la Preferințe)', ['Uită tot', 'uită tot ce știi despre mine', 'Te rog să uiți tot'].every((q) => (F.cerere(q) || {}).fel === 'uita_tot'), cer('Te rog să uiți tot'));
+T('cerere: „uită asta” / „șterge discuția asta” = discuția de acum', ['Uită asta', 'uită discuția asta', 'Șterge conversația asta', 'uită ce ți-am spus'].every((q) => (F.cerere(q) || {}).fel === 'uita_discutia'));
+T('cerere: „uită că …” = ceva anume', (F.cerere('Te rog uită că Loganul e B 204') || {}).fel === 'uita' && (F.cerere('Nu mai ține minte că vreau tabel') || {}).fel === 'uita');
+T('cerere: „uită-te la…” (= privește) nu e o cerere; nici o întrebare obișnuită', F.cerere('Uită-te la consumul lui B 77 TIR') === null && F.cerere('Uitați-vă la Logan') === null && F.cerere('Câți km a făcut Loganul?') === null);
 const u1 = F.uita(fisa, 'Loganul e B 204');
-T('uita: scoate doar ce se potrivește (numele „Loganul"), restul rămâne', u1.scoase.length === 1 && u1.fisa.nume.length === 1 && u1.fisa.randuri.length === 2, JSON.stringify(u1.scoase));
+T('uita: scoate doar ce se potrivește (numele „Loganul”), restul rămâne', u1.scoase.length === 1 && u1.fisa.nume.length === 1 && u1.fisa.randuri.length === 2, JSON.stringify(u1.scoase));
 T('uita: nimic potrivit → nimic scos, iar textul o spune', F.uita(fisa, 'Mihai e șef de tură').scoase.length === 0 && /Nu găsesc/.test(F.textUitat(F.uita(fisa, 'Mihai e șef de tură'))));
-T('textCeStii: rândurile, numele, și cum uiți ceva anume / tot', /Când spui „Loganul", te referi la B 204 UIP/.test(F.textCeStii(fisa)) && /Setări → Preferințe/.test(F.textCeStii(fisa)) && /Încă nu știu nimic/.test(F.textCeStii(null)));
+T('textCeStii: rândurile, numele, și cum uiți ceva anume / tot', /Când spui „Loganul”, te referi la B 204 UIP/.test(F.textCeStii(fisa)) && /Setări → Preferințe/.test(F.textCeStii(fisa)) && /Încă nu știu nimic/.test(F.textCeStii(null)));
 const INS = F.instructiuni();
-T('instrucțiunile de noapte: fără cifrele flotei, fără date personale, „nu pune înapoi" ce i s-a cerut să uite, doar JSON',
+T('instrucțiunile de noapte: fără cifrele flotei, fără date personale, „nu pune înapoi” ce i s-a cerut să uite, doar JSON',
   /cifrele flotei/.test(INS) && /CNP/.test(INS) && /nu-l pune înapoi/.test(INS) && /DOAR cu JSON/.test(INS));
 T('cererea de noapte: fișa veche, mașinile firmei, discuțiile (răspunsurile lungi tăiate)',
   (() => { const c = F.cerereNoapte(fisa, FLOTA, [{ rol: 'user', text: 'Unde e Loganul?' }, { rol: 'assistant', text: 'y'.repeat(1000) }]); return /FIȘA DE PÂNĂ ACUM/.test(c) && /B 204 UIP — Dacia Logan 2/.test(c) && /Omul: Unde e Loganul\?/.test(c) && c.indexOf('y'.repeat(F.MAX_TEXT_MESAJ + 1)) < 0; })());
@@ -61,19 +61,19 @@ T('cererea de noapte: fișa veche, mașinile firmei, discuțiile (răspunsurile 
 console.log('\n2. Unde se citește, unde se scrie, ce vede pagina');
 const RA = SRV.slice(SRV.indexOf('async function _raInsight('), SRV.indexOf('async function _raInsight(') + 30000);
 T('RA Insight: numele omului se pun în text ÎNAINTE de căutarea mașinii; se salvează ce a scris omul', /const cuNume = fisaInsight\.aplicaNume\(mesajOm, fisaOm, fisa, gasiteOm\);\s*const message = cuNume\.text;/.test(RA) && /adaugaMesajAi\(conv\.id, 'user', mesajOm, null\)/.test(RA));
-T('RA Insight: cererile fișei („ce știi", „uită") vin înaintea tuturor celorlalte drumuri, pe reguli', RA.indexOf('fisaInsight.cerere(mesajOm)') > 0 && RA.indexOf('fisaInsight.cerere(mesajOm)') < RA.indexOf('_insightProgramari('));
+T('RA Insight: cererile fișei („ce știi”, „uită”) vin înaintea tuturor celorlalte drumuri, pe reguli', RA.indexOf('fisaInsight.cerere(mesajOm)') > 0 && RA.indexOf('fisaInsight.cerere(mesajOm)') < RA.indexOf('_insightProgramari('));
 T('RA Insight: fișa intră în CONTEXTUL întrebării (nu în partea fixă din cache)', /_insightContext\(fisa, gasite, ctx, peImei, notite, fisaOm\)/.test(SRV) && /fisaInsight\.pentruModel\(fisaOm\)/.test(SRV));
 T('instrucțiunile fixe: corectura (scuze + răspunsul exact) și fișa = ca să-l înțelegi, nu sursă de cifre', /CORECTURILE:[\s\S]{0,200}cere-ți scuze/.test(SRV) && /niciodată ca sursă de cifre/.test(SRV));
-T('tura de noapte: doar firmele cu AI, doar cu cont RA Insight, fără demo și fără noi; consumul = „fisa"',
+T('tura de noapte: doar firmele cu AI, doar cu cont RA Insight, fără demo și fără noi; consumul = „fisa”',
   /_firmaAreAi\(co\)/.test(SRV.slice(SRV.indexOf('async function _scrieFisa('), SRV.indexOf('async function _scrieFisa(') + 1500)) && /u\.ai_seat/.test(SRV) && /recordAiUsage\(companyId, 'fisa'/.test(SRV));
 T('ștergerea din Preferințe: rută a omului (requireAuth), cu rând în jurnal', /app\.delete\('\/api\/insight\/fisa', requireAuth/.test(SRV) && /'ai_fisa_stearsa'/.test(SRV));
-T('baza: fișa pleacă odată cu contul (ON DELETE CASCADE), nu e în copii, costul ei intră în „Ne costă"',
+T('baza: fișa pleacă odată cu contul (ON DELETE CASCADE), nu e în copii, costul ei intră în „Ne costă”',
   /CREATE TABLE IF NOT EXISTS ai_fise \(\s*user_id INTEGER PRIMARY KEY REFERENCES users\(id\) ON DELETE CASCADE/.test(fs.readFileSync('db.js', 'utf8')) &&
   /ai_fise:/.test(fs.readFileSync('backup.js', 'utf8')) && /AI_KINDS_COST_FIRMA = [^\n]*'fisa'/.test(fs.readFileSync('db.js', 'utf8')));
 T('pagina: blocul din Setări → Preferințe, doar cu cont RA Insight, textele de la server, confirmarea înainte de ștergere',
   /<div id="pref-insight"><\/div>/.test(HTML) && /if \(!u\.aiCont\)/.test(HTML) && /Șterge tot ce știe despre mine/.test(HTML) &&
   /raConfirm\(\(box && box\._confirmare\)/.test(HTML) && /fetch\('\/api\/insight\/fisa', \{ method: 'DELETE'/.test(HTML) && /pref-ins-t'\)\.textContent = j\.explicatie/.test(HTML));
-T('„Scoate din firmă": spune că pleacă și discuțiile cu RA Insight, și ce a învățat despre om', /Discuțiile lui cu RA Insight și ce a învățat RA Insight despre el se șterg și ele\./.test(HTML));
+T('„Scoate din firmă”: spune că pleacă și discuțiile cu RA Insight, și ce a învățat despre om', /Discuțiile lui cu RA Insight și ce a învățat RA Insight despre el se șterg și ele\./.test(HTML));
 T('Confidențialitate: fișa, cine o vede, ce nu intră, cât se păstrează, cum se șterge',
   (() => { const c = fs.readFileSync('public/confidentialitate.html', 'utf8'); return /Ce ține minte RA Insight/.test(c) && /Fișa lui RA Insight despre un utilizator: cât timp utilizatorul are cont/.test(c) && /Setări → Preferințe/.test(c); })());
 
@@ -186,21 +186,21 @@ const mesajeCererii = (c) => (c.messages || []).map((m) => typeof m.content === 
     // ── În discuție ──
     const nC = cereri().length;
     const ce = await intreaba(C, 'Ce știi despre mine?');
-    T('„Ce știi despre mine?": rândurile fișei și numele „Loganul", pe loc', ce.status === 200 && /Vrea răspunsuri scurte\./.test(ce.j.reply || '') && /„Loganul", te referi la B 204 UIP/.test(ce.j.reply || '') && ce.j.source === 'fisa', (ce.j.reply || ce.text).slice(0, 200));
-    T('…cu insigna „Instant · din ce știu despre tine" și fără nicio cerere către model', ce.j.insigna && ce.j.insigna.fel === 'instant' && ce.j.insigna.detaliu === 'din ce știu despre tine' && cereri().length === nC);
+    T('„Ce știi despre mine?”: rândurile fișei și numele „Loganul”, pe loc', ce.status === 200 && /Vrea răspunsuri scurte\./.test(ce.j.reply || '') && /„Loganul”, te referi la B 204 UIP/.test(ce.j.reply || '') && ce.j.source === 'fisa', (ce.j.reply || ce.text).slice(0, 200));
+    T('…cu insigna „Instant · din ce știu despre tine” și fără nicio cerere către model', ce.j.insigna && ce.j.insigna.fel === 'instant' && ce.j.insigna.detaliu === 'din ce știu despre tine' && cereri().length === nC);
     const lg = await intreaba(C, 'Unde e Loganul?');
-    T('„Unde e Loganul?" → B 204 UIP (numele din fișă), nu B 154 UIP, pe loc', lg.status === 200 && eMasina(lg.j.reply, 1) && !eMasina(lg.j.reply, 0) && cereri().length === nC, (lg.j.reply || lg.text).slice(0, 200));
+    T('„Unde e Loganul?” → B 204 UIP (numele din fișă), nu B 154 UIP, pe loc', lg.status === 200 && eMasina(lg.j.reply, 1) && !eMasina(lg.j.reply, 0) && cereri().length === nC, (lg.j.reply || lg.text).slice(0, 200));
     const cv = await json('GET', '/api/insight/conversatii/' + lg.j.conversatieId, C);
     const textOm = ((cv.j.mesaje || []).find((m) => m.rol === 'user') || {}).text;
-    T('în conversație rămâne ce a scris omul („Unde e Loganul?"), nu textul cu numărul', textOm === 'Unde e Loganul?', textOm);
+    T('în conversație rămâne ce a scris omul („Unde e Loganul?”), nu textul cu numărul', textOm === 'Unde e Loganul?', textOm);
     const tot = await intreaba(C, 'Uită tot ce știi despre mine');
     fS = (await json('GET', '/api/test/fisa/' + idS, S)).j.fisa;
-    T('„Uită tot" scris în discuție: NU șterge nimic, îi spune unde e butonul', /Setări → Preferințe/.test(tot.j.reply || '') && fS.randuri.length === 2 && fS.nume.length === 1, (tot.j.reply || '').slice(0, 160));
+    T('„Uită tot” scris în discuție: NU șterge nimic, îi spune unde e butonul', /Setări → Preferințe/.test(tot.j.reply || '') && fS.randuri.length === 2 && fS.nume.length === 1, (tot.j.reply || '').slice(0, 160));
     const asta = await intreaba(C, 'Uită asta');
-    T('„Uită asta": cum șterge discuția de acum (coșul din stânga), fără să atingă fișa', /coșul/.test(asta.j.reply || '') && (await json('GET', '/api/test/fisa/' + idS, S)).j.fisa.randuri.length === 2);
+    T('„Uită asta”: cum șterge discuția de acum (coșul din stânga), fără să atingă fișa', /coșul/.test(asta.j.reply || '') && (await json('GET', '/api/test/fisa/' + idS, S)).j.fisa.randuri.length === 2);
     const ui = await intreaba(C, 'Uită că Loganul e B 204 UIP');
     fS = (await json('GET', '/api/test/fisa/' + idS, S)).j.fisa;
-    T('„Uită că Loganul e B 204 UIP": scoate doar numele, rândurile rămân', /Am uitat/.test(ui.j.reply || '') && fS.nume.length === 0 && fS.randuri.length === 2, (ui.j.reply || '').slice(0, 160) + ' · ' + JSON.stringify(fS));
+    T('„Uită că Loganul e B 204 UIP”: scoate doar numele, rândurile rămân', /Am uitat/.test(ui.j.reply || '') && fS.nume.length === 0 && fS.randuri.length === 2, (ui.j.reply || '').slice(0, 160) + ' · ' + JSON.stringify(fS));
 
     // ── Întrebarea care merge la model: fișa e în context, corectura în instrucțiuni ──
     coada([text('Pe scurt: B 77 TIR a consumat mai mult din cauza vitezei.')]);
@@ -223,9 +223,9 @@ const mesajeCererii = (c) => (c.messages || []).map((m) => typeof m.content === 
     T('Preferințe: blocul știe dacă există fișă și are textele de la server', g1.status === 200 && g1.j.are === true && /O vede doar el/.test(g1.j.explicatie || '') && /Discuțiile tale rămân/.test(g1.j.confirmare || ''));
     const d1 = await json('DELETE', '/api/insight/fisa', C);
     fS = (await json('GET', '/api/test/fisa/' + idS, S)).j.fisa;
-    T('„Șterge tot ce știe despre mine": fișa se golește, cu mesajul de la server', d1.status === 200 && d1.j.sters === true && /a uitat tot/.test(d1.j.mesaj || '') && fS.randuri.length === 0 && fS.nume.length === 0);
+    T('„Șterge tot ce știe despre mine”: fișa se golește, cu mesajul de la server', d1.status === 200 && d1.j.sters === true && /a uitat tot/.test(d1.j.mesaj || '') && fS.randuri.length === 0 && fS.nume.length === 0);
     const d2 = await json('DELETE', '/api/insight/fisa', C);
-    T('a doua apăsare: „nu era nimic de șters"', d2.status === 200 && d2.j.sters === false && /Nu era nimic/.test(d2.j.mesaj || ''));
+    T('a doua apăsare: „nu era nimic de șters”', d2.status === 200 && d2.j.sters === false && /Nu era nimic/.test(d2.j.mesaj || ''));
     T('fișa lui Andrei n-a fost atinsă', ((await json('GET', '/api/test/fisa/' + idA, S)).j.fisa || {}).randuri.length === 1);
     // Discuțiile de dinainte de ștergere nu mai intră; doar ce vine după.
     await sleep(1100);
@@ -263,12 +263,12 @@ const mesajeCererii = (c) => (c.messages || []).map((m) => typeof m.content === 
     const nP = cereri().length;
     await json('POST', '/api/test/fise-noaptea', S, { acum: Date.now() + 4 * 86400000 });
     T('firma pe Start (fără AI): nicio fișă, nicio cerere către model', (await json('GET', '/api/test/fisa/' + idP, S)).j.fisa === null && cereri().length === nP);
-    // Alin, 11.11 („ascunde, da"): pe Start RA Insight nu-și face fișă, deci nici nu o promite — blocul din Preferințe lipsește,
-    // iar „ce știi despre mine?" merge mai departe ca orice întrebare liberă. Pe Pro blocul e la vedere.
+    // Alin, 11.11 („ascunde, da”): pe Start RA Insight nu-și face fișă, deci nici nu o promite — blocul din Preferințe lipsește,
+    // iar „ce știi despre mine?” merge mai departe ca orice întrebare liberă. Pe Pro blocul e la vedere.
     const gP = await json('GET', '/api/insight/fisa', P);
     T('Start: blocul din Preferințe lipsește (activ: false); pe Pro e la vedere', gP.status === 200 && gP.j.activ === false && gP.j.are === false && g1.j.activ === true, JSON.stringify(gP.j) + ' · Pro: ' + g1.j.activ);
     const ceP = await intreaba(P, 'Ce știi despre mine?');
-    T('Start: „ce știi despre mine?" nu primește textul fișei (nu promite o fișă care nu se face)', ceP.status === 200 && ceP.j.source !== 'fisa' && !/Îmi fac singur, peste noapte/.test(ceP.j.reply || ''), (ceP.j.source || '') + ' · ' + (ceP.j.reply || '').slice(0, 140));
+    T('Start: „ce știi despre mine?” nu primește textul fișei (nu promite o fișă care nu se face)', ceP.status === 200 && ceP.j.source !== 'fisa' && !/Îmi fac singur, peste noapte/.test(ceP.j.reply || ''), (ceP.j.source || '') + ' · ' + (ceP.j.reply || '').slice(0, 140));
   } catch (e) {
     rau++; console.log('  ✗ proba a crăpat: ' + ((e && e.stack) || e));
   }

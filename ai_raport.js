@@ -1,13 +1,13 @@
-// ai_raport.js — „AI Raport" (Rapoarte → fila „AI Raport"): întrebări despre rapoarte, pe REGULI — fără model, zero tokeni.
+// ai_raport.js — „AI Raport” (Rapoarte → fila „AI Raport”): întrebări despre rapoarte, pe REGULI — fără model, zero tokeni.
 //
 // Alin, 02.10: „în rapoarte vreau să fie un agent unde întrebi ceva despre rapoarte și tot ce ai nevoie să afli din
 // rapoarte, cu sugestii" + „AI Raport va lua din rapoarte date, deci nu ne costă bani/tokeni; RA Insight va fi singurul
 // care costă".
 //
 // Ce face: înțelege întrebările scrise simplu — CE (km, consum, viteză…), CARE mașină (număr, nume, șofer, grupă — fișa
-// din insight.js) și CE perioadă („săptămâna trecută", „septembrie", „ieri") —, ține minte subiectul, mașina și perioada
-// de la întrebarea de dinainte („și luna trecută?", „dar B 155 UIP?"), iar serverul rulează raportul aplicației. Aici se
-// pun cifrele raportului în propoziții gata scrise, cu sugestii pe reguli. La „de ce", „compară", „ce să fac" — nu se
+// din insight.js) și CE perioadă („săptămâna trecută”, „septembrie”, „ieri”) —, ține minte subiectul, mașina și perioada
+// de la întrebarea de dinainte („și luna trecută?”, „dar B 155 UIP?”), iar serverul rulează raportul aplicației. Aici se
+// pun cifrele raportului în propoziții gata scrise, cu sugestii pe reguli. La „de ce”, „compară”, „ce să fac” — nu se
 // preface: trimite la RA Insight. Fără bază, fără rețea, fără model: totul se probează (verify_ai_raport.js).
 'use strict';
 const I = require('./insight');
@@ -17,7 +17,7 @@ function nr(n, zec) {
   if (n == null || !isFinite(Number(n))) return '—';
   return Number(n).toLocaleString('ro-RO', { maximumFractionDigits: zec == null ? 0 : zec, minimumFractionDigits: 0 });
 }
-// „12 litri", dar „158 de litri"; „1 litru". Cu zecimale nu se pune „de" („6,8 litri").
+// „12 litri”, dar „158 de litri”; „1 litru”. Cu zecimale nu se pune „de” („6,8 litri”).
 function cant(n, sing, plur, zec) {
   const f = Math.pow(10, zec || 0), r = Math.round(Number(n) * f) / f;
   if (r === 1) return '1 ' + sing;
@@ -28,16 +28,16 @@ function cant(n, sing, plur, zec) {
 const lei = (n) => cant(Math.round(n), 'leu', 'lei');
 
 // ─── Subiectele: cuvintele care le aleg și raportul din spate ───────────────────────────────────────
-// Două treceri (07.10, Alin: „de cât timp staționează B 154 UIP?" → „Nu am înțeles despre ce raport e vorba"):
-//   `re`   = cuvintele care NUMESC subiectul (substantive, întrebări întregi: „staționări", „unde e", „ce a făcut");
-//   `slab` = verbele care îl pot numi doar când nimic altceva nu se potrivește („a mers", „a făcut", „a stat").
-// Până pe 07.10 „a făcut" era printre cuvintele tari ale km-ilor, deci „ce curse a făcut ieri" primea km-ii, iar
-// „parcurs" prindea și „foaia de parcurs". În fiecare trecere ordinea contează: primul care se potrivește câștigă.
-// „Km și consum" → consum (raportul de consum are și km-ii); „cât m-a costat motorina" → costuri (are și litrii);
-// „a stat cu motorul pornit" → ralanti, nu staționări; „km până la revizie" → ce expiră.
+// Două treceri (07.10, Alin: „de cât timp staționează B 154 UIP?” → „Nu am înțeles despre ce raport e vorba”):
+//   `re`   = cuvintele care NUMESC subiectul (substantive, întrebări întregi: „staționări”, „unde e”, „ce a făcut”);
+//   `slab` = verbele care îl pot numi doar când nimic altceva nu se potrivește („a mers”, „a făcut”, „a stat”).
+// Până pe 07.10 „a făcut” era printre cuvintele tari ale km-ilor, deci „ce curse a făcut ieri” primea km-ii, iar
+// „parcurs” prindea și „foaia de parcurs”. În fiecare trecere ordinea contează: primul care se potrivește câștigă.
+// „Km și consum” → consum (raportul de consum are și km-ii); „cât m-a costat motorina” → costuri (are și litrii);
+// „a stat cu motorul pornit” → ralanti, nu staționări; „km până la revizie” → ce expiră.
 //
-// Prezentul („staționează", „unde e", „de cât timp stă") = ACUM → „Ultima locație"; trecutul („a staționat",
-// „staționări", „unde a stat ieri") = o perioadă → „Staționări".
+// Prezentul („staționează”, „unde e”, „de cât timp stă”) = ACUM → „Ultima locație”; trecutul („a staționat”,
+// „staționări”, „unde a stat ieri”) = o perioadă → „Staționări”.
 const LOCATIE_RE = new RegExp('\\b(' + [
   'ultima (locatie|pozitie)', '(locatia|pozitia) (actuala|curenta|de acum)',
   'unde (e|este|sunt|se afla|se gaseste|se gasesc|a ramas|au ramas|sta|stau|stationeaza|stationeza|a parcat|au parcat)',
@@ -74,7 +74,7 @@ function subiectDin(t) {
   return null;
 }
 // Rapoartele pe care AI Raport nu le citește (încă): numite în întrebare, primesc butonul care deschide raportul,
-// cu mașina și perioada din întrebare — în loc de „nu am înțeles". Cheile sunt cele din catalogul reports.js.
+// cu mașina și perioada din întrebare — în loc de „nu am înțeles”. Cheile sunt cele din catalogul reports.js.
 const ALTE_RAPOARTE = [
   { raport: 'overrev', re: /\b(supratura\w*|turati\w*|rpm)\b/ },
   { raport: 'pto', re: /\b(pto|priza de putere)\b/ },
@@ -92,10 +92,10 @@ function altRaportDin(t) { for (const a of ALTE_RAPOARTE) if (a.re.test(t)) retu
 
 // Întrebările la care răspunde RA Insight, nu AI Raport: cauze, comparații întinse, sfaturi, texte de scris.
 const PENTRU_INSIGHT = /\b(de ce|din ce cauza|explic\w*|compar\w*|ce sa fac|ce ar trebui|recomand\w*|sfat\w*|cum pot|cum as putea|analiz\w*|prezic\w*|estimeaz\w*|scrie(-i)?|motivul)\b/;
-// „Cine/care … cel mai mult", „top", „clasament": se răspunde cu ordinea, nu doar cu totalul.
+// „Cine/care … cel mai mult”, „top”, „clasament”: se răspunde cu ordinea, nu doar cu totalul.
 const RANG = /(\b(cine|care)\b[^?]*\b(cel mai|cea mai|cei mai|cele mai)\b)|\btop\b|\b(cele mai multe|cei mai multi)\b/;
 const TOATA_FLOTA = /\b(flota|flotei|toate masinile|toata flota|fiecare masina|fiecare|masinile)\b/;
-// O întrebare despre mașini, la plural, sau „cine": privește flota chiar dacă tocmai s-a vorbit de o mașină.
+// O întrebare despre mașini, la plural, sau „cine”: privește flota chiar dacă tocmai s-a vorbit de o mașină.
 const DESPRE_FLOTA = /\b(care masin\w*|ce masin\w*|cate masin\w*|care dintre|cine)\b/;
 const CELALALT = /(^|[^a-z])(celalalt|cealalta|celelalte|celalti|alta|altul|alte|altei)([^a-z]|$)/;
 
@@ -116,10 +116,10 @@ function _per(from, to, acum, extra) {
   r.eticheta = I.etichetaPerioadei(r.from, r.to, acum);
   return Object.assign(r, extra || {});
 }
-// Un interval scris de om — „01.10.2026-07.10.2026", „1-7 octombrie", „de pe 1 până pe 7 octombrie", „între 1 și 7
-// octombrie", „din 28 septembrie până pe 4 octombrie", „de pe 1 octombrie până azi". Ultima zi intră întreagă. Până pe
-// 08.10, „1-7 octombrie" ieșea „1 iulie" (citit ca o zi: 1.7), iar „de pe 1 până pe 7 octombrie" ieșea doar 7 octombrie
-// (Alin, 08.10: „eu am dat doar până pe 07"). Fără an scris, un interval din viitor e cel de anul trecut.
+// Un interval scris de om — „01.10.2026-07.10.2026”, „1-7 octombrie”, „de pe 1 până pe 7 octombrie”, „între 1 și 7
+// octombrie", „din 28 septembrie până pe 4 octombrie”, „de pe 1 octombrie până azi”. Ultima zi intră întreagă. Până pe
+// 08.10, „1-7 octombrie” ieșea „1 iulie” (citit ca o zi: 1.7), iar „de pe 1 până pe 7 octombrie” ieșea doar 7 octombrie
+// (Alin, 08.10: „eu am dat doar până pe 07”). Fără an scris, un interval din viitor e cel de anul trecut.
 const _PANA = '(?:-|–|—|pana (?:pe|la|in)|pana|si)';
 function _interval(t, z, now) {
   let m, d1, m1, y1 = null, d2, m2, y2 = null, panaAcum = false;
@@ -147,7 +147,7 @@ function _interval(t, z, now) {
   if (pana - de > MAX_ZILE * ZI) return _per(pana - MAX_ZILE * ZI, pana, now, { taiat: true });
   return _per(de, pana, now);
 }
-// Numerele scrise cu litere într-o perioadă („ultimele două luni").
+// Numerele scrise cu litere într-o perioadă („ultimele două luni”).
 const _NUM = { doua: 2, trei: 3, patru: 4, cinci: 5, sase: 6 };
 const _NUM_CUV = Object.keys(_NUM).join('|');
 // Întoarce { from, to, eticheta } sau null dacă textul nu spune nicio perioadă. `s` = subiectul (scadențele privesc înainte).
@@ -165,7 +165,7 @@ function perioadaDin(t, acum, s) {
   }
   const iv = _interval(t, z, now);
   if (iv) return iv;
-  // „ultimele 3 luni", „ultimele două luni", „ultimele 2 săptămâni" (Alin, 14.10: „odată cu Start" — până atunci
+  // „ultimele 3 luni”, „ultimele două luni”, „ultimele 2 săptămâni” (Alin, 14.10: „odată cu Start” — până atunci
   // răspundea pe ultimele 7 zile). Lunile sunt de calendar (14 iulie – 14 octombrie), tăiate la MAX_ZILE.
   if ((m = new RegExp('\\bultim(?:ele|a|ii)? (\\d{1,2}|' + _NUM_CUV + ') (?:de )?(luni|saptamani)\\b').exec(t))) {
     const n = Math.max(1, /^\d+$/.test(m[1]) ? +m[1] : _NUM[m[1]]);
@@ -173,8 +173,8 @@ function perioadaDin(t, acum, s) {
     if (now - de > MAX_ZILE * ZI) return _per(now - MAX_ZILE * ZI, now, now, { taiat: true });
     return _per(de, now, now);
   }
-  // „duminică", „marțea trecută", „în weekend", „de luni până miercuri" — regula e în insight.js, aceeași pentru
-  // răspunsul rapid; înaintea lui „azi", ca „de luni până azi" să fie săptămâna, nu ziua de azi (până pe 14.10 aici ieșeau „ultimele 7 zile", iar acolo „acum").
+  // „duminică”, „marțea trecută”, „în weekend”, „de luni până miercuri” — regula e în insight.js, aceeași pentru
+  // răspunsul rapid; înaintea lui „azi”, ca „de luni până azi” să fie săptămâna, nu ziua de azi (până pe 14.10 aici ieșeau „ultimele 7 zile”, iar acolo „acum”).
   const zs = I.ziuaSaptamanii(t, now);
   if (zs) return _per(zs.from, zs.to, now);
   if (/\balaltaieri\b/.test(t)) return _per(_zi(z.y, z.m0, z.d - 2), _zi(z.y, z.m0, z.d - 1), now);
@@ -187,7 +187,7 @@ function perioadaDin(t, acum, s) {
   if (/\b(saptamana (asta|aceasta|curenta)|de luni pana azi)\b/.test(t)) { const r = I.perioada({ period: 'this_week' }, now); return _per(r.from, r.to, now); }
   if (/\bluna (trecuta|precedenta|anterioara)\b/.test(t)) { const r = I.perioada({ period: 'last_month' }, now); return _per(r.from, r.to, now); }
   if (/\b(luna (asta|aceasta|curenta|in curs)|de la inceputul lunii)\b/.test(t)) { const r = I.perioada({ period: 'this_month' }, now); return _per(r.from, r.to, now); }
-  // o zi anume: „15.09", „15.09.2026", „pe 15 septembrie"
+  // o zi anume: „15.09”, „15.09.2026”, „pe 15 septembrie”
   if ((m = /\b(\d{1,2})[.\/-](\d{1,2})(?:[.\/-](\d{2,4}))?\b/.exec(t))) {
     const d = +m[1], m0 = +m[2] - 1; let y = m[3] ? +m[3] : z.y; if (y < 100) y += 2000;
     if (d >= 1 && d <= 31 && m0 >= 0 && m0 <= 11) {
@@ -202,7 +202,7 @@ function perioadaDin(t, acum, s) {
       const de = _zi(y, m0, d); return _per(de, Math.min(now, _zi(y, m0, d + 1)), now);
     }
   }
-  // o lună întreagă: „septembrie", „în august", „septembrie 2025". „mai" doar cu „în/luna/din" sau cu anul (altfel e „mai mult").
+  // o lună întreagă: „septembrie”, „în august”, „septembrie 2025”. „mai” doar cu „în/luna/din” sau cu anul (altfel e „mai mult”).
   if ((m = new RegExp('\\b(?:(?:in|luna|din|pe) )?(' + LUNI_RE.replace('mai|', '') + ')(?: (\\d{4}))?\\b').exec(t)) ||
       (m = /\b(?:in|luna|din|pe) (mai)(?: (\d{4}))?\b/.exec(t)) || (m = /\b(mai) (\d{4})\b/.exec(t))) {
     const m0 = _luna(m[1]); let y = m[2] ? +m[2] : z.y;
@@ -213,12 +213,12 @@ function perioadaDin(t, acum, s) {
   }
   return null;
 }
-// Textul spune DOAR o perioadă („ieri?", „luna trecută", „în septembrie") — nimic altceva cu înțeles.
+// Textul spune DOAR o perioadă („ieri?”, „luna trecută”, „în septembrie”) — nimic altceva cu înțeles.
 const _UMPLUTURA = /\b(si|dar|iar|apoi|acum|pe|in|din|la|de|pentru|cat|cati|cate|ce|care|cu|al|a|ale|lui|asta|aceasta|curenta|trecuta|trecut|trecutul|precedenta|anterioara|azi|astazi|ieri|aseara|alaltaieri|saptamana|saptamani|luna|ultimele|ultima|ultimii|zile|zi|anul|luni|doua|trei|patru|cinci|sase|lunea|marti|martea|miercuri|miercurea|joi|joia|vineri|vinerea|sambata|duminica|weekend|weekendul|pana|intre|\d+|ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|sept|octombrie|noiembrie|decembrie)\b/g;
 function _doarPerioada(t) { return !String(t).replace(/[^a-z0-9 ]/g, ' ').replace(_UMPLUTURA, ' ').trim(); }
-// Fără perioadă spusă: ultimele 7 zile; la „ce expiră" — următoarele 30 de zile; la „unde e / de cât timp stă" — ACUM,
-// citit pe ultimele 30 de zile (raportul „Ultima locație" caută ultima oprire în perioadă: pe 7 zile, o mașină parcată
-// de două săptămâni ar fi ieșit „de 7 zile").
+// Fără perioadă spusă: ultimele 7 zile; la „ce expiră” — următoarele 30 de zile; la „unde e / de cât timp stă” — ACUM,
+// citit pe ultimele 30 de zile (raportul „Ultima locație” caută ultima oprire în perioadă: pe 7 zile, o mașină parcată
+// de două săptămâni ar fi ieșit „de 7 zile”).
 const ZILE_LOCATIE = 30;
 function perioadaImplicita(s, acum) {
   const now = acum != null ? Number(acum) : Date.now();
@@ -226,13 +226,13 @@ function perioadaImplicita(s, acum) {
   if (s && s.k === 'locatie') return _per(now - ZILE_LOCATIE * ZI, now, now, { implicita: true, acum: true });
   return _per(now - 7 * ZI, now, now, { implicita: true });
 }
-// Perioada de dinainte, la fel de lungă (pentru „față de perioada dinainte").
+// Perioada de dinainte, la fel de lungă (pentru „față de perioada dinainte”).
 function perioadaAnterioara(p) {
   const a = Date.parse(p.from), b = Date.parse(p.to);
   return { from: new Date(a - (b - a)).toISOString(), to: new Date(a).toISOString() };
 }
-// Ce fel de perioadă e (pentru „Și săptămâna dinainte?"): o zi, o săptămână de luni, o lună întreagă — pe ora României —
-// sau altfel („ultimele 7 zile" = „perioada").
+// Ce fel de perioadă e (pentru „Și săptămâna dinainte?”): o zi, o săptămână de luni, o lună întreagă — pe ora României —
+// sau altfel („ultimele 7 zile” = „perioada”).
 function _unitate(p) {
   const a = Date.parse(p.from), b = Date.parse(p.to);
   if (!(b > a)) return 'perioada';
@@ -243,8 +243,8 @@ function _unitate(p) {
   if (new Date(Date.UTC(z.y, z.m0, z.d)).getUTCDay() === 1 && b - a <= 7 * ZI + 3600000) return 'saptamana';
   return 'perioada';
 }
-// „Și săptămâna dinainte?" = perioada de dinaintea celei discutate: ziua / săptămâna / luna întreagă de dinainte (și
-// când cea discutată e „azi" sau „luna asta", până acum), altfel la fel de lungă, lipită înainte.
+// „Și săptămâna dinainte?” = perioada de dinaintea celei discutate: ziua / săptămâna / luna întreagă de dinainte (și
+// când cea discutată e „azi” sau „luna asta”, până acum), altfel la fel de lungă, lipită înainte.
 const DINAINTE = /\b(ziua|saptamana|luna|perioada) (de )?dinainte\b/;
 function perioadaDinainte(per, acum) {
   const a = Date.parse(per.from), b = Date.parse(per.to), z = _parti(a);
@@ -262,11 +262,11 @@ function perioadaDinainte(per, acum) {
 // Întoarce { ok: true, subiect, raport, et, masini (null = toată flota), grupa, perioada, top, mem } sau
 // { ok: false, motiv: 'gol' | 'pentru_insight' | 'fara_subiect' | 'doar_masina' | 'alt_raport' | 'ambiguu', variante?,
 //   masini?, raport?, perioada?, context } — `context` = ce se ține minte și după o întrebare neînțeleasă (mașina,
-//   subiectul), ca răspunsul următor („din raportul staționări", butonul ales) să nu înceapă de la zero.
+//   subiectul), ca răspunsul următor („din raportul staționări”, butonul ales) să nu înceapă de la zero.
 //
-// Mașina discutată rămâne în discuție (Alin, 07.10: după o întrebare despre B 154 UIP, „din raport staționări" a primit
+// Mașina discutată rămâne în discuție (Alin, 07.10: după o întrebare despre B 154 UIP, „din raport staționări” a primit
 // toată flota). Se schimbă doar când întrebarea numește alta, o grupă, toată flota, sau întreabă despre mașini la plural
-// („care mașină…", „cine…", „cei mai mulți km"). Până pe 07.10 rămânea doar la „și…" / „dar…".
+// („care mașină…”, „cine…”, „cei mai mulți km”). Până pe 07.10 rămânea doar la „și…” / „dar…”.
 function intelege(text, ctx, fisa, acum) {
   const t = I.norm(text);
   const c = ctx || {};
@@ -278,8 +278,8 @@ function intelege(text, ctx, fisa, acum) {
   const g = I.gasesteInText(text, fisa || []);
   const areMasina = g.masini.length || g.grupe.length || g.ambigue.length;
   let p = perioadaDin(t, acum, s);
-  // O continuare: lipsește subiectul, dar omul a schimbat mașina sau perioada („și luna trecută?", „dar B 155 UIP?").
-  // Doar perioada, fără alte cuvinte („ieri?", „luna trecută") — altfel „vreme frumoasă azi" ar moșteni subiectul.
+  // O continuare: lipsește subiectul, dar omul a schimbat mașina sau perioada („și luna trecută?”, „dar B 155 UIP?”).
+  // Doar perioada, fără alte cuvinte („ieri?”, „luna trecută”) — altfel „vreme frumoasă azi” ar moșteni subiectul.
   if (!s && c.subiect && SUB[c.subiect] && (urmare || areMasina || (p && _doarPerioada(t)))) { s = SUB[c.subiect]; mem.subiect = true; if (!p) p = perioadaDin(t, acum, s); }
   // Mașinile numite în text: număr, nume, șofer, grupă. Îndoiala nu se rezolvă pe ghicite.
   let masini = null, grupa = null, numite = false;
@@ -312,24 +312,24 @@ function intelege(text, ctx, fisa, acum) {
     if (TOATA_FLOTA.test(t) || RANG.test(t) || DESPRE_FLOTA.test(t)) masini = null;
     else if (Array.isArray(c.masini) && c.masini.length) { masini = c.masini.slice(); grupa = c.grupa || null; mem.masini = true; }
   }
-  // „Și săptămâna dinainte?": perioada de dinaintea celei discutate (întrebarea de continuare de sub răspuns, 08.10).
+  // „Și săptămâna dinainte?”: perioada de dinaintea celei discutate (întrebarea de continuare de sub răspuns, 08.10).
   if (!p && DINAINTE.test(t) && c.perioada && c.perioada.from && s.k !== 'scadente' && s.k !== 'locatie') p = perioadaDinainte(c.perioada, acum);
-  // Perioada discutată rămâne la o continuare (nu la „ce expiră", care privește înainte, și nu la „unde e", care e acum).
+  // Perioada discutată rămâne la o continuare (nu la „ce expiră”, care privește înainte, și nu la „unde e”, care e acum).
   if (!p && c.perioada && c.perioada.from && (mem.subiect || urmare || mem.masini) && s.k !== 'scadente' && c.subiect !== 'scadente' && s.k !== 'locatie') {
     p = _per(c.perioada.from, c.perioada.to, acum); mem.perioada = true;
   }
-  // „Unde e azi?" e tot „acum": citit pe o zi, o mașină parcată de ieri ar fi ieșit „stă de la miezul nopții".
+  // „Unde e azi?” e tot „acum”: citit pe o zi, o mașină parcată de ieri ar fi ieșit „stă de la miezul nopții”.
   if (p && s.k === 'locatie' && Math.abs(Date.parse(p.to) - (acum != null ? Number(acum) : Date.now())) < 60000) p = null;
   if (!p) p = perioadaImplicita(s, acum);
   return { ok: true, subiect: s.k, raport: s.raport, et: s.et, masini: masini, grupa: grupa, perioada: p, top: RANG.test(t), mem: mem };
 }
 // Ce ține minte discuția după un răspuns (îl întoarce serverul; ecranul i-l trimite înapoi la întrebarea următoare).
-// „Unde e acum" nu lasă perioadă în urmă: întrebarea următoare („și staționările?") pornește de la perioada ei.
+// „Unde e acum” nu lasă perioadă în urmă: întrebarea următoare („și staționările?”) pornește de la perioada ei.
 function contextul(u, from, to) {
   return { subiect: u.subiect, masini: u.masini || null, grupa: u.grupa || null,
     perioada: (u.perioada && u.perioada.acum) ? null : { from: from, to: to } };
 }
-// „Am înțeles": ce a priceput, pe bucăți (aceeași formă ca la RA Insight, ca ecranul să le deseneze la fel).
+// „Am înțeles”: ce a priceput, pe bucăți (aceeași formă ca la RA Insight, ca ecranul să le deseneze la fel).
 function inteles(u, fisa) {
   const peImei = {}; (fisa || []).forEach(function (v) { peImei[v.imei] = v; });
   const out = [{ tip: 'subiect', text: u.et, mem: !!(u.mem && u.mem.subiect) }];
@@ -343,7 +343,7 @@ function inteles(u, fisa) {
   return out;
 }
 
-// ─── Întrebările de continuare (Alin, 08.10: „da") ───────────────────────────────────────────────────
+// ─── Întrebările de continuare (Alin, 08.10: „da”) ───────────────────────────────────────────────────
 // Sub ultimul răspuns, cel mult trei întrebări gata scrise, pe reguli, din ce s-a răspuns: perioada dinainte, subiectul
 // care urmează firesc și mașina (prima din tabel, ori toată flota după o singură mașină). Fiecare trebuie înțeleasă de
 // `intelege` cu discuția de după răspuns (păzit de probă). Le folosește și RA Insight, din rapoartele pe care le-a citit
@@ -357,7 +357,7 @@ const URMATORUL = {
   locatie: ['Unde a stat azi?', 'Unde au stat azi?'], rezumat: ['Unde a stat?', 'Unde au stat?'], curse: ['Unde a stat?', 'Unde au stat?'],
 };
 const UNITATE_TEXT = { ziua: 'ziua', saptamana: 'săptămâna', luna: 'luna', perioada: 'perioada' };
-// u = înțelegerea (subiect, masini, grupa, perioada); primaMasina = cum se scrie prima mașină din tabel („B 154 UIP").
+// u = înțelegerea (subiect, masini, grupa, perioada); primaMasina = cum se scrie prima mașină din tabel („B 154 UIP”).
 function urmari(u, primaMasina) {
   const out = [];
   const una = !!(u && Array.isArray(u.masini) && u.masini.length === 1 && !u.grupa);
@@ -369,7 +369,7 @@ function urmari(u, primaMasina) {
   else if (primaMasina) out.push('Dar ' + primaMasina + '?');
   return out.slice(0, 3).map(function (t) { return { text: t, trimite: t }; });
 }
-// Prima mașină din tabelul unui răspuns (coloana „Mașina"), scrisă cum o recunoaște `intelege`: numărul, altfel numele.
+// Prima mașină din tabelul unui răspuns (coloana „Mașina”), scrisă cum o recunoaște `intelege`: numărul, altfel numele.
 function _primaDinTabel(r, fisa) {
   if (!r || !r.tabel || !Array.isArray(r.tabel.coloane) || r.tabel.coloane[0] !== 'Mașina' || !r.tabel.randuri.length) return null;
   const et = String(r.tabel.randuri[0][0] || '');
@@ -378,7 +378,7 @@ function _primaDinTabel(r, fisa) {
 }
 
 // ─── Răspunsurile, din raport ───────────────────────────────────────────────────────────────────────
-// Cum scriem o mașină venită din raport („Dacia Logan 3 (B 154 UIP)") → „B 154 UIP · Dacia Logan 3".
+// Cum scriem o mașină venită din raport („Dacia Logan 3 (B 154 UIP)”) → „B 154 UIP · Dacia Logan 3”.
 function _etichete(fisa) {
   const m = {};
   (fisa || []).forEach(function (v) { m[v.etRaport] = I.eticheta(v); m[v.imei] = I.eticheta(v); });
@@ -392,7 +392,7 @@ function _numar(v) {
   if (typeof v === 'number') return v;
   const s = String(v == null ? '' : v).replace(/\s/g, '').replace(/[^\d.,-]/g, '');
   if (!s) return NaN;
-  // „1.234" (mii) / „6.8" (zecimale) / „6,8": dacă după punct sunt fix 3 cifre și nu e virgulă, e separator de mii.
+  // „1.234” (mii) / „6.8” (zecimale) / „6,8”: dacă după punct sunt fix 3 cifre și nu e virgulă, e separator de mii.
   if (/^\d{1,3}(\.\d{3})+$/.test(s)) return Number(s.replace(/\./g, ''));
   return Number(s.replace(',', '.'));
 }
@@ -402,24 +402,24 @@ function _cine(u, et, fisa) {
   const peImei = {}; (fisa || []).forEach(function (v) { peImei[v.imei] = v; });
   return u.masini.map(function (i) { return peImei[i] ? I.eticheta(peImei[i]) : i; }).join(', ');
 }
-// O cifră din sumarul unui raport, scrisă românește: 12.5 → „12,5"; „0.45" (text cu punct zecimal) → „0,45".
+// O cifră din sumarul unui raport, scrisă românește: 12.5 → „12,5”; „0.45” (text cu punct zecimal) → „0,45”.
 function _val(v) {
   if (typeof v === 'number') return nr(v, 1);
   if (typeof v === 'string' && /^-?\d+\.\d+$/.test(v)) return nr(Number(v), 2);
   return String(v == null ? '—' : v);
 }
-// Eticheta din sumar în mijlocul propoziției: doar prima literă mică („Timp staționat total" → „timp staționat total"),
-// dar „CO₂ total" rămâne „CO₂ total" și „PTO" rămâne „PTO".
+// Eticheta din sumar în mijlocul propoziției: doar prima literă mică („Timp staționat total” → „timp staționat total”),
+// dar „CO₂ total” rămâne „CO₂ total” și „PTO” rămâne „PTO”.
 function _mic(k) { k = String(k); return /^[A-ZĂÂÎȘȚ]{2}/.test(k) ? k : k.charAt(0).toLowerCase() + k.slice(1); }
-// Rândurile unui tabel, numărate pe o coloană („Depășire viteză" × 5) — cele mai multe primele. `col` = o funcție (rând → text).
+// Rândurile unui tabel, numărate pe o coloană („Depășire viteză” × 5) — cele mai multe primele. `col` = o funcție (rând → text).
 function _numara(rows, col) {
   const m = new Map();
   (rows || []).forEach(function (row) { const v = col(row); const k = String(v == null ? '' : v).trim(); if (k) m.set(k, (m.get(k) || 0) + 1); });
   return Array.from(m.entries()).sort(function (a, b) { return b[1] - a[1] || a[0].localeCompare(b[0]); });
 }
-// Celula unui rând, după NUMELE coloanei. Rapoartele primesc pe locul 2 coloana „Șofer" (runReport → _injectDriverColumn),
+// Celula unui rând, după NUMELE coloanei. Rapoartele primesc pe locul 2 coloana „Șofer” (runReport → _injectDriverColumn),
 // deci o coloană nu stă mereu pe același loc: până pe 07.10 AI Raport le citea după poziție și, pe raportul adevărat,
-// „Ce expiră" citea coloana „Efectuat" în loc de „Stare" (deci „Nimic nu expiră"), iar „Ultima locație" scria șoferul
+// „Ce expiră” citea coloana „Efectuat” în loc de „Stare” (deci „Nimic nu expiră”), iar „Ultima locație” scria șoferul
 // în locul adresei. `c(row, 'Stare')` → valoarea; coloana lipsă → undefined.
 function _col(rep) {
   const cols = (rep && Array.isArray(rep.columns)) ? rep.columns.map(function (x) { return I.norm(x); }) : [];
@@ -430,7 +430,7 @@ function _col(rep) {
     return loc[k] >= 0 && Array.isArray(row) ? row[loc[k]] : undefined;
   };
 }
-// Durata scrisă de rapoarte („3h 20m", „45m", „30s") → secunde.
+// Durata scrisă de rapoarte („3h 20m”, „45m”, „30s”) → secunde.
 function _sec(txt) {
   const s = String(txt == null ? '' : txt);
   const h = /(\d+)\s*h/.exec(s), m = /(\d+)\s*m(?!s)/.exec(s), sc = /(\d+)\s*s/.exec(s);
@@ -444,14 +444,14 @@ function _dur(sec) {
   if (m > 0) return m + ' min';
   return (sec % 60) + ' s';
 }
-// Data scrisă de rapoarte („06.10.2026, 08:10:00") → „06.10, 08:10"; `doarOra` → „08:10".
+// Data scrisă de rapoarte („06.10.2026, 08:10:00”) → „06.10, 08:10”; `doarOra` → „08:10”.
 function _scurt(txt, doarOra) {
   const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2})/.exec(String(txt || ''));
   if (!m) return String(txt || '');
   const ora = (m[4].length === 1 ? '0' : '') + m[4] + ':' + m[5];
   return doarOra ? ora : ((m[1].length === 1 ? '0' : '') + m[1] + '.' + (m[2].length === 1 ? '0' : '') + m[2] + ', ' + ora);
 }
-// Când, în vorbe: „azi la 13:47", „ieri la 18:40", „pe 05.10 la 08:10" (din data scrisă de rapoarte, pe ora României).
+// Când, în vorbe: „azi la 13:47”, „ieri la 18:40”, „pe 05.10 la 08:10” (din data scrisă de rapoarte, pe ora României).
 function _cand(txt, acum) {
   const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}):(\d{2})/.exec(String(txt || ''));
   if (!m) return 'pe ' + String(txt || '');
@@ -462,18 +462,18 @@ function _cand(txt, acum) {
   if (+m[1] === ieri.d && +m[2] === ieri.m0 + 1 && +m[3] === ieri.y) return 'ieri la ' + ora;
   return 'pe ' + _scurt(txt).replace(', ', ' la ');
 }
-// O zi din „Situație zilnică" („2026-10-06") → „luni 06.10".
+// O zi din „Situație zilnică” („2026-10-06”) → „luni 06.10”.
 const ZILE_SAPT = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
 function _ziText(zi) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(zi || ''));
   if (!m) return String(zi || '');
   return ZILE_SAPT[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], 12)).getUTCDay()] + ' ' + m[3] + '.' + m[2];
 }
-// Perioada e o singură zi (ieri, azi, „pe 15.09")? Atunci orele se scriu fără dată.
+// Perioada e o singură zi (ieri, azi, „pe 15.09”)? Atunci orele se scriu fără dată.
 function _oZi(p) { return !!(p && Date.parse(p.to) - Date.parse(p.from) <= ZI + 3600000 && !p.inainte); }
 
 // u = înțelegerea; rep = raportul rulat; extra = { fisa, anterior (raportul perioadei dinainte), alimentari, pret, acum }.
-// Întoarce { text (cu **bold** și „• "), tiles: [{ et, val }], tabel?: { coloane, randuri }, sugestii: [{ fel: 'bun'|'atentie'|'info', text }] }.
+// Întoarce { text (cu **bold** și „• ”), tiles: [{ et, val }], tabel?: { coloane, randuri }, sugestii: [{ fel: 'bun'|'atentie'|'info', text }] }.
 // Când raportul s-a oprit la plafonul de poziții (`rep.trunchiat`, din reports.js), PRIMA sugestie o spune pe față:
 // cifrele de deasupra nu acoperă toată perioada.
 function raspunde(u, rep, extra) {
@@ -507,7 +507,7 @@ function _raspunde(u, rep, extra) {
     const ord = km.slice().sort(function (a, b) { return (b.km || 0) - (a.km || 0); });
     if (una && km.length === 1) {
       const v = km[0];
-      // Sursa, ca în raport: CAN = calculatorul de bord; „GPS (estimat)" = din pozițiile GPS; „bord+GPS" = indexul de
+      // Sursa, ca în raport: CAN = calculatorul de bord; „GPS (estimat)” = din pozițiile GPS; „bord+GPS” = indexul de
       // la bord, ținut la zi de aparat — nu se mai spune nimic, e cifra de încredere.
       r.text = '**' + et(v.imei) + '** a parcurs **' + cant(Math.round(v.km), 'km', 'km') + '** — ' + per + '.' +
         (v.sursa === 'CAN' ? ' (din calculatorul de bord)' : (v.sursa === 'GPS (estimat)' ? ' (estimat din GPS)' : ''));
@@ -588,7 +588,7 @@ function _raspunde(u, rep, extra) {
         if (max.l100 > med * 1.2) r.sugestii.push({ fel: 'atentie', text: et(max.imei) + ' consumă cel mai mult la 100 km: ' + nr(max.l100, 1) + ' L, față de media de ' + nr(med, 1) + '. Merită verificată.' });
       }
     }
-    // Scăderile din raportul „Alimentări & scăderi", din cifrele lui (`valori`), nu din textul tabelului.
+    // Scăderile din raportul „Alimentări & scăderi”, din cifrele lui (`valori`), nu din textul tabelului.
     if (x.alimentari && Array.isArray(x.alimentari.valori)) {
       const sc = x.alimentari.valori.filter(function (v) { return v.fel === 'scadere'; });
       if (sc.length) {
@@ -694,7 +694,7 @@ function _raspunde(u, rep, extra) {
   }
 
   if (u.subiect === 'rezumat') {
-    // „Situație zilnică": Vehicul, Șofer, Zi, Interval activ, Km, Curse, Timp mers, Ralanti, Motor pornit, Opriri, Vit. max.
+    // „Situație zilnică”: Vehicul, Șofer, Zi, Interval activ, Km, Curse, Timp mers, Ralanti, Motor pornit, Opriri, Vit. max.
     const rows = Array.isArray(rep && rep.rows) ? rep.rows : [];
     const c = _col(rep);
     if (!rows.length) { r.text = 'Nu am poziții — ' + (cine || 'toată flota') + ', ' + per + ': aparatul n-a trimis nimic în perioada asta.'; return r; }
@@ -751,7 +751,7 @@ function _raspunde(u, rep, extra) {
 
   if (u.subiect === 'scadente') {
     // Coloanele raportului: Vehicul, Șofer, Categorie, Tip, Scadență, Efectuat, Stare; starea = Depășit / Critic (≤ 7 zile) /
-    // Curând (în preaviz) / OK / „—" (revizie pe km, fără kilometraj citit) / Efectuat.
+    // Curând (în preaviz) / OK / „—” (revizie pe km, fără kilometraj citit) / Efectuat.
     const rows = Array.isArray(rep && rep.rows) ? rep.rows : [];
     const c = _col(rep);
     const st = function (row) { return String(c(row, 'Stare') || ''); };
@@ -797,8 +797,8 @@ function _raspunde(u, rep, extra) {
   }
 
   if (u.subiect === 'locatie') {
-    // Coloanele: Vehicul, Șofer, Locație (unde a oprit), A oprit la, Staționează de („în mișcare"), Contact, Sateliți.
-    // Plus `valori` (cifrele, pe mașină): de când stă, dacă oprirea ține de la capătul citit („de cel puțin"), ultima poziție.
+    // Coloanele: Vehicul, Șofer, Locație (unde a oprit), A oprit la, Staționează de („în mișcare”), Contact, Sateliți.
+    // Plus `valori` (cifrele, pe mașină): de când stă, dacă oprirea ține de la capătul citit („de cel puțin”), ultima poziție.
     const rows = Array.isArray(rep && rep.rows) ? rep.rows : [];
     const c = _col(rep);
     const val = {}; (Array.isArray(rep && rep.valori) ? rep.valori : []).forEach(function (v) { val[v.vehicul] = v; });
@@ -830,7 +830,7 @@ function _raspunde(u, rep, extra) {
   }
 
   if (u.subiect === 'disponibilitate') {
-    // Coloanele: Vehicul, Șofer, Zile active („N zile: …"), Zile inactive, Cea mai lungă pauză, Ultima poziție, Semnal.
+    // Coloanele: Vehicul, Șofer, Zile active („N zile: …”), Zile inactive, Cea mai lungă pauză, Ultima poziție, Semnal.
     const rows = Array.isArray(rep && rep.rows) ? rep.rows : [];
     const c = _col(rep);
     if (!rows.length) { r.text = 'Nu am mașini de verificat — ' + per + '.'; return r; }
@@ -919,7 +919,7 @@ function _butoane(masina) {
 }
 // Răspunsul când nu se poate răspunde pe reguli — spus cinstit, cu drumul mai departe (butoane, nu o listă de cuvinte).
 // u = ce a întors `intelege` (motiv, masini, raport…); extra = { areInsight, etRaport (raport → nume) }.
-// NU spune nimic despre fondul RA Insight sau despre „gratuit" (Alin, 07.10: „nu e ok să apară asta").
+// NU spune nimic despre fondul RA Insight sau despre „gratuit” (Alin, 07.10: „nu e ok să apară asta”).
 function neinteles(u, fisa, extra) {
   const x = extra || {};
   const motiv = u && u.motiv;
@@ -927,15 +927,15 @@ function neinteles(u, fisa, extra) {
   const una = u && Array.isArray(u.masini) && u.masini.length === 1 ? peImei[u.masini[0]] : null;
   if (motiv === 'pentru_insight') {
     return x.areInsight
-      ? { text: 'La „de ce", comparații și sfaturi răspunde **RA Insight**: caută cauza în mai multe rapoarte și ți-o explică.', spreInsight: true }
-      : { text: 'Aici răspund cu cifrele din rapoarte: cât, când, unde, care mașină. La „de ce", comparații și sfaturi nu pot răspunde din rapoarte.', alege: _butoane(una) };
+      ? { text: 'La „de ce”, comparații și sfaturi răspunde **RA Insight**: caută cauza în mai multe rapoarte și ți-o explică.', spreInsight: true }
+      : { text: 'Aici răspund cu cifrele din rapoarte: cât, când, unde, care mașină. La „de ce”, comparații și sfaturi nu pot răspunde din rapoarte.', alege: _butoane(una) };
   }
   if (motiv === 'ambiguu') return { text: 'Se potrivesc mai multe mașini. Pe care o vrei?', alege: (u.variante || []).slice(0, 8).map(function (v) { return { text: I.eticheta(v), trimite: v.nr || v.nume }; }) };
-  if (motiv === 'gol') return { text: 'Scrie o întrebare despre rapoarte — de exemplu „Câți km a făcut B 154 UIP săptămâna trecută?".' };
+  if (motiv === 'gol') return { text: 'Scrie o întrebare despre rapoarte — de exemplu „Câți km a făcut B 154 UIP săptămâna trecută?”.' };
   if (motiv === 'doar_masina') {
-    if (u.grupa) return { text: 'Ce vrei să afli despre grupa **' + u.grupa + '**? Scrie, de exemplu: „km săptămâna asta", „staționări azi", „consum luna asta".' };
+    if (u.grupa) return { text: 'Ce vrei să afli despre grupa **' + u.grupa + '**? Scrie, de exemplu: „km săptămâna asta”, „staționări azi”, „consum luna asta”.' };
     if (una) return { text: 'Ce vrei să afli despre **' + I.eticheta(una) + '**?', alege: _butoane(una) };
-    return { text: 'Ce vrei să afli despre mașinile astea? Scrie, de exemplu: „km săptămâna asta", „staționări azi".' };
+    return { text: 'Ce vrei să afli despre mașinile astea? Scrie, de exemplu: „km săptămâna asta”, „staționări azi”.' };
   }
   if (motiv === 'alt_raport') {
     const nume = (x.etRaport && x.etRaport[u.raport]) || u.raport;
@@ -945,7 +945,7 @@ function neinteles(u, fisa, extra) {
   return { text: 'Nu am înțeles ce raport te interesează. Alege mai jos sau scrie mai simplu: ce (km, consum, staționări, viteză, ce expiră…), care mașină și ce perioadă.', alege: _butoane(null), spreInsight: !!x.areInsight };
 }
 
-// Butonul „Raport" din caseta de scris (08.10): ce se poate afla, cu cuvântul pus în întrebare. Fiecare cuvânt trebuie să
+// Butonul „Raport” din caseta de scris (08.10): ce se poate afla, cu cuvântul pus în întrebare. Fiecare cuvânt trebuie să
 // numească subiectul lui (păzit de probă: subiectDin(cuvânt) = subiectul).
 const ALEGERI_RAPORT = [
   ['km', 'Km parcurși', 'km'], ['consum', 'Consum', 'consumul'], ['costuri', 'Costuri cu combustibilul', 'costurile cu combustibilul'],
@@ -968,7 +968,7 @@ const INTREBARI_GATA = [
 ];
 
 // ─── Rezumatul unui tabel, pe reguli (14.10) ─────────────────────────────────────────────────────────────────────────
-// Pe pachetul Start (fără AI) și când întrebările lunii s-au terminat, „Rezumă raportul" spune din cifrele tabelului: câte
+// Pe pachetul Start (fără AI) și când întrebările lunii s-au terminat, „Rezumă raportul” spune din cifrele tabelului: câte
 // rânduri, totalul coloanelor care se adună (km, litri, lei, ore…) și cea mai mare valoare, cu rândul ei. Nimic ghicit:
 // o celulă e număr doar dacă e scrisă ca număr (cu unitatea ei, cel mult); datele, orele, locurile și indexurile se sar.
 const _COL_SARITA = /(data|ora\b|ore\s+de\s+la|inceput|început|sfarsit|sfârșit|plecare|sosire|locat|locaț|adres|lat|lng|index|imei|nr\.|număr|numar|serie|telefon)/i;
@@ -985,7 +985,7 @@ function rezumatTabel(columns, rows) {
   if (!rs.length) return 'Tabelul e gol: nu am ce rezuma.';
   const de = function (n) { const r = Math.abs(n) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; };
   const out = ['**' + rs.length + de(rs.length) + (rs.length === 1 ? 'rând' : 'rânduri') + '** în raport.'];
-  // Eticheta unui rând: prima coloană care nu e număr (de obicei „Vehicul").
+  // Eticheta unui rând: prima coloană care nu e număr (de obicei „Vehicul”).
   let colEt = 0;
   for (let j = 0; j < cols.length; j++) { if (rs.some(function (r) { return r[j] != null && String(r[j]).trim() && isNaN(_celulaNumar(r[j])); })) { colEt = j; break; } }
   let puse = 0;
@@ -995,7 +995,7 @@ function rezumatTabel(columns, rows) {
     const bune = val.filter(function (x) { return Number.isFinite(x); });
     if (bune.length < Math.max(1, Math.ceil(rs.length * 0.6))) continue;
     if (bune.every(function (x) { return x === bune[0]; }) && rs.length > 1) continue;   // aceeași cifră peste tot: nu spune nimic
-    // Se adună: după capul coloanei sau după unitatea scrisă în celule („47 km", „36,6 l", „84 lei"); viteza, scorul, media nu.
+    // Se adună: după capul coloanei sau după unitatea scrisă în celule („47 km”, „36,6 l”, „84 lei”); viteza, scorul, media nu.
     const cuUnitate = rs.filter(function (r) { return /\d\s*(km|l|lei|ron)\s*$/i.test(String(r[j] == null ? '' : r[j])) && !/km\/h/i.test(String(r[j])); }).length >= Math.ceil(rs.length * 0.6);
     const seAduna = !_COL_MAXIM.test(cols[j]) && (_COL_SE_ADUNA.test(cols[j]) || cuUnitate);
     let iMax = -1; val.forEach(function (x, i) { if (Number.isFinite(x) && (iMax < 0 || x > val[iMax])) iMax = i; });
@@ -1016,17 +1016,17 @@ function rezumatTabel(columns, rows) {
 
 // ─── Rapoartele cerute în cuvinte (Capitolul 2, pasul 1 — Alin, 15.10: „generează foaia de parcurs pentru flotă / mașina X
 // pe perioada Y") ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-// O CERERE („fă-mi", „generează", „scoate-mi"… + „raport" sau un nume tare, ca „foaia de parcurs") nu primește o propoziție:
-// serverul face raportul întreg, ca din pagina Rapoarte, și îl pune în Istoric rapoarte. O ÎNTREBARE („câți km a făcut…")
+// O CERERE („fă-mi”, „generează”, „scoate-mi”… + „raport” sau un nume tare, ca „foaia de parcurs”) nu primește o propoziție:
+// serverul face raportul întreg, ca din pagina Rapoarte, și îl pune în Istoric rapoarte. O ÎNTREBARE („câți km a făcut…”)
 // rămâne la `intelege` / RA Insight. Aici doar înțelegerea: ce raport (cheia din catalogul reports.js), ce mașini, ce
 // perioadă. Fără bază, fără model.
 const CERE_RAPORT = /\b(fa|fa-mi|fa-ne|faceti|faceti-mi|genereaza\w*|genera\w*|scoate|scoate-mi|scoateti|da-mi|dati-mi|vreau|as vrea|trimite-mi|pregateste\w*|exporta\w*|descarca\w*|arata-mi|deschide-mi|creeaza\w*|fa un|fa o)\b/;
 const CUVANT_RAPORT = /\braport\w*\b/;
-// Numele rapoartelor, cum le spune omul. Cel mai lung întâi („can detaliat" înaintea lui „can"). `tare` = numele singur, fără
-// „raport", ajunge pentru o cerere („fă-mi foaia de parcurs"); celelalte cer și cuvântul „raport" („fă-mi raportul de consum"),
-// ca „dă-mi consumul de luna trecută" să rămână o întrebare cu cifre.
+// Numele rapoartelor, cum le spune omul. Cel mai lung întâi („can detaliat” înaintea lui „can”). `tare` = numele singur, fără
+// „raport”, ajunge pentru o cerere („fă-mi foaia de parcurs”); celelalte cer și cuvântul „raport” („fă-mi raportul de consum”),
+// ca „dă-mi consumul de luna trecută” să rămână o întrebare cu cifre.
 const NUME_RAPOARTE = [
-  // toate formele („foii", „foilor": Alin, 15.10 — „generează raportul foii de parcurs" primea „Ce raport vrei?")
+  // toate formele („foii”, „foilor”: Alin, 15.10 — „generează raportul foii de parcurs” primea „Ce raport vrei?”)
   { raport: 'trips', tare: true, re: /\b(foaie|foaia|foii|foile|foilor|foi) de parcurs\b/ },
   { raport: 'trips', re: /\b(curse|cursele|cursa)\b/ },
   { raport: 'can_detail', re: /\bcan detaliat\b/ },
@@ -1067,12 +1067,12 @@ const NUME_RAPOARTE = [
 // Rapoartele care cer o alegere pe care o cerere în cuvinte nu o are (zona hotspot-ului, semnalele CAN): primesc butonul
 // care deschide raportul în Rapoarte, unde se alege.
 const RAPOARTE_CU_ALEGERI = ['hotspot', 'can_detail'];
-// Butoanele „Ce raport vrei?" (o cerere fără nume de raport).
+// Butoanele „Ce raport vrei?” (o cerere fără nume de raport).
 const RAPOARTE_PROPUSE = ['trips', 'stops', 'daily', 'consumption', 'speeding', 'due'];
 function numeRaportDin(t) { for (const n of NUME_RAPOARTE) if (n.re.test(t)) return n; return null; }
 // Mai multe zile într-o cerere (Alin, 15.10: „raportul … de pe ziua de 8 octombrie și pe cel de pe 5 octombrie și să-mi
 // faci o comparație" — se făcea doar 8 octombrie): câte o perioadă pe zi, în ordinea scrisă. „Pe 8 octombrie și pe 5
-// octombrie", „pe 5, 7 și 8 octombrie", „05.10 și 08.10". Un interval („1–7 octombrie", „între 1 și 7") e O perioadă → null.
+// octombrie", „pe 5, 7 și 8 octombrie”, „05.10 și 08.10”. Un interval („1–7 octombrie”, „între 1 și 7”) e O perioadă → null.
 const MAX_PERIOADE = 4;
 function zileleDin(t, acum) {
   const now = acum != null ? Number(acum) : Date.now();
@@ -1114,13 +1114,13 @@ function _perioadaComenzii(raport, t, acum) {
   return perioadaDin(t, acum, s) || perioadaImplicita(s, acum);
 }
 // text = ce a scris omul; cmd = cererea de dinainte din discuție ({ raport, masini, grupa, perioada }), pentru „Și pentru
-// toată flota?" / „Și săptămâna dinainte?" / mașina aleasă dintre mai multe. Întoarce null (nu e o cerere de raport) sau
+// toată flota?" / „Și săptămâna dinainte?” / mașina aleasă dintre mai multe. Întoarce null (nu e o cerere de raport) sau
 // { ok: true, raport, masini (null = toată flota), grupa, perioada, perioade?, analiza?, mem } sau { ok: false, motiv:
 // 'fara_raport' | 'ambiguu' | 'cu_alegeri', variante?, raport?, context } — `context` = ce se ține minte (cererea de până acum).
 //   perioade = mai multe zile cerute deodată (zileleDin) — câte un raport pe zi;
-//   analiza  = cererea vrea și o judecată („compară", „de ce", „ce să fac" — PENTRU_INSIGHT): după rapoarte, RA Insight.
+//   analiza  = cererea vrea și o judecată („compară”, „de ce”, „ce să fac” — PENTRU_INSIGHT): după rapoarte, RA Insight.
 // discutie = ce s-a vorbit în conversație ({ masini }) — mașina rămâne la o cerere nouă fără mașină (Alin, 15.10: a cerut
-// două foi de parcurs vorbind de B 154 UIP și a primit toată flota). „Toată flota" o schimbă.
+// două foi de parcurs vorbind de B 154 UIP și a primit toată flota). „Toată flota” o schimbă.
 function comanda(text, cmd, fisa, acum, discutie) {
   const t = I.norm(text);
   if (!t) return null;
@@ -1152,14 +1152,14 @@ function comanda(text, cmd, fisa, acum, discutie) {
     }
   }
   if (!raport) {
-    // Ziua scrisă rămâne pentru butonul ales după („generează raportul … pe ziua de 8 octombrie" → „Ce raport vrei?" → „Foaie
+    // Ziua scrisă rămâne pentru butonul ales după („generează raportul … pe ziua de 8 octombrie” → „Ce raport vrei?” → „Foaie
     // de parcurs" făcea ultimele 7 zile — Alin, 15.10).
     const p0 = perioadaDin(t, acum, null);
     return { ok: false, motiv: 'fara_raport', context: { raport: null, masini: masini, grupa: grupa, perioada: p0 ? { from: p0.from, to: p0.to } : null } };
   }
-  // Mașina rămâne la o continuare („Și săptămâna dinainte?"), nu la „toată flota".
+  // Mașina rămâne la o continuare („Și săptămâna dinainte?”), nu la „toată flota”.
   if (!numite && continuare && c && Array.isArray(c.masini) && c.masini.length && !TOATA_FLOTA.test(t)) { masini = c.masini.slice(); grupa = c.grupa || null; mem.masini = true; }
-  // …și la o cerere nouă fără mașină: întâi cea aleasă în cererea de dinainte (butonul „Ce raport vrei?"), apoi mașina discuției.
+  // …și la o cerere nouă fără mașină: întâi cea aleasă în cererea de dinainte (butonul „Ce raport vrei?”), apoi mașina discuției.
   if (!numite && !continuare && !TOATA_FLOTA.test(t)) {
     if (c && !c.raport && Array.isArray(c.masini) && c.masini.length) { masini = c.masini.slice(); grupa = c.grupa || null; mem.masini = true; }
     else if (discutie && Array.isArray(discutie.masini) && discutie.masini.length) { masini = discutie.masini.slice(0, 50); mem.masini = true; }
@@ -1191,7 +1191,7 @@ function urmariComanda(u) {
   return out.map(function (t) { return { text: t, trimite: t }; });
 }
 
-// O întrebare despre toată flota („toate mașinile", „care mașină", „cine", „cele mai multe") — mașina din discuție nu se mai ține.
+// O întrebare despre toată flota („toate mașinile”, „care mașină”, „cine”, „cele mai multe”) — mașina din discuție nu se mai ține.
 // Aceeași regulă ca mai sus, în `intelege`; o folosește și răspunsul rapid al lui RA Insight (10.11).
 function despreFlota(text) { const t = I.norm(text); return TOATA_FLOTA.test(t) || RANG.test(t) || DESPRE_FLOTA.test(t); }
 

@@ -6,7 +6,7 @@
 //     (positions/2026-09-12.ndjson.gz[.enc]). Un dosar e parcurs cu totul, în ordinea numelor.
 //     Rulat de două ori pe aceleași fișiere nu dublează nimic (ON CONFLICT pe imei + timestamp).
 //
-// Verificat cap-coadă de verify_restaurare.js: arhivare reală → „S3" fals → punere la loc într-o bază goală.
+// Verificat cap-coadă de verify_restaurare.js: arhivare reală → „S3” fals → punere la loc într-o bază goală.
 
 const fs = require('fs');
 const path = require('path');

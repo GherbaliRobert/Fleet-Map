@@ -2,9 +2,9 @@
 // Logica e izolată aici; server.js doar înregistrează tick-ul și expune endpoint-urile.
 const emailRaport = require('./email_raport');   // textul și HTML-ul emailului (29.10)
 
-// Fereastra relativă raportată la 'now' (Date). Întoarce { from, to } ISO. ZILELE și LUNILE sunt ale ROMÂNIEI (27.10, Alin: „da"):
-// până atunci se socoteau pe ziua serverului (UTC) — „ieri" mergea de la 02:00 la 02:00 (vara 03:00), un raport programat la 01:00
-// lua ziua de alaltăieri, iar „luna trecută" începea cu 2–3 ore după miezul nopții. „Ultimele 7 / 30 de zile" rămân ferestre care
+// Fereastra relativă raportată la 'now' (Date). Întoarce { from, to } ISO. ZILELE și LUNILE sunt ale ROMÂNIEI (27.10, Alin: „da”):
+// până atunci se socoteau pe ziua serverului (UTC) — „ieri” mergea de la 02:00 la 02:00 (vara 03:00), un raport programat la 01:00
+// lua ziua de alaltăieri, iar „luna trecută” începea cu 2–3 ore după miezul nopții. „Ultimele 7 / 30 de zile” rămân ferestre care
 // se termină în clipa trimiterii.
 function resolvePeriod(period, now) {
   const azi = _roYMD(now);
@@ -30,7 +30,7 @@ function _roOffsetMin(date) {
   const asUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
   return Math.round((asUTC - date.getTime()) / 60000);
 }
-// Instant UTC a cărui oră „de perete" în România este y-m0-d hh:00.
+// Instant UTC a cărui oră „de perete” în România este y-m0-d hh:00.
 function _roWallToUtc(y, m0, d, hh) {
   const naive = Date.UTC(y, m0, d, hh, 0, 0);
   return new Date(naive - _roOffsetMin(new Date(naive)) * 60000);
@@ -42,8 +42,8 @@ function _roYMD(date) {
     .formatToParts(date).forEach(x => { if (x.type !== 'literal') p[x.type] = +x.value; });
   return { y: p.year, m0: p.month - 1, d: p.day };
 }
-// Perioada pe zilele României, pentru subiectul și textul emailului: o zi = „26.10.2026"; altfel „01.10.2026 – 31.10.2026". Un capăt
-// căzut fix la miezul nopții nu-și numără ziua („ieri" se termină la 00:00 de azi). Până pe 27.10 subiectul tăia data din ora UTC.
+// Perioada pe zilele României, pentru subiectul și textul emailului: o zi = „26.10.2026”; altfel „01.10.2026 – 31.10.2026”. Un capăt
+// căzut fix la miezul nopții nu-și numără ziua („ieri” se termină la 00:00 de azi). Până pe 27.10 subiectul tăia data din ora UTC.
 function perioadaEmail(from, to) {
   const f = new Date(from), t = new Date(to);
   const zz = (date) => { const p = _roYMD(date); return String(p.d).padStart(2, '0') + '.' + String(p.m0 + 1).padStart(2, '0') + '.' + p.y; };
@@ -92,10 +92,10 @@ async function runSchedule(s, deps, now) {
   } else if (s.company_id != null) {
     imeis = await db.getCompanyActiveImeis(s.company_id);
   } else {
-    // Super-admin (company_id NULL) → „Toată flota" = TOATE dispozitivele nearhivate, MAI PUȚIN cele DEMO.
-    // getCompanyActiveImeis(null) ar întoarce [] fiindcă „company_id = NULL" nu se potrivește cu nimic în SQL
+    // Super-admin (company_id NULL) → „Toată flota” = TOATE dispozitivele nearhivate, MAI PUȚIN cele DEMO.
+    // getCompanyActiveImeis(null) ar întoarce [] fiindcă „company_id = NULL” nu se potrivește cu nimic în SQL
     // → programarea genera raport GOL (0 rânduri) și nu se salva în Istoric. (mirror al resolveReportImeis pt. super-admin)
-    // Vehiculele companiei DEMO NU intră în rapoartele flotei reale (altfel apar „DEMO-1..5" în rapoarte).
+    // Vehiculele companiei DEMO NU intră în rapoartele flotei reale (altfel apar „DEMO-1..5” în rapoarte).
     try {
       const all = await db.getDevices();
       const demoCoIds = new Set();
@@ -112,7 +112,7 @@ async function runSchedule(s, deps, now) {
   const report = await reports.runReport(db, s.report_type, imeis, from, to, opts, s.company_id);
   const fmt = (s.format === 'xlsx') ? 'xlsx' : 'pdf';
   const buf = fmt === 'xlsx' ? await reportExport.toXlsx(report) : await reportExport.toPdf(report);
-  // Numele casei, ca la descărcarea din platformă (Robert, 14.10): „RA-Track - Raport Utilizare flotă - 14.10.2026.xlsx".
+  // Numele casei, ca la descărcarea din platformă (Robert, 14.10): „RA-Track - Raport Utilizare flotă - 14.10.2026.xlsx”.
   const filename = reportExport.numeRaport(report) + '.' + fmt;
 
   // Salvează în Istoric rapoarte → apare automat, descărcabil (Excel/PDF), pe user-ul programării.
@@ -133,11 +133,11 @@ async function runSchedule(s, deps, now) {
   const recips = await destinatari(s, db);
   const rowsN = (report.rows && report.rows.length) || 0;
   const em = await trimite(s, report, buf, filename, from, to, recips, channels, now, await _pentruEmail(s, report, imeis.length, historyId, deps));
-  // Notificare „raport gata" (clopoțel + push) → duce direct la Istoric. Emailul care n-a plecat se spune tot aici.
+  // Notificare „raport gata” (clopoțel + push) → duce direct la Istoric. Emailul care n-a plecat se spune tot aici.
   if (deps.notify && historyId) {
     try {
       await deps.notify({ type: 'report_ready', severity: 'info', title: 'Raport programat gata',
-        body: '„' + (report.label || s.report_type) + '" e disponibil în Istoric rapoarte.' + (recips.length && !em.emailSent ? ' Emailul n-a plecat; încercăm din nou.' : ''),
+        body: '„' + (report.label || s.report_type) + '” e disponibil în Istoric rapoarte.' + (recips.length && !em.emailSent ? ' Emailul n-a plecat; încercăm din nou.' : ''),
         data: { historyId, reportType: s.report_type, key: 'report_' + historyId }, userId: s.user_id, companyId: s.company_id });
     } catch (e) {}
   }
@@ -163,11 +163,11 @@ async function destinatari(s, db) {
   return recips;
 }
 // Ce mai trebuie emailului (29.10): cifrele de sus (aceeași socoteală ca RA Insight), mașina sau câte mașini, unde e raportul în
-// Istoric. O mașină anume se scrie cu numele și numărul ei; fără fișă citibilă — „Toată flota", ca înainte.
+// Istoric. O mașină anume se scrie cu numele și numărul ei; fără fișă citibilă — „Toată flota”, ca înainte.
 async function _pentruEmail(s, report, nrMasini, historyId, deps) {
   const o = { kpi: deps && deps.reports && deps.reports.kpiRaport ? deps.reports.kpiRaport(report) : [], nrMasini: nrMasini, historyId: historyId };
   if (s.imei && deps && deps.db && deps.db.getDeviceFull) {
-    try { const d = await deps.db.getDeviceFull(s.imei); if (d) o.vehicul = [d.name, d.plate].filter(Boolean).join(' · ') || null; } catch (e) { /* fără nume: rămâne „Toată flota" */ }
+    try { const d = await deps.db.getDeviceFull(s.imei); if (d) o.vehicul = [d.name, d.plate].filter(Boolean).join(' · ') || null; } catch (e) { /* fără nume: rămâne „Toată flota” */ }
   }
   return o;
 }
@@ -189,7 +189,7 @@ async function trimite(s, report, buf, filename, from, to, recips, channels, now
       try {
         // `livrare`: după ce pleacă, serverul întreabă Brevo dacă a ajuns și scrie răspunsul pe rândul programării (28.10).
         const ok = await channels.sendEmailTo(rcp, subject, text, attachments, em.html,
-          { livrare: { ref: 'sched:' + s.id, fel: 'raport', companyId: s.company_id != null ? s.company_id : null, unde: '„' + (s.name || report.label || s.report_type) + '"',
+          { livrare: { ref: 'sched:' + s.id, fel: 'raport', companyId: s.company_id != null ? s.company_id : null, unde: '„' + (s.name || report.label || s.report_type) + '”',
             la: now ? new Date(now).getTime() : Date.now() } });   // clipa trimiterii = cea scrisă pe programare (last_run)
         if (ok) emailSent = true; else if (!emailError) emailError = 'Serverul nu are email configurat';
       } catch (e) { if (!emailError) emailError = (e && e.message) || String(e); }
@@ -236,7 +236,7 @@ function _cand(t) {
 }
 function _ora(t) { return t ? new Date(t).toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }) : ''; }
 // Textul de pe ecran pentru ultima trimitere. Amănuntul erorii doar la noi (`cuEroare`); clientul află că noi am fost anunțați.
-// `livrare` (28.10) = ce a spus Brevo despre emailurile trimiterii (livrare.rezumat): „a plecat" nu mai înseamnă „a ajuns".
+// `livrare` (28.10) = ce a spus Brevo despre emailurile trimiterii (livrare.rezumat): „a plecat” nu mai înseamnă „a ajuns”.
 function textStare(s, cuEroare, livrare) {
   if (!s || !s.ultima_stare) return null;
   const cand = _cand(s.last_run) ? _cand(s.last_run) + ' — ' : '';
@@ -271,7 +271,7 @@ async function tickDue(deps, now) {
       try {
         const z = _roYMD(now), zi = z.y + '-' + String(z.m0 + 1).padStart(2, '0') + '-' + String(z.d).padStart(2, '0');   // ziua României, ca perioadele
         await deps.notify({ type: 'report_email_esuat', severity: 'warning', title: 'Emailul cu raportul n-a putut pleca',
-          body: '„' + (s.name || s.report_type) + '" e în Istoric rapoarte. Am încercat de ' + (REINCERCARI_MIN.length + 1) + ' ori; echipa RA Track a fost anunțată.',
+          body: '„' + (s.name || s.report_type) + '” e în Istoric rapoarte. Am încercat de ' + (REINCERCARI_MIN.length + 1) + ' ori; echipa RA Track a fost anunțată.',
           data: { reportType: s.report_type, key: 'report_email_' + s.id + '_' + zi }, userId: s.user_id, companyId: s.company_id });
       } catch (e) {}
     }

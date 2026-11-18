@@ -2,9 +2,9 @@ import { useRef } from 'preact/hooks';
 import { showToast } from '../app/store';
 import { Icon } from './Icon';
 
-// Foaia „Linkul de parolă" — o singură implementare pentru Utilizatori și pentru aprobarea unui demo.
+// Foaia „Linkul de parolă” — o singură implementare pentru Utilizatori și pentru aprobarea unui demo.
 // Parola nu se mai scrie de nimeni (16.09): omul primește un link și și-o pune singur. Când emailul nu poate
-// pleca, serverul întoarce linkul, iar foaia îl arată, copiat deja, cu „Copiază" și „Trimite" (WhatsApp, SMS…).
+// pleca, serverul întoarce linkul, iar foaia îl arată, copiat deja, cu „Copiază” și „Trimite” (WhatsApp, SMS…).
 export type LinkParola = { email?: string; link: string; motiv?: string; copiat?: boolean };
 
 const BTN_GHOST = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';

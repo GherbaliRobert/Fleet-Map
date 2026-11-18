@@ -19,11 +19,11 @@
   function liveBits(d) {
     var speed = (d.speed != null ? d.speed : 0);
     var on = online(d);
-    // „În mișcare" (verde) DOAR dacă a transmis recent (<3 min). Viteză>0 dintr-un pachet vechi (semnal pierdut
-    // în mers) → galben „⚠️ Fără semnal recent", nu verde fals. Aliniat cu markerul / lista / fișa.
+    // „În mișcare” (verde) DOAR dacă a transmis recent (<3 min). Viteză>0 dintr-un pachet vechi (semnal pierdut
+    // în mers) → galben „⚠️ Fără semnal recent”, nu verde fals. Aliniat cu markerul / lista / fișa.
     var fresh = d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
     var ign = !!(d.io && (d.io.ignition === 1 || d.io.ignition === true));
-    var movedRecently = !!(d.moved_at && (Date.now() - d.moved_at) < 150000); // histerezis: crawl în trafic + contact pornit → tot „mișcare"
+    var movedRecently = !!(d.moved_at && (Date.now() - d.moved_at) < 150000); // histerezis: crawl în trafic + contact pornit → tot „mișcare”
     var fastEnough = speed > 3 || (movedRecently && ign);
     var liveMoving = fastEnough && fresh;
     var dot, status;
@@ -42,7 +42,7 @@
     };
   }
 
-  // ── Durate „de când" (folosesc momentele de referință din /full: last_moved_at, ignition_on_at) ──
+  // ── Durate „de când” (folosesc momentele de referință din /full: last_moved_at, ignition_on_at) ──
   function fmtDur(ms) {
     if (ms == null || isNaN(ms) || ms < 0) return '—';
     var m = Math.floor(ms / 60000), h = Math.floor(m / 60), zile = Math.floor(h / 24);
@@ -51,16 +51,16 @@
     if (m >= 1) return m + ' min';
     return 'sub 1 min';
   }
-  // Referință pentru durate: ULTIMA TRANSMISIE a vehiculului, nu „acum". Altfel, pentru un vehicul
-  // offline, „motor pornit de" / „în staționare de" ar crește la nesfârșit deși nu mai dă semnal.
-  // Plafonat la „acum" (în caz de ceas defazat al device-ului).
+  // Referință pentru durate: ULTIMA TRANSMISIE a vehiculului, nu „acum”. Altfel, pentru un vehicul
+  // offline, „motor pornit de” / „în staționare de” ar crește la nesfârșit deși nu mai dă semnal.
+  // Plafonat la „acum” (în caz de ceas defazat al device-ului).
   function refMs(d) {
     var t = (d && d.timestamp) ? new Date(d.timestamp).getTime() : NaN;
     return isNaN(t) ? Date.now() : Math.min(t, Date.now());
   }
   function durStat(d, f) {
-    // „în mișcare" DOAR dacă transmite live (<3 min, viteză>3). Altfel arătăm de când stă (last_moved_at) —
-    // un pachet vechi cu viteză>0 (semnal pierdut) nu mai înseamnă „în mișcare". Aliniat cu liveBits.
+    // „în mișcare” DOAR dacă transmite live (<3 min, viteză>3). Altfel arătăm de când stă (last_moved_at) —
+    // un pachet vechi cu viteză>0 (semnal pierdut) nu mai înseamnă „în mișcare”. Aliniat cu liveBits.
     var fresh = d && d.timestamp ? (Date.now() - new Date(d.timestamp).getTime()) < 180000 : false;
     var movedRecently = !!(d && d.moved_at && (Date.now() - d.moved_at) < 150000 && d.io && (d.io.ignition === 1 || d.io.ignition === true)); // histerezis trafic
     if (d && (d.speed > 3 || movedRecently) && fresh) return '<span style="color:var(--green)">în mișcare</span>';
@@ -81,7 +81,7 @@
     var d = DEVS() && DEVS().get(imei); if (!d) return;
     var f = fullCache[imei] || null;
     var s = el('vp-stat-' + imei); if (s) s.innerHTML = durStat(d, f);
-    var sr = el('vp-statrow-' + imei); if (sr) sr.style.display = engOn(d) ? '' : 'none'; // ascunde „În staționare de" cu motorul oprit (redundant cu „Motor oprit de")
+    var sr = el('vp-statrow-' + imei); if (sr) sr.style.display = engOn(d) ? '' : 'none'; // ascunde „În staționare de” cu motorul oprit (redundant cu „Motor oprit de”)
     var lbl = el('vp-englbl-' + imei); if (lbl) lbl.textContent = engLabel(d);
     var e = el('vp-eng-' + imei); if (e) e.innerHTML = durEng(d, f);
   }
@@ -96,7 +96,7 @@
 
   // Titlul balonului = NUMĂRUL DE ÎNMATRICULARE (Alin, 05.11: „o flotă poate avea 10 Caddy, omul din grabă nu se mai uită jos
   // să vadă numărul"); fără număr, denumirea; fără nimic, IMEI-ul. Denumirea coboară pe primul rând, în locul numărului.
-  // „Vehicul" (marca + modelul din fișă) nu se repetă când scrie exact cât denumirea („VW Caddy" / „VW Caddy").
+  // „Vehicul” (marca + modelul din fișă) nu se repetă când scrie exact cât denumirea („VW Caddy” / „VW Caddy”).
   function acelasi(a, b) {
     var x = String(a == null ? '' : a).replace(/\s+/g, ' ').trim().toLowerCase();
     return !!x && x === String(b == null ? '' : b).replace(/\s+/g, ' ').trim().toLowerCase();
@@ -129,7 +129,7 @@
     var _splim0 = spdLimitOf(d);
     rows += row('Viteză', '<span id="vp-spd-' + imei + '" style="color:' + (b.moving ? 'var(--green)' : 'var(--text-muted)') + '">' + b.speed + ' km/h</span>' +
       '<span class="vp-splimit" id="vp-splim-' + imei + '"' + (_splim0 ? '' : ' style="display:none"') + ' title="Limită de viteză (recunoscută de cameră)">' + (_splim0 || '') + '</span>');
-    // „În staționare de" doar cu motorul PORNIT (staționat/idling). Cu motorul oprit e redundant cu „Motor oprit de" → ascuns.
+    // „În staționare de” doar cu motorul PORNIT (staționat/idling). Cu motorul oprit e redundant cu „Motor oprit de” → ascuns.
     rows += '<tr id="vp-statrow-' + imei + '"' + (engOn(d) ? '' : ' style="display:none"') + '><td>În staționare de</td><td id="vp-stat-' + imei + '">' + durStat(d, fullCache[imei] || null) + '</td></tr>';
     rows += '<tr><td id="vp-englbl-' + imei + '">' + esc(engLabel(d)) + '</td><td id="vp-eng-' + imei + '">' + durEng(d, fullCache[imei] || null) + '</td></tr>';
     rows += row('Coordonate', esc(b.lat + ', ' + b.lng + '  ·  ' + b.ang), 'vp-coord-' + imei);
@@ -183,7 +183,7 @@
   function enrich(imei) {
     var d = DEVS() && DEVS().get(imei); if (!d) return;
     if (window.reverseGeocode && d.latitude != null) {
-      // Adresa COMPLETĂ, nu forma scurtă: aici e fișa unui vehicul anume, iar „Olteni" (doar localitatea)
+      // Adresa COMPLETĂ, nu forma scurtă: aici e fișa unui vehicul anume, iar „Olteni” (doar localitatea)
       // nu-i spune dispecerului unde să trimită pe cineva. Coordonatele rămân pe rândul lor.
       window.reverseGeocode(d.latitude, d.longitude, 'full').then(function (addr) {
         var a = el('vp-adr-' + imei); if (a) { a.textContent = addr; a.style.color = 'var(--text-primary)'; a.title = addr; }
@@ -229,7 +229,7 @@
   };
 
   // ── Butoane ──
-  // Detalii: deschide panoul din dreapta (fără follow). E o „altă comandă" → oprește orice follow activ.
+  // Detalii: deschide panoul din dreapta (fără follow). E o „altă comandă” → oprește orice follow activ.
   window.vpDetails = function (imei) {
     if (window.vpClearFollow) window.vpClearFollow();
     var map = MAP(); if (map) map.closePopup();
@@ -252,7 +252,7 @@
 
   // ── Stare follow (deținută aici; inline-ul doar citește window._followImei și apelează vpClearFollow) ──
   if (typeof window._followImei === 'undefined') window._followImei = null;
-  // Banda „Urmărești" scrie NUMĂRUL, ca titlul balonului (Alin, 05.11: „o rezolvăm acum" — cu 10 Caddy nu știi pe care îl
+  // Banda „Urmărești” scrie NUMĂRUL, ca titlul balonului (Alin, 05.11: „o rezolvăm acum” — cu 10 Caddy nu știi pe care îl
   // urmărești); denumirea stă după el, mai stinsă, doar când e altceva decât numărul.
   window.vpSetFollow = function (imei) {
     window._followImei = imei;
@@ -270,7 +270,7 @@
       (denumire ? '<small class="vp-fb-nume"> · ' + esc(denumire) + '</small>' : '') + '</span> <button title="Oprește urmărirea" onclick="vpClearFollow()">&times;</button>';
   }
 
-  // Hook-uri pe hartă: drag manual oprește follow-ul; închiderea balonului resetează starea „deschis".
+  // Hook-uri pe hartă: drag manual oprește follow-ul; închiderea balonului resetează starea „deschis”.
   function ensureHooks() {
     var map = MAP(); if (!map || map.__vpHooked) return; map.__vpHooked = true;
     map.on('dragstart', function () { if (window._followImei) window.vpClearFollow(); });

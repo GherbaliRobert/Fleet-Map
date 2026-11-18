@@ -7,7 +7,7 @@
 // mouse-ul" (din ce e făcut costul, litrii × prețul, cât e peste fișă) stă aici sub cifră: un telefon n-are mouse.
 
 export interface Ramura { k: string; et: string; ic: string; pachet?: boolean; sub?: string; meniu?: boolean }
-// Ramurile, în ordinea de pe web (RAMURI din „secțiunea RA Insight"). `pachet` = de la Basic în sus; `meniu` = stă în „⋯", nu în „Domenii".
+// Ramurile, în ordinea de pe web (RAMURI din „secțiunea RA Insight”). `pachet` = de la Basic în sus; `meniu` = stă în „⋯”, nu în „Domenii”.
 export const RAMURI: Ramura[] = [
   { k: 'soferi', et: 'Șoferi pe mașini', ic: 'swap', pachet: true },
   { k: 'safedrive', et: 'RA Drive', sub: 'condus & costuri', ic: 'shield', pachet: true },
@@ -15,13 +15,13 @@ export const RAMURI: Ramura[] = [
   { k: 'mentenanta', et: 'Mentenanță & acte', ic: 'wrench', pachet: true },
   { k: 'orecondus', et: 'Ore de condus', ic: 'clock', pachet: true },
   { k: 'ghid', et: 'Ghidul aplicației', ic: 'book', meniu: true },
-  // („Scrisoarea de luni" a ieșit pe 04.11, ca pe web.)
+  // („Scrisoarea de luni” a ieșit pe 04.11, ca pe web.)
 ];
 export function ramuraDupa(k: any): Ramura | null { return RAMURI.filter((r) => r.k === k)[0] || null; }
 export function pagini(): Ramura[] { return RAMURI.filter((r) => !r.meniu); }
-// De la Basic în sus: pe Start rândul e încuiat, cu „· Basic" (web: ramuraIncuiata).
+// De la Basic în sus: pe Start rândul e încuiat, cu „· Basic” (web: ramuraIncuiata).
 export function ramuraIncuiata(r: Ramura | null, pachet: any): boolean { return !!(r && r.pachet && pachet && !pachet.ramuri); }
-// Suma de lângă „Domenii", cât sunt închise: câte lucruri cer atenție, fără ce e încuiat.
+// Suma de lângă „Domenii”, cât sunt închise: câte lucruri cer atenție, fără ce e încuiat.
 export function sumaNumere(numere: any, pachet: any): number {
   let tot = 0;
   pagini().forEach((r) => { const n = numere && numere[r.k]; if (n > 0 && !ramuraIncuiata(r, pachet)) tot += n; });
@@ -174,7 +174,7 @@ export function planSafeDrive(j: any): Plan {
 export const EVENIMENTE_PRET = [['frana', 'Frânare bruscă'], ['accel', 'Accelerare bruscă'], ['viraj', 'Viraj brusc']];
 export const TEXT_PRETURI = { titlu: 'Prețul unei manevre bruște (lei)', felul: 'Felul mașinii', salveaza: 'Salvează prețurile', pornire: 'Înapoi la prețurile de pornire', citit: 'Prețurile le schimbă cine conduce flota în firmă (administratorul sau managerul).' };
 
-// ── Combustibil (web: deseneazaCombustibil). „Harta" de acolo e linkul spre Google Maps: la fel aici. ──
+// ── Combustibil (web: deseneazaCombustibil). „Harta” de acolo e linkul spre Google Maps: la fel aici. ──
 export function planCombustibil(j: any): Plan {
   const inceput = 'Despre combustibil, ' + ((j && j.eticheta) || '') + ': ';
   const p: Plan = { ic: 'droplet', titlu: 'Combustibil', selecte: selecte(selLuna(j), selGrupa(j)), intreaba: { fel: 'intreaba', inceput }, blocuri: [] };
@@ -199,7 +199,7 @@ export function planCombustibil(j: any): Plan {
     .forEach((x) => tiles.push({ ic: x[0], et: x[1], val: x[2], sub: x[3], st: x[4] || undefined }));
   p.blocuri.push({ b: 'tiles', tiles });
   if ((j.recomandari || []).length) p.blocuri.push({ b: 'recbox', reco: j.recomandari.map((x: any) => ({ fel: x.fel || 'info', text: String(x.text) })), butoane: [{ text: 'Întreabă RA Insight despre asta', ic: 'sparkles', act: { fel: 'intreaba', inceput } }] });
-  // Pe mașină — „peste normă" e lista serverului (pesteNorma), nu o regulă a paginii
+  // Pe mașină — „peste normă” e lista serverului (pesteNorma), nu o regulă a paginii
   const peste: Record<string, boolean> = {}; (j.pesteNorma || []).forEach((x: any) => { peste[x.imei] = true; });
   const randuri: Rand[] = j.masini.map((m: any) => {
     const l100: Linie[] = [{ t: m.l100 == null ? '—' : sdNr(m.l100, 1) }];
@@ -342,7 +342,7 @@ export function planSoferi(j: any): Plan & { propuneri: BifaSofer[]; intro: stri
   p.jos = j.poate ? (tx.jos || '') : 'Doar cine poate schimba vehiculele aplică: ' + (j.aproba || 'administratorul firmei') + '.';
   return p;
 }
-// Bifele: o schimbare care folosește un șofer scos de pe altă mașină („după ce iese de pe…") merge doar împreună cu aceea (web: leaga).
+// Bifele: o schimbare care folosește un șofer scos de pe altă mașină („după ce iese de pe…”) merge doar împreună cu aceea (web: leaga).
 export interface BifaStare { checked: boolean; disabled: boolean }
 export function legaBife(props: BifaSofer[], stare: BifaStare[]): { stare: BifaStare[]; n: number } {
   const out = stare.map((b) => Object.assign({}, b));

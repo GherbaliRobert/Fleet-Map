@@ -8,7 +8,7 @@
 //      crud; telefon, base64) și listele Teltonika — altfel un singur fișier oprea serverul tuturor firmelor;
 //   2. harta live a unei firme suspendate se închide și când era DEJA deschisă: pe loc la suspendarea de mână, la
 //      trecerea de un minut în rest (neplata); pagina web nu mai bate la ușă la fiecare 3 secunde;
-//   3. motivul scris de noi la o suspendare de mână nu mai pleacă la oamenii firmei (/api/me, „Facturile mele").
+//   3. motivul scris de noi la o suspendare de mână nu mai pleacă la oamenii firmei (/api/me, „Facturile mele”).
 //
 // Proba citește codul (fără server) și apoi pornește un server adevărat, cu legături live adevărate.
 const { spawn } = require('child_process');
@@ -18,13 +18,13 @@ const os = require('os');
 const vm = require('vm');
 const WebSocket = require('ws');
 
-// ── Faza „seed" (lotul 2, pct. 7) ────────────────────────────────────────────────────────────────────────────────────
+// ── Faza „seed” (lotul 2, pct. 7) ────────────────────────────────────────────────────────────────────────────────────
 // Facturi VECHI, de dinainte de 28.09 (fără `fel` și fără `luna`), puse direct în baza probei ÎNAINTE de pornirea
 // serverului: pe ușa de azi nu se mai poate face una (felul se deduce mereu), iar serverul nu are — și nu trebuie să
 // aibă — o ușă pentru asta. Rulată de proba însăși, ca proces separat, pe același dosar de bază.
 if (process.argv.indexOf('--faza=seed') >= 0) {
   // Capetele lunilor, socotite ca pe server: server.js își pune singur fusul pe UTC (primul rând). Fără asta, pe un
-  // laptop în ora României, factura lui august ar fi început „pe 31 iulie, ora 21" și ar fi acoperit și iulie.
+  // laptop în ora României, factura lui august ar fi început „pe 31 iulie, ora 21” și ar fi acoperit și iulie.
   process.env.TZ = 'UTC';
   (async () => {
     const db = require('./db'), abonament = require('./abonament');
@@ -99,7 +99,7 @@ sect('2. Harta live după suspendare (codul paginii web, rulat)');
   ctx.connectWs();
   socluri[0].onmessage({ data: JSON.stringify({ type: 'error', data: { error: 'access_expired' } }) });
   socluri[0].onclose();
-  T('după „access_expired", pagina reîncearcă o dată pe minut, nu la fiecare 3 secunde', timere[0] === 60000, timere[0]);
+  T('după „access_expired”, pagina reîncearcă o dată pe minut, nu la fiecare 3 secunde', timere[0] === 60000, timere[0]);
   T('…și scrie de ce harta e oprită', /accesul firmei e suspendat/.test(el.innerHTML), el.innerHTML);
   ctx.revenit();
   T('când profilul spune că accesul a revenit, harta se reconectează PE LOC (nu peste un minut)', socluri.length === 2 && oprite[0] === 'timer1', socluri.length + ' · ' + JSON.stringify(oprite));
@@ -123,7 +123,7 @@ sect('3. Motivul intern al unei suspendări (regula, rulată)');
   const ctx = vm.createContext({ neplata: require('./neplata') });
   vm.runInContext(taie(server, 'function stareAcces(co, facturi, acum) {', '\n}') + '\nthis.stareAcces = stareAcces;', ctx);
   const st = ctx.stareAcces({ suspended_at: Date.now() - 1000, suspend_reason: 'NOTA-INTERNA-CODUL' }, [], Date.now());
-  T('o oprire de mână rămâne „expired · manual"', st.status === 'expired' && st.motiv === 'manual', JSON.stringify(st));
+  T('o oprire de mână rămâne „expired · manual”', st.status === 'expired' && st.motiv === 'manual', JSON.stringify(st));
   T('…dar starea (care pleacă și la client) nu mai poartă motivul scris de noi', JSON.stringify(st).indexOf('NOTA-INTERNA') < 0 && !('nota' in st), JSON.stringify(st));
   T('nici memoria stării nu-l mai ține', taie(server, 'async function _accessStatusCached(companyId) {', '\n}').indexOf('suspend_reason') < 0);
 }
@@ -134,26 +134,26 @@ const web = {
   esc: taie(html, '    function esc(s) {', '\n'), luni: (/var _GI_LUNI = \[[^\]]*\];/.exec(html) || [''])[0],
   luna: taie(html, '    function _giLunaText(cheie) {', '\n'), invFmtD: taie(html, '    function _invFmtD(ts) {', '\n'),
   invMoney: taie(html, '    function _invMoney(n) {', '\n'), raxDe: taie(html, '    function _rDe(n) {', '\n    }') + '\n' + taie(html, '    function _raxDe(n) {', '\n'),
-  recalc: taie(html, '    function _giRecalcLine(l) {', '\n'), bloc: taie(html, '    // ── începe „factura montajului, strânsă" ──', '    // ── sfârșit „factura montajului, strânsă" ──'),
+  recalc: taie(html, '    function _giRecalcLine(l) {', '\n'), bloc: taie(html, '    // ── începe „factura montajului, strânsă” ──', '    // ── sfârșit „factura montajului, strânsă” ──'),
   surse: taie(html, '    function _giSurseHtml() {', '\n    }'), render: taie(html, '    function _giRenderLines() {', '\n    }'),
 };
 const libFacturaTel = citeste('mobile/src/lib/factura.ts'), billingTel = citeste('mobile/src/screens/Billing.tsx');
 
-sect('4. TVA: cota doar din „Date emitent", implicit cea legală de azi (21%)');
+sect('4. TVA: cota doar din „Date emitent”, implicit cea legală de azi (21%)');
 {
   const ctx = vm.createContext({});
   vm.runInContext(taie(server, 'const COTA_TVA_IMPLICITA = 21;', '\n') + taie(server, 'function _issuerVatRate(iss) {', '\n') +
     taie(server, 'function _liniiNormalizate(brute, vr) {', '\n}') + '\nthis.cota = _issuerVatRate; this.linii = _liniiNormalizate;', ctx);
-  T('fără cotă în „Date emitent" → 21%, nu 19%', ctx.cota({}) === 21 && ctx.cota(null) === 21 && ctx.cota({ vat_rate: '' }) === 21, ctx.cota({}));
+  T('fără cotă în „Date emitent” → 21%, nu 19%', ctx.cota({}) === 21 && ctx.cota(null) === 21 && ctx.cota({ vat_rate: '' }) === 21, ctx.cota({}));
   T('o cotă scrisă de noi rămâne (și 0, la neplătitor); una stricată → 21%', ctx.cota({ vat_rate: 0 }) === 0 && ctx.cota({ vat_rate: '9' }) === 9 && ctx.cota({ vat_rate: 120 }) === 21);
   const L = ctx.linii([{ desc: 'Montaj GPS', qty: 2, unitPrice: 100, vatRate: 19 }, { desc: 'Aparat', qty: 1, unitPrice: 50, vatRate: 5 }], 21);
   T('cota trimisă de ecran pe rând NU mai contează: toate rândurile iau cota emitentului', L.every((l) => l.vatRate === 21) && L[0].vat === 42 && L[1].vat === 10.5, JSON.stringify(L));
-  T('…și la salvarea „Date emitent" fără cotă se scrie 21', /: COTA_TVA_IMPLICITA;\s*\n\s*const clean = \{ name: S\(i\.name, 160\)/.test(server));
+  T('…și la salvarea „Date emitent” fără cotă se scrie 21', /: COTA_TVA_IMPLICITA;\s*\n\s*const clean = \{ name: S\(i\.name, 160\)/.test(server));
   const pdf = citeste('factura_pdf.js');
   T('hârtia scrie cota APLICATĂ pe rânduri, apoi a emitentului, apoi 21 — nu 19', /const tva = \(linii\[0\] && linii\[0\]\.vatRate != null\) \? linii\[0\]\.vatRate : \(iss\.vat_rate != null \? iss\.vat_rate : 21\);/.test(pdf) && !/: 19\)/.test(pdf));
-  T('pagina web: „Date emitent" propune 21 (și scrie 21 când caseta e goală), ciorna fără cotă ia 21',
+  T('pagina web: „Date emitent” propune 21 (și scrie 21 când caseta e goală), ciorna fără cotă ia 21',
     /'rax-iss-vat', \(iss\.vat_rate != null \? iss\.vat_rate : 21\), 'ex\. 21'\)/.test(html) && /\.value \|\| '21'\)\) \|\| 0,/.test(html) && /vatRate: d\.vatRate != null \? d\.vatRate : 21,/.test(html));
-  T('telefonul la fel: ciorna fără cotă ia 21, „Date emitent" pornește de la 21',
+  T('telefonul la fel: ciorna fără cotă ia 21, „Date emitent” pornește de la 21',
     /const rata = d\.vatRate != null \? Number\(d\.vatRate\) : 21;/.test(libFacturaTel) && /vat_rate: 21, vat_payer: true/.test(billingTel));
 }
 
@@ -174,7 +174,7 @@ sect('9. Abonamentul unei luni se emite de pe 1 ale ei (codul, rulat)');
   c2.document = { getElementById: (id) => (id === 'rax-gi-result' ? res : null) };
   vm.runInContext([web.esc, web.luni, web.luna, web.invFmtD, web.invMoney, web.raxDe, web.recalc, web.bloc, web.surse, web.render,
     'var _giState = _S, _giTip = "invoice";', '_giRenderLines();'].join('\n'), c2);
-  T('pagina: refuzul serverului sus, iar „Previzualizează" și „Emite" sunt stinse',
+  T('pagina: refuzul serverului sus, iar „Previzualizează” și „Emite” sunt stinse',
     res.innerHTML.indexOf('se emite de pe 1 noiembrie') >= 0 && /onclick="raxGenPrevizualizare\(this\)" disabled>/.test(res.innerHTML) && /onclick="raxGenIssue\(this\)" disabled>/.test(res.innerHTML));
   T('telefonul: același refuz, din ciornă (nu socotit pe telefon), iar butoanele se sting',
     /preaDevreme: d\.preaDevreme \|\| null,/.test(libFacturaTel) && /\{S\.preaDevreme \? <div class="bill-avert rau">⚠ \{S\.preaDevreme\}<\/div> : null\}/.test(billingTel) &&
@@ -191,7 +191,7 @@ T('6: pagina trimite în `montaje` doar lucrările întregi pe factură (legat d
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // Lotul 3 — contracte și dosar (codul și hârtiile, rulate). Pe server pornit, mai jos.
-// Hârtiile se desenează pe un „carton" care ține minte doar textul — ce ar citi clientul (ca în verify_abonament.js).
+// Hârtiile se desenează pe un „carton” care ține minte doar textul — ce ar citi clientul (ca în verify_abonament.js).
 const carton = () => {
   const texte = [];
   const d = {
@@ -220,9 +220,9 @@ const hartieContract = (montaj, rep, repFirma) => {
 sect('16. Reprezentantul legal ajunge pe contract (hârtia, desenată)');
 {
   const t = hartieContract(null, { name: '', role: 'Administrator' }, { name: 'Ion Popescu', role: 'Administrator' });
-  T('contractul are doar funcția („Client nou" fără nume), firma are numele → pe hârtie apare numele de pe firmă', t.indexOf('Ion Popescu') >= 0, t.slice(0, 300));
+  T('contractul are doar funcția („Client nou” fără nume), firma are numele → pe hârtie apare numele de pe firmă', t.indexOf('Ion Popescu') >= 0, t.slice(0, 300));
   T('…iar un nume scris pe contract are întâietate', hartieContract(null, { name: 'Maria Ionescu', role: 'Director' }, { name: 'Ion Popescu', role: 'Administrator' }).indexOf('Maria Ionescu') >= 0);
-  T('serverul scrie pe firmă doar un reprezentant CU NUME (la facerea contractului și la „Aprobă")',
+  T('serverul scrie pe firmă doar un reprezentant CU NUME (la facerea contractului și la „Aprobă”)',
     /if \(_repCuNume\(date\.client_rep\) && !_repCuNume\(co\.legal_rep\)\)/.test(server) && /if \(_repCuNume\(date\.client_rep\) && _STARI_NESEMNAT\.indexOf\(vechi\.status\) >= 0\)/.test(server));
 }
 
@@ -232,12 +232,12 @@ sect('22. Clauzele de montaj doar cu montaj, cele de avans doar cu aparate vând
   const tA = hartieContract(doarAparate);
   T('contract cu aparate vândute, FĂRĂ montaj: nu ne mai obligă să le montăm (doar livrarea, în 30 de zile de la avans)',
     !/livrează și montează/.test(tA) && /livrează echipamentele din Anexa nr\. 2 în cel mult 30 de zile de la încasarea avansului\./.test(tA), tA.slice(0, 200));
-  T('…fără zilele de montaj și mașinile neaduse, fără „Montajul se facturează"', !/Dacă un vehicul nu este disponibil/.test(tA) && !/Montajul se facturează/.test(tA));
+  T('…fără zilele de montaj și mașinile neaduse, fără „Montajul se facturează”', !/Dacă un vehicul nu este disponibil/.test(tA) && !/Montajul se facturează/.test(tA));
   T('…dar cu avansul pe proformă și renunțarea dacă nu vine', /se plătesc integral în avans, pe baza facturii proforme/.test(tA) && /Dacă avansul pentru echipamente nu este plătit/.test(tA));
-  T('…iar Anexa nr. 2 se numește „Echipamente", plătite în avans (fără „montajul (B)")', /ANEXA nr\. 2 — Echipamente \(costuri unice\)/.test(tA) && /O SINGURĂ DATĂ, integral în avans/.test(tA) && !/montajul \(B\)/.test(tA));
+  T('…iar Anexa nr. 2 se numește „Echipamente”, plătite în avans (fără „montajul (B)”)', /ANEXA nr\. 2 — Echipamente \(costuri unice\)/.test(tA) && /O SINGURĂ DATĂ, integral în avans/.test(tA) && !/montajul \(B\)/.test(tA));
   const cuTot = MJ.facAnexaCosturiUnice(MJ.randuri([{ tip: 'gps', buc: 10, pretClient: 100 }]), MJ.randuriEchip([{ tip: 'fmc130', buc: 10, pretEur: 55 }]), 5, 'RON');
   const tT = hartieContract(cuTot);
-  T('cu aparate ȘI montaj, hârtia rămâne cum era (livrează și montează, mașinile neaduse, „Echipamente și montaj")',
+  T('cu aparate ȘI montaj, hârtia rămâne cum era (livrează și montează, mașinile neaduse, „Echipamente și montaj”)',
     /livrează și montează echipamentele/.test(tT) && /Dacă un vehicul nu este disponibil/.test(tT) && /ANEXA nr\. 2 — Echipamente și montaj/.test(tT));
   const oferta = (o) => { const c = carton(); RE.renderOfertaPdf(c.d, o); return c.texte.join(' ¦ '); };
   const baza = { client: { name: 'Transport SRL' }, contractMonths: 24, fxRate: 5, fxSursa: 'BNR', nVeh: 10,
@@ -245,10 +245,10 @@ sect('22. Clauzele de montaj doar cu montaj, cele de avans doar cu aparate vând
     montajLines: [{ label: 'Instalare dispozitiv GPS', qty: 10, unit: 100, total: 1000 }], montaj: 1000,
     deviceLines: [{ label: 'Teltonika FMC130', qty: 10, unit: 55, total: 550 }], hwTotal: 550, chirieLuniMin: 24, chirieZileRetur: 15 };
   const oFaraAparate = oferta(Object.assign({}, baza, { deviceLines: [], hwTotal: 0 }));
-  T('oferta fără aparate: nu mai promite avans pentru aparate, nici că „rămân în proprietatea Beneficiarului"',
+  T('oferta fără aparate: nu mai promite avans pentru aparate, nici că „rămân în proprietatea Beneficiarului”',
     !/Echipamentele se plătesc/.test(oFaraAparate) && !/rămân în proprietatea Beneficiarului/.test(oFaraAparate) && /Instalarea se facturează o singură dată, după punerea în funcțiune/.test(oFaraAparate), oFaraAparate.slice(-600));
   const oFaraMontaj = oferta(Object.assign({}, baza, { montajLines: [], montaj: 0 }));
-  T('oferta cu aparate, fără montaj: avansul și livrarea, fără „livrarea și montajul"',
+  T('oferta cu aparate, fără montaj: avansul și livrarea, fără „livrarea și montajul”',
     /Echipamentele se plătesc integral în avans, pe proformă, la semnarea contractului; livrarea se face în cel mult 30 de zile de la încasare\./.test(oFaraMontaj) && !/livrarea și montajul/.test(oFaraMontaj) && !/Instalarea o executăm noi/.test(oFaraMontaj));
   const oNimic = oferta(Object.assign({}, baza, { montajLines: [], montaj: 0, deviceLines: [], hwTotal: 0 }));
   T('oferta doar cu abonament: nicio condiție despre costul unic', !/Costul unic/.test(oNimic) && !/Echipamentele/.test(oNimic) && /Abonamentul fiecărei mașini începe/.test(oNimic));
@@ -257,7 +257,7 @@ sect('22. Clauzele de montaj doar cu montaj, cele de avans doar cu aparate vând
 
 sect('19–21. Ecranele contractelor (codul paginii, rulat)');
 {
-  // 19 — „Completează": pleacă DOAR ce s-a schimbat față de ce era în casete la deschidere.
+  // 19 — „Completează”: pleacă DOAR ce s-a schimbat față de ce era în casete la deschidere.
   const salv = taie(html, '    window.raxCtreCompleteazaSalveaza = async function (companyId) {', '\n    };');
   const corp = (init, valori) => {
     const trimis = [];
@@ -278,9 +278,9 @@ sect('19–21. Ecranele contractelor (codul paginii, rulat)');
     T('19: schimbat doar sediul → pleacă DOAR sediul (nu se golesc emailul, Reg. Com., reprezentantul)', J(a) === J([{ address: 'Str. Nouă 2' }]), J(a));
     T('19: firma n-a putut fi încărcată, omul scrie doar CUI-ul → pleacă doar CUI-ul', J(b) === J([{ cui: 'RO999' }]), J(b));
     T('19: nimic schimbat → nimic trimis', c.length === 0, J(c));
-  }).catch((e) => T('19: „Completează" a rulat', false, e && e.message));
+  }).catch((e) => T('19: „Completează” a rulat', false, e && e.message));
   T('19: fereastra își încarcă întâi firma (lista Contracte, fișa deschisă sau serverul)', /var gasita = await _dzFirma\(companyId\);/.test(html) && /async function _dzFirma\(companyId\)/.test(html));
-  // 20 — pașii din fișă salvează întâi formularul; „E semnat" propune ziua deja scrisă.
+  // 20 — pașii din fișă salvează întâi formularul; „E semnat” propune ziua deja scrisă.
   const fz = taie(html, '    function _ctreFormularDeschis(id) {', '\n    }') + '\n' + taie(html, '    function _ctreZiSemnare(c) {', '\n    }');
   const ziua = (deschis, valoare, c) => {
     const ctx = vm.createContext({ window: { _raxCtr: deschis ? { contract: { id: 5 } } : null }, document: { getElementById: (id) => (id === 'ct-signed' && deschis ? { value: valoare } : null) }, Date, String, Number });
@@ -288,13 +288,13 @@ sect('19–21. Ecranele contractelor (codul paginii, rulat)');
     vm.runInContext(fz + '\nthis.f = _ctreZiSemnare;', ctx);
     return ctx.f(c);
   };
-  T('20: „E semnat" propune ziua scrisă deja în formular, nu azi', ziua(true, '2026-09-20', { id: 5 }) === '2026-09-20');
+  T('20: „E semnat” propune ziua scrisă deja în formular, nu azi', ziua(true, '2026-09-20', { id: 5 }) === '2026-09-20');
   T('20: …altfel ziua din contract, abia apoi azi', ziua(false, '', { id: 5, signed_at: new Date(2026, 8, 18, 12).getTime() }) === '2026-09-18' && ziua(false, '', { id: 5 }) === new Date().toISOString().slice(0, 10));
   const pas = (nume) => taie(html, '    window.' + nume + ' = async function (id) {', '\n    };');
-  T('20: „Aprobă", „Am trimis-o", „Trimite la semnat" și „E semnat" salvează întâi formularul, apoi fac pasul',
+  T('20: „Aprobă”, „Am trimis-o”, „Trimite la semnat” și „E semnat” salvează întâi formularul, apoi fac pasul',
     ['raxCtreAproba', 'raxCtreAmTrimis', 'raxCtreTrimite', 'raxCtreSemnat'].every((n) => { const b = pas(n); const i = b.indexOf('await _ctreSalveazaFormular(id)'); return i > 0 && i < Math.max(b.indexOf('_ctrePut(id, {'), b.indexOf("'/trimite'")); }));
   T('20: formularul se citește într-un singur loc (raxCtrSalveaza și salvarea dinaintea pașilor)', /window\._ctrTrupFormular = function \(stareNoua, motiv\)/.test(html) && /var trup = _ctrTrupFormular\(stareNoua, motiv\);/.test(html));
-  // 21 — instalatorii: „Reia tarifele" închide lipsa „tarifele".
+  // 21 — instalatorii: „Reia tarifele” închide lipsa „tarifele”.
   const lips = taie(html, '    function _mjLipsuriHtml(c) {', '\n    }');
   const MJL = (/var MJ_LIPSA = \{[^\n]*\};/.exec(html) || [''])[0];
   const randat = (c, tarifePartener) => {
@@ -303,27 +303,27 @@ sect('19–21. Ecranele contractelor (codul paginii, rulat)');
     return ctx.f(c);
   };
   const r1 = randat({ id: 9, partener_id: 3, status: 'ciorna', lipsuri: ['tarife', 'email'] }, { mGps: 80 });
-  T('21: partenerul ARE tarife, contractul nu → buton „Reia tarifele", iar „tarifele" nu mai trimite la „Completează"',
+  T('21: partenerul ARE tarife, contractul nu → buton „Reia tarifele”, iar „tarifele” nu mai trimite la „Completează”',
     /raxMjReiaTarifele\(9\)/.test(r1) && /lipsește emailul<\/span>/.test(r1) && !/lipsește emailul, tarifele/.test(r1), r1);
   const r2 = randat({ id: 9, partener_id: 3, status: 'activ', lipsuri: ['tarife'] }, { mGps: 80 });
   T('21: pe un contract semnat nu se mai schimbă nimic — se spune, fără buton', !/raxMjReiaTarifele/.test(r2) && /semnat și nu se mai schimbă/.test(r2), r2);
   const r3 = randat({ id: 9, partener_id: 3, status: 'ciorna', lipsuri: ['tarife'] }, {});
-  T('21: nici partenerul n-are tarife → rămâne „Completează" (fișa lui)', /raxPartEdit\(3\)/.test(r3) && /tarifele/.test(r3) && !/raxMjReiaTarifele/.test(r3), r3);
+  T('21: nici partenerul n-are tarife → rămâne „Completează” (fișa lui)', /raxPartEdit\(3\)/.test(r3) && /tarifele/.test(r3) && !/raxMjReiaTarifele/.test(r3), r3);
 }
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // Lotul 4 — ecrane și texte (codul, rulat).
 sect('23–26. Ecranele și textele (codul paginii și al serverului, rulat)');
 {
-  // 23 — „Stare producție": cifra și cuvântul se acordă.
+  // 23 — „Stare producție”: cifra și cuvântul se acordă.
   const ctx = vm.createContext({});
   vm.runInContext(taie(html, '    function _rDe(n) {', '\n    }') + '\n' + taie(html, '    function _raxDe(n) {', '\n') + '\nthis.de = _raxDe;', ctx);
   const exprW = (/\(nWarn === 1 \? '1 lucru de verificat' : nWarn \+ _raxDe\(nWarn\) \+ 'lucruri de verificat'\)/.exec(html) || [''])[0];
   const exprC = (/nCrit \+ \(nCrit === 1 \? ' problemă critică' : _raxDe\(nCrit\) \+ 'probleme critice'\)/.exec(html) || [''])[0];
   const w = (n) => vm.runInContext('(function (nWarn) { return ' + exprW + '; })(' + n + ')', vm.createContext({ _raxDe: ctx.de }));
   const c = (n) => vm.runInContext('(function (nCrit) { return ' + exprC + '; })(' + n + ')', vm.createContext({ _raxDe: ctx.de }));
-  T('23: „1 lucru de verificat", „3 lucruri", „20 de lucruri" (nu „1 lucruri")', !!exprW && w(1) === '1 lucru de verificat' && w(3) === '3 lucruri de verificat' && w(20) === '20 de lucruri de verificat', exprW && [w(1), w(3), w(20)].join(' / '));
-  T('23: la fel la problemele critice („20 de probleme critice")', !!exprC && c(1) === '1 problemă critică' && c(2) === '2 probleme critice' && c(20) === '20 de probleme critice', exprC && [c(1), c(2), c(20)].join(' / '));
-  // 24 — „Generează factură" din fișă: deasupra fișei, cu firma în listă (rulat pe un DOM de carton).
+  T('23: „1 lucru de verificat”, „3 lucruri”, „20 de lucruri” (nu „1 lucruri”)', !!exprW && w(1) === '1 lucru de verificat' && w(3) === '3 lucruri de verificat' && w(20) === '20 de lucruri de verificat', exprW && [w(1), w(3), w(20)].join(' / '));
+  T('23: la fel la problemele critice („20 de probleme critice”)', !!exprC && c(1) === '1 problemă critică' && c(2) === '2 probleme critice' && c(20) === '20 de probleme critice', exprC && [c(1), c(2), c(20)].join(' / '));
+  // 24 — „Generează factură” din fișă: deasupra fișei, cu firma în listă (rulat pe un DOM de carton).
   const deschide = taie(html, '    async function _giIncarcaFirmele(companyId) {', '\n    };');
   const el = {}, cereri = [];
   const nod = (id) => (el[id] = el[id] || { id, innerHTML: '', value: '', style: {}, classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } } });
@@ -342,19 +342,19 @@ sect('23–26. Ecranele și textele (codul paginii și al serverului, rulat)');
   T('24: …iar lista întreagă se cere în fundal', cereri.indexOf('/api/companies') >= 0);
   // 25 — după ✓ pe o factură, lista firmelor se cere din nou înainte de redesenare.
   const plata = taie(html, '    window.raxInvoiceMarkPaid = async function (id, proforma) {', '\n    };');
-  T('25: după „Marchează plătită", lista firmelor se cere din nou (starea lor), apoi se redesenează Facturarea',
+  T('25: după „Marchează plătită”, lista firmelor se cere din nou (starea lor), apoi se redesenează Facturarea',
     plata.indexOf("fetch('/api/companies'") > 0 && plata.indexOf("fetch('/api/companies'") < plata.indexOf('raxLoadBilling();'));
   // 26 — textele.
   const NP = require('./neplata');
   const acum = Date.UTC(2026, 9, 1, 9), fact = [{ id: 1, full_number: 'RAT-2026-00001', status: 'issued', due_date: acum - 1000, total: 100, currency: 'RON' }];
   const st0 = NP.stareNeplata(fact, acum);
   const m0 = NP.mesajClient(st0, NP.treaptaDeAnuntat(st0.zile));
-  T('26: primul avertisment spune O singură cifră pentru termen (din ziua suspendării), nu și „16 zile", și „15 zile"',
+  T('26: primul avertisment spune O singură cifră pentru termen (din ziua suspendării), nu și „16 zile”, și „15 zile”',
     new RegExp('achitați în ' + st0.zilePanaLaSuspendare + ' zile').test(m0) && !/Aveți \d+ zile de la scadență/.test(m0), m0);
-  T('26: ecranul ofertei nu mai spune „montajul la semnare" (hârtia: după executare)', !/montajul se plătește la semnare/.test(html) && /montajul se facturează după executare, pe mașinile montate/.test(html));
-  T('26: „Client nou" nu mai promite „proforma pentru aparate" oricui — pașii vin din felul contractului (ca pe telefon)',
+  T('26: ecranul ofertei nu mai spune „montajul la semnare” (hârtia: după executare)', !/montajul se plătește la semnare/.test(html) && /montajul se facturează după executare, pe mașinile montate/.test(html));
+  T('26: „Client nou” nu mai promite „proforma pentru aparate” oricui — pașii vin din felul contractului (ca pe telefon)',
     !/După semnare: proforma pentru aparate, apoi montajul/.test(html) && /_coNouMaiDeparte\(g\.drum\)\.map\(esc\)\.join\(' '\)/.test(html) && /drum: _coNouDrum\(ctFacut\)/.test(html));
-  T('26: „neachitată de 16 zile" (nu „16 de zile"), pe web și pe telefon',
+  T('26: „neachitată de 16 zile” (nu „16 de zile”), pe web și pe telefon',
     /' e neachitată de ' \+ np\.zile \+ \(np\.zile === 1 \? ' zi\.' : _raxDe\(np\.zile\) \+ 'zile\.'\)/.test(html) &&
     /' e neachitată de ' \+ np\.zile \+ \(Number\(np\.zile\) === 1 \? ' zi\.' : de\(np\.zile\) \+ 'zile\.'\)/.test(citeste('mobile/src/screens/CompanyAbonament.tsx')));
   const MSG = 'Accesul este suspendat. Contactați furnizorul pentru reactivare.';
@@ -490,7 +490,7 @@ async function excelUmflat(mb) {
   T('firma e oprită direct în bază (ca la neplată), fără să se închidă nimic pe loc', sfl.s === 200, sfl.s);
   await cerere('POST', '/api/debug/ws-sweep', S);
   T('trecerea de la un minut închide harta deschisă înainte (web)', await asteapta(() => LA.inchisa, 3000));
-  T('…cu „access_expired" (telefonul aprinde banda roșie, pagina nu mai bate la ușă)', LA.eroare === 'access_expired', LA.eroare);
+  T('…cu „access_expired” (telefonul aprinde banda roșie, pagina nu mai bate la ușă)', LA.eroare === 'access_expired', LA.eroare);
   T('…și legătura telefonului (deschisă cu cheia), cu același cuvânt', await asteapta(() => LT.inchisa, 3000) && LT.eroare === 'access_expired', LT.eroare);
   await sleep(300);
   T('martorul din altă firmă NU e deranjat', !LM.inchisa);
@@ -511,10 +511,10 @@ async function excelUmflat(mb) {
 
   sect('3. Motivul intern al suspendării nu pleacă la client (pe server pornit)');
   const me = await cerere('GET', '/api/me', sef.ck);
-  T('adminul firmei își vede starea („expired · manual") în /api/me', me.s === 200 && me.j.access && me.j.access.status === 'expired' && me.j.access.motiv === 'manual', me.s + ' ' + me.text.slice(0, 160));
+  T('adminul firmei își vede starea („expired · manual”) în /api/me', me.s === 200 && me.j.access && me.j.access.status === 'expired' && me.j.access.motiv === 'manual', me.s + ' ' + me.text.slice(0, 160));
   T('…dar fără motivul scris de noi', me.text.indexOf('NOTA-INTERNA') < 0 && !('nota' in (me.j.access || {})), JSON.stringify(me.j.access));
   const fm = await cerere('GET', '/api/billing/my-invoices', sef.ck);
-  T('„Facturile mele": starea da, motivul nu', fm.s === 200 && fm.j.access && fm.j.access.status === 'expired' && fm.text.indexOf('NOTA-INTERNA') < 0, fm.s + ' ' + fm.text.slice(0, 160));
+  T('„Facturile mele”: starea da, motivul nu', fm.s === 200 && fm.j.access && fm.j.access.status === 'expired' && fm.text.indexOf('NOTA-INTERNA') < 0, fm.s + ' ' + fm.text.slice(0, 160));
   const ov = await cerere('GET', '/api/companies/' + coX.id + '/overview', S);
   T('noi îl vedem mai departe, în fișa firmei', ov.s === 200 && ov.j.company && ov.j.company.suspend_reason === NOTA, ov.s + ' ' + JSON.stringify(ov.j.company && ov.j.company.suspend_reason));
   const lst = await cerere('GET', '/api/companies', S);
@@ -531,7 +531,7 @@ async function excelUmflat(mb) {
   sect('4. TVA (pe server pornit)');
   await R('PUT', '/api/admin/system-settings', { invoice_issuer: { name: 'RA TRACKS SRL', cui: 'RO999', email: 'office@ratrack.ro' } });
   const setari = (await R('GET', '/api/admin/system-settings')).j || {};
-  T('„Date emitent" salvat fără cotă → cota 21', setari.invoice_issuer && Number(setari.invoice_issuer.vat_rate) === 21, JSON.stringify(setari.invoice_issuer));
+  T('„Date emitent” salvat fără cotă → cota 21', setari.invoice_issuer && Number(setari.invoice_issuer.vat_rate) === 21, JSON.stringify(setari.invoice_issuer));
   const coTva = await firma('Firma TVA SRL');
   const fTva = await R('POST', '/api/invoices', { companyId: coTva.id, fel: 'unica', lines: [{ desc: 'Montaj GPS', qty: 2, unitPrice: 100, vatRate: 5 }, { desc: 'Aparat', qty: 1, unitPrice: 50, vatRate: 19 }] });
   const lt = (fTva.j.invoice && fTva.j.invoice.lines) || [];
@@ -564,7 +564,7 @@ async function excelUmflat(mb) {
     pf5.s === 200 && (dc5.aparate || []).length === 0 && J(dc5.aparateDejaPe) === J([pf5.j.invoice.full_number]), JSON.stringify(dc5));
   const inc5 = await R('PUT', '/api/invoices/' + pf5.j.invoice.id + '/status', { status: 'paid' });
   dc5 = await ciorna();
-  T('…și după „Încasată": documentul e acum factura fiscală a proformei (proforma încasată nu se mai numără a doua oară)',
+  T('…și după „Încasată”: documentul e acum factura fiscală a proformei (proforma încasată nu se mai numără a doua oară)',
     inc5.s === 200 && (dc5.aparate || []).length === 0 && J(dc5.aparateDejaPe) === J([inc5.j.invoice.full_number]), JSON.stringify(dc5.aparateDejaPe));
 
   sect('7. Lunile de dinainte de 28.09 nu se mai facturează de două ori (pe server pornit)');
@@ -592,7 +592,7 @@ async function excelUmflat(mb) {
   const pUrm = await R('POST', '/api/invoices/previzualizare', { companyId: co5.id, fel: 'abonament', luna: cheieL(urm), lines: [{ desc: 'Abonament monitorizare GPS', qty: 1, unitPrice: 29 }] });
   T('emiterea și previzualizarea pe luna viitoare → refuzate (400), cu același motiv', eUrm.s === 400 && eUrm.j.preaDevreme === true && pUrm.s === 400 && eUrm.j.error === dUrm.preaDevreme, eUrm.s + ' / ' + pUrm.s + ' ' + eUrm.text.slice(0, 160));
 
-  sect('10, 13. „Lunar" și „Contract ↔ factură" numără doar mașinile pornite; chiria nu e „nefacturată" (pe server pornit)');
+  sect('10, 13. „Lunar” și „Contract ↔ factură” numără doar mașinile pornite; chiria nu e „nefacturată” (pe server pornit)');
   const ofCh = (await R('POST', '/api/admin/offers', { name: 'Ofertă închiriere', client_name: 'Chirie SRL',
     config: { cfg: { echipMod: 'inchiriaza', nVeh: 3, nCan: 0, nFms: 0, contractMonths: 24, fxRate: 5, retTier: '12', devices: { d130: 3 }, montaj: { qGps: 3 } },
       prices: { pPlain: 29, chFmc130: 14, dFmc130: 55, mGps: 100, mUninstall: 60 } }, monthly_total: 129, once_total: 300, currency: 'RON' })).j || {};
@@ -608,16 +608,16 @@ async function excelUmflat(mb) {
   const pornitZ = await aparat('869100000000001');
   T('pregătirea: prima transmisie a pornit abonamentul unei singure mașini', pornitZ && pornitZ.abonament_de_la != null && (await aparat('869100000000002')).abonament_de_la == null);
   const mrr = (await R('GET', '/api/companies/mrr')).j || {};
-  T('„Lunar" la Zeta: o mașină pornită (29) + chiria (42) = 71 lei, nu 100 (cu mașina nemontată)', Number((mrr.firme || {})[coZ.id]) === 71, JSON.stringify(mrr.firme && mrr.firme[coZ.id]));
-  T('„Lunar" la Wolf: nicio mașină pornită → 0 lei, ca factura (nu 71)', Number((mrr.firme || {})[coW.id]) === 0, JSON.stringify(mrr.firme && mrr.firme[coW.id]));
+  T('„Lunar” la Zeta: o mașină pornită (29) + chiria (42) = 71 lei, nu 100 (cu mașina nemontată)', Number((mrr.firme || {})[coZ.id]) === 71, JSON.stringify(mrr.firme && mrr.firme[coZ.id]));
+  T('„Lunar” la Wolf: nicio mașină pornită → 0 lei, ca factura (nu 71)', Number((mrr.firme || {})[coW.id]) === 0, JSON.stringify(mrr.firme && mrr.firme[coW.id]));
   const ovZ = (await R('GET', '/api/companies/' + coZ.id + '/overview')).j || {};
   const cmp = ovZ.comparatie || {};
-  T('„Contract ↔ factură": pe factură, mașinile PORNITE (1, 29 lei), nu toate aparatele de pe firmă (2)',
+  T('„Contract ↔ factură”: pe factură, mașinile PORNITE (1, 29 lei), nu toate aparatele de pe firmă (2)',
     cmp.masini && cmp.masini.factura.nr === 1 && cmp.masini.factura.lei === 29, JSON.stringify(cmp.masini));
-  T('…iar chiria NU mai apare „în contract, dar nu pe factură" (ajunge pe factură)', Array.isArray(cmp.nefacturate) && !cmp.nefacturate.some((x) => /Chirie/.test(x.nume)), JSON.stringify(cmp.nefacturate));
+  T('…iar chiria NU mai apare „în contract, dar nu pe factură” (ajunge pe factură)', Array.isArray(cmp.nefacturate) && !cmp.nefacturate.some((x) => /Chirie/.test(x.nume)), JSON.stringify(cmp.nefacturate));
   T('…și totalul de pe factură e cel al facturii (29 + 42 = 71)', cmp.total && cmp.total.factura === 71, JSON.stringify(cmp.total));
   const ovW = (await R('GET', '/api/companies/' + coW.id + '/overview')).j || {};
-  T('„Contract ↔ factură" la Wolf: nicio mașină pornită → nimic pe factură', ovW.comparatie && ovW.comparatie.total.factura === 0 && ovW.comparatie.masini.factura.nr === 0, JSON.stringify(ovW.comparatie && ovW.comparatie.total));
+  T('„Contract ↔ factură” la Wolf: nicio mașină pornită → nimic pe factură', ovW.comparatie && ovW.comparatie.total.factura === 0 && ovW.comparatie.masini.factura.nr === 0, JSON.stringify(ovW.comparatie && ovW.comparatie.total));
 
   sect('12. Aparat șters definitiv și înregistrat din nou: abonamentul pornește iar (pe server pornit)');
   const IM12 = '869100000000003';
@@ -631,27 +631,27 @@ async function excelUmflat(mb) {
   await SIM(IM12);
   T('prima transmisie pe rândul nou pornește abonamentul (până pe 01.10: abia după repornirea serverului)', (await aparat(IM12)).abonament_de_la != null, JSON.stringify(await aparat(IM12)));
 
-  sect('14. Telefoanele vechi: „Înregistrează plata + extinde accesul" (pe server pornit)');
+  sect('14. Telefoanele vechi: „Înregistrează plata + extinde accesul” (pe server pornit)');
   const vechi14 = await R('POST', '/api/companies/' + coZ.id + '/payment', { months: 1, amount: '71', method: 'transfer' });
-  T('cererea veche (cu „luni") → refuzată, cu drumul bun spus', vechi14.s === 400 && vechi14.j.aplicatieVeche === true && /„Încasată"/.test(vechi14.j.error || ''), vechi14.s + ' ' + vechi14.text.slice(0, 160));
+  T('cererea veche (cu „luni”) → refuzată, cu drumul bun spus', vechi14.s === 400 && vechi14.j.aplicatieVeche === true && /„Încasată”/.test(vechi14.j.error || ''), vechi14.s + ' ' + vechi14.text.slice(0, 160));
   const nou14 = await R('POST', '/api/companies/' + coZ.id + '/payment', { amount: '71', method: 'transfer' });
   T('încasarea fără factură de azi (web, telefon nou) merge ca înainte', nou14.s === 200 && nou14.j.ok === true, nou14.s);
 
-  sect('15. „Mută între companii": bucata din stoc se mută cu aparatul (pe server pornit)');
+  sect('15. „Mută între companii”: bucata din stoc se mută cu aparatul (pe server pornit)');
   const IM15 = '869100000000015';
   const in15 = await R('POST', '/api/stoc/intrare', { tip: 'fmc130', serii: IM15, cost_eur: 45 });
   await R('POST', '/api/devices', { imei: IM15, name: 'Mutat' });
   await R('PUT', '/api/devices/' + IM15 + '/company', { company_id: coZ.id });
   const bucata = async () => ((((await R('GET', '/api/stoc')).j || {}).aparate) || []).filter((x) => x.serie === IM15)[0] || {};
   const b0 = await bucata();
-  T('pregătirea: bucata din stoc e „montat" la Zeta (care închiriază → a noastră)', in15.s === 200 && b0.stare === 'montat' && Number(b0.company_id) === coZ.id && b0.proprietar === 'ra', JSON.stringify(b0));
+  T('pregătirea: bucata din stoc e „montat” la Zeta (care închiriază → a noastră)', in15.s === 200 && b0.stare === 'montat' && Number(b0.company_id) === coZ.id && b0.proprietar === 'ra', JSON.stringify(b0));
   const mut = await R('PUT', '/api/devices/company/bulk', { company_id: coW.id, imeis: [IM15] });
   const b1 = await bucata();
   const ultim = (b1.istoric || [])[(b1.istoric || []).length - 1] || {};
-  T('mutată pe Wolf: bucata e acum la Wolf, tot „montat", tot a noastră', mut.s === 200 && b1.stare === 'montat' && Number(b1.company_id) === coW.id && b1.proprietar === 'ra', JSON.stringify(b1));
-  T('…cu rând în istoric, de unde și unde', (b1.istoric || []).length === (b0.istoric || []).length + 1 && /mutat de la „Chirie Zeta SRL" pe „Chirie Wolf SRL"/.test(ultim.nota || ''), JSON.stringify(ultim));
+  T('mutată pe Wolf: bucata e acum la Wolf, tot „montat”, tot a noastră', mut.s === 200 && b1.stare === 'montat' && Number(b1.company_id) === coW.id && b1.proprietar === 'ra', JSON.stringify(b1));
+  T('…cu rând în istoric, de unde și unde', (b1.istoric || []).length === (b0.istoric || []).length + 1 && /mutat de la „Chirie Zeta SRL” pe „Chirie Wolf SRL”/.test(ultim.nota || ''), JSON.stringify(ultim));
   const mut2 = await R('PUT', '/api/devices/company/bulk', { company_id: coW.id, imeis: [IM15] });
-  T('…iar o „mutare" pe aceeași firmă nu scrie nimic în plus', mut2.s === 200 && ((await bucata()).istoric || []).length === (b1.istoric || []).length);
+  T('…iar o „mutare” pe aceeași firmă nu scrie nimic în plus', mut2.s === 200 && ((await bucata()).istoric || []).length === (b1.istoric || []).length);
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
   // Lotul 3 — contracte și dosar, pe server pornit.
@@ -659,7 +659,7 @@ async function excelUmflat(mb) {
   const repF = (await R('PUT', '/api/companies/' + co5.id + '/dosar', { legal_rep: { name: 'Ion Popescu', role: 'Administrator' } })).s;
   const apr = await R('PUT', '/api/contracts/' + ct5.j.id, { status: 'aprobat', client_rep: { name: '', role: 'Administrator' } });
   const firmaRep = async (id) => { const r = ((await R('GET', '/api/companies/' + id + '/overview')).j.company || {}).legal_rep; return typeof r === 'string' ? JSON.parse(r) : r; };
-  T('„Aprobă" cu reprezentantul gol de pe contract nu mai golește numele scris pe firmă', repF === 200 && apr.s === 200 && ((await firmaRep(co5.id)) || {}).name === 'Ion Popescu', apr.s + ' ' + J(await firmaRep(co5.id)));
+  T('„Aprobă” cu reprezentantul gol de pe contract nu mai golește numele scris pe firmă', repF === 200 && apr.s === 200 && ((await firmaRep(co5.id)) || {}).name === 'Ion Popescu', apr.s + ' ' + J(await firmaRep(co5.id)));
   const coRep = await firma('Reprezentant Gol SRL');
   const ctRep = await R('POST', '/api/companies/' + coRep.id + '/contract', { months: 12, client_rep: { name: '', role: 'Administrator' } });
   T('un contract nou cu doar funcția nu scrie pe firmă un reprezentant fără nume', ctRep.s === 200 && !((await firmaRep(coRep.id)) || {}).role, ctRep.s + ' ' + J(await firmaRep(coRep.id)));
@@ -683,7 +683,7 @@ async function excelUmflat(mb) {
   sect('26. Mesajul de suspendare, la intrare (pe server pornit)');
   const intrare = await fetch(B + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'sef@reparatii.ro', password: PAROLA }) });
   const ji = await intrare.json().catch(() => ({}));
-  T('omul unei firme oprite de noi e refuzat cu formularea unică (nu „pentru neplată")', intrare.status === 402 && ji.error === 'Accesul este suspendat. Contactați furnizorul pentru reactivare.' && ji.motiv === 'manual', intrare.status + ' ' + J(ji));
+  T('omul unei firme oprite de noi e refuzat cu formularea unică (nu „pentru neplată”)', intrare.status === 402 && ji.error === 'Accesul este suspendat. Contactați furnizorul pentru reactivare.' && ji.motiv === 'manual', intrare.status + ' ' + J(ji));
 
   if (global.__p19) await global.__p19;
   console.log('\n──────────────────────────────');

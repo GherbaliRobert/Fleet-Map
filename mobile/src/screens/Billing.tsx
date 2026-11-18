@@ -15,7 +15,7 @@ import {
   randuriMontajFact, MONTAJ_FACT_SUB, MONTAJ_FACT_GOL, MONTAJ_FACT_IN_CURS,
 } from '../lib/factura';
 import type { Ciorna, Fel, Tip, Pregatire, Sectiune, RandMontajFact } from '../lib/factura';
-// Previzualizarea: PDF-ul făcut de server dintr-un POST, deschis ca „Vezi" (lotul 5).
+// Previzualizarea: PDF-ul făcut de server dintr-un POST, deschis ca „Vezi” (lotul 5).
 import { salveazaPostDeLaServer } from '../lib/descarcaPost';
 // Hârtia documentului — una singură pe telefon, aceeași și în fișa firmei (fila Facturi, butonul „Vezi”).
 import { DocumentFactura, TIP, stareNoi, efOf, fmtD, money2 } from '../components/DocumentFactura';
@@ -23,15 +23,15 @@ import './detail.css';
 import './admin.css';
 import './billing.css';
 // --fl-ok / --fl-warn: verdele și chihlimbarul SCRISULUI, închise pe tema luminoasă. Pe alb, verdele aplicației
-// (#3FE07D) și galbenul ies la contrast 1,6–2,9 — „● Activ / plătit" sau totalul facturii nu se citeau.
+// (#3FE07D) și galbenul ies la contrast 1,6–2,9 — „● Activ / plătit” sau totalul facturii nu se citeau.
 import './flota.css';
 // --fd-warn: portocaliul SCRISULUI din ecranele fondatorului — pe tema închisă același portocaliu de până acum, pe
-// cea luminoasă unul închis (#b45309: 5,0 pe alb). „⚠ Restanță · N zile până la suspendare" era --orange: 3,6 pe alb.
+// cea luminoasă unul închis (#b45309: 5,0 pe alb). „⚠ Restanță · N zile până la suspendare” era --orange: 3,6 pe alb.
 import './fondator.css';
 
 const fmtMoney = (v: any) => (v != null ? Number(v).toLocaleString('ro-RO') + ' lei' : '—');
 // Accesul unei firme se oprește DOAR pentru o factură neplătită la 15 zile după scadență, sau de mână
-// (decizie Alin, 28.09). Nu mai există „acces până la" și nici „nelimitat": ceasul vechi pe perioade
+// (decizie Alin, 28.09). Nu mai există „acces până la” și nici „nelimitat”: ceasul vechi pe perioade
 // plătite bloca clienți care plătiseră tot. (Tot de atunci: plățile NU mai primesc un număr de factură
 // inventat — „RAT-AAAA-000{id plată}" se putea bate cap în cap cu numărul unei facturi adevărate.)
 const ACCESS: Record<string, [string, string]> = {
@@ -39,7 +39,7 @@ const ACCESS: Record<string, [string, string]> = {
   grace: ['⚠ Restanță', 'var(--fl-warn)'],
   expired: ['🚫 Suspendat', 'var(--red)'],
 };
-// Banda de sus din „Facturile mele" (clientul), cu vorbele web-ului (raxLoadMyInvoices).
+// Banda de sus din „Facturile mele” (clientul), cu vorbele web-ului (raxLoadMyInvoices).
 const ACCESS_CLIENT: Record<string, [string, string]> = {
   active: ['● Plățile sunt la zi', 'var(--fl-ok)'],
   grace: ['⚠ Aveți o factură restantă', 'var(--fl-warn)'],
@@ -48,8 +48,8 @@ const ACCESS_CLIENT: Record<string, [string, string]> = {
 // Starea unei firme în lista super-adminului, ca pe web (_raxAccessCell): un client suspendat se vede ca
 // SUSPENDAT, cu motivul — două cauze (neplată, oprit de noi), care se rezolvă altfel fiecare — iar o restanță
 // în derulare arată câte zile mai are până la suspendare. Întoarce [text, culoare, ordine în listă].
-// (Al treilea motiv, „abonament expirat", a plecat pe 29.09 odată cu ceasul „acces până la".)
-// Numărul facturii NU mai stă aici: are rândul lui, „Factura restantă" (restantaOf), cu scadența, ca pe web.
+// (Al treilea motiv, „abonament expirat”, a plecat pe 29.09 odată cu ceasul „acces până la”.)
+// Numărul facturii NU mai stă aici: are rândul lui, „Factura restantă” (restantaOf), cu scadența, ca pe web.
 function accessOf(c: any): [string, string, number] {
   const a = (c && c.access) || {};
   const np = (c && c.neplata) || a.neplata || null;
@@ -64,7 +64,7 @@ function accessOf(c: any): [string, string, number] {
   const sm = ACCESS[a.status] || ACCESS.active;
   return [sm[0], sm[1], a.status === 'grace' ? 1 : 2];
 }
-// Coloana „Factura restantă" de pe web (raxLoadBillingStatus → restanta): „RAT-…, scadentă pe 15.10.2026", sau „—".
+// Coloana „Factura restantă” de pe web (raxLoadBillingStatus → restanta): „RAT-…, scadentă pe 15.10.2026”, sau „—”.
 function restantaOf(c: any): string {
   const a = (c && c.access) || {};
   const np = a.neplata || (c && c.neplata) || null;
@@ -75,21 +75,21 @@ function restantaOf(c: any): string {
 export function Billing() {
   const loc = useLocation();
   const isSuper = !!me.value?.isSuper;
-  // „Generează factură" cu firma deja aleasă vine pe /billing?factura=<id firmă>[&fel=unica|abonament]: din Drumul
-  // clientului („Emite prima factură" → factură unică) și din fișa firmei, fila Facturi („Factură unică / proformă",
-  // „Abonamentul unei luni") — ca pe web (raxOpenGenInvoice(id, fel)). Fără `fel`, abonamentul unei luni.
+  // „Generează factură” cu firma deja aleasă vine pe /billing?factura=<id firmă>[&fel=unica|abonament]: din Drumul
+  // clientului („Emite prima factură” → factură unică) și din fișa firmei, fila Facturi („Factură unică / proformă”,
+  // „Abonamentul unei luni”) — ca pe web (raxOpenGenInvoice(id, fel)). Fără `fel`, abonamentul unei luni.
   // Doar la noi: clientul își vede facturile, nu le emite.
   const q = (loc.query || {}) as any;
   const facturaPentru = isSuper ? parseInt(String(q.factura || '')) || null : null;
   const facturaFel = felDinAdresa(q.fel);
-  // Lotul 5 (30.09): fereastra se poate deschide și PREGĂTITĂ, ca pe web — proforma aparatelor la „E semnat"
+  // Lotul 5 (30.09): fereastra se poate deschide și PREGĂTITĂ, ca pe web — proforma aparatelor la „E semnat”
   // (`&tip=proforma&aparate=1`, raxProformaLaSemnare) și factura montajului cu lucrările puse (`&lucrari=12,13`, anunțul
-  // „Montaj de facturat" — raxFacturaMontaj). Adresa o face rutaFactura (lib/factura.ts); aici doar se citește înapoi.
+  // „Montaj de facturat” — raxFacturaMontaj). Adresa o face rutaFactura (lib/factura.ts); aici doar se citește înapoi.
   const facturaPregatire = isSuper ? pregatireDinAdresa(q) : null;
   return (
     <div class="screen">
       <header class="app-header">
-        {/* Ca „înapoi" de pe Android: de unde ai venit (meniul, sau contractul — „Emite prima factură" din drumul clientului). */}
+        {/* Ca „înapoi” de pe Android: de unde ai venit (meniul, sau contractul — „Emite prima factură” din drumul clientului). */}
         <button class="h-btn" onClick={() => (history.length > 1 ? history.back() : loc.route('/meniu'))} aria-label="Înapoi"><Icon name="chevronL" /></button>
         <div class="h-title">{isSuper ? 'Facturare' : 'Facturile mele'}</div>
         <div style="width:36px" />
@@ -135,7 +135,7 @@ function MyBilling() {
   );
 }
 
-// Secțiunea aleasă în „Facturi și proforme" se ține cât trăiește aplicația, ca pe web (`_raxInvSect`): te întorci în
+// Secțiunea aleasă în „Facturi și proforme” se ține cât trăiește aplicația, ca pe web (`_raxInvSect`): te întorci în
 // Facturare pe secțiunea pe care ai lăsat-o.
 let sectiuneaAleasa: Sectiune = 'facturi';
 
@@ -146,10 +146,10 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
   const [pays, setPays] = useState<any[]>([]);
   const [paysTotal, setPaysTotal] = useState<number>(0);
   const [invoices, setInvoices] = useState<any[]>([]);
-  // „Montaj de facturat" (30.09): ce e gata și ce e în curs, pe firme — socotit de server (GET /api/montaj/de-facturat).
+  // „Montaj de facturat” (30.09): ce e gata și ce e în curs, pe firme — socotit de server (GET /api/montaj/de-facturat).
   const [mf, setMf] = useState<{ gata: any[]; inCurs: any[] }>({ gata: [], inCurs: [] });
-  // Montajul de facturat n-a venit (eroare de server sau de rețea): o spunem, nu „· 0" și „nimic de facturat" — ar fi
-  // un fals „n-ai nimic de încasat". (Pe web eroarea se înghite; găsit la revizia lotului 5, 01.10.)
+  // Montajul de facturat n-a venit (eroare de server sau de rețea): o spunem, nu „· 0” și „nimic de facturat” — ar fi
+  // un fals „n-ai nimic de încasat”. (Pe web eroarea se înghite; găsit la revizia lotului 5, 01.10.)
   const [mfErr, setMfErr] = useState('');
   const [sect, setSect] = useState<Sectiune>(sectiuneaAleasa);
   const alegeSect = (k: Sectiune) => { sectiuneaAleasa = k; setSect(k); };
@@ -157,7 +157,7 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
   const [cfg, setCfg] = useState<any>(null);
   const [pay, setPay] = useState<any | null>(null);
   const [fview, setFview] = useState<any | null>(null);   // factură fiscală
-  const [gen, setGen] = useState<{ cid: number | null; fel: Fel } | null>(null);   // „Generează factură", cu firma și felul alese sau nu
+  const [gen, setGen] = useState<{ cid: number | null; fel: Fel } | null>(null);   // „Generează factură”, cu firma și felul alese sau nu
   // Ce pune fereastra singură la deschidere (lotul 5): proforma aparatelor, factura montajului. Se golește la închidere.
   const [preg, setPreg] = useState<Pregatire | null>(null);
   const [editIss, setEditIss] = useState(false);
@@ -175,15 +175,15 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
     if (!companies.length) return;   // lista n-a venit: eroarea s-a spus deja
     if (!companies.some((c) => c.id === facturaPentru)) { showToast('Firma nu se găsește în lista de facturare.', true); return; }
     // Sub fereastră, Facturarea stă pe secțiunea documentului care se pregătește: montajul (ca pe web, unde anunțul
-    // „Montaj de facturat" deschide secțiunea lui) sau proformele — pe telefon „E semnat" aduce omul AICI, iar proforma
-    // emisă trebuie să se vadă în listă, nu ascunsă sub „Facturi".
+    // „Montaj de facturat” deschide secțiunea lui) sau proformele — pe telefon „E semnat” aduce omul AICI, iar proforma
+    // emisă trebuie să se vadă în listă, nu ascunsă sub „Facturi”.
     if (facturaPregatire && facturaPregatire.lucrari.length) alegeSect('montaj');
     else if (facturaPregatire && facturaPregatire.tip === 'proforma') alegeSect('proforme');
     setPreg(facturaPregatire);
     setGen({ cid: facturaPentru, fel: facturaFel });
   }, [facturaPentru, companies]);
 
-  // „Pregătește factura" / „Facturează acum" din secțiunea montajului: aceeași fereastră și aceeași pregătire ca adresa
+  // „Pregătește factura” / „Facturează acum” din secțiunea montajului: aceeași fereastră și aceeași pregătire ca adresa
   // din anunț (web: raxFacturaMontaj) — factură fiscală unică, cu lucrările firmei puse. O firmă care nu e în lista de
   // facturare NU deschide fereastra pe alta (fereastra ar alege prima firmă din listă).
   function facturaMontaj(r: RandMontajFact) {
@@ -258,16 +258,16 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
               <span class="mid">
                 <div class="nm">{c.name}</div>
                 <div class="sub" style={`color:${sm[1]}`}>{sm[0]}</div>
-                {/* Ca pe web, coloanele „Factura restantă" și „Total plătit". */}
+                {/* Ca pe web, coloanele „Factura restantă” și „Total plătit”. */}
                 <div class="sub">Factura restantă: {restantaOf(c)}</div>
                 <div class="sub">Total plătit: {platit ? fmtMoney(platit) : '—'}</div>
               </span>
-              {/* 05.11: „auto" și „Facturile firmei" stau sub nume — pe același rând numele se tăia („Transport Ion…"). */}
+              {/* 05.11: „auto” și „Facturile firmei” stau sub nume — pe același rând numele se tăia („Transport Ion…”). */}
               <div class="bill-co-act">
                 <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted)" onClick={(e: any) => e.stopPropagation()}><input type="checkbox" checked={c.auto_invoice === true} onChange={(e: any) => toggleAuto(c.id, e.target.checked)} />auto</label>
-                {/* Ca pe web (805fe10): pe rând, „Facturile firmei" — fila Facturi din fișă, unde ✓ trece factura restantă pe
-                    plătită. „Încasare" de aici înregistra o încasare FĂRĂ factură, iar factura rămânea „emisă" și firma se
-                    suspenda deși plătise. Încasarea fără factură rămâne doar pe „+" de sus. */}
+                {/* Ca pe web (805fe10): pe rând, „Facturile firmei” — fila Facturi din fișă, unde ✓ trece factura restantă pe
+                    plătită. „Încasare” de aici înregistra o încasare FĂRĂ factură, iar factura rămânea „emisă” și firma se
+                    suspenda deși plătise. Încasarea fără factură rămâne doar pe „+” de sus. */}
                 <button class="btn" style="padding:6px 11px;font-size:12px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);white-space:nowrap" onClick={() => loc.route(rutaFisa(c.id, 'facturi'))}>Facturile firmei</button>
               </div>
             </div>
@@ -276,7 +276,7 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
       </div>
 
       <div class="mn-sec">Facturi și proforme</div>
-      {/* Secțiunile listei (Alin, 30.09: „să am secțiuni de unde să le văd"), ca pe web (raxRenderInvoices): facturile
+      {/* Secțiunile listei (Alin, 30.09: „să am secțiuni de unde să le văd”), ca pe web (raxRenderInvoices): facturile
           fiscale, proformele (câte sunt de încasat) și montajul gata de facturat, în ritmul instalatorului. */}
       <div class="bill-sect" role="group" aria-label="Secțiunile listei">
         {SECTIUNI.map((k) => (
@@ -305,10 +305,10 @@ function SuperBilling({ facturaPentru, facturaFel, facturaPregatire }: { factura
   );
 }
 
-// Secțiunea „Montaj de facturat" (Alin, 30.09), ca pe web (_raxMontajFactHtml): lucrările montate și nefacturate, o
-// firmă pe rând — cine, ce și când (textul serverului), suma fără TVA și butonul. „În curs" = perioada instalatorului
+// Secțiunea „Montaj de facturat” (Alin, 30.09), ca pe web (_raxMontajFactHtml): lucrările montate și nefacturate, o
+// firmă pe rând — cine, ce și când (textul serverului), suma fără TVA și butonul. „În curs” = perioada instalatorului
 // nu s-a încheiat încă (chenar punctat). Butonul deschide fereastra facturii cu lucrările puse: o verifici
-// („Previzualizează") și apeși „Emite factura". Rândurile și cuvintele vin din lib/factura.ts, legate de pagină.
+// („Previzualizează”) și apeși „Emite factura”. Rândurile și cuvintele vin din lib/factura.ts, legate de pagină.
 function MontajDeFacturat({ d, err, onFactura }: { d: any; err?: string; onFactura: (r: RandMontajFact) => void }) {
   const { gata, inCurs } = randuriMontajFact(d);
   const rand = (r: RandMontajFact) => (
@@ -329,13 +329,13 @@ function MontajDeFacturat({ d, err, onFactura }: { d: any; err?: string; onFactu
   );
 }
 
-// Un document în listă. La noi: felul, numărul, firma; starea, „ce e" (abonamentul lunii / unică / proformă),
+// Un document în listă. La noi: felul, numărul, firma; starea, „ce e” (abonamentul lunii / unică / proformă),
 // ziua emiterii, e-Factura. La client (`client`): starea pe limba lui (De plată / Restantă / Plătită / Încasată),
-// ziua emiterii și scadența — ca tabelul din „Facturile mele" de pe web.
+// ziua emiterii și scadența — ca tabelul din „Facturile mele” de pe web.
 function FiscalRow({ v, onClick, client }: { v: any; onClick: () => void; client?: boolean }) {
   const st = client ? stareClient(v) : stareNoi(v);
   const ef = client ? null : efOf(v);
-  // „Ce e": la o proformă doar „→ factură" spune ceva în plus (titlul rândului zice deja „Proformă").
+  // „Ce e”: la o proformă doar „→ factură” spune ceva în plus (titlul rândului zice deja „Proformă”).
   const ce0 = client ? '' : ceEste(v);
   const ce = ce0 && ce0 !== '—' && ce0 !== 'Proformă' ? ce0 : '';
   return (
@@ -356,7 +356,7 @@ function FiscalRow({ v, onClick, client }: { v: any; onClick: () => void; client
   );
 }
 
-// „Generează factură" (ca pe web, raxOpenGenInvoice): ABONAMENTUL unei luni SAU o factură UNICĂ.
+// „Generează factură” (ca pe web, raxOpenGenInvoice): ABONAMENTUL unei luni SAU o factură UNICĂ.
 //   • Abonamentul îl socotește serverul (/api/invoices/draft), pe zile de la montaj: mașinile nepornite nu intră, o
 //     lună se facturează o singură dată (serverul refuză dublura cu 409, cu numărul facturii existente).
 //   • Factura unică se completează din contract (aparatele din Anexa nr. 2, la cursul înghețat acolo) și din
@@ -366,7 +366,7 @@ function FiscalRow({ v, onClick, client }: { v: any; onClick: () => void; client
 // `preset` = firma deja aleasă, `felInitial` = felul cerut (fișa firmei, drumul clientului).
 // `pregatire` (lotul 5) = fereastra se deschide PREGĂTITĂ, ca pe web: cere singură rândurile, o dată, și pune ce s-a
 // cerut — aparatele din contract pe proformă (raxProformaLaSemnare), lucrările de montaj pe factură (raxFacturaMontaj).
-// NU emite nimic singură: omul se uită la hârtie („Previzualizează") și apasă „Emite".
+// NU emite nimic singură: omul se uită la hârtie („Previzualizează”) și apasă „Emite”.
 function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregatire, onClose, onIssued, onIssuer }: {
   companies: any[]; invoices: any[]; preset: number | null; felInitial: Fel; pregatire?: Pregatire | null; onClose: () => void; onIssued: () => void; onIssuer: () => void;
 }) {
@@ -380,15 +380,15 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
   const [yr, setYr] = useState(now.getFullYear());
   const [S, setS] = useState<Ciorna | null>(null);
   const [eroare, setEroare] = useState('');
-  const [lipsa, setLipsa] = useState('');   // „N din lucrări nu mai sunt de facturat…" (fereastra deschisă pregătită)
+  const [lipsa, setLipsa] = useState('');   // „N din lucrări nu mai sunt de facturat…” (fereastra deschisă pregătită)
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [vede, setVede] = useState(false);  // previzualizarea e pe drum
   const cerere = useRef(0);          // un răspuns întârziat al unei ciorne vechi (altă firmă / lună) nu se mai pune
-  const startAmp = useRef('');       // ciorna cum a venit — „înapoi" întreabă doar dacă omul a schimbat ceva
+  const startAmp = useRef('');       // ciorna cum a venit — „înapoi” întreabă doar dacă omul a schimbat ceva
   const amp = (x: Ciorna | null) => (x ? JSON.stringify([x.lines, x.nota]) : '');
 
-  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi" de pe Android: o linie
+  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal și „înapoi” de pe Android: o linie
   // scrisă de mână nu se pierde dintr-o atingere. Cât se emite, rămâne.
   function inchide(): boolean {
     if (saving) return false;
@@ -407,18 +407,18 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
     return true;
   }
 
-  // `p` = ce pune fereastra singură (doar la deschiderea pregătită). „Pregătește din nou" aduce ciorna goală, ca pe web.
+  // `p` = ce pune fereastra singură (doar la deschiderea pregătită). „Pregătește din nou” aduce ciorna goală, ca pe web.
   async function pregateste(p?: Pregatire | null) {
     const id = parseInt(cid);
     if (!id) { showToast('Alege o companie', true); return; }
-    // „Pregătește din nou" peste rânduri schimbate de mână întreabă întâi (ca la schimbarea firmei sau a lunii).
+    // „Pregătește din nou” peste rânduri schimbate de mână întreabă întâi (ca la schimbarea firmei sau a lunii).
     if (S && amp(S) !== startAmp.current && !confirm('Rândurile pregătite (cu ce ai schimbat la ele) se șterg. Continui?')) return;
     const nr = ++cerere.current;
     setLoading(true); setS(null); setEroare(''); setLipsa('');
     try {
       const d = await Api.invoiceDraft(id, fel === 'abonament' ? cheieLuna(yr, mon) : undefined, fel);
       if (nr !== cerere.current) return;
-      // Ce a pus fereastra singură intră în „cum a venit": închisă fără nicio schimbare de mână, nu întreabă nimic.
+      // Ce a pus fereastra singură intră în „cum a venit”: închisă fără nicio schimbare de mână, nu întreabă nimic.
       const r = pregatesteCiorna(ciornaDinRaspuns(d, id, fel), p || null);
       startAmp.current = amp(r.S);
       setS(r.S);
@@ -430,9 +430,9 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
   // DOAR pe firma cerută (dacă n-ar fi în listă, fereastra ar sta pe prima firmă: acolo nu se pune nimic singur).
   useEffect(() => { if (pregatire && felInitial === 'unica' && preset != null && ales === preset) pregateste(pregatire); }, []);
 
-  // „Previzualizează" (30.09, Alin: „să aibă previzualizare, că se pot face greșeli"): hârtia exactă, de pe server, din
-  // ACELAȘI corp ca „Emite" (corpEmitere) — fără număr și fără să plece nimic. Se deschide ca „Vezi" la orice hârtie.
-  // Cât e pe drum se oprește doar butonul lui (ca pe web); „Emite" rămâne al omului.
+  // „Previzualizează” (30.09, Alin: „să aibă previzualizare, că se pot face greșeli”): hârtia exactă, de pe server, din
+  // ACELAȘI corp ca „Emite” (corpEmitere) — fără număr și fără să plece nimic. Se deschide ca „Vezi” la orice hârtie.
+  // Cât e pe drum se oprește doar butonul lui (ca pe web); „Emite” rămâne al omului.
   async function previzualizeaza() {
     if (!S || vede || saving) return;
     const corp = corpEmitere(S, tip);
@@ -446,13 +446,13 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
   async function emite() {
     if (!S || saving) return;
     if (!liniiValide(S).length) { showToast('Adaugă cel puțin o linie validă', true); return; }
-    if (!(S.issuer && S.issuer.name && S.issuer.cui)) { showToast('Completează „Date emitent" (nume + CUI)', true); return; }
+    if (!(S.issuer && S.issuer.name && S.issuer.cui)) { showToast('Completează „Date emitent” (nume + CUI)', true); return; }
     const corp = corpEmitere(S, tip);
     setSaving(true);
     try {
       const r = await Api.issueInvoice(corp);
       const nr = (r && r.invoice && r.invoice.full_number) || '';
-      showToast((corp.tip === 'proforma' ? 'Proformă emisă: ' : 'Factură emisă: ') + nr + (r && r.montajeFacturate ? ' · lucrările trec pe „facturat clientului"' : '') + trimisaText(r && r.trimisa, corp.tip === 'proforma') + ' ✓');
+      showToast((corp.tip === 'proforma' ? 'Proformă emisă: ' : 'Factură emisă: ') + nr + (r && r.montajeFacturate ? ' · lucrările trec pe „facturat clientului”' : '') + trimisaText(r && r.trimisa, corp.tip === 'proforma') + ' ✓');
       onIssued();
     } catch (e: any) { showToast(e?.message || 'Eroare la emitere', true); }   // 409: mesajul serverului, cu numărul facturii existente
     finally { setSaving(false); }
@@ -465,10 +465,10 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
   const acop = S ? acoperire(S) : {};
   const dc = (S && S.dinContract) || {};
   const sumaLinii = (ls: any[]) => (ls || []).reduce((x: number, l: any) => x + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0);
-  // (Avertismentul „aparatele din contract apar deja pe …", socotit aici din documentele firmei, a plecat pe 01.10: serverul
+  // (Avertismentul „aparatele din contract apar deja pe …”, socotit aici din documentele firmei, a plecat pe 01.10: serverul
   //  nu le mai propune și spune singur unde sunt — `dinContract.aparateDejaPe`, lista lui Robert, pct. 5.)
-  // (Avertismentul „de pe o proformă, lucrările de montaj nu trec pe «facturat clientului»" a plecat pe 01.10: serverul
-  //  le ține acum pe proformă și le trece pe factura fiscală la „Încasată" — punctul 19 din verificarea lui Robert.)
+  // (Avertismentul „de pe o proformă, lucrările de montaj nu trec pe «facturat clientului»” a plecat pe 01.10: serverul
+  //  le ține acum pe proformă și le trece pe factura fiscală la „Încasată” — punctul 19 din verificarea lui Robert.)
   const eticheta = unica && tip === 'proforma' ? 'Emite proforma' : 'Emite factura';
 
   const sec = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';
@@ -556,7 +556,7 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
                                 return (
                                   <div class={'bill-sursa pusa' + (st === 'partiala' ? ' partiala' : '')}>
                                     <Icon name={st === 'intreaga' ? 'check' : 'alert'} size={14} /> {nume}
-                                    <span>{st === 'intreaga' ? ' · pus pe factură' : ' · doar o parte e pe factură: nu trece pe „facturat clientului" și va fi propus din nou'}</span>
+                                    <span>{st === 'intreaga' ? ' · pus pe factură' : ' · doar o parte e pe factură: nu trece pe „facturat clientului” și va fi propus din nou'}</span>
                                     <button class="bill-scoate" onClick={() => setS(scoateLucrare(S, j.id))}>Scoate</button>
                                   </div>
                                 );
@@ -590,7 +590,7 @@ function GenerateInvoiceSheet({ companies, invoices, preset, felInitial, pregati
                 )}
                 <div class="bill-total"><span>Total (cu TVA)</span><b>{money2(subtotal + vatTotal)} lei</b></div>
                 <div class="bill-mic" style="text-align:right;margin-top:4px">Net {money2(subtotal)} · TVA {money2(vatTotal)}</div>
-                {unica && tip === 'proforma' ? <div class="bill-mic" style="margin-top:8px;line-height:1.5">Proforma nu e factură fiscală: are serie proprie și nu merge la ANAF. Când intră banii, apeși „Încasată" pe ea și se emite factura fiscală, cu aceleași rânduri.</div> : null}
+                {unica && tip === 'proforma' ? <div class="bill-mic" style="margin-top:8px;line-height:1.5">Proforma nu e factură fiscală: are serie proprie și nu merge la ANAF. Când intră banii, apeși „Încasată” pe ea și se emite factura fiscală, cu aceleași rânduri.</div> : null}
                 {/* Ce pleacă singur la emitere (anunțul, emailul cu PDF, ANAF la factura fiscală) — ca pe web. */}
                 <div class="bill-mic" style="margin-top:8px;line-height:1.5">{notaLaEmitere(unica ? tip : 'invoice')}</div>
                 <div class="bill-emite">
@@ -621,7 +621,7 @@ function PaymentRow({ p }: { p: any }) {
   );
 }
 
-// Amprenta unui formular, ca foaia să știe dacă omul a schimbat ceva: valorile ca text (o casetă întoarce „19", nu
+// Amprenta unui formular, ca foaia să știe dacă omul a schimbat ceva: valorile ca text (o casetă întoarce „19”, nu
 // 19), ca o cifră scrisă la loc la fel să nu treacă drept schimbare.
 const amprenta = (f: any) => JSON.stringify(Object.keys(f || {}).sort().map((k) => [k, f[k] == null ? '' : String(f[k])]));
 
@@ -631,7 +631,7 @@ function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
   const [form, setForm] = useState<any>(() => ({ company_id: preset || (opts[0] && opts[0].id) || '', amount: '', method: 'transfer', note: '' }));
   const start = useRef(amprenta(form));   // formularul cum s-a deschis
   const [saving, setSaving] = useState(false);
-  // Aceeași întrebare pentru X, fundal și „înapoi" de pe Android: suma și nota scrise nu se pierd dintr-o atingere.
+  // Aceeași întrebare pentru X, fundal și „înapoi” de pe Android: suma și nota scrise nu se pierd dintr-o atingere.
   function inchide(): boolean {
     if (saving) return false;
     if (amprenta(form) !== start.current && !confirm('Închizi fără să înregistrezi plata?\n\nCe ai scris la plată se pierde.')) return false;
@@ -663,7 +663,7 @@ function RecordPaymentSheet({ companies, preset, onClose, onSaved }: any) {
               </select>
             </div>
             <div class="fld"><label>Sumă încasată (lei)</label><input value={form.amount} onInput={(e) => setF('amount', (e.target as HTMLInputElement).value)} placeholder="ex: 1500 sau 1.234,56" /></div>
-            <div class="sub" style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:-4px 0 8px">Doar o sumă primită fără factură. Plata unei facturi se trece de pe factură („Plătită").</div>
+            <div class="sub" style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:-4px 0 8px">Doar o sumă primită fără factură. Plata unei facturi se trece de pe factură („Plătită”).</div>
             <div class="fld"><label>Metodă</label>
               <select value={form.method} onChange={(e) => setF('method', (e.target as HTMLSelectElement).value)}>
                 {METHODS.map((m) => <option value={m.v}>{m.l}</option>)}
@@ -684,7 +684,7 @@ function IssuerSheet({ issuer, onClose, onSaved }: any) {
   const [form, setForm] = useState<any>(() => ({ name: '', cui: '', reg_com: '', address: '', city: '', county: '', iban: '', bank: '', email: '', phone: '', vat_rate: 21, vat_payer: true, ...(issuer || {}) }));   // 21% = cota legală din 01.08.2025
   const start = useRef(amprenta(form));   // datele cum s-au deschis
   const [saving, setSaving] = useState(false);
-  // Aceeași întrebare pentru X, fundal și „înapoi" de pe Android: datele emitentului schimbate nu se pierd pe tăcute.
+  // Aceeași întrebare pentru X, fundal și „înapoi” de pe Android: datele emitentului schimbate nu se pierd pe tăcute.
   function inchide(): boolean {
     if (saving) return false;
     if (amprenta(form) !== start.current && !confirm('Închizi fără să salvezi?\n\nCe ai schimbat la datele emitentului se pierde.')) return false;

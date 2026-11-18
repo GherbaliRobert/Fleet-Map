@@ -1,4 +1,4 @@
-// verify_inventar.js — „Inventar dispozitive" (Gestiune): evidența echipamentelor noastre.
+// verify_inventar.js — „Inventar dispozitive” (Gestiune): evidența echipamentelor noastre.
 //
 //   node verify_inventar.js
 //
@@ -7,11 +7,11 @@
 //
 // Ce prinde proba (toate, bube găsite pe 18.09):
 //   • căutarea care-și pierde cursorul. Tot tabelul se redesena la fiecare literă, inclusiv caseta în
-//     care scriai: din „Alfa" intra doar „A", restul se duceau în gol. Șase casete, toate inutile;
+//     care scriai: din „Alfa” intra doar „A”, restul se duceau în gol. Șase casete, toate inutile;
 //   • al doilea vocabular pentru semnal. Ecranul avea praguri proprii (24 h / 7 zile) și se contrazicea
-//     cu „Aparate GPS" (30 min / 24 h) în 5 din 7 cazuri: un aparat mut de 3 zile era ROȘU acolo și doar
+//     cu „Aparate GPS” (30 min / 24 h) în 5 din 7 cazuri: un aparat mut de 3 zile era ROȘU acolo și doar
 //     portocaliu aici. Acum cheamă aceeași funcție, `agpsStare`;
-//   • exportul care nu ținea cont de filtre: filtrai la o firmă, apăsai „Exportă Excel" și primeai TOT;
+//   • exportul care nu ținea cont de filtre: filtrai la o firmă, apăsai „Exportă Excel” și primeai TOT;
 //   • ecranul care-ți spunea ce lipsește fără să te lase să repari (niciun buton pe rând).
 //
 // Codul nu se copiază aici: se decupează din sursă și se execută.
@@ -29,7 +29,7 @@ function bloc(a, b) {
   if (i < 0 || j < 0 || j <= i) throw new Error('nu găsesc blocul ' + a);
   return html.slice(i, j);
 }
-const B = bloc('// ── începe „inventarul de aparate" ──', '// ── sfârșit „inventarul de aparate" ──');
+const B = bloc('// ── începe „inventarul de aparate” ──', '// ── sfârșit „inventarul de aparate” ──');
 
 sect('1. Căutarea nu-și mai pierde cursorul');
 T('scheletul se construiește separat de conținut', /function _invSchelet\(host\)/.test(B));
@@ -47,12 +47,12 @@ T('și filtrul scris se pune înapoi după refacere',
   /inv-cauta'\)\.forEach\(function \(i\) \{ i\.value = _invQ\[i\.getAttribute\('data-k'\)\] \|\| ''; \}\)/.test(B));
 
 sect('2. Un singur vocabular pentru semnal');
-T('există coloana „Semnal"', /\{ k: 'semnal', label: 'Semnal' \}/.test(B));
-T('cuvintele vin din „Aparate GPS", nu de aici', /function _invSemnal\(r\)[\s\S]{0,200}agpsStare\(r\.last_tx, Date\.now\(\)\)/.test(B));
+T('există coloana „Semnal”', /\{ k: 'semnal', label: 'Semnal' \}/.test(B));
+T('cuvintele vin din „Aparate GPS”, nu de aici', /function _invSemnal\(r\)[\s\S]{0,200}agpsStare\(r\.last_tx, Date\.now\(\)\)/.test(B));
 T('nu mai există praguri proprii în ecran', !/_invAge/.test(html) && !/168/.test(B));
-T('„Ultima transmisie" a rămas o dată simplă, fără a doua părere',
+T('„Ultima transmisie” a rămas o dată simplă, fără a doua părere',
   /function _invData\(t\)/.test(B) && /color:var\(--text-muted\);">' \+ esc\(_invData\(r\.last_tx\)\)/.test(B));
-T('sortarea pe „Semnal" merge după ultima transmisie, nu după litere',
+T('sortarea pe „Semnal” merge după ultima transmisie, nu după litere',
   /if \(k === 'last_tx' \|\| k === 'semnal'\)/.test(B));
 
 // Serverul are propria scriere a cuvintelor (pentru fișierul exportat) — nu poate chema funcția din
@@ -80,7 +80,7 @@ let nepotriviri = [];
 for (const [et, ore] of cazuri) {
   const t = ore == null ? null : new Date(acum - ore * ORA).toISOString();
   const a = pagina(t, acum).t, b = srv(t);
-  if (a !== b) nepotriviri.push(et + ': ecran „' + a + '" vs. fișier „' + b + '"');
+  if (a !== b) nepotriviri.push(et + ': ecran „' + a + '” vs. fișier „' + b + '”');
 }
 T('aceleași cuvinte, pe toate vechimile', nepotriviri.length === 0, nepotriviri.join(' | '));
 
@@ -101,7 +101,7 @@ if (ts) {
   for (const [et, ore] of cazuri) {
     const t = ore == null ? null : new Date(acum - ore * ORA).toISOString();
     const a = pagina(t, acum).t, c = tel.stareAparat(t, acum).t;
-    if (a !== c) nepTel.push(et + ': ecran „' + a + '" vs. telefon „' + c + '"');
+    if (a !== c) nepTel.push(et + ': ecran „' + a + '” vs. telefon „' + c + '”');
   }
   T('telefonul spune aceleași cuvinte, pe toate vechimile', nepTel.length === 0, nepTel.join(' | '));
 }
@@ -122,14 +122,14 @@ T('fișierul spune că e o selecție, nu tot inventarul', /\(selecția de pe ecr
 sect('5. De pe rând ajungi unde se repară');
 T('fiecare rând are buton spre fișa mașinii', /onclick="openEditModal\(\\'' \+ esc\(r\.imei\) \+ '\\'\)"/.test(B));
 T('cu explicație pe el', /title="Fișa mașinii — aici se completează modelul și cartela SIM"/.test(B));
-T('avertismentul „fără model/SIM" e buton, nu doar text', /id="inv-lipsa" class="rax-btn"[\s\S]{0,120}onclick="raxInvDoarLipsa\(\)"/.test(B));
+T('avertismentul „fără model/SIM” e buton, nu doar text', /id="inv-lipsa" class="rax-btn"[\s\S]{0,120}onclick="raxInvDoarLipsa\(\)"/.test(B));
 T('și chiar filtrează la ele', /window\.raxInvDoarLipsa = function \(\) \{ _invDoarLipsa = !_invDoarLipsa;/.test(B)
   && /if \(_invDoarLipsa && !_invLipsa\(r\)\) return false;/.test(B));
-T('„Șterge filtrele" golește și casetele, și filtrul de lipsă',
+T('„Șterge filtrele” golește și casetele, și filtrul de lipsă',
   /_invQ = \{\}; _invDoarLipsa = false;[\s\S]{0,200}i\.value = ''/.test(B));
 
 sect('6. Cuvintele de pe ecran');
-T('coloana se numește „Firmă", ca peste tot altundeva', /\{ k: 'company_name', label: 'Firmă' \}/.test(B) && !/label: 'Client'/.test(B));
+T('coloana se numește „Firmă”, ca peste tot altundeva', /\{ k: 'company_name', label: 'Firmă' \}/.test(B) && !/label: 'Client'/.test(B));
 T('și la fel în fișierul exportat', /'Firmă', 'Nr\. înmatriculare'/.test(server) && !/'Client', 'Nr\. înmatriculare'/.test(server));
 T('nota spune cine completează modelul și cartela', /le completăm NOI, în fișa vehiculului/.test(B));
 

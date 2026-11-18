@@ -8,7 +8,7 @@
 //      dacă Teltonika adaugă ID-uri noi în fixture, testul pică până le acoperim;
 //   2. numele EXISTENTE nu se schimbă NICIODATĂ (io_data stocat depinde de ele) — cu excepția celor
 //      7 corecturi documentate (29-38: fuseseră ghicite ca FMS și erau pur și simplu greșite);
-//   3. decodarea biților P4 e exactă pe valori construite bit cu bit — aici „aproape corect"
+//   3. decodarea biților P4 e exactă pe valori construite bit cu bit — aici „aproape corect”
 //      înseamnă uși deschise care nu se văd sau alarme false.
 //
 // Rulează instant, fără server: node verify_io_map.js
@@ -27,10 +27,10 @@ console.log('\n══ 2. Numele vechi rămân neatinse ══\n');
 const vechi = require('./tools/fixtures/io_map_inainte.json');
 // 29-38: etichete fms_* GHICITE, care afișau date greșite (oficial: BLE baterie + OBD).
 // Corectate deliberat — vezi jurnalul din 26.08. FMS-ul adevărat merge prin iface='fms'.
-// 217: era etichetat 'can_vin', dar oficial e „Geofence zone 36" — VIN-ul real e ID 325.
+// 217: era etichetat 'can_vin', dar oficial e „Geofence zone 36” — VIN-ul real e ID 325.
 // Aceeași categorie de greșeală ca 29-38: un nume ghicit, care arăta date de altundeva.
-// 652/658-661/898: erau „can_security_flag_ext", „can_indicator_left/right/hazard/lights" si
-// „can_handbrake" — toate GHICITE. Oficial sunt steaguri individuale: cheia in contact, portbagaj,
+// 652/658-661/898: erau „can_security_flag_ext”, „can_indicator_left/right/hazard/lights” si
+// „can_handbrake” — toate GHICITE. Oficial sunt steaguri individuale: cheia in contact, portbagaj,
 // treptele N/P/R si CONTACTUL. Rulau LIVE cu intelesul gresit pe VW Passat B7. Vezi jurnalul 26.08.
 const CORECTATE = new Set([29, 30, 31, 32, 33, 37, 38, 217, 652, 658, 659, 660, 661, 898, 900, 902, 904]);
 const schimbate = [];
@@ -40,7 +40,7 @@ for (const [id, nume] of Object.entries(vechi)) {
 }
 t('niciun nume istoric schimbat (' + (Object.keys(vechi).length - CORECTATE.size) + ' verificate)', schimbate.length === 0, schimbate.slice(0, 5).join(' | '));
 t('corecturile documentate au numele oficiale', c.getIoName(29, null) === 'ble_battery_1' && c.getIoName(30, null) === 'obd_dtc_count' && c.getIoName(37, null) === 'obd_vehicle_speed');
-t('217 nu mai e „VIN", ci zona de geofence', c.getIoName(217, null) === 'geofence_zone_36', c.getIoName(217, null));
+t('217 nu mai e „VIN”, ci zona de geofence', c.getIoName(217, null) === 'geofence_zone_36', c.getIoName(217, null));
 t('VIN-ul real e ID 325', c.getIoName(325, null) === 'can_vin', c.getIoName(325, null));
 
 console.log('\n══ 3. Interfețele FMS/tacho NU sunt atinse de lista generată ══\n');
@@ -133,11 +133,11 @@ console.log('\n══ 7. Catalogul acoperă tot ══\n');
 const cat = require('./io_catalog.js');
 const lipsaCat = spec.filter((e) => !cat.IO_CATALOG_BY_ID[e.id]);
 t('fiecare ID oficial are intrare în catalog (etichetă RO)', lipsaCat.length === 0, lipsaCat.slice(0, 6).map((e) => e.id).join(', '));
-t('corecturile de etichete s-au aplicat (30 nu mai e „umiditate BLE")', /DTC/.test(cat.IO_CATALOG_BY_ID[30].name_ro), cat.IO_CATALOG_BY_ID[30].name_ro);
+t('corecturile de etichete s-au aplicat (30 nu mai e „umiditate BLE”)', /DTC/.test(cat.IO_CATALOG_BY_ID[30].name_ro), cat.IO_CATALOG_BY_ID[30].name_ro);
 
 console.log('\n=== 9. Campuri TEXT si valori lungi (grupul NX) ===\n');
 // Cazul real: VIN-ul soseste pe 17 octeti ASCII (ID 325). Soseau ca sir hex si asa ramaneau —
-// „5756325a..." in loc de „WV2ZZZ...". Iar containerele de stegulete trimise prin NX ajungeau ca
+// „5756325a...” in loc de „WV2ZZZ...”. Iar containerele de stegulete trimise prin NX ajungeau ca
 // sir hex FARA prefix, iar BigInt() le citea ca ZECIMAL → toti bitii gresiti.
 function pachetNX(elem) {
   const q2 = (n) => { const x = Buffer.alloc(2); x.writeUInt16BE(n, 0); return x; };
@@ -169,7 +169,7 @@ const rBin = c.parseAvlPacket(pachetNX([[325, Buffer.from([0x01, 0x02, 0x9f, 0xf
 t('continut ne-imprimabil ramane hex', /^[0-9a-f]+$/.test(String(rBin.records[0].io.can_vin)), String(rBin.records[0].io.can_vin));
 
 console.log('\n=== 10. Cele doua kilometraje NU se amesteca ===\n');
-// Intrebarea lui Robert (26.08): „Total Odometer intra in conflict cu odometrul masinii?"
+// Intrebarea lui Robert (26.08): „Total Odometer intra in conflict cu odometrul masinii?”
 // Nu: sunt doua marimi diferite. ID 16 = contorul DISPOZITIVULUI din GPS, de la montare (metri).
 // ID 87 = kilometrajul REAL din bordul masinii, prin CAN (convertit la km inca de la primire).
 t('ID 16 e contorul GPS al dispozitivului', c.getIoName(16, null) === 'total_odometer');
@@ -240,13 +240,13 @@ t('masina fara steaguri NU capata _security_flags', ioGol._security_flags === un
 const ioMixt = { can_security_state_flags_p4: b(22), can_ssf_clutch_pushed: 1 };
 c.expandCanFlags(ioMixt);
 t('impachetat + separat: amandoua ajung in acelasi loc', ioMixt._security_flags.door_front_left === true && ioMixt._security_flags.clutch === true);
-// 900/902/904 erau „can_manual_0/2/4" — ghicite. Oficial: motor pornit, gata de plecare, regim de
-// lucru. Pe Passat, can_manual_4 = 1 aprindea „Regim personal", desi 1 inseamna SERVICIU.
+// 900/902/904 erau „can_manual_0/2/4” — ghicite. Oficial: motor pornit, gata de plecare, regim de
+// lucru. Pe Passat, can_manual_4 = 1 aprindea „Regim personal”, desi 1 inseamna SERVICIU.
 t('900/902/904 au numele oficiale', c.getIoName(900, null) === 'can_ssf_engine_working' && c.getIoName(904, null) === 'can_ssf_work_mode');
 const ioServ = { can_ssf_work_mode: 1 }; c.expandCanFlags(ioServ);
-t('regim de lucru 1 (serviciu) → NU „personal"', ioServ._security_flags.work_mode_private === false);
+t('regim de lucru 1 (serviciu) → NU „personal”', ioServ._security_flags.work_mode_private === false);
 const ioPers = { can_ssf_work_mode: 0 }; c.expandCanFlags(ioPers);
-t('regim de lucru 0 (personal) → „personal"', ioPers._security_flags.work_mode_private === true);
+t('regim de lucru 0 (personal) → „personal”', ioPers._security_flags.work_mode_private === true);
 t('inversarea e declarata explicit, nu ascunsa in cod', fio.INVERS instanceof Set && fio.INVERS.has(904));
 
 
@@ -276,12 +276,12 @@ t('treapta P', gear(1, 0, 0, 0) === 'P', String(gear(1, 0, 0, 0)));
 t('treapta R', gear(0, 1, 0, 0) === 'R', String(gear(0, 1, 0, 0)));
 t('treapta N', gear(0, 0, 1, 0) === 'N', String(gear(0, 0, 1, 0)));
 t('treapta D', gear(0, 0, 0, 1) === 'D', String(gear(0, 0, 0, 1)));
-t('niciuna activa: fara litera, nu „P" din greseala', gear(0, 0, 0, 0) === null, String(gear(0, 0, 0, 0)));
+t('niciuna activa: fara litera, nu „P” din greseala', gear(0, 0, 0, 0) === null, String(gear(0, 0, 0, 0)));
 t('masina care trimite alte stari, dar nicio treapta, nu capata placuta de treapta',
   (() => { const io = { can_ssf_ignition: 1 }; c.expandCanFlags(io); return (io._security_flags || {}).gear === undefined; })(),
   'gear=' + String(((() => { const io = { can_ssf_ignition: 1 }; c.expandCanFlags(io); return io._security_flags || {}; })()).gear));
 t('textul treptei e chiar litera', cflags.stateText('_sf_gear', 'D') === 'D');
-t('treapta fara valoare arata liniuta, nu „Nu"', cflags.stateText('_sf_gear', null) === '—');
+t('treapta fara valoare arata liniuta, nu „Nu”', cflags.stateText('_sf_gear', null) === '—');
 
 console.log('\n=== 13. Fiecare placuta are un desen, la fel in amandoua ecranele ===\n');
 // Desenele se scriu O SINGURA data (Icon.tsx) si se genereaza pentru web (can_icons.js). Un `mi`

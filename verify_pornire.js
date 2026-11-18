@@ -103,7 +103,7 @@ console.log('\n2. Citirile de configurație eșuate nu mai intră în cache');
     ceas.t += 61000;                       // cache expirat
     baza.crapa = true;                     // baza cade
     const cal2 = await M.getTankCalibration(IMEI);
-    T('la eroare rămâne ultima calibrare bună (nu „fără calibrare")', Array.isArray(cal2) && cal2.length === 2, cal2);
+    T('la eroare rămâne ultima calibrare bună (nu „fără calibrare”)', Array.isArray(cal2) && cal2.length === 2, cal2);
     T('eșecul e numărat pentru consola /debug', stats.cfg_read_fails === 1, stats.cfg_read_fails);
     ceas.t += 1000;                        // în interiorul pauzei de reîncercare
     await M.getTankCalibration(IMEI);
@@ -121,7 +121,7 @@ console.log('\n2. Citirile de configurație eșuate nu mai intră în cache');
     ceas.t += 61000;
     baza.crapa = true;
     const if2 = await M.getDeviceIface(IMEI);
-    T('la eroare NU devine „fără interfață CAN"', if2 === 'fms', if2);
+    T('la eroare NU devine „fără interfață CAN”', if2 === 'fms', if2);
 
     // c) sondele de combustibil
     ceas.t += 61000;

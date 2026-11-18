@@ -1,17 +1,17 @@
 // livrare.js — ce s-a întâmplat cu un email DUPĂ ce l-a primit Brevo (28.10; Alin, cu o captură: „programarea… e încă activă, eu nu
 // primesc nimic. Și nici nu văd motivul și nici nu știu unde să mă uit").
-// Aplicația preda emailul lui Brevo și scria „a plecat pe email"; de acolo încolo (livrat la Yahoo, refuzat, amânat, adresa blocată
+// Aplicația preda emailul lui Brevo și scria „a plecat pe email”; de acolo încolo (livrat la Yahoo, refuzat, amânat, adresa blocată
 // la Brevo, marcat spam) nu știa nimeni. Brevo ține evenimentele fiecărui email; serverul le cere (fără să trimită nimic) și le scrie
-// pe rândul programării, în „Stare producție" și în anunțul nostru. Regulile și TEXTELE stau aici, curate; serverul doar cere și scrie.
-// Numele evenimentelor nu le citim întocmai: le aducem la o formă (litere mici, fără semne), ca o altă scriere („hardBounces",
-// „hard_bounce") să însemne același lucru, iar un eveniment necunoscut să nu ne facă să spunem ceva ce nu știm.
+// pe rândul programării, în „Stare producție” și în anunțul nostru. Regulile și TEXTELE stau aici, curate; serverul doar cere și scrie.
+// Numele evenimentelor nu le citim întocmai: le aducem la o formă (litere mici, fără semne), ca o altă scriere („hardBounces”,
+// „hard_bounce”) să însemne același lucru, iar un eveniment necunoscut să nu ne facă să spunem ceva ce nu știm.
 
 const ORE_URMARIRE = 72;          // după 3 zile fără răspuns de la Brevo, nu mai întrebăm
 const PAUZA_VERIFICARE_MIN = 10;  // același email nu se întreabă mai des de o dată la 10 minute
 
-// Forma scurtă a stării, în ordinea în care câștigă: un email livrat și apoi marcat spam e „spam"; unul amânat și apoi livrat, „livrat".
+// Forma scurtă a stării, în ordinea în care câștigă: un email livrat și apoi marcat spam e „spam”; unul amânat și apoi livrat, „livrat”.
 const ORDINE = ['spam', 'blocat', 'invalid', 'respins', 'eroare', 'deschis', 'livrat', 'amanat', 'trimis'];
-// „deblocat" nu vine de la Brevo: îl scrie serverul când scoatem adresa de pe lista blocată (atunci nu mai întrebăm de emailul vechi).
+// „deblocat” nu vine de la Brevo: îl scrie serverul când scoatem adresa de pe lista blocată (atunci nu mai întrebăm de emailul vechi).
 const FINALE = new Set(['spam', 'blocat', 'invalid', 'respins', 'eroare', 'deschis', 'livrat', 'deblocat']);
 const RELE = new Set(['spam', 'blocat', 'invalid', 'respins', 'eroare']);
 
@@ -77,15 +77,15 @@ function textPentruNoi(r) {
   }
 }
 // Ce e de făcut — doar pentru noi, doar unde avem ceva de făcut. `inAnunt`: textul pleacă într-un anunț, nu stă pe rândul
-// programării (acolo e butonul „Deblochează la Brevo"; în anunț spunem unde e).
+// programării (acolo e butonul „Deblochează la Brevo”; în anunț spunem unde e).
 function ceFacem(r, inAnunt) {
   switch (r.stare) {
-    case 'livrat': case 'deschis': return 'Dacă nu e în căsuța de intrare, e în Spam: „Nu e spam" îl mută înapoi.';
+    case 'livrat': case 'deschis': return 'Dacă nu e în căsuța de intrare, e în Spam: „Nu e spam” îl mută înapoi.';
     case 'blocat': return inAnunt
-      ? 'Adresa se scoate de pe lista blocată din contul Brevo' + (String(r.ref || '').indexOf('sched:') === 0 ? ' sau cu „Deblochează la Brevo", în Rapoarte › Programări' : '') + '.'
-      : 'Scoateți adresa de pe lista blocată cu „Deblochează la Brevo", de aici, sau din contul Brevo.';
-    case 'respins': return 'Motivul din paranteză spune de ce. Dacă vorbește de „policy" sau „DMARC", e de verificat domeniul ratrack.ro în Brevo (Senders, Domains).';
-    case 'spam': return 'Destinatarul îl mută din Spam cu „Nu e spam". Brevo blochează după asta adresa: deblocați-o, ca următorul să plece.';
+      ? 'Adresa se scoate de pe lista blocată din contul Brevo' + (String(r.ref || '').indexOf('sched:') === 0 ? ' sau cu „Deblochează la Brevo”, în Rapoarte › Programări' : '') + '.'
+      : 'Scoateți adresa de pe lista blocată cu „Deblochează la Brevo”, de aici, sau din contul Brevo.';
+    case 'respins': return 'Motivul din paranteză spune de ce. Dacă vorbește de „policy” sau „DMARC”, e de verificat domeniul ratrack.ro în Brevo (Senders, Domains).';
+    case 'spam': return 'Destinatarul îl mută din Spam cu „Nu e spam”. Brevo blochează după asta adresa: deblocați-o, ca următorul să plece.';
     case 'invalid': return 'Corectați adresa în programare.';
     case 'amanat': return 'De obicei ajunge singur în câteva ore.';
     default: return '';

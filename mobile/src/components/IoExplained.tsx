@@ -1,4 +1,4 @@
-// „Ce înseamnă?" — ce trimite mașina asta și ce înseamnă fiecare semnal.
+// „Ce înseamnă?” — ce trimite mașina asta și ce înseamnă fiecare semnal.
 //
 // Echivalentul ferestrei din web. Toată munca se face pe SERVER (`/api/devices/:imei/io-explained`):
 // potrivirea cu catalogul Teltonika, strângerea codurilor care duc la același semnal, formatarea
@@ -15,7 +15,7 @@ export interface Semnal {
   echivalente: string[]; necatalogat: boolean;
 }
 
-// Fără diacritice, ca la căutarea de vehicule: cine scrie „turatie" trebuie să găsească „Turație".
+// Fără diacritice, ca la căutarea de vehicule: cine scrie „turatie” trebuie să găsească „Turație”.
 function fd(t: string): string {
   return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[șşŞȘ]/g, 's').replace(/[țţŢȚ]/g, 't').toLowerCase();

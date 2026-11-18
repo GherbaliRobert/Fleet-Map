@@ -1,4 +1,4 @@
-// Bucăți comune ale ecranului „Taxa de drum" (cele două file + detaliul unei mașini).
+// Bucăți comune ale ecranului „Taxa de drum” (cele două file + detaliul unei mașini).
 // Aceleași texte și aceleași reguli ca pe web (public/js/demo-modules-ui.js): telefonul doar desenează ce
 // calculează serverul. Nicio regulă de taxare nu se scrie aici — cine plătește, cât și de ce stă în tollro.js.
 import { useEffect, useRef } from 'preact/hooks';
@@ -9,15 +9,15 @@ export const dRo = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec
 export const nr = (v: any, z = 2) => Number(v || 0).toLocaleString('ro-RO', { minimumFractionDigits: z, maximumFractionDigits: z });
 export const km1 = (v: any) => Number(v || 0).toLocaleString('ro-RO', { maximumFractionDigits: 1 });
 
-// Data în cuvinte („1 octombrie 2026"): câmpul de calendar o arată în formatul telefonului, iar aici e
-// vorba de ziua din care se plătește — nu are voie să fie citită „10 ianuarie".
+// Data în cuvinte („1 octombrie 2026”): câmpul de calendar o arată în formatul telefonului, iar aici e
+// vorba de ziua din care se plătește — nu are voie să fie citită „10 ianuarie”.
 const LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
 export function dataInCuvinte(iso: string) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
   return m ? (parseInt(m[3], 10) + ' ' + LUNI[parseInt(m[2], 10) - 1] + ' ' + m[1]) : String(iso || '');
 }
 
-// „Detalii costuri": defalcarea pe tipuri de drum a unui rezultat venit de la server (din traseu sau din
+// „Detalii costuri”: defalcarea pe tipuri de drum a unui rezultat venit de la server (din traseu sau din
 // kilometri scriși de mână). Același desen ca pe web (trAfiseaza).
 export function RezultatCost({ rez, atribuire }: { rez: any; atribuire?: string | null }) {
   if (!rez) return null;
@@ -50,9 +50,9 @@ export function RezultatCost({ rez, atribuire }: { rez: any; atribuire?: string 
   );
 }
 
-// „Cât costă un kilometru" — fiecare cifră sub capul ei de coloană, cu unitatea scrisă lângă ea.
-// Înainte, pe telefon, stăteau două cifre lipite („0,17 / 0,08") și o notă deasupra care spunea care e
-// care: exact întrebarea lui Alin („0,17 e în lei?"). Grila se EDITEAZĂ doar din web (excepție asumată).
+// „Cât costă un kilometru” — fiecare cifră sub capul ei de coloană, cu unitatea scrisă lângă ea.
+// Înainte, pe telefon, stăteau două cifre lipite („0,17 / 0,08”) și o notă deasupra care spunea care e
+// care: exact întrebarea lui Alin („0,17 e în lei?”). Grila se EDITEAZĂ doar din web (excepție asumată).
 export function GrilaTarife({ cfg }: { cfg: any }) {
   const g = cfg && cfg.grila;
   if (!g) return null;

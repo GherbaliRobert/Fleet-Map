@@ -1,4 +1,4 @@
-// Format uman: „X ore și Y minute" (ex. „1 oră și 59 minute", „0 minute", „2 ore").
+// Format uman: „X ore și Y minute” (ex. „1 oră și 59 minute”, „0 minute”, „2 ore”).
 export function fmtDuration(sec?: number): string {
   if (!sec || sec < 0) return '0 minute';
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
@@ -40,7 +40,7 @@ export function gsmQuality(sig?: number): { label: string; level: number } {
 export function odometerKm(io?: any): number | null {
   if (!io) return null;
   // CAN-ul (odometru real din bord) prioritar; total_odometer (GPS device, de la instalare) doar fallback.
-  // Valorile CAN pot veni ca STRINGURI („32685.7") → parseFloat, NU typeof==='number' (care le respingea → cădea pe GPS).
+  // Valorile CAN pot veni ca STRINGURI („32685.7”) → parseFloat, NU typeof==='number' (care le respingea → cădea pe GPS).
   const cm = parseFloat(io.can_total_mileage);
   if (isFinite(cm) && cm > 0) return Math.round(cm);
   const cmc = parseFloat(io.can_total_mileage_counted);
@@ -55,10 +55,10 @@ export function voltageStr(io?: any): string | null {
 }
 
 // Căutarea vehiculelor, într-un singur loc (oglinda lui raCauta din aplicația web).
-// Numărul de înmatriculare se scrie cu spații („B 154 UIP"), dar omul îl tastează cum îi vine:
-// „b154uip", „B-154-UIP". Înainte, oricare dintre variante nu găsea nimic — și părea că mașina
+// Numărul de înmatriculare se scrie cu spații („B 154 UIP”), dar omul îl tastează cum îi vine:
+// „b154uip”, „B-154-UIP”. Înainte, oricare dintre variante nu găsea nimic — și părea că mașina
 // nu e în aplicație. Scoatem spații, cratime, puncte și diacritice din AMÂNDOUĂ părțile.
-// „dacia logan" rămâne găsit: devine „dacialogan", iar numele devine „dacialogan3".
+// „dacia logan” rămâne găsit: devine „dacialogan”, iar numele devine „dacialogan3”.
 export function raNorm(x: any): string {
   return String(x == null ? '' : x).toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')

@@ -1,4 +1,4 @@
-/* „Trimisă" și „e-Factura: trimisă" (starea oricărei facturi urcate la ANAF) sunt scris albastru. Pe tema închisă
+/* „Trimisă” și „e-Factura: trimisă” (starea oricărei facturi urcate la ANAF) sunt scris albastru. Pe tema închisă
    rămâne albastrul de pe web (#38BDF8); pe cea luminoasă, el iese pe alb la contrast 2,1 și nu se citește — acolo
    se ia albastrul închis pe care flota.css îl folosește deja pe luminos (#0369A1: 5,9 pe alb, 5,4 pe #f1f5f9). */
 :root { --bill-trimisa: #38BDF8; }
@@ -21,7 +21,7 @@
    luminoasă — pe alb, #3FE07D ieșea la contrast 1,6 și totalul facturii nu se citea. */
 .bill-total { display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--fl-ok, var(--green)); border-radius: 9px; padding: 10px 14px; margin-top: 14px; font-size: 16px; font-weight: 800; color: var(--fl-ok, var(--green)); }
 
-/* „Generează factură": alegerea felului (abonament / unică) și a documentului (factură / proformă), ca pe web
+/* „Generează factură”: alegerea felului (abonament / unică) și a documentului (factură / proformă), ca pe web
    (.rax-gi-fel). Cea aleasă are chenarul verde și un fundal abia colorat; scrisul rămâne --text-primary pe
    ambele teme (verdele aplicației ca text pe alb ar ieși la 1,6). */
 .bill-fel { display: flex; gap: 8px; }
@@ -52,25 +52,25 @@ button.bill-sursa { cursor: pointer; }
 .bill-linie { display: flex; gap: 5px; align-items: center; margin-bottom: 6px; }
 .bill-ment { font-weight: 600; white-space: pre-wrap; }
 .bill-totinc { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: -2px 0 8px; }
-/* Rândul unei firme (Facturare, fondator; 05.11): numele și restanța întregi, pe mai multe rânduri dacă trebuie; „auto" și
-   „Facturile firmei" dedesubt, aliniate cu textul (iconița 38 px + golul 12 px). Pe același rând numele se tăia la 360 px. */
+/* Rândul unei firme (Facturare, fondator; 05.11): numele și restanța întregi, pe mai multe rânduri dacă trebuie; „auto” și
+   „Facturile firmei” dedesubt, aliniate cu textul (iconița 38 px + golul 12 px). Pe același rând numele se tăia la 360 px. */
 .bill-co { flex-wrap: wrap; row-gap: 10px; }
 .bill-co .mid { flex: 1 1 calc(100% - 50px); }
 .bill-co .nm, .bill-co .sub { white-space: normal; overflow-wrap: anywhere; }
 .bill-co-act { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 100%; padding-left: 50px; }
 .bill-totinc b { color: var(--fl-ok); }
 
-/* „Previzualizează" + „Emite" (lotul 5): pe un rând când încap, altfel unul sub altul, fiecare pe toată lățimea. */
+/* „Previzualizează” + „Emite” (lotul 5): pe un rând când încap, altfel unul sub altul, fiecare pe toată lățimea. */
 .bill-emite { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .bill-emite .btn { flex: 1 1 140px; }
 .bill-emite .btn-primary { flex: 2 1 170px; }
 
-/* „Facturi și proforme": secțiunile (Facturi · Proforme · Montaj de facturat), ca pe web. Pastilele sunt .fd-chip
+/* „Facturi și proforme”: secțiunile (Facturi · Proforme · Montaj de facturat), ca pe web. Pastilele sunt .fd-chip
    (fondator.css, cu perechea lor pe tema luminoasă); aici doar se așază — pe două rânduri dacă nu încap. */
 .bill-sect { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
 
-/* „Montaj de facturat" (30.09), ca .rax-mf-* de pe web: o firmă pe rând — cine și ce, suma, butonul.
-   „În curs" (perioada instalatorului nu s-a încheiat) = chenar punctat, fără fundal. Scrisul mic pe --text-secondary. */
+/* „Montaj de facturat” (30.09), ca .rax-mf-* de pe web: o firmă pe rând — cine și ce, suma, butonul.
+   „În curs” (perioada instalatorului nu s-a încheiat) = chenar punctat, fără fundal. Scrisul mic pe --text-secondary. */
 .bill-mf-sub { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 0 0 10px; }
 .bill-mf-h { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin: 14px 0 6px; }
 .bill-mf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; margin: 0 0 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-panel); }

@@ -34,7 +34,7 @@ if (USE_PG) {
     max: parseInt(process.env.PG_POOL_MAX) || 12,
     min: parseInt(process.env.PG_POOL_MIN) || 3,     // floor CALD de conexiuni → burst-ul panoului admin nu mai plătește connect+auth pe fiecare fetch
     idleTimeoutMillis: 60000, // păstrează conexiunile idle 60s (default 10s era prea scurt → primul query după pauză reconecta lent la Railway)
-    connectionTimeoutMillis: 8000, // nu mai aștepta o conexiune la INFINIT (pool epuizat) → eroare clară în 8s în loc de „Se încarcă…" veșnic
+    connectionTimeoutMillis: 8000, // nu mai aștepta o conexiune la INFINIT (pool epuizat) → eroare clară în 8s în loc de „Se încarcă…” veșnic
     keepAlive: true           // TCP keepalive pe socketul PG (previne drop-uri silențioase)
   });
   pool.raw = null;
@@ -191,11 +191,11 @@ async function initDb() {
       ON positions (timestamp)
     `);
 
-    // ─── Arhivă poziții: istoricul „înghețat" al dispozitivelor arhivate (contract încheiat) ───
+    // ─── Arhivă poziții: istoricul „înghețat” al dispozitivelor arhivate (contract încheiat) ───
     // La arhivare copiem aici pozițiile dispozitivului (archiveDevicePositions). `positions` rămâne pe retenția
     // contractului (12 luni incluse, 24/36 plătite). Copia din arhivă ține cât clientul poate cere datele înapoi: 30 de zile de la
     // arhivare (vezi `stergeIstoricAparat`), apoi se șterge, împreună cu restul istoricului aparatului.
-    // Astfel „memoria veche" NU se pierde chiar dacă tracker-ul nu mai trimite și pozițiile vii expiră din hypertable.
+    // Astfel „memoria veche” NU se pierde chiar dacă tracker-ul nu mai trimite și pozițiile vii expiră din hypertable.
     await client.query(`
       CREATE TABLE IF NOT EXISTS positions_archive (
         id BIGSERIAL PRIMARY KEY,
@@ -267,7 +267,7 @@ async function initDb() {
 
     // UN singur index pe (imei, timestamp): cel UNIQUE de mai sus. Vechiul idx_positions_imei_ts avea aceleași
     // rânduri, în sens invers (cam 80 MB în plus și scris la fiecare poziție), iar un index se citește în ambele
-    // sensuri. „Ultima poziție pe mașină" se cere acum `ORDER BY imei DESC, timestamp DESC`, tot din el (02.11).
+    // sensuri. „Ultima poziție pe mașină” se cere acum `ORDER BY imei DESC, timestamp DESC`, tot din el (02.11).
     // Încercarea de scoatere așteaptă cel mult 3 s: dacă serverul vechi încă scrie, se reia la pornirea următoare.
     // Fără UNIQUE, vechiul rămâne singurul index pe mașină, deci se face.
     if (positionsUniqueIdx) {
@@ -379,14 +379,14 @@ async function initDb() {
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inventory_number VARCHAR(40);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS ignition_source VARCHAR(10);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS show_transport BOOLEAN DEFAULT TRUE;
-        -- „Km la bord" (index manual pt. mașini fără CAN): valoarea reală introdusă de operator la montare +
+        -- „Km la bord” (index manual pt. mașini fără CAN): valoarea reală introdusă de operator la montare +
         -- snapshot-ul contorului GPS al device-ului (total_odometer, metri) și momentul → indexul se duce înainte.
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_km NUMERIC(12,1);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_dev_m NUMERIC(14,1);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS odo_base_at TIMESTAMPTZ;
-        -- Fila „Încărcare" din fișa vehiculului (simulatorul de încărcare, 12.10): felul, caroseria (metri, interior),
+        -- Fila „Încărcare” din fișa vehiculului (simulatorul de încărcare, 12.10): felul, caroseria (metri, interior),
         -- axele (ampatament, de la axa față la caroserie, șaua față de axa motoare), tara pe axe și semiremorca obișnuită.
-        -- Sarcina utilă e coloana payload, limitele pe axe stau în „Config Camion". Regulile: incarcare.js.
+        -- Sarcina utilă e coloana payload, limitele pe axe stau în „Config Camion”. Regulile: incarcare.js.
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_fel VARCHAR(16);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_lungime NUMERIC(6,2);
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS inc_latime NUMERIC(5,2);
@@ -420,7 +420,7 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_remorci_firma ON remorci(company_id)`);
     // ─── Planurile de încărcare (simulatorul, pasul 4, 12.10): ce a pus dispecerul (vehiculul, semiremorca, marfa,
-    // opririle) și drumul planului: trimis cui, când, „Am încărcat" / „Am o problemă" de la șofer. Cifrele NU se țin:
+    // opririle) și drumul planului: trimis cui, când, „Am încărcat” / „Am o problemă” de la șofer. Cifrele NU se țin:
     // se socotesc din nou la fiecare deschidere (incarcare.simuleaza), cu fișa de azi a vehiculului.
     await client.query(`
       CREATE TABLE IF NOT EXISTS planuri_incarcare (
@@ -434,9 +434,9 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_planuri_firma ON planuri_incarcare(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_planuri_catre ON planuri_incarcare(trimis_catre)`);
-    // „Distribuie locația" (21.10): linkurile publice ale unei mașini, ca locația live de pe WhatsApp. Se ține doar
+    // „Distribuie locația” (21.10): linkurile publice ale unei mașini, ca locația live de pe WhatsApp. Se ține doar
     // AMPRENTA tokenului (cine citește baza nu poate deschide linkul). Un rând trăiește cât linkul: la expirare sau la
-    // „Oprește" se șterge (`stergeLocatiiDistribuiteExpirate`, opresteLocatieDistribuita) — urma rămâne în jurnalul de audit.
+    // „Oprește” se șterge (`stergeLocatiiDistribuiteExpirate`, opresteLocatieDistribuita) — urma rămâne în jurnalul de audit.
     await client.query(`
       CREATE TABLE IF NOT EXISTS locatii_distribuite (
         id SERIAL PRIMARY KEY,
@@ -450,13 +450,13 @@ async function initDb() {
     // (După coloana `status`, care se adaugă abia în blocul de mai sus — pe o bază nouă, mai devreme n-ar exista.)
     // Ziua în care a fost arhivat aparatul (= încetarea contractului pentru el). De aici se numără cele
     // 30 de zile după care i se șterge istoricul (Anexa GDPR din contract, `ZILE_DATE_DUPA_INCETARE`).
-    // `istoric_sters_at` = când s-a șters, ca ecranul să poată spune „s-a șters pe …".
+    // `istoric_sters_at` = când s-a șters, ca ecranul să poată spune „s-a șters pe …”.
     await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS archived_at BIGINT`);
     await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS istoric_sters_at BIGINT`);
     // Aparatele arhivate ÎNAINTE de regula asta (24.09) n-au ziua scrisă: primesc ziua de azi, deci
     // toate cele 30 de zile — nimic nu se șterge pe nepusă masă la prima pornire.
     await client.query(`UPDATE devices SET archived_at = $1 WHERE status = 'archived' AND archived_at IS NULL`, [Date.now()]);
-    // „Aparate noi transmit" (30.09): când am anunțat că aparatul (încă fără firmă) a început să transmită, și ce
+    // „Aparate noi transmit” (30.09): când am anunțat că aparatul (încă fără firmă) a început să transmită, și ce
     // firmă am propus atunci. Un aparat se anunță o singură dată; ecranul bifează la un clic toate aparatele propuse
     // pentru aceeași firmă, chiar dacă au venit în mai multe anunțuri.
     await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS anuntat_nou_la BIGINT`);
@@ -540,7 +540,7 @@ async function initDb() {
 
     // Alimentări card combustibil (import CSV / manual) + reconciliere cu nivelul CAN al rezervorului (detecție furt)
     await client.query(`
-      -- ARHIVĂ. Ecranul „Card combustibil" a fost scos din Management pe 2026-08-21 (decizia lui
+      -- ARHIVĂ. Ecranul „Card combustibil” a fost scos din Management pe 2026-08-21 (decizia lui
       -- Alin: gestiunea alimentărilor pe card rămâne la altcineva). Tabela rămâne, cu datele
       -- importate până atunci — ștergerea lor e o operație deliberată, nu efectul scoaterii unui ecran.
       CREATE TABLE IF NOT EXISTS fuel_transactions (
@@ -565,7 +565,7 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_fuel_tx_company ON fuel_transactions(company_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_fuel_tx_imei_ts ON fuel_transactions(imei, ts)`);
 
-    // Istoric preț carburant național (media zilnică PretCarburant.ro) — pentru modulul „Preț combustibil" (trend în timp)
+    // Istoric preț carburant național (media zilnică PretCarburant.ro) — pentru modulul „Preț combustibil” (trend în timp)
     await client.query(`
       CREATE TABLE IF NOT EXISTS fuel_price_history (
         day VARCHAR(10) PRIMARY KEY,
@@ -589,7 +589,7 @@ async function initDb() {
         ('2026-06-29', 9.41, 8.73, 4.56, 'GlobalPetrolPrices.com', ${Date.now()})
        ON CONFLICT (day) DO NOTHING`
     );
-    // Medii LUNARE reale (arhivă publică de piață) pentru golul iul. 2025 – feb. 2026 — altfel graficul „1 an"
+    // Medii LUNARE reale (arhivă publică de piață) pentru golul iul. 2025 – feb. 2026 — altfel graficul „1 an”
     // trăgea o linie dreaptă de 9 luni între referințele trimestriale. GPL: fără date lunare (NULL) — frontend-ul
     // (web+mobil) filtrează null per serie, deci linia GPL doar interpolează peste referințele existente.
     await client.query(
@@ -790,8 +790,8 @@ async function initDb() {
       // ISTORICUL ACTELOR, per mașină (decizie 2026-08-20). Până acum, reînnoirea ȘTERGEA actul
       // vechi: nu mai știai ce RCA aveai anul trecut, la ce firmă și cât ai dat. Acum actul înlocuit
       // rămâne, doar că primește data înlocuirii. NULL = actul valabil ACUM.
-      // Tot ce înseamnă „starea de azi" (liste, alerte de expirare, rapoarte) filtrează pe NULL —
-      // altfel fiecare RCA reînnoit ar suna la nesfârșit că „a expirat".
+      // Tot ce înseamnă „starea de azi” (liste, alerte de expirare, rapoarte) filtrează pe NULL —
+      // altfel fiecare RCA reînnoit ar suna la nesfârșit că „a expirat”.
       `ALTER TABLE vehicle_documents ADD COLUMN IF NOT EXISTS replaced_at TIMESTAMP`
     ];
     for (const sql of migrateColumns) {
@@ -821,13 +821,13 @@ async function initDb() {
         ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE device_groups ADD COLUMN IF NOT EXISTS work_schedule JSONB;   -- program de lucru (override pe grup)
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS work_schedule JSONB;         -- program de lucru (override pe vehicul)
-        ALTER TABLE devices ADD COLUMN IF NOT EXISTS install_issue JSONB;         -- semnalare „problemă la montaj" {note, at, by} / NULL
+        ALTER TABLE devices ADD COLUMN IF NOT EXISTS install_issue JSONB;         -- semnalare „problemă la montaj” {note, at, by} / NULL
         ALTER TABLE devices ADD COLUMN IF NOT EXISTS abonament_de_la BIGINT;      -- ziua în care pornește abonamentul: prima transmisie pe firmă (28.09)
-        ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_km INTEGER;     -- recurență: următoarea scadență la +N km după „efectuat"
-        ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_months INTEGER; -- recurență: următoarea scadență la +N luni după „efectuat"
+        ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_km INTEGER;     -- recurență: următoarea scadență la +N km după „efectuat”
+        ALTER TABLE maintenance ADD COLUMN IF NOT EXISTS interval_months INTEGER; -- recurență: următoarea scadență la +N luni după „efectuat”
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS company_id INTEGER;
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS photo_b64 TEXT;
-        -- Categoriile de pe permis, ca listă scurtă („B,C,CE"). Codurile valide și încadrarea
+        -- Categoriile de pe permis, ca listă scurtă („B,C,CE”). Codurile valide și încadrarea
         -- (șofer / șofer profesionist) stau în license_cats.js — aici păstrăm doar textul.
         ALTER TABLE drivers ADD COLUMN IF NOT EXISTS license_categories TEXT;
         ALTER TABLE geofences ADD COLUMN IF NOT EXISTS company_id INTEGER;
@@ -879,7 +879,7 @@ async function initDb() {
     // companie proprie, iar formularul nu cerea una) — și atunci se declanșau pentru flotele TUTUROR
     // clienților, invizibile în lista fiecăruia. Unde regula are un vehicul, compania e neechivocă: e a
     // vehiculului. Regulile fără vehicul ȘI fără companie NU se ating (ar fi o ghicitoare) — interfața le
-    // marchează acum vizibil cu „TOATE companiile", ca să fie o alegere, nu o scăpare.
+    // marchează acum vizibil cu „TOATE companiile”, ca să fie o alegere, nu o scăpare.
     await client.query(`
       UPDATE alerts a SET company_id = d.company_id
         FROM devices d
@@ -909,7 +909,7 @@ async function initDb() {
         series VARCHAR(16) NOT NULL DEFAULT 'RAT',
         number INTEGER NOT NULL,
         year INTEGER NOT NULL,
-        full_number VARCHAR(40),                    -- „RAT-2026-00042" (denormalizat pt. afișare/căutare)
+        full_number VARCHAR(40),                    -- „RAT-2026-00042” (denormalizat pt. afișare/căutare)
         type VARCHAR(16) NOT NULL DEFAULT 'invoice', -- invoice | proforma | credit_note
         status VARCHAR(16) NOT NULL DEFAULT 'draft', -- draft | issued | sent | paid | overdue | canceled
         issue_date BIGINT, due_date BIGINT,
@@ -935,7 +935,7 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_invoices_company ON invoices(company_id, created_at DESC)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status, due_date)`);
-    // Ce fel de document e (28.09). Până atunci factura automată socotea „e deja facturată luna?" după
+    // Ce fel de document e (28.09). Până atunci factura automată socotea „e deja facturată luna?” după
     // ORICE factură emisă în lună — deci o factură pentru un aparat vândut oprea, în tăcere, abonamentul
     // lunii. Acum se știe care e abonamentul și pe ce lună, și care e o factură unică (aparate, montaj).
     //   fel:          'abonament' | 'unica' | NULL (factură veche, de dinainte de 28.09)
@@ -1067,12 +1067,12 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_offers_created ON offers(created_at DESC)`);
     // Banii de la ÎNCEPUT (montaj + aparate), în lei. `monthly_total` singur ascundea cel mai mare
-    // număr din afacere: lista scria „290 lei/lună" și tăcea despre cele 7.000 de lei de la semnare
+    // număr din afacere: lista scria „290 lei/lună” și tăcea despre cele 7.000 de lei de la semnare
     // (Alin, 21.09). Se scrie la salvare; ofertele mai vechi îl au gol până sunt resalvate.
     await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS once_total NUMERIC(12,2)`);
     // Pâlnia de vânzări. O ofertă trăia fără stare și fără termen: nu știai care e trimisă, care e
     // moartă de trei luni și până când mai ține prețul (Alin, 21.09). `status` e ciornă/trimisă/
-    // acceptată/pierdută — „expirată" NU se scrie aici, se socotește din `valid_until`, ca să nu
+    // acceptată/pierdută — „expirată” NU se scrie aici, se socotește din `valid_until`, ca să nu
     // existe o stare care rămâne în urmă dacă nu trece nimeni pe la ea.
     await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS status VARCHAR(16) DEFAULT 'ciorna'`);
     await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS valid_until BIGINT`);
@@ -1080,11 +1080,11 @@ async function initDb() {
     await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS decided_at BIGINT`);
     await client.query(`ALTER TABLE offers ADD COLUMN IF NOT EXISTS lost_reason TEXT`);
     // ─── Contractele cu clienții ───────────────────────────────────────────────────────────────
-    // Până acum „contract" era doar o vorbă prin comentarii: o firmă se năștea cu un buton, fără
+    // Până acum „contract” era doar o vorbă prin comentarii: o firmă se năștea cu un buton, fără
     // niciun act în spate. Aici stă dosarul juridic: cine a semnat, de când, pe cât timp, cu ce
     // preaviz, ce aparate sunt contractate (anexa) și acordul GDPR — plus PDF-urile semnate.
     //   • O firmă poate avea mai multe contracte în timp (unul se încheie, altul îl urmează);
-    //     „contractul firmei" e cel mai recent care nu e încheiat.
+    //     „contractul firmei” e cel mai recent care nu e încheiat.
     //   • `annex` e o FOTOGRAFIE a aparatelor și prețurilor la semnare, nu o legătură vie: dacă
     //     mâine clientul mai adaugă un vehicul, anexa semnată trebuie să rămână ce s-a semnat.
     //   • Documentele semnate stau ca base64, exact ca actele vehiculelor (vehicle_documents).
@@ -1115,7 +1115,7 @@ async function initDb() {
     // Anexa nr. 2 a contractului: montajul, așa cum a fost semnat. DOAR partea clientului
     // (ce-i facturăm lui). Costul partenerului stă în `montaje`, care nu ajunge niciodată pe hârtie.
     await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS montaj JSONB`);
-    // Când și la ce adresă a plecat contractul la semnat, din butonul „Trimite la semnat" (24.09).
+    // Când și la ce adresă a plecat contractul la semnat, din butonul „Trimite la semnat” (24.09).
     // Scrise de SERVER, după ce emailul chiar a plecat — nu de ecran.
     await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS sent_at BIGINT`);
     await client.query(`ALTER TABLE contracts ADD COLUMN IF NOT EXISTS sent_to VARCHAR(200)`);
@@ -1155,11 +1155,11 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_montaje_company ON montaje(company_id, created_at DESC)`);
     // Lucrarea pusă pe o PROFORMĂ încă neîncasată (01.10, punctul 19 din verificarea lui Robert): cât proforma e
-    // deschisă, lucrarea nu se mai propune pe alt document; la „Încasată" trece pe factura fiscală (`factura_client`).
+    // deschisă, lucrarea nu se mai propune pe alt document; la „Încasată” trece pe factura fiscală (`factura_client`).
     // O proformă anulată o eliberează singură (se verifică starea proformei, nu se șterge nimic aici).
     await client.query('ALTER TABLE montaje ADD COLUMN IF NOT EXISTS proforma_client INTEGER');
     // Calendarul refăcut (01.10, Alin: „cum mă înțeleg cu instalatorul… să știm și noi dacă are disponibilitate
-    // clientul" + „istoric de lucrări… anulate din motivele instalatorului, buton de anulare… și reprogramează"):
+    // clientul" + „istoric de lucrări… anulate din motivele instalatorului, buton de anulare… și reprogramează”):
     // confirmările vorbite (clipa în care s-au bifat), anularea (cine, când, de ce) și legătura spre ziua nouă.
     for (const col of ['confirmat_instalator_la BIGINT', 'confirmat_client_la BIGINT', 'anulat_la BIGINT', 'anulat_de INTEGER',
       'motiv_anulare VARCHAR(16)', 'detalii_anulare TEXT', 'reprogramat_ca INTEGER']) {
@@ -1171,7 +1171,7 @@ async function initDb() {
     for (const col of ['reg_com VARCHAR(40)', 'address VARCHAR(300)', 'email VARCHAR(200)', 'phone VARCHAR(40)',
       'iban VARCHAR(60)', 'bank VARCHAR(120)', 'legal_rep JSONB', 'zona VARCHAR(300)',
       // Cât de des ne facturează instalatorul ('lunar' / 'saptamanal'; gol = lunar). În același ritm facturăm și noi
-      // montajul clientului (Alin, 30.09: „ca să nu fim pe pierdere"). Regula stă în montaj.js.
+      // montajul clientului (Alin, 30.09: „ca să nu fim pe pierdere”). Regula stă în montaj.js.
       'ritm_facturare VARCHAR(12)']) {
       await client.query('ALTER TABLE montaj_parteneri ADD COLUMN IF NOT EXISTS ' + col);
     }
@@ -1361,7 +1361,7 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_tacho_company ON tacho_files(company_id)`);
     // Fișierul se leagă de ȘOFERUL din aplicație, nu doar de numele ghicit din fișier. Fără legătura
-    // asta nu poți spune „pe cine trebuie să descarci următorul" — și tocmai aia e partea cu amendă.
+    // asta nu poți spune „pe cine trebuie să descarci următorul” — și tocmai aia e partea cu amendă.
     // `incredere` reține dacă citirea s-a verificat structural: un fișier necitit NU trebuie să
     // treacă drept descărcare valabilă la calculul termenului.
     await client.query(`ALTER TABLE tacho_files ADD COLUMN IF NOT EXISTS driver_id INTEGER`);
@@ -1430,14 +1430,14 @@ async function initDb() {
     // Migrare pentru bazele EXISTENTE (coloanele de mai sus acoperă doar bazele proaspete). ATENȚIE la
     // ordine: aceste ALTER-uri stăteau în blocul mare de migrări de la începutul funcției, care rulează
     // ÎNAINTE de CREATE TABLE — pe o bază goală (CI, instalare nouă, sandbox) serverul murea la pornire
-    // cu „relation ai_usage does not exist". Migrarea unei tabele stă DUPĂ crearea ei.
+    // cu „relation ai_usage does not exist”. Migrarea unei tabele stă DUPĂ crearea ei.
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_read_tokens INTEGER DEFAULT 0`);
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cache_write_tokens INTEGER DEFAULT 0`);
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS user_id INTEGER`);
     // Modelul care a răspuns (08.10): prețurile diferă de la model la model (ai.MODELE). Gol = rândurile vechi, scrise
     // toate cu modelul de bază de atunci (Haiku 4.5).
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS model VARCHAR(40)`);
-    // „Sursă externă" (28.10): câte căutări pe internet a făcut apelul (se plătesc separat de tokeni — ai.PRET_CAUTARE_USD).
+    // „Sursă externă” (28.10): câte căutări pe internet a făcut apelul (se plătesc separat de tokeni — ai.PRET_CAUTARE_USD).
     await client.query(`ALTER TABLE ai_usage ADD COLUMN IF NOT EXISTS cautari INTEGER DEFAULT 0`);
     // Pachetele RA Insight (14.10): răspunsurile pe butoane (fără AI). Pe Start se numără (50 pe lună); la celelalte pachete
     // nu se numără, dar le vedem în tabloul nostru. Tabelă separată de ai_usage, ca să nu umfle cifrele de consum AI.
@@ -1460,9 +1460,9 @@ async function initDb() {
         PRIMARY KEY (luna, company_id)
       )
     `);
-    // Pasul 2 al Capitolului 2 („RA Insight face, cu Da-ul tău", 22.10): propunerile din discuție și din pagina „Șoferi pe
+    // Pasul 2 al Capitolului 2 („RA Insight face, cu Da-ul tău”, 22.10): propunerile din discuție și din pagina „Șoferi pe
     // mașini" — ce s-ar schimba (`date.schimbari`: [{ imei, deLa, la }]), cartonașul și starea lui. Ale OMULUI care le-a primit
-    // (user_id în fiecare cerere). „Anulează" ține ANULARE_MIN minute de la `aplicat_la`. Schimbările însele stau în fișele
+    // (user_id în fiecare cerere). „Anulează” ține ANULARE_MIN minute de la `aplicat_la`. Schimbările însele stau în fișele
     // mașinilor, în istoricul șoferilor și în jurnal; rândurile se șterg la 12 luni, ca discuțiile.
     await client.query(`
       CREATE TABLE IF NOT EXISTS insight_actiuni (
@@ -1479,7 +1479,7 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_insight_actiuni_user ON insight_actiuni(user_id, id)`);
-    // „Anunță echipa RA Track" (capitolul 4, 22.10): cererile clienților către noi — mașina, problema, ce s-a întâmplat (scris de
+    // „Anunță echipa RA Track” (capitolul 4, 22.10): cererile clienților către noi — mașina, problema, ce s-a întâmplat (scris de
     // aplicație), mesajul și cum îi găsim, plus datele aparatului din clipa trimiterii (`aparat`, doar pentru noi). Stările:
     // trimisa → preluata → programata → rezolvata (cine și când, la fiecare). O singură cerere DESCHISĂ pe mașină și problemă
     // (indexul parțial). Rămân și după ce clientul pleacă: sunt istoricul relației noastre cu el (BUSINESS_TABLES).
@@ -1506,7 +1506,7 @@ async function initDb() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_cereri_echipa_firma ON cereri_echipa(company_id, creat_la DESC)`);
     await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_cereri_echipa_deschisa ON cereri_echipa(imei, problema) WHERE stare <> 'rezolvata' AND imei IS NOT NULL`);
-    // „Schimbă aparatul" (Robert, 29.10): aparatul GPS montat ACUM pe mașină (NULL = cel de la montaj, adică `imei`) și
+    // „Schimbă aparatul” (Robert, 29.10): aparatul GPS montat ACUM pe mașină (NULL = cel de la montaj, adică `imei`) și
     // continuarea contorului de km al aparatului (aparat_schimbat.js). Un aparat poate fi pe O SINGURĂ mașină (indexul).
     // `schimbari_aparat` = cine, când, ce aparat cu ce, și ce s-a întâmplat cu cel vechi — evidența noastră (BUSINESS_TABLES).
     await client.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS aparat_imei VARCHAR(20)`);
@@ -1566,7 +1566,7 @@ async function initDb() {
     `);
 
     // Rolurile firmei: NU roluri noi, ci ajustări peste cele standard. Firma poate să le RENUMEASCĂ
-    // („Operator depou" în loc de „Dispecer") și să le TAIE din drepturi. Nu poate adăuga drepturi —
+    // („Operator depou” în loc de „Dispecer”) și să le TAIE din drepturi. Nu poate adăuga drepturi —
     // de aceea aici se ține doar lista celor tăiate, iar drepturile de bază rămân în cod. Așa, o
     // greșeală în tabela asta poate produce cel mult un rol cu MAI PUȚINE drepturi, niciodată unul
     // cu mai multe.
@@ -1611,11 +1611,11 @@ async function initDb() {
     await client.query("ALTER TABLE company_roles ADD COLUMN IF NOT EXISTS editari_taiate JSONB NOT NULL DEFAULT '[]'");
     await client.query("ALTER TABLE company_roles ADD COLUMN IF NOT EXISTS rapoarte_taiate JSONB NOT NULL DEFAULT '[]'");
     await client.query('ALTER TABLE company_roles ADD COLUMN IF NOT EXISTS baza VARCHAR(20)');
-    // Rolurile proprii ale firmei („Rol nou"): omul primește un slug de rol, iar rolul lui de bază
+    // Rolurile proprii ale firmei („Rol nou”): omul primește un slug de rol, iar rolul lui de bază
     // rămâne în users.role. Așa, TOATE verificările existente merg mai departe neschimbate.
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS role_slug VARCHAR(40)');
     // RA Insight se vinde pe CONT (loc), nu pe firmă: adminul firmei alege cine îl primește, iar
-    // factura urmează numărul de locuri aprinse. Fără bifa asta, oricine avea „vede rapoartele"
+    // factura urmează numărul de locuri aprinse. Fără bifa asta, oricine avea „vede rapoartele”
     // putea întreba — adică toată firma, la prețul unui singur cont.
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_seat BOOLEAN DEFAULT false');
     // Pachetele RA Insight (14.10): câte întrebări pe lună i-a dat administratorul omului (NULL = fără cifră: colegul are doar
@@ -1625,14 +1625,14 @@ async function initDb() {
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_limita INTEGER');
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_limita_pachet TEXT');
     // UN SINGUR NUME pentru administratorul unei firme. A purtat două, după calea pe care a fost
-    // făcut: „company_admin" (Companii → Client nou) și „admin" (formularul din Utilizatori).
+    // făcut: „company_admin” (Companii → Client nou) și „admin” (formularul din Utilizatori).
     // Drepturile erau identice, dar în aceeași listă apăreau două etichete pentru aceeași putere.
     // Se poate face în siguranță: rolul de admin NU e ajustabil de firme, deci nu există roluri
     // proprii clădite pe el care s-ar rupe. Rulează o dată; a doua oară nu mai are ce muta.
     await client.query("UPDATE users SET role = 'company_admin' WHERE role = 'admin'");
 
     // Prezența în aplicație: un rând la fiecare 5 minute în care omul a avut fereastra DESCHISĂ ȘI ÎN
-    // FAȚĂ. Nu se măsoară „cât e logat" (o filă uitată deschisă peste noapte ar raporta 24 de ore),
+    // FAȚĂ. Nu se măsoară „cât e logat” (o filă uitată deschisă peste noapte ar raporta 24 de ore),
     // ci cât a stat efectiv cu aplicația sub ochi. Cheia primară e (om, interval) → semnalele
     // repetate din aceleași 5 minute nu se adună de două ori, oricâte file ar avea deschise.
     await client.query(`
@@ -1661,7 +1661,7 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_findings_company ON agent_findings(company_id, created_at DESC)`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_findings_created ON agent_findings(created_at DESC)`); // pt. „Toate companiile" (ORDER BY created_at fără filtru pe companie)
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_findings_created ON agent_findings(created_at DESC)`); // pt. „Toate companiile” (ORDER BY created_at fără filtru pe companie)
 
     // Raport săptămânal de activitate a flotei — funcție RETRASĂ (2026-08-13). Tabela se păstrează doar
     // ca arhivă a rapoartelor generate până atunci; nimic din aplicație nu mai scrie și nu mai citește din ea.
@@ -1705,10 +1705,10 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_rhist_expires ON report_history(expires_at)`);
 
     // ─── RA Insight: conversațiile păstrate (02.10) ───
-    // Până acum fiecare întrebare pleca singură: la „Dacia Logan 3", trimis după „câți km a făcut B 154 UIP?",
+    // Până acum fiecare întrebare pleca singură: la „Dacia Logan 3”, trimis după „câți km a făcut B 154 UIP?”,
     // RA Insight uitase întrebarea. O conversație e A OMULUI care a scris-o (nici adminul firmei, nici noi nu
     // o citim) și se șterge la 12 luni de la ultimul mesaj (contracts.js → LUNI_CONVERSATII_AI).
-    // `context` = ce s-a discutat ultima dată (mașini, perioadă, rapoarte), ca „și săptămâna dinainte?" să aibă sens.
+    // `context` = ce s-a discutat ultima dată (mașini, perioadă, rapoarte), ca „și săptămâna dinainte?” să aibă sens.
     await client.query(`
       CREATE TABLE IF NOT EXISTS ai_conversatii (
         id BIGSERIAL PRIMARY KEY,
@@ -1722,7 +1722,7 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_aiconv_user ON ai_conversatii(user_id, actualizat_la DESC)`);
-    // Un mesaj: textul (întrebarea omului sau răspunsul) + `extra` (sursele, „am înțeles", butoanele de ales).
+    // Un mesaj: textul (întrebarea omului sau răspunsul) + `extra` (sursele, „am înțeles”, butoanele de ales).
     // `feedback` = 👍 (1) / 👎 (-1) pe un răspuns.
     await client.query(`
       CREATE TABLE IF NOT EXISTS ai_mesaje (
@@ -1749,12 +1749,12 @@ async function initDb() {
         actualizat_la TIMESTAMP DEFAULT NOW()
       )
     `);
-    // ─── Asistentul fondatorilor: conversațiile păstrate (pasul 4, 04.11; Alin: „da") ───
+    // ─── Asistentul fondatorilor: conversațiile păstrate (pasul 4, 04.11; Alin: „da”) ───
     // Ca la RA Insight: o conversație e a fondatorului care a scris-o (user_id în FIECARE WHERE — nici celălalt fondator n-o vede) și
     // se șterge la 12 luni de la ultimul mesaj (contracts.js → LUNI_CONVERSATII_AI). `context` = ce a întors ultimul răspuns pe loc
-    // (subiectul, perioada, firmele), ca „Și luna trecută?" să meargă și după o redeschidere. Tabele SEPARATE de ale lui RA Insight:
+    // (subiectul, perioada, firmele), ca „Și luna trecută?” să meargă și după o redeschidere. Tabele SEPARATE de ale lui RA Insight:
     // listele, căutarea și ștergerea uneia nu pot atinge niciodată conversațiile celeilalte. `extra` = răspunsul întreg (insigna,
-    // titlul, tabelul, butoanele, rândul „✓"), ca redeschiderea să-l deseneze ca prima dată.
+    // titlul, tabelul, butoanele, rândul „✓”), ca redeschiderea să-l deseneze ca prima dată.
     await client.query(`
       CREATE TABLE IF NOT EXISTS asistent_conversatii (
         id BIGSERIAL PRIMARY KEY,
@@ -1795,10 +1795,10 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_scrisori_user ON scrisori_luni(user_id, saptamana DESC)`);
-    // Panoul Mail (Robert, 12.10), fila „Trimise": ce trimitem NOI — facturi, contracte, avertismente, invitații, mesajele
+    // Panoul Mail (Robert, 12.10), fila „Trimise”: ce trimitem NOI — facturi, contracte, avertismente, invitații, mesajele
     // scrise din panou — de pe adresa comună (contact@) sau de pe adresa unui fondator. Scris de mailer.js (`jurnal`).
     // Corpul se păstrează (tăiat la ~200 KB); atașamentele doar cu numele și mărimea. Fără ștergere automată (Robert:
-    // „mai bine de 12 luni, vom avea un indice de încărcare").
+    // „mai bine de 12 luni, vom avea un indice de încărcare”).
     await client.query(`
       CREATE TABLE IF NOT EXISTS mail_trimise (
         id BIGSERIAL PRIMARY KEY,
@@ -1821,11 +1821,11 @@ async function initDb() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_trimise_de_la ON mail_trimise(de_la, id DESC)`);
     // Etapa 2 (12.10): răspunsul scris din panoul Mail ține minte la ce email primit răspunde.
     await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS raspuns_pentru BIGINT`);
-    // 13.10: „Răspunde tuturor" pune oameni și în Cc — se țin separat de „Către", ca pe ecran să se vadă cine e unde.
+    // 13.10: „Răspunde tuturor” pune oameni și în Cc — se țin separat de „Către”, ca pe ecran să se vadă cine e unde.
     await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS cc TEXT`);
-    // Fila „Primite": ce ne scriu oamenii pe adresele noastre (contact@ și ale fondatorilor), adus de Cloudflare
+    // Fila „Primite”: ce ne scriu oamenii pe adresele noastre (contact@ și ale fondatorilor), adus de Cloudflare
     // (mail_primit.js). `catre` = adresa NOASTRĂ pe care a venit — de ea depinde cine îl vede. Citit / răspuns: o dată pe
-    // email (adresa comună e a tuturor: dacă a răspuns Alin, Robert vede asta). Fără ștergere automată, ca „Trimise".
+    // email (adresa comună e a tuturor: dacă a răspuns Alin, Robert vede asta). Fără ștergere automată, ca „Trimise”.
     await client.query(`
       CREATE TABLE IF NOT EXISTS mail_primite (
         id BIGSERIAL PRIMARY KEY,
@@ -1871,9 +1871,9 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_atasamente_mail ON mail_atasamente(mail_id)`);
-    // ─── Panoul Mail, 13.10 (Robert: „vreau să fie un mail cât mai complet"): dosarele (Primite / Spam / Coș; Trimise / Coș),
+    // ─── Panoul Mail, 13.10 (Robert: „vreau să fie un mail cât mai complet”): dosarele (Primite / Spam / Coș; Trimise / Coș),
     // steaua, expeditorii marcați ca spam și ciornele. `dosar_la` = când a intrat în Spam / Coș (se golesc singure după 30 de
-    // zile); `dosar_inainte` = de unde a venit în Coș (acolo se întoarce la „Recuperează").
+    // zile); `dosar_inainte` = de unde a venit în Coș (acolo se întoarce la „Recuperează”).
     await client.query(`ALTER TABLE mail_primite ADD COLUMN IF NOT EXISTS dosar VARCHAR(8) NOT NULL DEFAULT 'primite'`);
     await client.query(`ALTER TABLE mail_primite ADD COLUMN IF NOT EXISTS dosar_la TIMESTAMP`);
     await client.query(`ALTER TABLE mail_primite ADD COLUMN IF NOT EXISTS dosar_inainte VARCHAR(8)`);
@@ -1882,7 +1882,7 @@ async function initDb() {
     await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS dosar_la TIMESTAMP`);
     await client.query(`ALTER TABLE mail_trimise ADD COLUMN IF NOT EXISTS stea BOOLEAN NOT NULL DEFAULT false`);
     // Expeditorii marcați ca spam, pe adresa NOASTRĂ pe care au scris (pe contact@ îi vede toată echipa; pe una personală,
-    // doar omul ei): emailurile lor următoare merg direct în Spam (Robert, 13.10: „2. a").
+    // doar omul ei): emailurile lor următoare merg direct în Spam (Robert, 13.10: „2. a”).
     await client.query(`
       CREATE TABLE IF NOT EXISTS mail_spam_expeditori (
         catre VARCHAR(200) NOT NULL,
@@ -1911,7 +1911,7 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_mail_ciorne_om ON mail_ciorne(user_id, actualizat_la DESC)`);
-    // Funcția omului (Robert, 13.10: „la semnătură vreau să fie și funcția") — în fișă, lângă telefon.
+    // Funcția omului (Robert, 13.10: „la semnătură vreau să fie și funcția”) — în fișă, lângă telefon.
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS functie VARCHAR(120)`);
 
     // ─── Safe Drive (RA Insight, pasul 3) ───
@@ -1944,7 +1944,7 @@ async function initDb() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_istoric_soferi_imei ON istoric_soferi(imei, de_la)`);
-    // „Am vorbit cu el": ziua în care șeful a discutat cu un șofer (sau despre o mașină fără șofer), ca pagina să arate
+    // „Am vorbit cu el”: ziua în care șeful a discutat cu un șofer (sau despre o mașină fără șofer), ca pagina să arate
     // înainte / după. O notă scurtă, opțională. Ține de firmă; se șterge odată cu șoferul.
     await client.query(`
       CREATE TABLE IF NOT EXISTS safe_drive_discutii (
@@ -1978,10 +1978,10 @@ async function ensureTenancy() {
     }
     // Migrarea de mai jos e pentru date LEGACY (dinainte de multi-tenancy) și trebuie să ruleze O SINGURĂ
     // DATĂ. Fără marcaj, se reaprindea la fiecare pornire: era de ajuns un vehicul neasignat — un dispozitiv
-    // nou adoptat, de pildă — ca să mature în „Compania mea" TOATE rândurile fără companie din șapte tabele,
+    // nou adoptat, de pildă — ca să mature în „Compania mea” TOATE rândurile fără companie din șapte tabele,
     // inclusiv alertele și zonele definite pe toată platforma. Un vehicul nou schimba astfel, tăcut,
     // apartenența unor reguli care n-aveau nicio legătură cu el.
-    // Vehiculele neasignate sunt de altfel o stare LEGITIMĂ a produsului (există lista „fără companie" din
+    // Vehiculele neasignate sunt de altfel o stare LEGITIMĂ a produsului (există lista „fără companie” din
     // Dispozitive, vezi getUnassignedDevices) — operatorul le repartizează, nu o bază de date la repornire.
     if (await getSetting('tenancy_migrated')) return;
     // Bază care are DEJA companii reale = platformă multi-tenant funcțională: nu mai există date „dinainte
@@ -2030,7 +2030,7 @@ async function recordAiUsage(companyId, kind, usage, userId, model) {
   const out = parseInt(usage.output_tokens) || 0;
   const cr = parseInt(usage.cache_read_input_tokens) || 0;
   const cw = parseInt(usage.cache_creation_input_tokens) || 0;
-  // Căutările pe internet („Sursă externă"): adunate de server (`cautari`) sau cum le dă API-ul.
+  // Căutările pe internet („Sursă externă”): adunate de server (`cautari`) sau cum le dă API-ul.
   const cautari = parseInt(usage.cautari != null ? usage.cautari : (usage.server_tool_use && usage.server_tool_use.web_search_requests)) || 0;
   if (!inp && !out && !cr && !cw) return;
   // UN rând = O întrebare a userului (agentul RA Insight face mai multe apeluri pe întrebare, dar
@@ -2041,10 +2041,10 @@ async function recordAiUsage(companyId, kind, usage, userId, model) {
   );
 }
 // Consumul lunii CALENDARISTICE curente (nu 30 de zile rulante) — ca să se potrivească cu factura.
-// `kinds` = tipurile care se numără drept „întrebare" a clientului (restul sunt automatisme interne).
+// `kinds` = tipurile care se numără drept „întrebare” a clientului (restul sunt automatisme interne).
 const AI_BILLABLE_KINDS = ['insight', 'chat', 'report'];
-// Ce intră în costul unei firme (plasa pachetului, „Ne costă"): întrebările ei, scrisoarea de luni și căutările pe internet ale
-// „Sursei externe" (un rând aparte pe întrebare, felul 'sursa_externa' — nu e o întrebare în plus, dar se plătește).
+// Ce intră în costul unei firme (plasa pachetului, „Ne costă”): întrebările ei, scrisoarea de luni și căutările pe internet ale
+// „Sursei externe” (un rând aparte pe întrebare, felul 'sursa_externa' — nu e o întrebare în plus, dar se plătește).
 // 'fisa' (11.11) = scrierea de noapte a fișei fiecărui om: ne costă pe noi, nu e o întrebare a firmei.
 const AI_KINDS_COST_FIRMA = AI_BILLABLE_KINDS.concat(['scrisoare', 'sursa_externa', 'fisa']);
 // ─── Costul consumului AI se socotește pe MODELUL care a răspuns (Robert, 12.10) ───
@@ -2137,7 +2137,7 @@ async function getAiUsageByCompany(sinceDays) {
      FROM ai_usage ${where} GROUP BY company_id, model`, params);
   return _strangePeModele(r.rows, function (x) { return x.company_id == null ? 'null' : String(x.company_id); });
 }
-// Consum AI grupat pe tip de asistent (kind) — pentru panoul „Asistenți AI" din Analize statistice.
+// Consum AI grupat pe tip de asistent (kind) — pentru panoul „Asistenți AI” din Analize statistice.
 // companyId=null → toate companiile (super-admin fără filtru). sinceDays=0/null → tot istoricul.
 async function getAiUsageByKind(companyId, sinceDays) {
   const params = [], conds = [];
@@ -2205,7 +2205,7 @@ async function getPayments(companyId, limit) {
   return r.rows;
 }
 // Plățile încasate într-un interval (ms; ziua plății = `paid_at`, altfel când s-a trecut), cu firma — asistentul fondatorilor (30.10):
-// „Încasări luna asta" și unealta `incasari`. Fără firma demo.
+// „Încasări luna asta” și unealta `incasari`. Fără firma demo.
 async function platiIntre(de, pana) {
   const r = await pool.query(
     `SELECT p.id, p.company_id, p.amount_ron, COALESCE(p.paid_at, p.created_at) AS la, p.method, c.name AS company_name
@@ -2296,7 +2296,7 @@ async function abonamentLuna(companyId, luna, doarValide) {
   return r.rows[0] || null;
 }
 // Facturile VECHI (de dinainte de 28.09, fără `fel`/`luna`) care țin deja loc de abonament pe o lună: neanulate, cu un
-// rând de abonament („Abonament…" / „Supliment…" — aceeași regulă ca la telefonul vechi, `_compuneFactura`) și cu
+// rând de abonament („Abonament…” / „Supliment…” — aceeași regulă ca la telefonul vechi, `_compuneFactura`) și cu
 // perioada peste lună [de, pana]. Fără ele, `abonamentLuna` nu le vedea și o lună veche se putea factura a doua oară
 // (lista lui Robert, 01.10, pct. 7).
 async function abonamentVechiLuna(companyId, de, pana) {
@@ -2314,7 +2314,7 @@ async function abonamentVechiLuna(companyId, de, pana) {
 }
 // Ziua în care pornește abonamentul unei mașini: la PRIMA transmisie după ce aparatul a ajuns pe o firmă
 // client (nu demo), nearhivat. Nu suprascrie o zi deja scrisă. Întoarce `true` dacă aparatul are acum ziua
-// (scrisă acum sau de dinainte), `false` dacă n-are firmă (stă în „Neasignate") — atunci nu pornește nimic.
+// (scrisă acum sau de dinainte), `false` dacă n-are firmă (stă în „Neasignate”) — atunci nu pornește nimic.
 async function pornesteAbonamentul(imei, ms, demoCompanyId) {
   const r = await pool.query(
     `UPDATE devices SET abonament_de_la = COALESCE(abonament_de_la, $2)
@@ -2333,7 +2333,7 @@ async function setAbonamentDeLa(imei, ms) {
 }
 // O SINGURĂ DATĂ, la prima pornire după 28.09: aparatele care transmiteau deja pe firmele clienților primesc
 // o zi de pornire DIN TRECUT (cel mai devreme dintre ziua înregistrării și începutul lunii de acum două luni).
-// Așa, pentru ele nu se schimbă nimic: plătesc luna întreagă, ca până acum — fără „zile" socotite a doua oară
+// Așa, pentru ele nu se schimbă nimic: plătesc luna întreagă, ca până acum — fără „zile” socotite a doua oară
 // pentru o lună deja facturată pe regula veche. Aparatele trecute pe firmă care n-au transmis niciodată
 // rămân fără zi: pornesc la prima transmisie, adică la montaj — exact ce s-a hotărât.
 async function migreazaPornireaAbonamentelor() {
@@ -2390,18 +2390,18 @@ async function payInvoiceAtomic(invoiceId, payment, invoiceFields) {
     args.push(now); sets.push('updated_at = $' + args.length);
     const ir = await client.query(`UPDATE invoices SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, args);
     await client.query('COMMIT');
-    // (Aici se prelungea „accesul până la" — ceasul vechi, scos pe 28.09. Plata nu mai atinge accesul:
+    // (Aici se prelungea „accesul până la” — ceasul vechi, scos pe 28.09. Plata nu mai atinge accesul:
     //  o factură plătită iese singură din socoteala neplății.)
     return { payment: pay, invoice: ir.rows[0] || null };
   } catch (e) { try { await client.query('ROLLBACK'); } catch (_) {} throw e; }
   finally { client.release(); }
 }
-// „Încasată" pe o proformă, DINTR-O BUCATĂ (01.10, punctul 18 din verificarea lui Robert). Erau pași separați:
+// „Încasată” pe o proformă, DINTR-O BUCATĂ (01.10, punctul 18 din verificarea lui Robert). Erau pași separați:
 // două apăsări în aceeași secundă (web + telefon) făceau DOUĂ facturi fiscale — și, de pe 30.09, amândouă plecau
 // singure la client și la ANAF —, iar o eroare la mijloc lăsa o factură fiscală neplătită, care pornea neplata.
-// Acum, într-o singură tranzacție: întâi proforma se REVENDICĂ (trece pe „încasată" doar dacă nu era deja), apoi
+// Acum, într-o singură tranzacție: întâi proforma se REVENDICĂ (trece pe „încasată” doar dacă nu era deja), apoi
 // numărul din seria fiscală, plata, factura fiscală (plătită), legătura proformă ↔ factură și lucrările de montaj de
-// pe proformă (trec pe „facturat clientului", pe factura nouă). A doua apăsare așteaptă rândul proformei, îl găsește
+// pe proformă (trec pe „facturat clientului”, pe factura nouă). A doua apăsare așteaptă rândul proformei, îl găsește
 // încasat și nu mai face nimic (`{ deja: true }`). O eroare oriunde întoarce TOT, inclusiv numărul luat.
 // `o` = { series, iss, client, method, createdBy } — fotografiile emitentului și ale clientului vin de la server.
 async function incaseazaProforma(proformaId, o) {
@@ -2524,7 +2524,7 @@ async function getFinanceSummary(fromMs) {
     `SELECT provider, category, amount, currency, cycle FROM platform_costs WHERE active = true AND amount IS NOT NULL`);
   return { income: inc.rows, expenses: exp.rows, recurring: recurring.rows };
 }
-// ─── Panoul Mail (Robert, 12.10): fila „Trimise" ───
+// ─── Panoul Mail (Robert, 12.10): fila „Trimise” ───
 // Scris de mailer.js după fiecare email NOSTRU (cu `jurnal`). Corpul tăiat la ~200 KB, ca un email lung să nu umple baza.
 const _MAIL_CORP_MAX = 200000;
 async function noteazaMailTrimis(r) {
@@ -2559,8 +2559,8 @@ async function listMailTrimise(adrese, o) {
       WHERE ${w} ORDER BY m.id DESC LIMIT $${p.length - 1} OFFSET $${p.length}`, p);
   return { rows: r.rows.slice(0, lim), maiSunt: r.rows.length > lim };
 }
-// „Șterge" pe un email trimis (13.10): doar cele scrise de mână — regula o păzește serverul. Emailul primit la care era
-// răspunsul își păstrează „Răspuns de …, pe …" (s-a răspuns), doar legătura spre rând se golește.
+// „Șterge” pe un email trimis (13.10): doar cele scrise de mână — regula o păzește serverul. Emailul primit la care era
+// răspunsul își păstrează „Răspuns de …, pe …” (s-a răspuns), doar legătura spre rând se golește.
 async function stergeMailTrimis(id) {
   await pool.query('UPDATE mail_primite SET raspuns_id = NULL WHERE raspuns_id = $1', [id]);
   await pool.query('DELETE FROM mail_trimise WHERE id = $1', [id]);
@@ -2641,7 +2641,7 @@ async function mailEsteSpam(catre, expeditor) {
   const r = await pool.query('SELECT 1 FROM mail_spam_expeditori WHERE catre = $1 AND expeditor = $2', [String(catre || '').toLowerCase(), String(expeditor || '').toLowerCase()]);
   return !!r.rows[0];
 }
-// Golirea Spamului și a Coșului după `zile` (Robert, 13.10: „1, da" — 30 de zile). Atașamentele pleacă odată cu emailul.
+// Golirea Spamului și a Coșului după `zile` (Robert, 13.10: „1, da” — 30 de zile). Atașamentele pleacă odată cu emailul.
 async function stergeMailDosareVechi(zile) {
   const z = Math.max(1, parseInt(zile) || 30);
   const v = await pool.query("SELECT id FROM mail_primite WHERE dosar IN ('cos', 'spam') AND dosar_la IS NOT NULL AND dosar_la < NOW() - ($1 || ' days')::interval", [String(z)]);
@@ -2704,7 +2704,7 @@ async function numarMailCiorne(userId) {
   const r = await pool.query('SELECT COUNT(*)::int AS n FROM mail_ciorne WHERE user_id = $1', [userId]);
   return Number(r.rows[0].n) || 0;
 }
-// Adresele sugerate la „Către" / „Cc": cei care ne-au scris pe adresele omului, cei cărora le-am scris de pe ele, firmele
+// Adresele sugerate la „Către” / „Cc”: cei care ne-au scris pe adresele omului, cei cărora le-am scris de pe ele, firmele
 // (adresa de contact) și oamenii firmelor. Doar candidații — serverul le alege și le ordonează.
 async function mailSugestii(q, adrese) {
   const t = '%' + String(q || '').toLowerCase().slice(0, 60).replace(/[\\%_]/g, '\\$&') + '%';
@@ -2740,7 +2740,7 @@ async function mailSpatiu() {
   try { const r = await pool.query('SELECT pg_database_size(current_database()) AS b'); out.bazaOcteti = Number(r.rows[0].b) || null; } catch (e) {}
   return out;
 }
-// ─── Panoul Mail, etapa 2: fila „Primite" ───
+// ─── Panoul Mail, etapa 2: fila „Primite” ───
 // Un email primit (forma din mail_primit.citeste) + atașamentele lui, într-o tranzacție. Același email venit a doua oară
 // pe aceeași adresă (Cloudflare reîncearcă) nu se scrie din nou: întoarce { id, deja: true }.
 async function noteazaMailPrimit(m) {
@@ -2826,7 +2826,7 @@ async function stergeMailPrimit(id) {
   await pool.query('DELETE FROM mail_atasamente WHERE mail_id = $1', [id]);
   await pool.query('DELETE FROM mail_primite WHERE id = $1', [id]);
 }
-// Câte necitite are fiecare adresă (bulina de pe rândul „Mail" și de pe fiecare adresă).
+// Câte necitite are fiecare adresă (bulina de pe rândul „Mail” și de pe fiecare adresă).
 async function mailNecitite(adrese) {
   const r = await pool.query(`SELECT catre, COUNT(*)::int AS n FROM mail_primite WHERE catre = ANY($1) AND citit_la IS NULL AND dosar = 'primite' GROUP BY catre`,
     [(adrese || []).map(function (a) { return String(a).toLowerCase(); })]);
@@ -2872,7 +2872,7 @@ async function getOfferById(id) {
   const r = await pool.query('SELECT * FROM offers WHERE id = $1', [id]);
   return r.rows[0] || null;
 }
-// Oferta din care s-a născut un contract (legată la „Client nou din ofertă"). Cea mai nouă, dacă ar fi mai multe.
+// Oferta din care s-a născut un contract (legată la „Client nou din ofertă”). Cea mai nouă, dacă ar fi mai multe.
 async function ofertaContractului(contractId) {
   const r = await pool.query('SELECT * FROM offers WHERE contract_id = $1 ORDER BY id DESC LIMIT 1', [contractId]);
   return r.rows[0] || null;
@@ -2899,7 +2899,7 @@ async function deleteOffer(id) {
   return { ok: true };
 }
 // Mută oferta în altă stare. Datele (`sent_at`, `decided_at`) se scriu AICI, nu se trimit de pe
-// ecran: „când a fost trimisă" e un fapt, nu o părere a browserului care a apăsat butonul.
+// ecran: „când a fost trimisă” e un fapt, nu o părere a browserului care a apăsat butonul.
 // Regulile stau în JS, nu în `CASE WHEN` pe același parametru: scrise în SQL, baza nu putea deduce
 // tipul lui `$2` (folosit și ca valoare de coloană, și în două comparații) și pica cu „inconsistent
 // types deduced for parameter $2". Așa se și citesc mai ușor.
@@ -2934,7 +2934,7 @@ async function listContracts(companyId) {
   const r = await pool.query(`SELECT ${_FARA_FISIERE} FROM contracts WHERE company_id = $1 ORDER BY created_at DESC`, [companyId]);
   return r.rows;
 }
-// Contractul „al firmei" = cel care CONTEAZĂ acum, nu pur și simplu ultimul scris.
+// Contractul „al firmei” = cel care CONTEAZĂ acum, nu pur și simplu ultimul scris.
 // Ordinea: cel în vigoare bate orice; apoi cel trimis la semnat, apoi cel aprobat, apoi ciorna;
 // la urmă cele încheiate (ca să se vadă că a EXISTAT unul, nu ca și cum firma n-ar fi avut).
 // Fără regula asta, o ciornă de reînnoire scrisă azi ascundea contractul semnat de anul trecut.
@@ -2951,7 +2951,7 @@ async function getContractById(id) {
   const r = await pool.query(`SELECT ${_FARA_FISIERE} FROM contracts WHERE id = $1`, [id]);
   return r.rows[0] || null;
 }
-// Fișierul unui act, cerut explicit („contract" sau „gdpr"). Singura cale prin care ies base64-urile.
+// Fișierul unui act, cerut explicit („contract” sau „gdpr”). Singura cale prin care ies base64-urile.
 async function getContractFile(id, care) {
   const col = care === 'gdpr' ? 'gdpr' : 'file';
   const r = await pool.query(`SELECT ${col}_b64 AS b64, ${col}_name AS name, ${col}_mime AS mime FROM contracts WHERE id = $1`, [id]);
@@ -3042,7 +3042,7 @@ async function getActFile(id) {
   return r.rows[0] || null;
 }
 // Al câtelea act adițional e ăsta, la contractul dat. Numerotarea e per contract, nu globală:
-// „A1, A2…" se citește lângă numărul contractului și se înțelege dintr-o privire.
+// „A1, A2…” se citește lângă numărul contractului și se înțelege dintr-o privire.
 async function urmatorulNrAct(contractId) {
   const r = await pool.query('SELECT COALESCE(MAX(nr_ordine), 0) + 1 AS n FROM acte_aditionale WHERE contract_id = $1', [contractId]);
   return Number(r.rows[0].n) || 1;
@@ -3256,7 +3256,7 @@ async function stocImeiuri(tipuri, stari) {
   const r = await pool.query(`SELECT serie FROM stoc_echipamente WHERE tip = ANY($1::text[]) AND stare = ANY($2::text[]) AND serie IS NOT NULL`, [tipuri || [], stari || []]);
   return r.rows.map(function (x) { return x.serie; });
 }
-// Bucățile din stoc pentru mai multe serii deodată, cu instalatorul la care stau (pentru „aparate noi transmit").
+// Bucățile din stoc pentru mai multe serii deodată, cu instalatorul la care stau (pentru „aparate noi transmit”).
 async function stocDupaSerii(serii) {
   if (!serii || !serii.length) return [];
   const r = await pool.query(
@@ -3264,10 +3264,10 @@ async function stocDupaSerii(serii) {
        LEFT JOIN montaj_parteneri p ON p.id = s.partener_id WHERE s.serie = ANY($1::text[])`, [serii.map(String)]);
   return r.rows.map(function (x) { return Object.assign({}, x, { partener_id: x.partener_id == null ? null : Number(x.partener_id) }); });
 }
-// ─── „Aparate noi transmit" (30.09) ──────────────────────────────────────────────────────────────
+// ─── „Aparate noi transmit” (30.09) ──────────────────────────────────────────────────────────────
 // Aparatele fără firmă, nearhivate, încă neanunțate, care s-au conectat în ultimele 24 de ore.
-// Aparatele din „Neasignate" (fără firmă, nearhivate) care au transmis în ultimele 7 zile, cu firma propusă la anunț
-// (`anuntat_firma`) — pentru „Azi la noi", primul mesaj al asistentului fondatorilor (30.10). Ușoară: fără poziții.
+// Aparatele din „Neasignate” (fără firmă, nearhivate) care au transmis în ultimele 7 zile, cu firma propusă la anunț
+// (`anuntat_firma`) — pentru „Azi la noi”, primul mesaj al asistentului fondatorilor (30.10). Ușoară: fără poziții.
 async function aparateFaraFirma() {
   const r = await pool.query(
     `SELECT imei, anuntat_firma FROM devices WHERE company_id IS NULL AND status IS DISTINCT FROM 'archived'
@@ -3280,7 +3280,7 @@ async function aparateNoiDeAnuntat() {
         AND last_seen IS NOT NULL AND last_seen > NOW() - INTERVAL '24 hours' ORDER BY imei`);
   return r.rows.map(function (x) { return x.imei; });
 }
-// Dintre IMEI-urile date, cele care sunt ACUM în „Neasignate" (există, fără firmă, nearhivate) — și dacă au transmis.
+// Dintre IMEI-urile date, cele care sunt ACUM în „Neasignate” (există, fără firmă, nearhivate) — și dacă au transmis.
 async function aparateInNeasignate(imeis) {
   if (!imeis || !imeis.length) return [];
   const r = await pool.query(
@@ -3294,14 +3294,14 @@ async function marcheazaAparateAnuntate(imeis, companyId, cand) {
     [imeis.map(String), cand || Date.now(), companyId == null ? null : companyId]);
   return r.rows.length;
 }
-// O singură dată: aparatele care erau deja fără firmă înainte de anunț nu se anunță ca „noi" la prima pornire.
+// O singură dată: aparatele care erau deja fără firmă înainte de anunț nu se anunță ca „noi” la prima pornire.
 async function migreazaAparateNoiAnuntate() {
   try {
     if (await getSetting('aparate_noi_migrat')) return 0;
     const r = await pool.query('UPDATE devices SET anuntat_nou_la = $1 WHERE company_id IS NULL AND anuntat_nou_la IS NULL RETURNING imei', [Date.now()]);
     await setSetting('aparate_noi_migrat', String(Date.now()));
     return r.rows.length;
-  } catch (e) { console.warn('[DB] migrarea anunțului „aparate noi":', e.message); return 0; }
+  } catch (e) { console.warn('[DB] migrarea anunțului „aparate noi”:', e.message); return 0; }
 }
 // Modelul aparatului, pus din stoc când trackerul se conectează prima dată — doar dacă nu l-a scris nimeni.
 async function puneModelGpsDacaLipseste(imei, model) {
@@ -3310,7 +3310,7 @@ async function puneModelGpsDacaLipseste(imei, model) {
   return r.rows.length > 0;
 }
 // Lucrările MONTATE și încă nefacturate clientului, cu ritmul instalatorului — din ele se socotește ce e de facturat
-// (montaj.deFacturatMontaj). Fără zi scrisă se ia ziua în care a fost trecută „montată".
+// (montaj.deFacturatMontaj). Fără zi scrisă se ia ziua în care a fost trecută „montată”.
 async function lucrariMontateNefacturate() {
   const r = await pool.query(
     `SELECT m.id, m.company_id, m.partener_id, COALESCE(m.data_lucrare, m.updated_at, m.created_at) AS data_lucrare, m.items,
@@ -3345,14 +3345,14 @@ async function firmeCuContractIncheiat() {
 }
 
 // O lucrare e LIBERĂ de facturat clientului când e montată, nu e pe nicio factură a noastră și nu stă pe o proformă
-// neanulată (01.10, punctul 19 din verificarea lui Robert). Până atunci „facturat" se ținea DOAR în stare: proforma nu
-// marca nimic, iar „partenerul ne-a facturat" o redeschidea — și „Montaj de facturat" o propunea a doua oară.
-// UN singur loc pentru regula asta: ciorna facturii unice, „Montaj de facturat" (și anunțul lui), verificarea de la
+// neanulată (01.10, punctul 19 din verificarea lui Robert). Până atunci „facturat” se ținea DOAR în stare: proforma nu
+// marca nimic, iar „partenerul ne-a facturat” o redeschidea — și „Montaj de facturat” o propunea a doua oară.
+// UN singur loc pentru regula asta: ciorna facturii unice, „Montaj de facturat” (și anunțul lui), verificarea de la
 // emitere, marcarea și rezervarea pe proformă. (Alias-ul lucrării trebuie să fie `m`.)
 const _MONTAJ_LIBER = `m.status IN ('executat', 'facturat_de_partener') AND m.factura_client IS NULL
   AND NOT EXISTS (SELECT 1 FROM invoices _pf WHERE _pf.id = m.proforma_client AND _pf.status IS DISTINCT FROM 'canceled')`;
 // Lucrările de montaj ale unei firme, cu numele partenerului lângă (ca să nu se ceară separat) și documentul
-// clientului pe care stau (factura noastră / proforma neanulată), ca ecranul să poată spune „pe RAT-2027-00012".
+// clientului pe care stau (factura noastră / proforma neanulată), ca ecranul să poată spune „pe RAT-2027-00012”.
 const _MONTAJ_SELECT = `SELECT m.*, p.name AS partener_nume, fc.full_number AS factura_client_nr,
          pfc.full_number AS proforma_client_nr, (${_MONTAJ_LIBER}) AS liber_de_facturat
     FROM montaje m
@@ -3398,7 +3398,7 @@ async function upsertMontaj(m) {
   return getMontaj(r.rows[0].id);
 }
 async function deleteMontaj(id) { await pool.query('DELETE FROM montaje WHERE id = $1', [id]); return { ok: true }; }
-// Lucrările puse pe o factură FISCALĂ a clientului trec pe „facturat clientului" și țin minte factura
+// Lucrările puse pe o factură FISCALĂ a clientului trec pe „facturat clientului” și țin minte factura
 // (`factura_client`) — ca aceeași lucrare să nu mai fie propusă pe o a doua factură. Doar cele libere.
 async function marcheazaMontajeFacturate(companyId, ids, facturaId) {
   const lista = (ids || []).map(function (x) { return parseInt(x, 10); }).filter(function (x) { return Number.isFinite(x); });
@@ -3410,7 +3410,7 @@ async function marcheazaMontajeFacturate(companyId, ids, facturaId) {
   return (r.rows || []).length;   // `rowCount` lipsește în PGlite — numărăm rândurile întoarse
 }
 // Lucrările puse pe o PROFORMĂ: rămân în starea lor (montajul e făcut, banii nu-s încă), dar nu se mai propun pe alt
-// document cât proforma nu e anulată. La „Încasată" trec pe factura fiscală (`incaseazaProforma`).
+// document cât proforma nu e anulată. La „Încasată” trec pe factura fiscală (`incaseazaProforma`).
 async function rezervaMontajePeProforma(companyId, ids, proformaId) {
   const lista = (ids || []).map(function (x) { return parseInt(x, 10); }).filter(function (x) { return Number.isFinite(x); });
   if (!lista.length) return 0;
@@ -3421,7 +3421,7 @@ async function rezervaMontajePeProforma(companyId, ids, proformaId) {
   return (r.rows || []).length;
 }
 // O factură ANULATĂ (deci neplătită și neajunsă la ANAF) își eliberează lucrările: se întorc la starea de dinainte
-// („partenerul ne-a facturat" dacă are scris numărul facturii lui, altfel „executat") și se pot factura iar.
+// („partenerul ne-a facturat” dacă are scris numărul facturii lui, altfel „executat”) și se pot factura iar.
 async function elibereazaMontajeleFacturii(facturaId) {
   const r = await pool.query(
     `UPDATE montaje SET factura_client = NULL, updated_at = $2,
@@ -3439,7 +3439,7 @@ async function lucrariMontajIntre(de, pana) {
       WHERE m.data_lucrare >= $1 AND m.data_lucrare < $2 ORDER BY m.data_lucrare, m.id`, [de, pana]);
   return r.rows;
 }
-// Calendarul refăcut (01.10): toate zilele încă programate (oricare lună), pentru fila „Programate".
+// Calendarul refăcut (01.10): toate zilele încă programate (oricare lună), pentru fila „Programate”.
 async function montajeProgramate(limita) {
   const r = await pool.query(
     `SELECT m.id, m.company_id, m.contract_id, m.partener_id, m.data_lucrare, m.items, m.status,
@@ -3462,8 +3462,8 @@ async function montajeIstoric(limita) {
       ORDER BY COALESCE(m.data_lucrare, m.updated_at, m.created_at) DESC, m.id DESC LIMIT $1`, [Math.min(parseInt(limita) || 100, 500)]);
   return r.rows;
 }
-// Anularea unei zile programate, dintr-o bucată: trece pe „anulat" DOAR dacă încă era programată (două apăsări sau
-// web + telefon nu anulează de două ori). Mașinile ei se întorc singure la „de programat" (montaj.deProgramat).
+// Anularea unei zile programate, dintr-o bucată: trece pe „anulat” DOAR dacă încă era programată (două apăsări sau
+// web + telefon nu anulează de două ori). Mașinile ei se întorc singure la „de programat” (montaj.deProgramat).
 async function anuleazaMontaj(id, o) {
   const acum = Date.now();
   const r = await pool.query(
@@ -3512,7 +3512,7 @@ async function setContractMontaj(contractId, anexa) {
   return r.rows[0] ? getContractById(contractId) : null;
 }
 
-// Toate contractele, pentru ecranul „Contracte": un rând per contract, cu numele firmei lângă.
+// Toate contractele, pentru ecranul „Contracte”: un rând per contract, cu numele firmei lângă.
 // Fără fișiere (sunt grele) — doar dacă EXISTĂ, ca să se vadă ce dosar e complet.
 async function contracteToate(limita) {
   const r = await pool.query(
@@ -3523,8 +3523,8 @@ async function contracteToate(limita) {
             co.name AS company_name, co.cui, co.address, co.legal_rep, co.is_demo, co.contact_email, co.reg_com,
             (SELECT COALESCE(SUM(a.luni_noi), 0) FROM acte_aditionale a
               WHERE a.contract_id = c.id AND a.status = 'activ')::int AS luni_prelungite,
-            -- O prelungire deja pornită (act nesemnat încă): pe listă scrie „prelungire în lucru",
-            -- nu încă un buton „Reînnoiește" care ar face al doilea act pentru același termen.
+            -- O prelungire deja pornită (act nesemnat încă): pe listă scrie „prelungire în lucru”,
+            -- nu încă un buton „Reînnoiește” care ar face al doilea act pentru același termen.
             (SELECT a.number FROM acte_aditionale a
               WHERE a.contract_id = c.id AND a.status <> 'activ' AND COALESCE(a.luni_noi, 0) > 0
               ORDER BY a.nr_ordine DESC LIMIT 1) AS prelungire_in_lucru
@@ -3541,7 +3541,7 @@ async function drumDateToate(executate) {
     pool.query(`SELECT company_id, COUNT(*)::int AS n FROM invoices
                  WHERE status IS DISTINCT FROM 'draft' AND status IS DISTINCT FROM 'canceled'
                    AND type IS DISTINCT FROM 'proforma' GROUP BY company_id`),   // proforma e cerere de plată, nu factură
-    // `montate` = câte mașini au montajul de aparat GPS executat (una pe mașină) — pentru „10 din 50" și termen (30.09).
+    // `montate` = câte mașini au montajul de aparat GPS executat (una pe mașină) — pentru „10 din 50” și termen (30.09).
     pool.query(`SELECT m.contract_id, COUNT(*)::int AS total,
                        COUNT(*) FILTER (WHERE m.status = ANY($1::varchar[]))::int AS executate,
                        COALESCE(SUM(CASE WHEN m.status = ANY($1::varchar[]) THEN
@@ -3575,7 +3575,7 @@ async function firmeFaraContract() {
   return r.rows;
 }
 // Contractele pe care le urmărim pentru expirare: doar cele în vigoare, la firme adevărate.
-// NU filtrăm aici după „se reînnoiește singur" sau după câte zile au rămas — regula aia stă în
+// NU filtrăm aici după „se reînnoiește singur” sau după câte zile au rămas — regula aia stă în
 // contracts.js și e aceeași peste tot. Aici doar scoatem materia primă, cu numele firmei lângă.
 // Facturile neachitate ale unei firme, cât mai puține coloane: ceasul de neplată are nevoie doar de
 // scadență, stare și sumă. Ordinea e de la cea mai veche, fiindcă ea dă ceasul.
@@ -3639,7 +3639,7 @@ async function createCompany(data) {
 }
 async function updateCompany(id, data) {
   // Se schimbă DOAR câmpurile trimise. Înainte, o cheie lipsă din corp ștergea valoarea: aplicația de telefon 1.0.1
-  // trimitea doar numele, emailul și telefonul, iar „Salvează datele" golea CUI-ul, Reg. Com., adresa, IBAN-ul și banca.
+  // trimitea doar numele, emailul și telefonul, iar „Salvează datele” golea CUI-ul, Reg. Com., adresa, IBAN-ul și banca.
   // O cheie trimisă goală golește în continuare câmpul (așa lucrează formularul de pe web).
   const d = data || {};
   const are = (k) => Object.prototype.hasOwnProperty.call(d, k);
@@ -3655,7 +3655,7 @@ async function updateCompany(id, data) {
   if (!sets.length) return;
   await pool.query('UPDATE companies SET ' + sets.join(', ') + ' WHERE id=$1', params);
 }
-// Completează dosarul firmei DOAR cu ce se trimite — butonul „Completează" din Contracte (24.09). Scrisă când
+// Completează dosarul firmei DOAR cu ce se trimite — butonul „Completează” din Contracte (24.09). Scrisă când
 // `updateCompany` rescria tot rândul; de la APK 1.0.2 (23.09) și aceea schimbă doar cheile trimise, dar o cheie
 // trimisă GOALĂ o golește. Aici golul nu atinge nimic din ce nu e în formular (emailul, telefonul, IBAN-ul).
 async function completeazaDosarFirma(id, d) {
@@ -3695,7 +3695,7 @@ async function firmeCuFlotaGrea(tipuri) {
 // ─── Semiremorcile și remorcile unei firme (simulatorul de încărcare). Rândul vine deja curățat (incarcare.curataRemorca).
 const _REMORCA_COLS = ['fel', 'tip', 'plate', 'model', 'lungime_m', 'latime_m', 'inaltime_m', 'sarcina_kg', 'tara_kg', 'nr_axe',
   'pivot_axe_m', 'axa_fata_m', 'limita_axe_kg', 'imei', 'note'];
-// NUMERIC vine din pg ca text („13.60"); ecranele primesc numere.
+// NUMERIC vine din pg ca text („13.60”); ecranele primesc numere.
 function _remorcaNum(x) {
   if (!x) return x;
   ['lungime_m', 'latime_m', 'inaltime_m', 'pivot_axe_m', 'axa_fata_m'].forEach(function (k) { if (x[k] != null) x[k] = Number(x[k]); });
@@ -3730,7 +3730,7 @@ async function updateRemorca(id, rand) {
   return _remorcaNum(r.rows[0] || null);
 }
 // Atașarea din fișa remorcii (13.10): o remorcă stă la UN vehicul — se desprinde de oricare altul, apoi (dacă e ales) se
-// prinde de cel nou. Regula „se potrivește?" o verifică serverul înainte (incarcare.remorcaPotrivita).
+// prinde de cel nou. Regula „se potrivește?” o verifică serverul înainte (incarcare.remorcaPotrivita).
 async function atasezaRemorca(id, imei) {
   const n = parseInt(id, 10);
   await pool.query('UPDATE devices SET inc_remorca_id = NULL WHERE inc_remorca_id = $1', [n]);
@@ -3758,7 +3758,7 @@ async function creeazaPlan(p) {
     [p.company_id, p.imei, p.remorca_id || null, p.nume || null, p.mod || 'opriri', JSON.stringify(p.opriri || []), JSON.stringify(p.marfa || []), p.creat_de || null, p.creat_de_nume || null, acum]);
   return _planRand(r.rows[0]);
 }
-// Planul schimbat trebuie trimis din nou: „trimis", „încărcat" și „problema" se golesc (destinatarul rămâne, ca propunere).
+// Planul schimbat trebuie trimis din nou: „trimis”, „încărcat” și „problema” se golesc (destinatarul rămâne, ca propunere).
 async function actualizeazaPlan(id, p) {
   const r = await pool.query(`UPDATE planuri_incarcare SET imei = $2, remorca_id = $3, nume = $4, mod = $5, opriri = $6, marfa = $7, actualizat_la = $8,
     trimis_la = NULL, incarcat_la = NULL, problema_la = NULL, problema_text = NULL WHERE id = $1 RETURNING *`,
@@ -3794,7 +3794,7 @@ async function planProblema(id, text) {
 }
 async function stergePlan(id) { await pool.query('DELETE FROM planuri_incarcare WHERE id = $1', [parseInt(id, 10)]); }
 
-// ─── „Distribuie locația" (21.10): linkurile publice ale unei mașini (regulile: locatie_distribuita.js) ───
+// ─── „Distribuie locația” (21.10): linkurile publice ale unei mașini (regulile: locatie_distribuita.js) ───
 async function creeazaLocatieDistribuita(o) {
   const r = await pool.query(
     'INSERT INTO locatii_distribuite (token_hash, imei, company_id, creat_de, creat_la, expira_la) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, imei, company_id, creat_de, creat_la, expira_la',
@@ -3805,7 +3805,7 @@ async function locatieDistribuitaDupaAmprenta(amprenta) {
   const r = await pool.query('SELECT id, imei, company_id, creat_de, creat_la, expira_la FROM locatii_distribuite WHERE token_hash = $1', [String(amprenta)]);
   return r.rows[0] || null;
 }
-// Linkurile încă active ale unei mașini, cu numele celui care le-a făcut (pentru lista „Linkuri active" din fișa mașinii).
+// Linkurile încă active ale unei mașini, cu numele celui care le-a făcut (pentru lista „Linkuri active” din fișa mașinii).
 async function locatiiDistribuiteActive(imei, acum) {
   const r = await pool.query(
     `SELECT l.id, l.imei, l.company_id, l.creat_de, l.creat_la, l.expira_la, COALESCE(u.full_name, u.username) AS creat_de_nume
@@ -3817,12 +3817,12 @@ async function getLocatieDistribuita(id) {
   const r = await pool.query('SELECT id, imei, company_id, creat_de, creat_la, expira_la FROM locatii_distribuite WHERE id = $1', [parseInt(id, 10)]);
   return r.rows[0] || null;
 }
-// „Oprește" = linkul dispare pe loc (rândul se șterge).
+// „Oprește” = linkul dispare pe loc (rândul se șterge).
 async function opresteLocatieDistribuita(id) {
   const r = await pool.query('DELETE FROM locatii_distribuite WHERE id = $1 RETURNING id', [parseInt(id, 10)]);
   return r.rows.length > 0;
 }
-// „Prelungește" (23.10): noua oră de final, doar dacă linkul e încă cel citit (aceeași oră veche) — două prelungiri
+// „Prelungește” (23.10): noua oră de final, doar dacă linkul e încă cel citit (aceeași oră veche) — două prelungiri
 // apăsate deodată nu se adună pe tăcute peste plafon; a doua primește null și ecranul recitește lista.
 async function prelungesteLocatieDistribuita(id, imei, expiraVeche, expiraNoua) {
   const r = await pool.query(
@@ -3859,7 +3859,7 @@ async function setDeviceCompany(imei, companyId) {
   // Altă firmă = alt abonament: ziua de pornire se șterge și se pune din nou la prima transmisie pe firma
   // nouă (28.09). Pe aceeași firmă (o salvare repetată) nu se atinge.
   // Tot la altă firmă (05.11): șoferul și grupa firmei vechi nu rămân pe mașină — un șofer al altei firme nu poate fi pus
-  // pe ea (/assign îl refuză), fișa scria „Nealocat", iar o grupă a firmei vechi ar fi dat acces oamenilor ei. Grupele
+  // pe ea (/assign îl refuză), fișa scria „Nealocat”, iar o grupă a firmei vechi ar fi dat acces oamenilor ei. Grupele
   // platformei (fără firmă) rămân. Rândul deschis din istoricul șoferilor se închide.
   const vechi = await pool.query('SELECT company_id, driver_id FROM devices WHERE imei = $1', [imei]);
   const v = vechi.rows[0];
@@ -3877,7 +3877,7 @@ async function setDeviceCompany(imei, companyId) {
   await _purgeDeviceFeed([imei]);
 }
 // Legăturile rămase de pe vremea când mutarea pe altă firmă nu le rupea (05.11): un șofer sau o grupă a ALTEI firme pe o mașină.
-// Nimic din aplicație nu le mai folosea (fișa scria „Nealocat", rapoartele le săreau), dar salvarea fișei pica pe tăcute. Se
+// Nimic din aplicație nu le mai folosea (fișa scria „Nealocat”, rapoartele le săreau), dar salvarea fișei pica pe tăcute. Se
 // rup la pornire; grupele platformei (fără firmă) rămân. Întoarce mașinile atinse, pentru jurnal.
 async function curataLegaturiAltaFirma(acum) {
   const t = acum != null ? Number(acum) : Date.now();
@@ -3915,7 +3915,7 @@ async function getDeviceCanInterface(imei) {
   const r = await poolIngest.query('SELECT can_interface FROM devices WHERE imei = $1', [imei]); // citită înainte de confirmare
   return r.rows[0] ? (r.rows[0].can_interface || null) : null;
 }
-// Persistă ultimele valori CAN „sticky" (carburant/odometru/AdBlue/ore) per device. Supraviețuiește restartului
+// Persistă ultimele valori CAN „sticky” (carburant/odometru/AdBlue/ore) per device. Supraviețuiește restartului
 // serverului → rămân afișate cât vehiculul e parcat (motor oprit ⇒ nu mai trimite date CAN).
 async function setDeviceLastCan(imei, obj) {
   try { await pool.query('UPDATE devices SET last_can = $2 WHERE imei = $1', [imei, JSON.stringify(obj || {})]); } catch (e) {}
@@ -3997,7 +3997,7 @@ async function getLastStickyCan() {
   return r.rows;
 }
 // Mutare utilizator între companii (super-admin). Curăță grant-urile per-vehicul/grup (deveneau inerte oricum,
-// dar le ștergem ca să nu „reapară" dacă un vehicul ajunge ulterior în noua companie).
+// dar le ștergem ca să nu „reapară” dacă un vehicul ajunge ulterior în noua companie).
 async function setUserCompany(id, companyId) {
   const client = await pool.connect();
   try {
@@ -4042,7 +4042,7 @@ async function createTachoFile(rec) {
 }
 
 // ─── Termene de descărcare ───────────────────────────────────────────────────────────────────────
-// „Cine trebuie descărcat următorul." Întoarce șoferii și vehiculele companiei, inclusiv pe cei care
+// „Cine trebuie descărcat următorul.” Întoarce șoferii și vehiculele companiei, inclusiv pe cei care
 // n-au fost descărcați niciodată — ăia sunt cazul periculos, și tocmai ei lipseau dintr-o listă
 // construită din fișiere. De-aia se pleacă de la șoferi/vehicule, nu de la fișiere.
 //
@@ -4092,7 +4092,7 @@ async function getTachoScadentar(companyId) {
   return { soferi: soferi.rows, vehicule: vehicule.rows };
 }
 
-// Istoricul descărcărilor unui șofer (sau al unui vehicul) — pentru „ce am și ce-mi lipsește".
+// Istoricul descărcărilor unui șofer (sau al unui vehicul) — pentru „ce am și ce-mi lipsește”.
 async function getTachoIstoric(companyId, driverId, imei) {
   const cond = [], params = [];
   if (companyId != null) { params.push(companyId); cond.push('company_id = $' + params.length); }
@@ -4145,7 +4145,7 @@ async function updateEtransport(id, d) {
 }
 
 // ─── Scadențarul e-Transport ─────────────────────────────────────────────────────────────────────
-// Rândurile brute pentru „cine trebuie rezolvat acum". Ca la tahograf, funcția asta NU decide starea:
+// Rândurile brute pentru „cine trebuie rezolvat acum”. Ca la tahograf, funcția asta NU decide starea:
 // întoarce datele (termen, ultima poziție a vehiculului, ultima trimitere la ANAF), iar regulile stau
 // în etransport.js. `ultima_pozitie` vine din `devices.last_seen` — dacă vehiculul nu mai transmite
 // către noi, n-avem ce raporta mai departe, deci e prima cauză de căutat.
@@ -4163,7 +4163,7 @@ async function getEtransportScadentar(companyId) {
   return r.rows;
 }
 async function deleteEtransport(id) { await pool.query('DELETE FROM etransport WHERE id = $1', [id]); }
-// O singură dată (23.10): termenele scrise „până la 23:59:59" fără fus (pagina, telefonul, propunerea veche a
+// O singură dată (23.10): termenele scrise „până la 23:59:59” fără fus (pagina, telefonul, propunerea veche a
 // serverului) se citeau pe ceasul serverului, UTC — cu 2–3 ore după miezul nopții României. Fiecare devine
 // ultima secundă a zilei lui, la noi (`capatZi` = etransport.termenDinFormular). Alte ore nu se ating.
 async function migreazaTermeneEtransport(capatZi) {
@@ -4189,7 +4189,7 @@ async function getActiveEtransports() {
 }
 
 // ─── Setări globale (cheie-valoare) ───
-// Contul de instalare „admin": câți ALȚI super-admini activi există? Zero înseamnă că retragerea lui
+// Contul de instalare „admin”: câți ALȚI super-admini activi există? Zero înseamnă că retragerea lui
 // v-ar închide pe dinafara propriei platforme — de aceea e singura condiție care o oprește.
 async function altiSuperadminiActivi() {
   const r = await pool.query(
@@ -4221,7 +4221,7 @@ async function setSetting(key, value) {
 
 // ─── Agenți AI: constatări ───
 // Dedup INTELIGENT (nu doar pe timp): (1) aceeași cheie în ultimele 12h → suprimat, DAR o ESCALADARE de
-// severitate (warning→critical) trece mereu; (2) respectăm „Ignoră": o constatare respinsă nu reapare ~7 zile
+// severitate (warning→critical) trece mereu; (2) respectăm „Ignoră”: o constatare respinsă nu reapare ~7 zile
 // decât dacă escaladează. Altfel panoul devenea spam (aceeași constatare reînvia de 2×/zi timp de o lună).
 async function createAgentFinding(f) {
   if (f.fkey) {
@@ -4288,7 +4288,7 @@ async function getUnassignedDevices() {
 
 // Întoarce { created:true } DOAR la prima apariție a IMEI-ului. Verificarea existenței ÎNAINTE de upsert
 // e portabilă (PGlite + Postgres), spre deosebire de trucul cu xmax. Rulează o singură dată per CONEXIUNE
-// (la handshake-ul IMEI), nu per pachet → costul SELECT-ului e neglijabil. Eventualul dublu „created" la
+// (la handshake-ul IMEI), nu per pachet → costul SELECT-ului e neglijabil. Eventualul dublu „created” la
 // două prime-conectări concurente e absorbit de dedup-ul notificării (notificationKeyExists).
 async function upsertDevice(imei) {
   const ex = await pool.query('SELECT 1 FROM devices WHERE imei = $1', [imei]);
@@ -4304,7 +4304,7 @@ async function upsertDevice(imei) {
 
 // Trimite null ca să ștergi o valoare; undefined lasă câmpul neatins. Înainte scria toate trei de
 // fiecare dată, așa că un update parțial — de pildă doar modelul de GPS, prin API — ȘTERGEA numărul
-// de înmatriculare, numele și tipul, în tăcere. S-a prins scriind proba pentru „Aparate GPS".
+// de înmatriculare, numele și tipul, în tăcere. S-a prins scriind proba pentru „Aparate GPS”.
 async function updateDeviceInfo(imei, name, vehicleType, plate) {
   const sets = [], vals = [imei];
   if (name !== undefined) { vals.push(name); sets.push('name = $' + vals.length); }
@@ -4324,13 +4324,13 @@ async function setDeviceGpsInfo(imei, gpsModel, simNumber) {
 }
 // Inventarul de echipamente: un rând per dispozitiv, cu clientul, mașina, IMEI, model GPS, SIM și ultima
 // transmisie. companyId = null → toate companiile (super-admin); altfel doar flota companiei.
-// opts.includeArchived = true → intră și cele arhivate (ecranul „Aparate GPS" le arată pe o filă
+// opts.includeArchived = true → intră și cele arhivate (ecranul „Aparate GPS” le arată pe o filă
 // separată). Implicit rămâne fără ele, ca să nu se schimbe inventarul și exportul de până acum.
 async function getDeviceInventory(companyId, opts) {
   const params = [];
   let where = (opts && opts.includeArchived) ? 'TRUE' : "d.status IS DISTINCT FROM 'archived'";
   if (companyId != null) { params.push(companyId); where += ' AND d.company_id = $1'; }
-  // „Ultima transmisie" = cea mai recentă poziție (LATERAL, ca în getDevices), cu `last_seen` ca rezervă
+  // „Ultima transmisie” = cea mai recentă poziție (LATERAL, ca în getDevices), cu `last_seen` ca rezervă
   // pentru dispozitivele care s-au conectat dar n-au trimis încă nicio poziție.
   const r = await pool.query(
     `SELECT d.imei, d.aparat_imei, d.name, d.plate, d.gps_model, d.sim_number, d.status, d.vehicle_type,
@@ -4345,13 +4345,13 @@ async function getDeviceInventory(companyId, opts) {
       ORDER BY c.name NULLS LAST, d.plate NULLS LAST, d.imei`, params);
   return r.rows.map(function (x) {
     const t = x.last_tx && new Date(x.last_tx).getTime() > 0 ? x.last_tx : null;
-    // `aparat_imei` = aparatul montat acum, când s-a schimbat („Schimbă aparatul", 29.10); `imei` rămâne cheia mașinii.
+    // `aparat_imei` = aparatul montat acum, când s-a schimbat („Schimbă aparatul”, 29.10); `imei` rămâne cheia mașinii.
     return { imei: x.imei, aparat_imei: x.aparat_imei || null, name: x.name || null, plate: x.plate || null, gps_model: x.gps_model || null,
       sim_number: x.sim_number || null, company_id: x.company_id, company_name: x.company_name || null, last_tx: t,
       status: x.status || 'active', vehicle_type: x.vehicle_type || null };
   });
 }
-// Sursa stării de „contact": 'auto' (IO 239 calculat de device, implicit) sau 'din1' (folosește DIN1 — pentru
+// Sursa stării de „contact”: 'auto' (IO 239 calculat de device, implicit) sau 'din1' (folosește DIN1 — pentru
 // trackere cu sursa de ignition configurată greșit). Override aplicat la ingest (live + stocat).
 async function setDeviceIgnitionSource(imei, src) {
   const v = (src === 'din1') ? 'din1' : 'auto';
@@ -4390,7 +4390,7 @@ async function deleteDeviceCompletely(imei) {
   return r.rowCount || 0;
 }
 
-// ─── „Schimbă aparatul" (Robert, 29.10) — regulile în aparat_schimbat.js ───
+// ─── „Schimbă aparatul” (Robert, 29.10) — regulile în aparat_schimbat.js ───
 // Mașinile al căror aparat s-a schimbat (harta de la conectare a serverului).
 async function hartaAparate() {
   const r = await pool.query('SELECT imei, aparat_imei FROM devices WHERE aparat_imei IS NOT NULL');
@@ -4411,7 +4411,7 @@ async function istoricAparate(vehicul) {
   const r = await pool.query('SELECT * FROM schimbari_aparat WHERE vehicul_imei = $1 ORDER BY la DESC, id DESC LIMIT 50', [vehicul]);
   return r.rows.map(function (x) { return Object.assign({}, x, { la: Number(x.la) }); });
 }
-// Ce aparate pot fi montate în locul altuia: trackerele din stoc încă nemontate, aparatele din „Neasignate" și — ca să
+// Ce aparate pot fi montate în locul altuia: trackerele din stoc încă nemontate, aparatele din „Neasignate” și — ca să
 // fie scoase din listă — aparatele montate acum pe o mașină (a unei firme, arhivată sau cu aparatul schimbat).
 async function aparateDeMontat(tipuri, stari) {
   const s = await pool.query(
@@ -4438,7 +4438,7 @@ async function _poateLipsi(client, sql, args) {
   catch (e) { await client.query('ROLLBACK TO SAVEPOINT sp_poate'); return null; }
 }
 // Schimbarea, dintr-o bucată: verificările pe starea de ACUM (rândurile încuiate), mutarea a ce a trimis aparatul nou din
-// „Neasignate", aparatul nou pe mașină, contorul și rândul din istoric. Aruncă o eroare cu `cod` (400 / 404 / 409) când nu
+// „Neasignate”, aparatul nou pe mașină, contorul și rândul din istoric. Aruncă o eroare cu `cod` (400 / 404 / 409) când nu
 // se poate. `o` = { vehicul, nou, dinStoc, model, sim (undefined = rămâne), vechiul, motiv, userId, cine, acum }.
 async function schimbaAparat(o) {
   const greseala = function (cod, mesaj) { const e = new Error(mesaj); e.cod = cod; return e; };
@@ -4476,7 +4476,7 @@ async function schimbaAparat(o) {
       const pr = await client.query("SELECT io_data->'total_odometer' AS o FROM positions WHERE imei = $1 AND io_data->>'total_odometer' IS NOT NULL ORDER BY timestamp ASC LIMIT 1", [nou]);
       const primNou = pr.rows[0] && pr.rows[0].o != null && isFinite(Number(pr.rows[0].o)) ? Number(pr.rows[0].o) : null;
       if (vechiM != null) { if (primNou != null) odoAjustare = vechiM - primNou; else odoVechi = vechiM; }
-      // Ce a trimis aparatul cât a stat în „Neasignate" trece pe mașină, cu contorul deja continuat. Aceeași oră deja
+      // Ce a trimis aparatul cât a stat în „Neasignate” trece pe mașină, cu contorul deja continuat. Aceeași oră deja
       // scrisă pe mașină câștigă (ON CONFLICT DO NOTHING) — aparatul vechi, dacă a mai trimis ceva atunci.
       const cols = 'timestamp, latitude, longitude, altitude, angle, speed, satellites, priority';
       const ins = (odoAjustare != null && odoAjustare !== 0)
@@ -4493,7 +4493,7 @@ async function schimbaAparat(o) {
       pozitiiMutate = ins.rows.length;
       await client.query('DELETE FROM positions WHERE imei = $1', [nou]);
       await _poateLipsi(client, 'UPDATE trips SET imei = $1 WHERE imei = $2', [v.imei, nou]);
-      // Restul rândurilor aparatului din „Neasignate" n-au ce căuta pe mașina unei firme (aceeași listă ca la ștergere).
+      // Restul rândurilor aparatului din „Neasignate” n-au ce căuta pe mașina unei firme (aceeași listă ca la ștergere).
       for (const t of ['positions_archive', 'notifications', 'agent_findings', 'vehicle_documents', 'alerts', 'alert_history', 'maintenance',
         'user_device_access', 'tacho_files', 'etransport', 'report_schedules', 'zile_condus', 'istoric_soferi']) {
         await _poateLipsi(client, `DELETE FROM ${t} WHERE imei = $1`, [nou]);
@@ -4525,11 +4525,11 @@ const VEHICLE_DETAIL_COLS = [
   'payload', 'road_tax_category', 'cost_center', 'inventory_number', 'notes',
   'tare_weight', 'max_weight_legal', 'max_weight_construct', 'axle_count', 'ignition_source', 'show_transport',
   'odo_base_km', 'temp_min', 'temp_max',
-  // Fișa vehiculului le trimite dintotdeauna (index.html, secțiunea „Administrativ & afișare"),
+  // Fișa vehiculului le trimite dintotdeauna (index.html, secțiunea „Administrativ & afișare”),
   // dar lipseau de aici — deci se salvau DOAR prin PUT /api/devices/:imei (alt formular), iar din
   // fișă se pierdeau tăcut: completai modelul de GPS, apăsai Salvează, câmpul rămânea gol.
   'gps_model', 'sim_number',
-  // Fila „Încărcare" (12.10) — curățate întâi de incarcare.curataCaroserie, în ruta /details.
+  // Fila „Încărcare” (12.10) — curățate întâi de incarcare.curataCaroserie, în ruta /details.
   'inc_fel', 'inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_ampatament', 'inc_axa_caroserie', 'inc_sa_axa',
   'inc_tara_fata', 'inc_tara_spate', 'inc_remorca_id'
 ];
@@ -4570,7 +4570,7 @@ async function assignDevice(imei, driverId, groupId) {
 }
 // ─── Istoricul șoferilor (Safe Drive) ───
 // Închide rândul deschis al mașinii și, dacă are șofer nou, deschide unul. `acum` în ms.
-// Primul șofer al unei mașini fără niciun rând e socotit „de la început" — cum punea raportul EcoDrive toată perioada pe
+// Primul șofer al unei mașini fără niciun rând e socotit „de la început” — cum punea raportul EcoDrive toată perioada pe
 // șoferul de acum (de obicei, șoferul se trece în aplicație după ce deja conduce mașina). De la al doilea, schimbarea se
 // ține de la clipa ei.
 async function schimbaSoferIstoric(imei, driverId, acum) {
@@ -4584,7 +4584,7 @@ async function inchideSoferiIstoric(driverIds, acum) {
   if (!Array.isArray(driverIds) || !driverIds.length) return;
   await pool.query('UPDATE istoric_soferi SET pana_la = $2 WHERE driver_id = ANY($1::int[]) AND pana_la IS NULL', [driverIds, acum]);
 }
-// La pornire: fiecare mașină cu șofer și fără rând deschis primește unul „de dinainte" (de_la = 0) — până pe 06.10 nu
+// La pornire: fiecare mașină cu șofer și fără rând deschis primește unul „de dinainte” (de_la = 0) — până pe 06.10 nu
 // țineam minte schimbările, deci zilele vechi merg pe șoferul de acum.
 async function semanaIstoricSoferi() {
   const r = await pool.query(`
@@ -4653,7 +4653,7 @@ async function zileCondusStare(imeis, ziDe, ziPana) {
   r.rows.forEach(function (x) { m.set(x.imei + '|' + x.zi, Number(x.la) || 0); });
   return m;
 }
-// ─── „Am vorbit cu el" (Safe Drive) ───
+// ─── „Am vorbit cu el” (Safe Drive) ───
 async function adaugaDiscutieSafeDrive(o) {
   const r = await pool.query('INSERT INTO safe_drive_discutii (company_id, driver_id, imei, la, nota, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, la',
     [o.companyId == null ? null : o.companyId, o.driverId || null, o.imei || null, o.la, o.nota || null, o.userId || null]);
@@ -4835,7 +4835,7 @@ async function insertPositions(imei, records) {
 
   if (values.length === 0) return;
 
-  // ON CONFLICT DO NOTHING doar dacă există indexul UNIQUE (altfel Postgres aruncă „no unique constraint matching").
+  // ON CONFLICT DO NOTHING doar dacă există indexul UNIQUE (altfel Postgres aruncă „no unique constraint matching”).
   const onConflict = positionsUniqueIdx ? ' ON CONFLICT (imei, timestamp) DO NOTHING' : '';
   const query = `
     INSERT INTO positions (imei, timestamp, latitude, longitude, altitude, angle, speed, satellites, priority, io_data, company_id)
@@ -4940,7 +4940,7 @@ async function getDeviceHistory(imei, from, to, limit) {
   return result.rows;
 }
 
-// ─── Istoricul COMPLET al unui aparat, pe pagini (Alin, 02.10: „Descarcă tot istoricul") ─────────────────────────
+// ─── Istoricul COMPLET al unui aparat, pe pagini (Alin, 02.10: „Descarcă tot istoricul”) ─────────────────────────
 // Aceleași rânduri ca getDeviceHistory (poziții vii + arhivă, fără dubluri), dar FĂRĂ plafon: se citesc bucată cu
 // bucată, după timp, de la `dupa` încolo. `dupa` e cheia ultimului rând de pe pagina de dinainte (`cheie`, ora scrisă
 // ca text, cu microsecunde): o dată JS are doar milisecunde, iar o poziție cu microsecunde s-ar citi de două ori.
@@ -4976,7 +4976,7 @@ async function istoricInterval(imei, from, to, dupa, limita) {
   `, [imei, from, to, dupa || null, Math.max(1, Math.min(50000, parseInt(limita) || 20000))]);
   return r.rows;
 }
-// „Din ultimele 30 de zile" (alerta propusă de RA Insight, 23.10): doar pozițiile care trec de pragul efectiv al alertei — puține,
+// „Din ultimele 30 de zile” (alerta propusă de RA Insight, 23.10): doar pozițiile care trec de pragul efectiv al alertei — puține,
 // deci citirea e scurtă și pe o flotă întreagă. Pe mașină și timp, ca regula de răcire a motorului de alerte să se poată aplica.
 async function pozitiiPesteViteza(imeis, from, to, prag, limita) {
   if (!Array.isArray(imeis) || !imeis.length) return [];
@@ -4993,7 +4993,7 @@ async function vitezaMaximaPerioada(imeis, from, to, plafon) {
     [imeis, from, to, Number(plafon) || 250]);
   return r.rows[0] || null;
 }
-// Cel mai rapid punct al unei mașini într-o perioadă (vii + arhivă) — „Am găsit o problemă" (probleme.js, 15.10): de aici se
+// Cel mai rapid punct al unei mașini într-o perioadă (vii + arhivă) — „Am găsit o problemă” (probleme.js, 15.10): de aici se
 // citesc pozițiile din jur, ca să se vadă dacă viteza e reală sau un salt de GPS.
 async function punctVitezaMaxima(imei, from, to) {
   const r = await pool.query(`
@@ -5005,7 +5005,7 @@ async function punctVitezaMaxima(imei, from, to) {
   `, [imei, from, to]);
   return r.rows[0] || null;
 }
-// Ultimele `n` poziții dintr-o perioadă, în ordinea timpului (pentru „Ultima locație": restul perioadei nu contează).
+// Ultimele `n` poziții dintr-o perioadă, în ordinea timpului (pentru „Ultima locație”: restul perioadei nu contează).
 async function istoricCoada(imei, from, to, n) {
   const r = await pool.query(`
     SELECT * FROM (
@@ -5077,7 +5077,7 @@ async function createUser(username, passwordHash, role = 'viewer', extra = {}) {
 }
 
 // ─── Locurile de RA Insight ──────────────────────────────────────────────────────────────────────
-// Un „loc" = un cont care are voie să folosească RA Insight. Se numără DOAR conturile active: un om
+// Un „loc” = un cont care are voie să folosească RA Insight. Se numără DOAR conturile active: un om
 // dezactivat nu mai poate întreba, deci n-are de ce să apară pe factură.
 async function getAiSeats(companyId) {
   const r = await pool.query(
@@ -5179,7 +5179,7 @@ async function costAiDeLa(ms) {
        FROM ai_usage WHERE created_at >= NOW() - make_interval(secs => $1::double precision) GROUP BY model`, [sec]);
   return r.rows.reduce(function (s, x) { return s + _costUsdRand(x); }, 0);
 }
-// Soldul Anthropic „la zi" (04.11): costul aplicației de la o clipă (ms) încoace, PE ZILE UTC ({ 'AAAA-LL-ZZ': usd }, ca zilele lui
+// Soldul Anthropic „la zi” (04.11): costul aplicației de la o clipă (ms) încoace, PE ZILE UTC ({ 'AAAA-LL-ZZ': usd }, ca zilele lui
 // Anthropic), pe model, cu aceeași formulă (`_costUsdRand`). Prima zi cuprinde doar partea de după clipa dată.
 async function costAiPeZile(ms) {
   const sec = Math.max(0, (Date.now() - (Number(ms) || 0)) / 1000);
@@ -5192,7 +5192,7 @@ async function costAiPeZile(ms) {
   r.rows.forEach(function (x) { out[x.zi] = (out[x.zi] || 0) + _costUsdRand(x); });
   return out;
 }
-// „RA Insight · control" → „Anthropic, la zi" (04.11): luna de acum pe FELURI (întrebările clienților, asistentul nostru, actele citite,
+// „RA Insight · control” → „Anthropic, la zi” (04.11): luna de acum pe FELURI (întrebările clienților, asistentul nostru, actele citite,
 // proba modelelor…): câte cereri, tokenii și costul (pe modelul fiecărui rând). Doar numere.
 async function aiLunaPeFel() {
   const r = await pool.query(
@@ -5202,13 +5202,13 @@ async function aiLunaPeFel() {
        FROM ai_usage WHERE created_at >= date_trunc('month', NOW()) GROUP BY kind, model`);
   return _strangePeModele(r.rows, function (x) { return x.kind || 'altele'; });
 }
-// Răspunsurile pe butoane ale lunii, pe firme (tabloul nostru, „Utilizare RA Insight"): { company_id: n }.
+// Răspunsurile pe butoane ale lunii, pe firme (tabloul nostru, „Utilizare RA Insight”): { company_id: n }.
 async function raspunsuriReguliLunaToate() {
   const r = await pool.query("SELECT company_id, COUNT(*)::int AS n FROM ai_reguli WHERE created_at >= date_trunc('month', NOW()) GROUP BY company_id");
   const out = {}; r.rows.forEach(function (x) { if (x.company_id != null) out[x.company_id] = Number(x.n) || 0; });
   return out;
 }
-// „RA Insight · control" (fondatorii, 15.10): câte răspunsuri au primit 👎 în ultimele `zile` zile, pe firmă — DOAR numărul,
+// „RA Insight · control” (fondatorii, 15.10): câte răspunsuri au primit 👎 în ultimele `zile` zile, pe firmă — DOAR numărul,
 // niciodată textul conversațiilor (ele rămân ale omului care le-a scris). { company_id: n }.
 async function aiJosPeFirma(zile) {
   const r = await pool.query(`SELECT c.company_id, COUNT(*)::int AS n FROM ai_mesaje m JOIN ai_conversatii c ON c.id = m.conversatie_id
@@ -5216,7 +5216,7 @@ async function aiJosPeFirma(zile) {
   const out = {}; r.rows.forEach(function (x) { if (x.company_id != null) out[x.company_id] = Number(x.n) || 0; });
   return out;
 }
-// Răspunsurile pe butoane ale lunii, pe oamenii unei firme („Pachet și conturi" pe Start): { user_id: n }.
+// Răspunsurile pe butoane ale lunii, pe oamenii unei firme („Pachet și conturi” pe Start): { user_id: n }.
 async function raspunsuriReguliPeOm(companyId) {
   const r = await pool.query("SELECT user_id, COUNT(*)::int AS n FROM ai_reguli WHERE company_id = $1 AND created_at >= date_trunc('month', NOW()) GROUP BY user_id", [companyId]);
   const out = {}; r.rows.forEach(function (x) { if (x.user_id != null) out[x.user_id] = Number(x.n) || 0; });
@@ -5245,7 +5245,7 @@ async function getAiMonthUsageByUser(companyId, kinds) {
       GROUP BY user_id`, [companyId != null ? companyId : null, k]);
   return r.rows;
 }
-// „Sursă externă" (28.10): câte întrebări cu căutare pe internet a pus firma luna asta — un rând 'sursa_externa' pe întrebare,
+// „Sursă externă” (28.10): câte întrebări cu căutare pe internet a pus firma luna asta — un rând 'sursa_externa' pe întrebare,
 // numărat doar dacă s-a căutat chiar (cautari > 0). Cota e a firmei (sursa_externa.PE_PACHET).
 async function sursaExternaLuna(companyId) {
   if (companyId == null) return 0;
@@ -5253,7 +5253,7 @@ async function sursaExternaLuna(companyId) {
     AND created_at >= date_trunc('month', NOW())`, [companyId]);
   return Number(r.rows[0] && r.rows[0].n) || 0;
 }
-// Pentru „RA Insight · control": pe firmă, întrebările cu sursă externă ale lunii, căutările și costul lor (pe modelul fiecăruia).
+// Pentru „RA Insight · control”: pe firmă, întrebările cu sursă externă ale lunii, căutările și costul lor (pe modelul fiecăruia).
 // { company_id: { intrebari, cautari, cost_usd } } — fără textul căutărilor (nu-l ținem nicăieri).
 async function sursaExternaLunaToate() {
   const r = await pool.query(
@@ -5316,12 +5316,12 @@ async function deviceCanBits() {
   return r.rows;
 }
 // Consumul RA Insight LUNĂ DE LUNĂ (toate firmele), pentru istoricul din panoul fondatorului.
-// `dela` = momentul de la care începem (epoch ms sau Date). Luna e cheia „AAAA-LL", în UTC — aceeași
+// `dela` = momentul de la care începem (epoch ms sau Date). Luna e cheia „AAAA-LL”, în UTC — aceeași
 // convenție ca rândurile din ai_usage, ca să nu iasă două adevăruri pe granița lunii.
 async function getAiUsageByMonth(dela, kinds) {
   const k = Array.isArray(kinds) && kinds.length ? kinds : AI_BILLABLE_KINDS;
   const d = dela instanceof Date ? dela : new Date(Number(dela) || 0);
-  // Pe (lună, model, firmă): costul se socotește pe model, iar „firme" se numără pe lună fără dubluri (o firmă care a
+  // Pe (lună, model, firmă): costul se socotește pe model, iar „firme” se numără pe lună fără dubluri (o firmă care a
   // folosit două modele în aceeași lună e tot o firmă).
   const r = await pool.query(
     `SELECT to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM') AS luna, model, company_id,
@@ -5386,7 +5386,7 @@ async function getUsers(companyId) {
   const result = await pool.query(`
     SELECT u.id, u.username, u.role, u.role_slug, u.full_name, u.email, u.phone, u.functie, u.active, u.last_login, u.created_at, u.company_id, u.ai_seat, u.ai_limita, u.ai_limita_pachet,
       -- Data până la care are acces (conturile demo aprobate expiră). Fără ea, ecranul nu putea
-      -- spune „expiră în 3 zile" — se afla doar intrând în fișa omului.
+      -- spune „expiră în 3 zile” — se afla doar intrând în fișa omului.
       u.access_until,
       c.name AS company_name,
       -- Rolul PROPRIU al firmei (dacă omul are unul) și numele lui. Fără ele, web-ul și telefonul nu știau
@@ -5471,9 +5471,9 @@ async function getPasswordHash(id) {
   return r.rows[0] ? r.rows[0].password_hash : null;
 }
 
-// Datele de contact ale OMULUI, schimbate de el însuși din „Preferințe → Contul meu".
+// Datele de contact ale OMULUI, schimbate de el însuși din „Preferințe → Contul meu”.
 // Nu folosește updateUserProfile fiindcă acela merge pe COALESCE: acolo un câmp golit înseamnă
-// „lasă-l cum era", deci nimeni nu și-ar putea ȘTERGE telefonul. Aici se scrie exact ce s-a trimis,
+// „lasă-l cum era”, deci nimeni nu și-ar putea ȘTERGE telefonul. Aici se scrie exact ce s-a trimis,
 // și numai câmpurile trimise.
 async function setUserContact(id, campuri) {
   const set = [], p = [id];
@@ -5560,7 +5560,7 @@ async function getAuditLog(limit = 100, offset = 0, companyId) {
   return result.rows;
 }
 
-// Familiile de acțiuni, pe înțelesul omului. „Modificări" înseamnă tot ce schimbă date, indiferent
+// Familiile de acțiuni, pe înțelesul omului. „Modificări” înseamnă tot ce schimbă date, indiferent
 // cum se cheamă acțiunea în cod.
 const ACT_FAMILII = {
   conectari: ['login', 'logout'],
@@ -5622,7 +5622,7 @@ async function getCompanyRoles(companyId) {
   return r.rows.map(function (x) {
     return {
       role_key: x.role_key, nume: x.nume || null,
-      // Rândurile vechi (dinainte de rolurile proprii) n-au „baza" scrisă: la ele slug-ul ESTE rolul.
+      // Rândurile vechi (dinainte de rolurile proprii) n-au „baza” scrisă: la ele slug-ul ESTE rolul.
       baza: x.baza || x.role_key,
       taiate: _lista(x.taiate),
       ecrane: _lista(x.ecrane_taiate),
@@ -5814,7 +5814,7 @@ async function getUserByApiKey(keyHash) {
 }
 
 // După o parolă schimbată: închide sesiunile web și tokenurile de telefon ale omului, în afară de cele din care s-a schimbat.
-// Cheile de integrare nu se ating (tokenurile de telefon au numele „mobile:…"). Numărătoarea vine din RETURNING (PGlite n-are rowCount).
+// Cheile de integrare nu se ating (tokenurile de telefon au numele „mobile:…”). Numărătoarea vine din RETURNING (PGlite n-are rowCount).
 async function inchideSesiuniDupaParola(userId, o) {
   const sid = (o && o.sid) || null, keyId = o && o.keyId != null ? Number(o.keyId) : null;
   const s = await pool.query("DELETE FROM user_sessions WHERE sess->>'userId' = $1 AND ($2::text IS NULL OR sid <> $2::text) RETURNING sid", [String(userId), sid]);
@@ -5871,7 +5871,7 @@ async function cleanupExpiredSessions() {
 //
 // Batching-ul se face pe `ctid`, NU pe `id`: cheia primară `id` există doar când TimescaleDB N-a reușit să
 // creeze hypertable-ul (`ALTER TABLE positions DROP CONSTRAINT positions_pkey` rulează doar pe calea Timescale).
-// `timestamp` e indexat în ambele cazuri — indexul e creat explicit „pentru curățare date vechi".
+// `timestamp` e indexat în ambele cazuri — indexul e creat explicit „pentru curățare date vechi”.
 const BATCH_ROWS = Math.max(500, Math.min(50000, parseInt(process.env.RETENTION_BATCH_ROWS) || 5000));
 const BATCH_PAUSE_MS = Math.max(0, parseInt(process.env.RETENTION_BATCH_PAUSE_MS) || 200);
 const BATCH_BUDGET_MS = Math.max(5000, parseInt(process.env.RETENTION_BUDGET_MS) || 10 * 60 * 1000);
@@ -5927,7 +5927,7 @@ async function aparateCuIstoricDeSters(arhivateInainteDe) {
   return r.rows.map(function (x) { return x.imei; });
 }
 // Pe loturi, după TIMP, nu după `ctid`: pe tabelele împărțite în bucăți (hypertable) `ctid` nu e unic
-// între bucăți, deci un „DELETE … WHERE ctid IN (…)" ar putea lovi rânduri străine.
+// între bucăți, deci un „DELETE … WHERE ctid IN (…)” ar putea lovi rânduri străine.
 async function _stergeImeiPeLoturi(tabel, imei) {
   let total = 0;
   for (;;) {
@@ -5941,7 +5941,7 @@ async function _stergeImeiPeLoturi(tabel, imei) {
     if (BATCH_PAUSE_MS) await new Promise(function (res) { setTimeout(res, BATCH_PAUSE_MS); });   // lasă ingestul să respire
   }
 }
-// Întoarce ce s-a șters, pe feluri. Aparatul se marchează „istoric șters" DOAR dacă toate au mers —
+// Întoarce ce s-a șters, pe feluri. Aparatul se marchează „istoric șters” DOAR dacă toate au mers —
 // altfel mâine se încearcă din nou, nu se lasă ceva pe jumătate crezând că e gata.
 async function stergeIstoricAparat(imei) {
   const out = { pozitii: 0, arhiva: 0, curse: 0, alerte: 0, zile: 0, erori: [] };
@@ -6033,13 +6033,13 @@ async function getArchivedImeis() {
   return r.rows.map(x => x.imei);
 }
 
-// Câte poziții arhivate are un dispozitiv (pentru UI: „X poziții păstrate").
+// Câte poziții arhivate are un dispozitiv (pentru UI: „X poziții păstrate”).
 async function countArchivedPositions(imei) {
   const r = await pool.query(`SELECT COUNT(*)::int AS n, MIN(timestamp) AS first_ts, MAX(timestamp) AS last_ts FROM positions_archive WHERE imei = $1`, [imei]);
   return r.rows[0] || { n: 0, first_ts: null, last_ts: null };
 }
 
-// Dispozitivele arhivate + numărul de poziții păstrate în arhivă (pentru pagina „Dispozitive arhivate").
+// Dispozitivele arhivate + numărul de poziții păstrate în arhivă (pentru pagina „Dispozitive arhivate”).
 async function getArchivedDevices() {
   const r = await pool.query(`
     SELECT d.imei, d.name, d.plate, d.vehicle_type, d.company_id, d.last_seen, d.archived_at, d.istoric_sters_at,
@@ -6274,7 +6274,7 @@ async function getUserByResetToken(token) {
 }
 async function consumeUserResetToken(id, passwordHash) {
   // Aici era și `active = true`. Setarea parolei REACTIVA un cont dezactivat: dezactivai un angajat
-  // plecat, el cerea „am uitat parola" pe adresa lui și contul revenea la viață. Nu servea nici
+  // plecat, el cerea „am uitat parola” pe adresa lui și contul revenea la viață. Nu servea nici
   // invitațiilor — conturile se creează active din start (`active BOOLEAN DEFAULT true`).
   // Schimbarea parolei nu are ce căuta în dreptul de acces; sunt două lucruri diferite.
   await pool.query('UPDATE users SET password_hash = $2, reset_token = NULL, reset_expires = NULL WHERE id = $1', [id, passwordHash]);
@@ -6512,7 +6512,7 @@ async function insertAlertEvent(alertId, imei, data) {
     [alertId, imei, JSON.stringify(data)]
   );
 }
-// Când a sunat ultima oară o regulă pe o mașină (ms), sau null. Pentru alertele „de stare", după o repornire a serverului:
+// Când a sunat ultima oară o regulă pe o mașină (ms), sau null. Pentru alertele „de stare”, după o repornire a serverului:
 // altfel fiecare publicare ar suna din nou pe toate mașinile la care starea ține (alerte_stare.js).
 async function ultimaAlertaSunata(alertId, imei) {
   const r = await pool.query('SELECT triggered_at FROM alert_history WHERE imei = $1 AND alert_id = $2 ORDER BY triggered_at DESC LIMIT 1', [imei, alertId]);
@@ -6628,7 +6628,7 @@ async function getLastIo(imei) {
 async function getVehicleDocuments(imei, companyId) {
   // FĂRĂ file_b64 la listare, deliberat. Lista e chemată de checkExpiries pe TOATE documentele
   // (de două ori pe rulare) și de fiecare deschidere de fișă — a căra imaginea actului peste tot
-  // ar însemna sute de KB pe rând pentru un câmp de care are nevoie doar butonul „Vezi actul".
+  // ar însemna sute de KB pe rând pentru un câmp de care are nevoie doar butonul „Vezi actul”.
   // `has_file` spune interfeței dacă există ceva de arătat; imaginea vine din getVehicleDocumentFile.
   // Doar actele VALABILE ACUM (replaced_at IS NULL). Cele înlocuite rămân în tabelă, dar se cer
   // separat, cu getVehicleDocumentHistory — vezi comentariul de la migrarea coloanei.
@@ -6642,7 +6642,7 @@ async function getVehicleDocuments(imei, companyId) {
   const result = await pool.query(query, params);
   return result.rows;
 }
-// Actele ÎNLOCUITE, cele mai noi întâi. „Ce RCA aveam anul trecut și cât am dat pe el."
+// Actele ÎNLOCUITE, cele mai noi întâi. „Ce RCA aveam anul trecut și cât am dat pe el.”
 async function getVehicleDocumentHistory(imei, companyId) {
   let query = `SELECT id, imei, doc_type, number, issuer, issue_date, expiry_date, notes, company_id,
                       created_at, replaced_at, cost, file_mime, file_name, (file_b64 IS NOT NULL) AS has_file
@@ -6705,7 +6705,7 @@ async function updateVehicleDocument(id, data) {
 async function deleteVehicleDocument(id) {
   await pool.query('DELETE FROM vehicle_documents WHERE id = $1', [id]);
 }
-// „Anulează" pe un act trecut prin RA Insight (26.10): actele pe care „Da" le-a scos din uz (au trecut în istoric) se întorc valabile —
+// „Anulează” pe un act trecut prin RA Insight (26.10): actele pe care „Da” le-a scos din uz (au trecut în istoric) se întorc valabile —
 // doar ale mașinii și firmei lor. Numărătoarea din RETURNING (PGlite n-are rowCount).
 async function restaureazaActe(ids, imei, companyId) {
   const l = (Array.isArray(ids) ? ids : []).map(Number).filter(function (x) { return Number.isFinite(x); });
@@ -6808,7 +6808,7 @@ async function treceActiuneInsight(id, userId, dinStare, campuri) {
     [parseInt(id) || 0, userId, String(dinStare), String(c.stare), c.date ? JSON.stringify(c.date) : null, c.aplicatLa == null ? null : c.aplicatLa, c.anulatLa == null ? null : c.anulatLa]);
   return _actiuneRand(r.rows[0]);
 }
-// Propunerea făcută în discuție ține minte conversația (acolo vine „pasul următor" după „Da").
+// Propunerea făcută în discuție ține minte conversația (acolo vine „pasul următor” după „Da”).
 async function legaActiuneInsight(id, userId, convId) {
   await pool.query('UPDATE insight_actiuni SET conversatie_id = $3 WHERE id = $1 AND user_id = $2', [parseInt(id) || 0, userId, convId == null ? null : Number(convId)]);
 }
@@ -6816,8 +6816,8 @@ async function stergeActiuniInsightMaiVechiDe(luni) {
   const r = await pool.query('DELETE FROM insight_actiuni WHERE creat_la < $1 RETURNING id', [Date.now() - Math.max(1, Number(luni) || 12) * 30.44 * 86400000]);
   return r.rows.length;
 }
-// Șoferii unei firme pentru „Șoferi pe mașini": categoriile și valabilitatea permisului și mașinile pe care e trecut fiecare,
-// din TOATĂ firma (nearhivate) — un șofer trecut pe o mașină pe care omul n-o vede nu e „liber".
+// Șoferii unei firme pentru „Șoferi pe mașini”: categoriile și valabilitatea permisului și mașinile pe care e trecut fiecare,
+// din TOATĂ firma (nearhivate) — un șofer trecut pe o mașină pe care omul n-o vede nu e „liber”.
 async function soferiPentruPotrivire(companyId) {
   const r = await pool.query(
     `SELECT d.id, d.name, d.license_categories, d.license_expiry, v.imei
@@ -6848,7 +6848,7 @@ async function soferAlFirmei(driverId, companyId) {
   return r.rows.length > 0;
 }
 
-// ─── „Anunță echipa RA Track" (capitolul 4, 22.10): cererile clienților către noi ──────────────────────────────────────────
+// ─── „Anunță echipa RA Track” (capitolul 4, 22.10): cererile clienților către noi ──────────────────────────────────────────
 // Rândul vine cu numele firmei, al mașinii și al oamenilor (cine a trimis, cine a preluat / programat / rezolvat). Regulile și
 // textele stau în cereri_echipa.js.
 const _CERERE_SELECT = `SELECT c.*, co.name AS company_name, dv.plate, dv.name AS masina,
@@ -6892,14 +6892,14 @@ async function cerereEchipa(id) {
   const r = await pool.query(_CERERE_SELECT + ' WHERE c.id = $1', [parseInt(id) || 0]);
   return _cerereRand(r.rows[0]);
 }
-// Cererile deschise pe niște mașini (caseta din discuție arată „Echipa se ocupă" în locul butonului).
+// Cererile deschise pe niște mașini (caseta din discuție arată „Echipa se ocupă” în locul butonului).
 async function cereriDeschisePeMasini(imeis) {
   const l = (imeis || []).filter(Boolean).map(String);
   if (!l.length) return [];
   const r = await pool.query(_CERERE_SELECT + ` WHERE c.imei = ANY($1::text[]) AND c.stare <> 'rezolvata'`, [l]);
   return r.rows.map(_cerereRand);
 }
-// „Cererile tale": ale omului; administratorul firmei (userId = null) le vede pe toate ale firmei.
+// „Cererile tale”: ale omului; administratorul firmei (userId = null) le vede pe toate ale firmei.
 async function cereriEchipaFirma(companyId, userId) {
   const p = [Number(companyId)];
   let w = 'c.company_id = $1';
@@ -6977,13 +6977,13 @@ async function livrariPentruRef(refs, deLa) {
   const r = await pool.query('SELECT * FROM email_livrari WHERE ref = ANY($1::text[]) AND trimis_la >= $2 ORDER BY trimis_la DESC LIMIT 2000', [l, Number(deLa) || 0]);
   return r.rows;
 }
-// Scoasă de pe lista blocată: emailurile vechi către ea nu mai sunt „blocate" (următorul se întreabă din nou, de la zero).
+// Scoasă de pe lista blocată: emailurile vechi către ea nu mai sunt „blocate” (următorul se întreabă din nou, de la zero).
 async function marcheazaDeblocata(email, acum) {
   const r = await pool.query(`UPDATE email_livrari SET stare = 'deblocat', stare_la = $2 WHERE catre = $1 AND stare = 'blocat' RETURNING id`,
     [String(email || '').toLowerCase(), Number(acum) || Date.now()]);
   return r.rows.length;
 }
-// Ultimul email lămurit, bun și rău — pentru „Stare producție".
+// Ultimul email lămurit, bun și rău — pentru „Stare producție”.
 async function ultimeleLivrari() {
   const rau = await pool.query(`SELECT * FROM email_livrari WHERE stare IN ('respins', 'blocat', 'spam', 'invalid', 'eroare') ORDER BY COALESCE(stare_la, trimis_la) DESC LIMIT 1`);
   const bun = await pool.query(`SELECT * FROM email_livrari WHERE stare IN ('livrat', 'deschis') ORDER BY COALESCE(stare_la, trimis_la) DESC LIMIT 1`);
@@ -7000,14 +7000,14 @@ async function setScheduleRun(id, lastRunIso, nextRunIso, st) {
     'UPDATE report_schedules SET last_run = $2, next_run = $3, ultima_stare = $4, ultima_eroare = $5, email_reincercari = $6, email_raport_id = $7 WHERE id = $1',
     [parseInt(id), lastRunIso, nextRunIso, st.stare || null, st.eroare ? String(st.eroare).slice(0, 500) : null, Number(st.reincercari) || 0, st.raportId != null ? parseInt(st.raportId) : null]);
 }
-// „Trimite acum" scrie doar starea (nu mută rularea de mâine și nu pornește reîncercări).
+// „Trimite acum” scrie doar starea (nu mută rularea de mâine și nu pornește reîncercări).
 async function setScheduleStare(id, lastRunIso, stare, eroare) {
   await pool.query('UPDATE report_schedules SET last_run = $2, ultima_stare = $3, ultima_eroare = $4 WHERE id = $1',
     [parseInt(id), lastRunIso, stare || null, eroare ? String(eroare).slice(0, 500) : null]);
 }
 
 // ─── Istoric rapoarte (per user, retenție 7 zile) ───
-// JSON.stringify rezistent la referințe circulare / valori non-serializabile — altfel un raport „problematic"
+// JSON.stringify rezistent la referințe circulare / valori non-serializabile — altfel un raport „problematic”
 // făcea INSERT-ul să pice și nu ajungea în Istoric (mai ales rapoartele programate).
 function _safeJson(o) {
   let s;
@@ -7077,7 +7077,7 @@ async function listDemoRequests(opts) {
   const q = await pool.query(`SELECT * FROM demo_requests ${where} ORDER BY created_at DESC LIMIT ${lim}`, params);
   return q.rows;
 }
-// Bulina „Cereri demo" din meniu (30.10): câte cereri sunt încă noi, oricare ar fi fila deschisă în pagină.
+// Bulina „Cereri demo” din meniu (30.10): câte cereri sunt încă noi, oricare ar fi fila deschisă în pagină.
 async function demoRequestsNoi() {
   const q = await pool.query("SELECT COUNT(*)::int AS n FROM demo_requests WHERE status = 'new'");
   return Number((q.rows[0] || {}).n) || 0;
@@ -7112,7 +7112,7 @@ async function setUserAccessUntil(id, untilMs) {
   await pool.query('UPDATE users SET access_until = $2 WHERE id = $1', [id, untilMs == null ? null : Math.round(untilMs)]);
 }
 // Câte conturi demo sunt ACUM valabile — asta decide dacă simulatorul de poziții mai are pentru cine să meargă.
-// `access_until IS NOT NULL` e esențial: contul partajat „demo" n-are termen și ar ține simulatorul pornit la
+// `access_until IS NOT NULL` e esențial: contul partajat „demo” n-are termen și ar ține simulatorul pornit la
 // nesfârșit; el e doar deținătorul istoric al ACL-ului, nu un client care se uită la hartă.
 async function countActiveDemoUsers(companyId, nowMs) {
   if (companyId == null) return 0;
@@ -7247,13 +7247,13 @@ async function puneFisaAi(userId, companyId, f, panaMs) {
       pana_la = EXCLUDED.pana_la, actualizat_la = NOW()`,
   [userId, companyId == null ? null : companyId, JSON.stringify((f && f.randuri) || []), JSON.stringify((f && f.nume) || []), Number(panaMs)]);
 }
-// „uită că …": schimbă doar rândurile și numele, nu și până unde s-a citit.
+// „uită că …”: schimbă doar rândurile și numele, nu și până unde s-a citit.
 async function schimbaFisaAi(userId, f) {
   const r = await pool.query('UPDATE ai_fise SET randuri = $2::jsonb, nume = $3::jsonb, actualizat_la = NOW() WHERE user_id = $1 RETURNING user_id',
     [userId, JSON.stringify((f && f.randuri) || []), JSON.stringify((f && f.nume) || [])]);
   return r.rows.length > 0;
 }
-// „Șterge tot ce știe despre mine" (Setări → Preferințe). Rândul pleacă de tot: fișa se reface din discuțiile de după ștergere.
+// „Șterge tot ce știe despre mine” (Setări → Preferințe). Rândul pleacă de tot: fișa se reface din discuțiile de după ștergere.
 // `pana_la` rămâne ca prag în rândul gol, ca discuțiile de dinainte să nu ajungă din nou în fișă.
 async function stergeFisaAi(userId) {
   const r = await pool.query(`UPDATE ai_fise SET randuri = '[]'::jsonb, nume = '[]'::jsonb, pana_la = NOW()::timestamp, actualizat_la = NOW()

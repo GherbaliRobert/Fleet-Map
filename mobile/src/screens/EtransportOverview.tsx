@@ -2,14 +2,14 @@ import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
-import { de } from '../lib/contracte'; // „15 minute", dar „24 de ore" — același acord ca _raxDe de pe web
+import { de } from '../lib/contracte'; // „15 minute”, dar „24 de ore” — același acord ca _raxDe de pe web
 import { AntetFondator, Banda, Cifra, adresaFirmei, cand, numar } from '../components/FondatorUi';
 import './admin.css';
 import './fondator.css';
 
 // e-Transport, privirea FONDATORULUI — o firmă pe cartonaș (ca pe web, _etfRandeaza). Aici NU se adaugă și NU se
 // șterge niciun transport: noi vedem cine are modulul, cine are coduri expirate sau camioane care tac (amendă),
-// cine plătește modulul și nu-l folosește și cine are mașini, dar n-are modulul. Singura acțiune: „Deschide firma".
+// cine plătește modulul și nu-l folosește și cine are mașini, dar n-are modulul. Singura acțiune: „Deschide firma”.
 // Termenul UIT, tăcerea vehiculului și starea transportului vin de la server (etransport.js); nicio durată scrisă aici.
 type Semn = { t: string; c: string; rau: boolean };
 function semn(f: any): Semn {
@@ -134,11 +134,11 @@ export function EtransportOverview() {
                 </div>
               );
             })}
-            {/* Toate cifrele de aici vin de la server (etransport.js): „codul ține 5 zile" e lege, nu decor de ecran. */}
+            {/* Toate cifrele de aici vin de la server (etransport.js): „codul ține 5 zile” e lege, nu decor de ecran. */}
             {pr.zileNational != null && (
               <div class="fd-note" style="margin-top:12px">
                 Codul UIT ține <b>{pr.zileNational} zile</b> ({pr.zileIntracomunitar} la achiziții intracomunitare), iar un camion care tace mai mult
-                de <b>{pr.tacereMinute}{de(pr.tacereMinute)}minute</b> intră la „de rezolvat". „Expiră curând" = sub <b>{pr.curandOre}{de(pr.curandOre)}ore</b>.
+                de <b>{pr.tacereMinute}{de(pr.tacereMinute)}minute</b> intră la „de rezolvat”. „Expiră curând” = sub <b>{pr.curandOre}{de(pr.curandOre)}ore</b>.
                 Codurile și transporturile rămân la client — noi vedem cine e în urmă, ca să-l sunăm.
               </div>
             )}

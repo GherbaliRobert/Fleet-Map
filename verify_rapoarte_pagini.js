@@ -3,19 +3,19 @@
 //   node verify_rapoarte_pagini.js
 //
 // De ce: rapoartele citeau cel mult 50.000 de poziții pe mașină, cele mai vechi, fără să spună. O lună a unei mașini care
-// merge zilnic are cam atât; „km luna trecută" număra doar primele ~2 săptămâni, iar „Ultima locație" pe o perioadă lungă
+// merge zilnic are cam atât; „km luna trecută” număra doar primele ~2 săptămâni, iar „Ultima locație” pe o perioadă lungă
 // ieșea de la mijlocul ei. Proba păzește:
 //   1. pe o bază de probă cu ~3.500 de poziții pe mașină, plafonul coborât la 1.000 și pagini de 300: rapoartele citite pe
 //      pagini dau EXACT cifrele citirii dintr-o bucată (fără plafon) — km, consum, costuri, emisii, ralanti, viteză,
 //      EcoDrive, clasamentul șoferilor, ore motor, alimentări, ultima locație, statisticile de consum; și cu filtrul zile/ore;
 //   2. martorul: citirea veche (oprită la plafon) chiar număra mai puțini km — reparația are ce repara;
 //   3. rapoartele care au nevoie de tot traseul deodată (staționări, curse) o SPUN când se opresc: `trunchiat` pe raport,
-//      cu ziua până la care s-a citit, plus rândul „Atenție" în legendă (ecran, Excel, PDF), în AI Raport și la RA Insight;
+//      cu ziua până la care s-a citit, plus rândul „Atenție” în legendă (ecran, Excel, PDF), în AI Raport și la RA Insight;
 //   4. pe server pornit (plafon 300, pagini de 100, 700 de poziții adevărate în bază): km-ii întregi, ultima locație
 //      adevărată, avertismentul la staționări, AI Raport cu cifra întreagă.
 'use strict';
 // Fără adrese: pe GitHub serviciul de hărți răspunde, iar o adresă găsită în buget la prima rulare și nu la a doua face
-// două rapoarte „diferite" (06.10: așa a picat proba acolo, de 5 ori). Proba urmărește CE poziții se citesc, nu adresele,
+// două rapoarte „diferite” (06.10: așa a picat proba acolo, de 5 ori). Proba urmărește CE poziții se citesc, nu adresele,
 // deci le cere unui port închis — ca aici, unde rețeaua spre hărți e oprită. Serverul pornit de probă moștenește setarea.
 process.env.GEOCODE_URL = 'http://127.0.0.1:9/reverse';
 process.env.GEOCODE_MIN_INTERVAL_MS = '0';
@@ -77,13 +77,13 @@ const pool = { query: async (sql) => {
   return { rows: [] };
 } };
 const inPerioada = (imei, from, to) => (DATE[imei] || []).filter((p) => p.timestamp >= new Date(from).toISOString() && p.timestamp <= new Date(to).toISOString());
-// Baza „nouă": citire pe pagini + coadă; getDeviceHistory ține plafonul (ca baza adevărată).
+// Baza „nouă”: citire pe pagini + coadă; getDeviceHistory ține plafonul (ca baza adevărată).
 const bazaPagini = { pool,
   getDeviceHistory: async (imei, from, to, limit) => inPerioada(imei, from, to).slice(0, limit || 50000),
   istoricInterval: async (imei, from, to, dupa, limita) => inPerioada(imei, from, to).filter((p) => !dupa || p.cheie > dupa).slice(0, limita),
   istoricCoada: async (imei, from, to, n) => inPerioada(imei, from, to).slice(-n),
   getAlertHistoryRange: async () => [] };
-// Baza „dintr-o bucată, fără plafon" — ce ar trebui să iasă.
+// Baza „dintr-o bucată, fără plafon” — ce ar trebui să iasă.
 const bazaToata = { pool, getDeviceHistory: async (imei, from, to) => inPerioada(imei, from, to), getAlertHistoryRange: async () => [] };
 // Martorul: citirea VECHE, oprită la plafon, fără pagini.
 const bazaVeche = { pool, getDeviceHistory: async (imei, from, to, limit) => inPerioada(imei, from, to).slice(0, limit || 50000), getAlertHistoryRange: async () => [] };
@@ -100,15 +100,15 @@ const egal = (a, b) => JSON.stringify(fara(a)) === JSON.stringify(fara(b));
   for (const tip of RAPOARTE) {
     const p = await reports.runReport(bazaPagini, tip, IMEIS, FROM, TO, OPTS, null);
     const t = await reports.runReport(bazaToata, tip, IMEIS, FROM, TO, OPTS, null);
-    T('„' + p.label + '": aceleași cifre, fără avertisment', egal(p, t) && !p.trunchiat, JSON.stringify(fara(p)).slice(0, 160) + ' ≠ ' + JSON.stringify(fara(t)).slice(0, 160));
+    T('„' + p.label + '”: aceleași cifre, fără avertisment', egal(p, t) && !p.trunchiat, JSON.stringify(fara(p)).slice(0, 160) + ' ≠ ' + JSON.stringify(fara(t)).slice(0, 160));
   }
   const fsP = await reports.fuelStats(bazaPagini, IMEIS, FROM, TO, OPTS), fsT = await reports.fuelStats(bazaToata, IMEIS, FROM, TO, OPTS);
-  T('statisticile de consum (pagina „Combustibil"): aceleași cifre', JSON.stringify(fsP) === JSON.stringify(fsT), JSON.stringify(fsP.kpi) + ' ≠ ' + JSON.stringify(fsT.kpi));
+  T('statisticile de consum (pagina „Combustibil”): aceleași cifre', JSON.stringify(fsP) === JSON.stringify(fsT), JSON.stringify(fsP.kpi) + ' ≠ ' + JSON.stringify(fsT.kpi));
   const TF = Object.assign({}, OPTS, { timeFilter: { days: ['mon', 'tue', 'wed', 'thu', 'fri'], from: '06:00', to: '18:00' } });
   for (const tip of ['utilization', 'consumption', 'ecodrive', 'idling']) {
     const p = await reports.runReport(bazaPagini, tip, IMEIS, FROM, TO, TF, null);
     const t = await reports.runReport(bazaToata, tip, IMEIS, FROM, TO, TF, null);
-    T('cu filtrul zile/ore (luni–vineri, 06–18): „' + p.label + '" la fel', egal(p, t) && !p.trunchiat);
+    T('cu filtrul zile/ore (luni–vineri, 06–18): „' + p.label + '” la fel', egal(p, t) && !p.trunchiat);
   }
   const km = (r) => r.valori.reduce((s, v) => s + v.km, 0);
   const uP = await reports.runReport(bazaPagini, 'utilization', IMEIS, FROM, TO, OPTS, null);
@@ -116,16 +116,16 @@ const egal = (a, b) => JSON.stringify(fara(a)) === JSON.stringify(fara(b));
   T('martorul: citirea veche, oprită la plafon, număra mult mai puțini km (' + Math.round(km(uV)) + ' din ' + Math.round(km(uP)) + ')', km(uV) < km(uP) * 0.5 && uV.trunchiat && uV.trunchiat.length === 2);
   const lP = await reports.runReport(bazaPagini, 'location', ['M1'], FROM, TO, OPTS, null);
   const lV = await reports.runReport(bazaVeche, 'location', ['M1'], FROM, TO, OPTS, null);
-  const cLoc = (r) => r.columns.indexOf('Locație (unde a oprit)');   // „Șofer" se pune singur pe a doua coloană
-  T('martorul: „Ultima locație" veche ieșea de la începutul lunii; acum e ultima poziție', lP.rows[0][cLoc(lP)] !== lV.rows[0][cLoc(lV)] && lP.rows[0][cLoc(lP)].indexOf(DATE.M1[DATE.M1.length - 1].latitude.toFixed(5)) === 0, lP.rows[0][cLoc(lP)] + ' / ' + lV.rows[0][cLoc(lV)]);
+  const cLoc = (r) => r.columns.indexOf('Locație (unde a oprit)');   // „Șofer” se pune singur pe a doua coloană
+  T('martorul: „Ultima locație” veche ieșea de la începutul lunii; acum e ultima poziție', lP.rows[0][cLoc(lP)] !== lV.rows[0][cLoc(lV)] && lP.rows[0][cLoc(lP)].indexOf(DATE.M1[DATE.M1.length - 1].latitude.toFixed(5)) === 0, lP.rows[0][cLoc(lP)] + ' / ' + lV.rows[0][cLoc(lV)]);
 
   console.log('\n2. Rapoartele care au nevoie de tot traseul deodată o SPUN când se opresc');
   for (const tip of ['stops', 'trips']) {
     const r = await reports.runReport(bazaPagini, tip, IMEIS, FROM, TO, OPTS, null);
     const tr = r.trunchiat || [];
-    T('„' + r.label + '": `trunchiat` pe ambele mașini, cu ziua citită ultima', tr.length === 2 && tr[0].panaLa === DATE.M1[999].timestamp && /Dacia Logan 3/.test(tr[0].vehicul), JSON.stringify(tr));
+    T('„' + r.label + '”: `trunchiat` pe ambele mașini, cu ziua citită ultima', tr.length === 2 && tr[0].panaLa === DATE.M1[999].timestamp && /Dacia Logan 3/.test(tr[0].vehicul), JSON.stringify(tr));
     const lg = (r.legend && r.legend.items) || [];
-    T('…și rândul „Atenție" în legendă (ecran, Excel, PDF)', lg.length && /prea multe poziții/.test(lg[0][1]) && /citit până pe/.test(lg[0][1]), JSON.stringify(lg[0]));
+    T('…și rândul „Atenție” în legendă (ecran, Excel, PDF)', lg.length && /prea multe poziții/.test(lg[0][1]) && /citit până pe/.test(lg[0][1]), JSON.stringify(lg[0]));
   }
   const scurt = await reports.runReport(bazaPagini, 'stops', IMEIS, '2026-09-01T00:00:00Z', '2026-09-05T00:00:00Z', OPTS, null);
   T('pe o perioadă scurtă: fără avertisment', !scurt.trunchiat);
@@ -138,7 +138,7 @@ const egal = (a, b) => JSON.stringify(fara(a)) === JSON.stringify(fara(b));
   const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   T('RA Insight: unealta de rapoarte îi spune modelului că cifrele nu acoperă perioada', /if \(Array\.isArray\(report\.trunchiat\) && report\.trunchiat\.length\) \{\s*out\.atentie = /.test(SRV));
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  T('ecranul Rapoarte: banda „Perioada are prea multe poziții", sub perioadă (cu textContent curățat)', /id="rep-trunchiat"/.test(PAG) && /_rw\.innerHTML = '<i class="fas fa-triangle-exclamation"><\/i> ' \+ _repEsc\('Perioada are prea multe poziții pentru '/.test(PAG));
+  T('ecranul Rapoarte: banda „Perioada are prea multe poziții”, sub perioadă (cu textContent curățat)', /id="rep-trunchiat"/.test(PAG) && /_rw\.innerHTML = '<i class="fas fa-triangle-exclamation"><\/i> ' \+ _repEsc\('Perioada are prea multe poziții pentru '/.test(PAG));
   const RJ = fs.readFileSync(path.join(__dirname, 'reports.js'), 'utf8');
   T('rapoartele de bază citesc pe pagini (nu prin `history`)', ['rUtilization', 'rIdling', 'rEcoDrive', 'rEcoDriveDrivers', 'rEngineHours', 'rFuel', '_consumptionMap', 'fuelStats'].every((f) => {
     const corp = (RJ.split('async function ' + f + '(')[1] || '').split(/\nasync function |\nfunction /)[0];
@@ -198,13 +198,13 @@ const egal = (a, b) => JSON.stringify(fara(a)) === JSON.stringify(fara(b));
   const q = '?imei=' + IM + '&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
   const ru = await json('GET', '/api/reports/utilization' + q, ck);
   const kmR = ru.j.valori && ru.j.valori[0] && ru.j.valori[0].km;
-  T('„Index km": toate cele 700 de poziții, ' + Math.round(kmR) + ' km (așteptat ~' + Math.round(kmAsteptat) + '), fără avertisment', ru.status === 200 && Math.abs(kmR - kmAsteptat) < 1 && !ru.j.trunchiat, ru.status + ' ' + kmR);
+  T('„Index km”: toate cele 700 de poziții, ' + Math.round(kmR) + ' km (așteptat ~' + Math.round(kmAsteptat) + '), fără avertisment', ru.status === 200 && Math.abs(kmR - kmAsteptat) < 1 && !ru.j.trunchiat, ru.status + ' ' + kmR);
   const rl = await json('GET', '/api/reports/location' + q, ck);
   const latUlt = (44.40 + 699 * 0.5 / 111).toFixed(5);
   const cl = (rl.j.columns || []).indexOf('Locație (unde a oprit)');
-  T('„Ultima locație": ultima poziție din bază (' + latUlt + '), nu a 300-a', rl.status === 200 && cl > 0 && String((rl.j.rows || [[]])[0][cl]).indexOf(latUlt) === 0, JSON.stringify((rl.j.rows || [])[0]));
+  T('„Ultima locație”: ultima poziție din bază (' + latUlt + '), nu a 300-a', rl.status === 200 && cl > 0 && String((rl.j.rows || [[]])[0][cl]).indexOf(latUlt) === 0, JSON.stringify((rl.j.rows || [])[0]));
   const rs = await json('GET', '/api/reports/stops' + q, ck);
-  T('„Staționări": spune că s-a oprit (citit până la a 300-a poziție)', rs.status === 200 && Array.isArray(rs.j.trunchiat) && rs.j.trunchiat[0].panaLa === new Date(t0 + 299 * 60000).toISOString(), JSON.stringify(rs.j.trunchiat));
+  T('„Staționări”: spune că s-a oprit (citit până la a 300-a poziție)', rs.status === 200 && Array.isArray(rs.j.trunchiat) && rs.j.trunchiat[0].panaLa === new Date(t0 + 299 * 60000).toISOString(), JSON.stringify(rs.j.trunchiat));
   const ai = await json('POST', '/api/reports/ai-raport', ck, { text: 'câți km a făcut B 154 UIP pe ' + ziText });
   T('AI Raport: km-ii întregi ai zilei (' + (((ai.j.raspuns || {}).tiles || [])[0] || {}).val + ')', ai.status === 200 && (((ai.j.raspuns || {}).tiles || [])[0] || {}).val === A.nr(kmR), ai.text.slice(0, 200));
 

@@ -4,9 +4,9 @@
    tema deschisă), pentru că verdele aplicației nu se citește ca text mic pe alb. Fontul se moștenește (Nunito). */
 
 /* Culorile calendarului, pe fiecare temă — aceleași ca pe web (.mjc-l.mjc-ok / .mjc-conf / .mjc-mont, cu perechea lor
-   pe tema deschisă) plus portocaliul termenului „curând" și roșul celui depășit. Măsurate cu proba (text / fundal ≥ 4,5
+   pe tema deschisă) plus portocaliul termenului „curând” și roșul celui depășit. Măsurate cu proba (text / fundal ≥ 4,5
    pe amândouă temele, și pe căsuța de weekend, care e mai închisă). Din 01.10: verde = au confirmat instalatorul și
-   clientul, galben = mai lipsește o confirmare, gri = montat; roșul plin = „Anulează lucrarea". */
+   clientul, galben = mai lipsește o confirmare, gri = montat; roșul plin = „Anulează lucrarea”. */
 :root {
   --mjc-prog: #fdba74; --mjc-prog-bg: rgba(249, 115, 22, .14); --mjc-prog-bd: rgba(249, 115, 22, .35);
   --mjc-ok: #86efac; --mjc-ok-bg: rgba(63, 224, 125, .12); --mjc-ok-bd: rgba(63, 224, 125, .30);
@@ -26,10 +26,10 @@
   --mjc-int: #1d4ed8; --mjc-int-bg: #e8f0fe; --mjc-int-bd: #93c5fd;
 }
 
-/* Pastilele de lângă numele partenerului: „inactiv", „contract: …" / „fără contract" */
+/* Pastilele de lângă numele partenerului: „inactiv”, „contract: …” / „fără contract” */
 .mj-pastile { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; vertical-align: middle; }
 
-/* Banda „Parteneri fără contract": un rând pe partener, numele în stânga, butonul în dreapta */
+/* Banda „Parteneri fără contract”: un rând pe partener, numele în stânga, butonul în dreapta */
 .mj-fara { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0 0; margin-top: 7px;
   border-top: 1px solid var(--border); }
 .ctr-band-t + .mj-fara { border-top: 0; margin-top: 2px; }
@@ -56,13 +56,13 @@
   color: var(--text-primary); border-radius: 10px; padding: 0 10px; font-size: 14.5px; font-family: inherit; }
 .mj-filtre select:focus { outline: none; border-color: var(--accent); }
 
-/* Suma de pe o lucrare: „Rămâne" bătut în verde (sigur pe ambele teme) */
-/* Cu `.ctr-kv .v` în față: altfel regula din contracte.css (0,2,0) câștiga și „Rămâne" ieșea ca „Ne costă". */
+/* Suma de pe o lucrare: „Rămâne” bătut în verde (sigur pe ambele teme) */
+/* Cu `.ctr-kv .v` în față: altfel regula din contracte.css (0,2,0) câștiga și „Rămâne” ieșea ca „Ne costă”. */
 .ctr-kv .v.mj-rama { color: var(--ctr-ok); font-weight: 800; }
 
-/* Nota de sub „Ne facturează" (fișa partenerului): de ce contează ritmul. --text-secondary pe fundalul foii. */
+/* Nota de sub „Ne facturează” (fișa partenerului): de ce contează ritmul. --text-secondary pe fundalul foii. */
 .mj-nota { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); margin-top: 2px; }
-/* Bifa „Reia din fișa partenerului…": textul are două-trei rânduri, deci bifa stă sus, lângă primul. */
+/* Bifa „Reia din fișa partenerului…”: textul are două-trei rânduri, deci bifa stă sus, lângă primul. */
 .ctr-semn-b.mj-bifa { align-items: flex-start; padding: 10px 11px; font-size: 13.5px; line-height: 1.45; }
 .ctr-semn-b.mj-bifa input { margin-top: 1px; }
 
@@ -116,7 +116,7 @@
 .mjc-rand-s { font-size: 12.5px; color: var(--text-secondary); }
 .mjc-rand > svg { flex: 0 0 auto; color: var(--text-muted); }
 
-/* „De programat": termenul, pe culoarea lui (măsurat și pe tema deschisă, unde pastila roșie obișnuită e prea palidă). */
+/* „De programat”: termenul, pe culoarea lui (măsurat și pe tema deschisă, unde pastila roșie obișnuită e prea palidă). */
 .ctr-pill.mjc-termen { white-space: normal; }
 .ctr-pill.mjc-termen.warn { color: var(--mjc-prog); background: var(--mjc-prog-bg); }
 .ctr-pill.mjc-termen.bad { color: var(--mjc-rau); background: var(--mjc-rau-bg); }
@@ -129,7 +129,7 @@
 .mjc-text.mic { font-size: 12.5px; color: var(--text-secondary); }
 .mjc-ce { display: block; margin-top: 3px; font-size: 13px; color: var(--text-secondary); }
 
-/* 01.10 — confirmările, nota de stoc, ce are fiecare instalator în ziua aleasă, „Programate / Istoric", anularea. */
+/* 01.10 — confirmările, nota de stoc, ce are fiecare instalator în ziua aleasă, „Programate / Istoric”, anularea. */
 .mjc-rez { display: block; font-size: 12.5px; font-weight: 800; }
 .mjc-rez.mic { font-size: 12px; }
 .mjc-rez.ok { color: var(--mjc-ok); }
@@ -153,6 +153,6 @@
 .btn.mjc-rosu { width: 100%; color: var(--mjc-rosu); background: var(--mjc-rosu-bg); border-color: var(--mjc-rosu-bg); }
 
 /* Cele patru file din Montaj (Calendar, Parteneri, Contracte cu partenerii, Lucrări) nu încap pe un rând la 375px:
-   derulate lateral, cu bara ascunsă, „Lucrări" ieșea complet din ecran. Se așază pe două rânduri, ca secțiunile din
+   derulate lateral, cu bara ascunsă, „Lucrări” ieșea complet din ecran. Se așază pe două rânduri, ca secțiunile din
    Facturare (.bill-sect). Revizia lotului 5, 01.10. */
 .ctr-chips.mj-file { flex-wrap: wrap; overflow-x: visible; }

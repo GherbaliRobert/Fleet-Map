@@ -10,7 +10,7 @@
 // înainte, rata de potrivire scade de aproximativ zece ori și volumul real de apeluri crește.
 import { api } from './client';
 
-// Două cache-uri: forma scurtă („Stradă nr, Oraș", bună într-o listă) și cea completă (cu cartier, comună
+// Două cache-uri: forma scurtă („Stradă nr, Oraș”, bună într-o listă) și cea completă (cu cartier, comună
 // și județ) pentru fișa vehiculului — serverul le derivă pe amândouă din același răspuns, deci a doua nu
 // costă niciun apel în plus.
 type Detail = 'full' | undefined;

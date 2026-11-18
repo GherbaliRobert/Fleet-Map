@@ -1,11 +1,11 @@
-// verify_fuel_parcare.js — „chiar a dispărut combustibil?", cazul care a produs alarma falsă.
+// verify_fuel_parcare.js — „chiar a dispărut combustibil?”, cazul care a produs alarma falsă.
 //
-// Pornit de la un caz real (Robert, 20.08): notificare „scădere de la 43 L la 32 L", fără să se fi
+// Pornit de la un caz real (Robert, 20.08): notificare „scădere de la 43 L la 32 L”, fără să se fi
 // întâmplat nimic. Regula veche compara O SINGURĂ citire de la oprirea motorului cu O SINGURĂ
 // citire de la pornire — adică exact citirea cea mai nesigură din tot ciclul.
 //
 // Testele de aici apără două lucruri deodată, care se bat cap în cap dacă nu ești atent:
-//   • un furt ADEVĂRAT trebuie să dea în continuare alertă (altfel am „reparat" prin surzenie);
+//   • un furt ADEVĂRAT trebuie să dea în continuare alertă (altfel am „reparat” prin surzenie);
 //   • o sondă care se așază după pornire NU trebuie să dea alertă.
 //
 // Rulează instant, fără server: node verify_fuel_parcare.js
@@ -55,7 +55,7 @@ a = ruleaza([
   [603, 1, 32], [606, 1, 31.8], [610, 1, 32],   // și rămâne acolo
 ]);
 t('scădere care nu revine → alertă', a.length === 1, JSON.stringify(a));
-t('modul e „cât a stat oprit"', a[0] && a[0].mode === 'parked', a[0] && a[0].mode);
+t('modul e „cât a stat oprit”', a[0] && a[0].mode === 'parked', a[0] && a[0].mode);
 t('raportează de la cât la cât', a[0] && a[0].from === 43 && a[0].to === 31.8, JSON.stringify(a[0]));
 t('cantitatea, peste pragul companiei', a[0] && a[0].drop > PRAG, a[0] && String(a[0].drop));
 
@@ -66,7 +66,7 @@ t('scădere de 6 L sub pragul de 10 L → fără alertă', a.length === 0, JSON.
 console.log('\n══ Scări diferite: rezervor calibrat vs. CAN brut ══\n');
 
 // La oprire raporta rezervorul calibrat (43 L), la pornire doar CAN-ul brut (32 L). Nu e o scădere,
-// sunt două moduri de a măsura. Comparația asta producea „furturi" din senin.
+// sunt două moduri de a măsura. Comparația asta producea „furturi” din senin.
 a = ruleaza([
   [0, 1, 43, 'tank_level_liters'], [5, 0, 43, 'tank_level_liters'],
   [600, 1, 32, 'can_fuel_level_liters'], [605, 1, 32, 'can_fuel_level_liters'],
@@ -84,11 +84,11 @@ t('aceeași sursă → alertă', a.length === 1, JSON.stringify(a));
 
 console.log('\n══ Prudență ══\n');
 
-// Prag nesetat = detecția e oprită pentru companie (decizia din 26.07: „nesetat" nu devine „prag 0").
+// Prag nesetat = detecția e oprită pentru companie (decizia din 26.07: „nesetat” nu devine „prag 0”).
 a = ruleaza([[0, 1, 43], [5, 0, 43], [600, 1, 20], [605, 1, 20], [610, 1, 20], [615, 1, 20]], 0);
 t('fără prag setat → detecția e oprită', a.length === 0, JSON.stringify(a));
 
-// Pachet fără contact (heartbeat GPS) nu trebuie să pară „a oprit motorul".
+// Pachet fără contact (heartbeat GPS) nu trebuie să pară „a oprit motorul”.
 a = ruleaza([[0, 1, 43], [2, null, 43], [4, 1, 43], [6, 1, 43]]);
 t('pachet fără contact nu inventează o oprire', a.length === 0, JSON.stringify(a));
 

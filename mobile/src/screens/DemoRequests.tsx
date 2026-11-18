@@ -9,7 +9,7 @@ import './detail.css';
 import './admin.css';
 
 // Cereri de cont demo (super-admin). Demo-ul nu se mai ia singur de pe site: vizitatorul completează
-// formularul public, iar aici se acordă accesul, cu termen ales. Paritate cu tabul „Cereri demo" de pe web.
+// formularul public, iar aici se acordă accesul, cu termen ales. Paritate cu tabul „Cereri demo” de pe web.
 const STATUS_LABEL: Record<string, string> = { new: 'nouă', approved: 'aprobată', rejected: 'respinsă' };
 const STATUS_COLOR: Record<string, string> = { new: 'var(--accent)', approved: 'var(--text-muted)', rejected: 'var(--red)' };
 // Durata se exprimă în ORE (serverul lucrează tot în ore): de la câteva ore la 30 de zile.
@@ -59,7 +59,7 @@ export function DemoRequests() {
     setBusy(true);
     try {
       const r: any = await Api.approveDemoRequest(approving.id, { hours });
-      // „Acordat" nu înseamnă și „a plecat emailul": dacă SMTP nu e configurat, o spunem explicit.
+      // „Acordat” nu înseamnă și „a plecat emailul”: dacă SMTP nu e configurat, o spunem explicit.
       const lbl = r?.duration || (DURATIONS.find((d) => d.h === hours)?.label || hours + ' ore');
       // Emailul n-a plecat, dar serverul a întors linkul de parolă (de la 23.09): îl arătăm, copiat deja, ca să-l
       // duci tu omului. Fără link (server vechi) rămâne avertismentul.

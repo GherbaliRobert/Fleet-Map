@@ -1,21 +1,21 @@
 // verify_mail_dosare.js — panoul Mail, etapa 3 (Robert, 13.10: „la semnătură vreau să fie și funcția și adresa de mail, vreau
 // să avem butoanele direct în lista de mail (reply, ștergere și ce mai e), vreau să putem avea acțiuni multiple, de bifare și după
-// ștergere, secțiune de spam, vreau să fie un mail cât mai complet"; apoi „1, da · 2. a · 3. a, b, c · 4. da").
+// ștergere, secțiune de spam, vreau să fie un mail cât mai complet"; apoi „1, da · 2. a · 3. a, b, c · 4. da”).
 //
 //   node verify_mail_dosare.js
 //
 // Ce păzește:
 //   1. dosarele Primite · Trimise · Ciorne · Spam · Coș, aceleași pe pagină și pe telefon;
-//   2. Spamul („2. a"): în Spam merg singure DOAR emailurile expeditorilor marcați de noi, pe adresa pe care i-am marcat;
-//      „Nu e spam" îl scoate de pe listă; un email marcat spam nu mai sună;
-//   3. Coșul („1, da"): „Șterge" mută în Coș (se poate recupera, înapoi de unde a venit); „Șterge definitiv" doar din Coș;
+//   2. Spamul („2. a”): în Spam merg singure DOAR emailurile expeditorilor marcați de noi, pe adresa pe care i-am marcat;
+//      „Nu e spam” îl scoate de pe listă; un email marcat spam nu mai sună;
+//   3. Coșul („1, da”): „Șterge” mută în Coș (se poate recupera, înapoi de unde a venit); „Șterge definitiv” doar din Coș;
 //      Coșul și Spamul se golesc singure după 30 de zile (cu atașamentele);
 //   4. acțiunile pe mai multe deodată (citit, necitit, stea, spam, nu e spam, șterge, recuperează, definitiv) — O singură funcție
 //      pe server, o singură cale pe pagină și pe telefon; facturile, contractele, invitațiile rămân (dovada);
 //   5. cine vede ce: adresa comună — toți fondatorii; adresa personală — doar omul ei (nici acțiunile, nici Coșul, nici sugestiile);
-//   6. ciornele („3. a"): ale omului, salvate singure, șterse după ce emailul pleacă;
-//   7. adresele sugerate („3. b"): cei care ne-au scris, cei cărora le-am scris, firmele, administratorii — fără adresele noastre;
-//   8. steaua („3. c"); funcția din fișă / din Contul meu, în semnătură (web + telefon).
+//   6. ciornele („3. a”): ale omului, salvate singure, șterse după ce emailul pleacă;
+//   7. adresele sugerate („3. b”): cei care ne-au scris, cei cărora le-am scris, firmele, administratorii — fără adresele noastre;
+//   8. steaua („3. c”); funcția din fișă / din Contul meu, în semnătură (web + telefon).
 // Nu pleacă niciun email adevărat: totul ajunge la un Brevo FALS, local; emailurile primite sunt făcute aici, ca de la Cloudflare.
 'use strict';
 const fs = require('fs');
@@ -29,7 +29,7 @@ const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele
 const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(/\r\n/g, '\n');
 const faza = (process.argv.find((a) => a.indexOf('--faza=') === 0) || '').slice(7);
 
-// ════════════ Faza „golire": funcția din db.js, pe o bază a ei (zilele se pot muta doar direct în bază) ════════════
+// ════════════ Faza „golire”: funcția din db.js, pe o bază a ei (zilele se pot muta doar direct în bază) ════════════
 if (faza === 'golire') {
   (async () => {
     const db = require('./db');
@@ -63,7 +63,7 @@ if (faza === 'golire') {
   // ─── 1. Pagina și telefonul (fără server) ─────────────────────────────────────────────────────────
   console.log('1. Pagina și telefonul');
   const PAG = citeste('public/index.html');
-  const BLOC = (PAG.match(/── începe „Panoul Mail"[\s\S]*?── sfârșit „Panoul Mail" ──/) || [''])[0];
+  const BLOC = (PAG.match(/── începe „Panoul Mail”[\s\S]*?── sfârșit „Panoul Mail” ──/) || [''])[0];
   const MOB = citeste('mobile/src/screens/Mail.tsx'), EP = citeste('mobile/src/api/endpoints.ts');
   const SRV = citeste('server.js'), DB = citeste('db.js');
   const fileWeb = ((BLOC.match(/var _MAIL_FILE = (\[[^\n]*\]);/) || [])[1] || '').match(/\['(\w+)', 'fa-[\w-]+', '([^']+)'\]/g) || [];
@@ -75,27 +75,27 @@ if (faza === 'golire') {
   T('pagina: o SINGURĂ cerere către ruta acțiunilor (raxMailActiune), folosită de rând, de bara bifelor și de fereastra emailului',
     (BLOC.match(/fetch\('\/api\/mail\/actiune'/g) || []).length === 1 && /window\.raxMailBulk = function/.test(BLOC) && /function _mailActeDeschis\(m, su\)/.test(BLOC) &&
     (BLOC.match(/raxMailActiune\(\\'sterge\\'/g) || []).length >= 3);
-  T('pagina: „Șterge" nu mai întreabă (merge în Coș); „Șterge definitiv" întreabă, cu „Nu se mai poate recupera."',
+  T('pagina: „Șterge” nu mai întreabă (merge în Coș); „Șterge definitiv” întreabă, cu „Nu se mai poate recupera.”',
     /if \(act === 'definitiv' && !await raConfirm\(/.test(BLOC) && !/raConfirm\('Ștergi emailul/.test(BLOC) && /' Nu se mai poate recupera\.'/.test(BLOC));
   T('pagina: butoanele de pe rând apar la trecerea mouse-ului, iar pe un ecran tactil stau mereu',
     /\.mail-rand:hover \.mail-rapid,\.mail-rand:focus-within \.mail-rapid\{display:flex\}/.test(PAG) && /@media \(hover:none\)\{\.mail-rand\{flex-wrap:wrap\}\.mail-rapid\{display:flex;position:static/.test(PAG));
   T('pagina: ciorna se salvează singură (1,5 s după ultima literă), la închidere, iar la trimitere pleacă `ciorna`',
     /setTimeout\(function \(\) \{ _mail\.ciornaT = null; _mailSalveazaCiorna\(\); \}, 1500\)/.test(BLOC) && /if \(_mail\.ciornaId\) corp\.ciorna = _mail\.ciornaId;/.test(BLOC) &&
     /window\.raxMailInchide = function \(\) \{\s*if \(_mail\.ciornaT\)/.test(BLOC));
-  T('pagina: sugestiile la „Către" și „Cc", cerute serverului după ultima adresă scrisă', /fetch\('\/api\/mail\/sugestii\?q=' \+ encodeURIComponent\(tok\)/.test(BLOC) &&
+  T('pagina: sugestiile la „Către” și „Cc”, cerute serverului după ultima adresă scrisă', /fetch\('\/api\/mail\/sugestii\?q=' \+ encodeURIComponent\(tok\)/.test(BLOC) &&
     /id="mail-catre"[^>]*oninput="raxMailSug\(this\)"/.test(BLOC) && /id="mail-cc"[^>]*oninput="raxMailSug\(this\)"/.test(BLOC));
   T('pagina: atributele cheamă funcții de pe window, nu scriu în variabile', !/on(click|input|change)="_mail\./.test(BLOC));
   T('pagina nu socotește zilele Coșului: le ia de la server (dosare.zile, golitText)', /var z = _mail\.dosare\.zile;/.test(BLOC) && !/30 de zile/.test(BLOC) && /m\.golitText/.test(BLOC));
   T('telefonul: aceleași rute (acțiunile, Coșul, ciornele, sugestiile, Spamul ca dosar al celor primite)',
     /'\/api\/mail\/actiune'/.test(EP) && /'\/api\/mail\/cos\?pagina='/.test(EP) && /'\/api\/mail\/ciorne'/.test(EP) && /`\/api\/mail\/ciorne\/\$\{id\}`/.test(EP) &&
     /'\/api\/mail\/sugestii\?q='/.test(EP) && /\(q\.dosar \? '&dosar=' \+ q\.dosar : ''\)/.test(EP) && /\(q\.stea \? '&stea=1' : ''\)/.test(EP));
-  T('telefonul: o singură funcție de acțiuni, cu aceeași întrebare la „Șterge definitiv"', (MOB.match(/Api\.mailActiune\(/g) || []).length === 1 &&
+  T('telefonul: o singură funcție de acțiuni, cu aceeași întrebare la „Șterge definitiv”', (MOB.match(/Api\.mailActiune\(/g) || []).length === 1 &&
     /if \(act === 'definitiv' && !confirm\(/.test(MOB) && /' Nu se mai poate recupera\.'/.test(MOB));
   T('telefonul: ciorna se salvează singură, la închidere, și pleacă la trimitere', /ciornaT\.current = setTimeout\(\(\) => \{ ciornaT\.current = null; salveazaCiorna\(\); \}, 1500\);/.test(MOB) &&
     /const cuCiorna = ciornaId\.current \? \{ ciorna: ciornaId\.current \} : \{\};/.test(MOB) && /async function inchideScrie\(\)/.test(MOB));
   const CUVINTE = ['Selectează tot', 'Cu stea', 'Recuperează', 'Șterge definitiv', 'Nu e spam', 'Nicio ciornă.', 'Spamul e gol.', 'Coșul e gol.',
-    'Aici ajung singure emailurile expeditorilor pe care i-ați marcat ca spam', '. „Nu e spam" le mută înapoi în Primite.', 'Emailurile șterse stau aici',
-    '. „Recuperează" le pune înapoi de unde au venit.', 'Ciornele se salvează singure cât scrii (fără atașamente) și sunt doar ale tale.',
+    'Aici ajung singure emailurile expeditorilor pe care i-ați marcat ca spam', '. „Nu e spam” le mută înapoi în Primite.', 'Emailurile șterse stau aici',
+    '. „Recuperează” le pune înapoi de unde au venit.', 'Ciornele se salvează singure cât scrii (fără atașamente) și sunt doar ale tale.',
     'Ce scrii se salvează singur în Ciorne (fără atașamente).', 'Ciornă deschisă: se salvează singură cât scrii.', 'Ciornă salvată la ', 'Ciorna nu s-a putut salva.',
     'Ciorna a fost ștearsă.', ' ciorne șterse.', 'Ștergi definitiv emailul, cu atașamentele lui?', ' emailuri, cu atașamentele lor?', 'Funcția și telefonul se iau', 'Funcția se ia',
     ' din fișa ta (Gestiune → Utilizatori → rândul tău) sau din Setări → Contul meu.', 'Marchează citit', 'Marchează necitit', 'Scoate steaua', 'Pune stea', 'selectat', 'selectate', 'Renunță'];
@@ -125,7 +125,7 @@ if (faza === 'golire') {
   T('Coșul și Spamul se golesc zilnic, după MAIL_ZILE_DOSARE = 30', /const MAIL_ZILE_DOSARE = 30;/.test(SRV) && /setInterval\(runMailPurge, 24 \* 60 \* 60 \* 1000\)/.test(SRV) &&
     /db\.stergeMailDosareVechi\(MAIL_ZILE_DOSARE\)/.test(SRV));
   const blocDb = (DB.match(/\/\/ Mută emailuri între dosare[\s\S]*?async function numarMailCiorne/) || [''])[0];
-  T('numărătorile din db.js vin din RETURNING (rowCount lipsește în PGlite: altfel textul de după ar fi „Nimic de schimbat")', blocDb.length > 500 && !/\.rowCount/.test(blocDb) && (blocDb.match(/RETURNING id/g) || []).length >= 10);
+  T('numărătorile din db.js vin din RETURNING (rowCount lipsește în PGlite: altfel textul de după ar fi „Nimic de schimbat”)', blocDb.length > 500 && !/\.rowCount/.test(blocDb) && (blocDb.match(/RETURNING id/g) || []).length >= 10);
   const backup = require('./backup');
   T('copia: lista expeditorilor marcați și ciornele intră în copie', backup.BUSINESS_TABLES.includes('mail_spam_expeditori') && backup.BUSINESS_TABLES.includes('mail_ciorne'));
   T('sugestiile: dintre conturi doar administratorii firmelor (restul oamenilor unei firme e treaba ei)', /AND role IN \('superadmin', 'company_admin', 'admin'\) AND \(LOWER\(COALESCE\(email/.test(DB));
@@ -235,24 +235,24 @@ if (faza === 'golire') {
     // Spamul.
     const sp = await act(A, 'spam', [P(r1.j.id)]);
     const inPr = (await lista(A)).some((m) => m.id === r1.j.id), inSp = (await lista(A, '?dosar=spam')).some((m) => m.id === r1.j.id && m.dosar === 'spam');
-    T('„Spam": emailul pleacă din Primite în Spam, cu textul scris de server', sp.status === 200 && sp.j.facute === 1 && sp.j.text === '1 email mutat în Spam.' && !inPr && inSp,
+    T('„Spam”: emailul pleacă din Primite în Spam, cu textul scris de server', sp.status === 200 && sp.j.facute === 1 && sp.j.text === '1 email mutat în Spam.' && !inPr && inSp,
       JSON.stringify(sp.j));
     const r2 = await primeste({ from: 'oferte@reclame.ro', subiect: 'Încă o ofertă' }, 'contact@ratrack.ro');
     const r3 = await primeste({ from: 'oferte@reclame.ro', subiect: 'Pentru Robert 2' }, 'robert.gherbali@ratrack.ro');
-    T('„2. a": următorul email al expeditorului marcat merge singur în Spam — doar pe adresa pe care l-am marcat', r2.j.spam === true && r3.j.spam === false &&
+    T('„2. a”: următorul email al expeditorului marcat merge singur în Spam — doar pe adresa pe care l-am marcat', r2.j.spam === true && r3.j.spam === false &&
       (await lista(A, '?dosar=spam')).some((m) => m.id === r2.j.id) && (await lista(R)).some((m) => m.id === r3.j.id), JSON.stringify([r2.j, r3.j]));
     const nec = (await json('GET', '/api/mail/necitite', R)).j;
     const dsp = await dosare(R);
     T('Spamul nu se numără la necitite; are numărul lui', dsp.spam === 2 && nec.peAdresa && nec.peAdresa['contact@ratrack.ro'] === 2, JSON.stringify({ dsp, nec }));
     const ns = await act(R, 'nuspam', [P(r2.j.id)]);
     const r4 = await primeste({ from: 'oferte@reclame.ro', subiect: 'A treia' }, 'contact@ratrack.ro');
-    T('„Nu e spam" (Robert, pe comuna): emailul se întoarce în Primite, iar expeditorul iese de pe listă', ns.j.facute === 1 && r4.j.spam === false &&
+    T('„Nu e spam” (Robert, pe comuna): emailul se întoarce în Primite, iar expeditorul iese de pe listă', ns.j.facute === 1 && r4.j.spam === false &&
       (await lista(R)).some((m) => m.id === r2.j.id), JSON.stringify([ns.j, r4.j]));
 
     // Cine vede ce.
     const strain = await act(A, 'sterge', [P(pers)]);
     const strainSt = await act(A, 'stea', [P(persIon)]);
-    T('Alin nu poate face nimic pe emailurile adresei lui Robert (nici Coș, nici stea): „negăsite"', strain.j.facute === 0 && strain.j.negasite === 1 && strainSt.j.facute === 0 &&
+    T('Alin nu poate face nimic pe emailurile adresei lui Robert (nici Coș, nici stea): „negăsite”', strain.j.facute === 0 && strain.j.negasite === 1 && strainSt.j.facute === 0 &&
       (await lista(R)).some((m) => m.id === pers && !m.stea), JSON.stringify([strain.j, strainSt.j]));
     const refuz = [await json('POST', '/api/mail/actiune', A, { actiune: 'arunca', elemente: [P(e1)] }), await json('POST', '/api/mail/actiune', A, { actiune: 'sterge', elemente: [] }),
       await json('POST', '/api/mail/actiune', A, { actiune: 'sterge', elemente: Array.from({ length: 201 }, (_, i) => P(i + 1)) })];
@@ -263,7 +263,7 @@ if (faza === 'golire') {
     const ne = await act(A, 'necitit', [P(e1)]);
     const st = await act(A, 'stea', [P(e1), P(e2)]);
     const cuStea = (await lista(R, '?stea=1')).map((m) => m.id).sort();
-    T('bife: citit (2), necitit (1), stea (2) — „Cu stea" arată doar cele două, la toți cei care văd adresa',
+    T('bife: citit (2), necitit (1), stea (2) — „Cu stea” arată doar cele două, la toți cei care văd adresa',
       ci.j.text === '2 emailuri marcate citite.' && ne.j.text === '1 email marcat necitit.' && st.j.facute === 2 && JSON.stringify(cuStea) === JSON.stringify([e1, e2].sort()),
       JSON.stringify([ci.j, ne.j, st.j, cuStea]));
     await act(A, 'farastea', [P(e2)]);
@@ -274,15 +274,15 @@ if (faza === 'golire') {
     const d1 = await dosare(R);
     const golit = (c1.filter((m) => m.id === e1)[0] || {}).golitText || '';
     const peste30 = new Date(Date.now() + 30 * 86400000).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric' });
-    T('„Șterge" pe două: amândouă în Coș (Robert le vede), cu ziua în care se șterg singure (peste 30 de zile)', sterg.j.text === '2 emailuri mutate în Coș.' &&
+    T('„Șterge” pe două: amândouă în Coș (Robert le vede), cu ziua în care se șterg singure (peste 30 de zile)', sterg.j.text === '2 emailuri mutate în Coș.' &&
       c1.filter((m) => m.sursa === 'primit' && (m.id === e1 || m.id === e2)).length === 2 && d1.cos === 2 && golit === 'se șterge singur pe ' + peste30 &&
       !(await lista(R)).some((m) => m.id === e1 || m.id === e2), JSON.stringify({ t: sterg.j.text, golit, d1 }));
     T('Coșul lui Alin nu are emailurile adresei lui Robert; filtrul pe o adresă merge', !(await cos(A)).some((m) => m.id === pers) &&
       ((await json('GET', '/api/mail/cos?adresa=robert.gherbali@ratrack.ro', A)).j.mailuri || []).length === 0);
     const defNu = await act(A, 'definitiv', [P(r4.j.id)]);
-    T('„Șterge definitiv" doar din Coș: un email din Primite rămâne', defNu.j.facute === 0 && (await lista(A)).some((m) => m.id === r4.j.id), JSON.stringify(defNu.j));
+    T('„Șterge definitiv” doar din Coș: un email din Primite rămâne', defNu.j.facute === 0 && (await lista(A)).some((m) => m.id === r4.j.id), JSON.stringify(defNu.j));
     const rec = await act(A, 'recupereaza', [P(e2)]);
-    T('„Recuperează": înapoi în Primite (cu steaua și starea lui)', rec.j.text === '1 email recuperat.' && (await lista(A)).some((m) => m.id === e2), JSON.stringify(rec.j));
+    T('„Recuperează”: înapoi în Primite (cu steaua și starea lui)', rec.j.text === '1 email recuperat.' && (await lista(A)).some((m) => m.id === e2), JSON.stringify(rec.j));
     await act(A, 'sterge', [P(r1.j.id)]);
     await act(A, 'recupereaza', [P(r1.j.id)]);
     T('…un email șters din Spam se întoarce în Spam', (await lista(A, '?dosar=spam')).some((m) => m.id === r1.j.id));
@@ -290,7 +290,7 @@ if (faza === 'golire') {
     const def = await act(R, 'definitiv', [P(e1)]);
     const dupa = await json('GET', '/api/mail/primite/' + e1, R);
     const at = await fetch(B + '/api/mail/primite/' + e1 + '/atasamente/' + atasId, { headers: { Cookie: R } });
-    T('„Șterge definitiv" din Coș: emailul și atașamentul nu mai există', def.j.text === '1 email șters definitiv.' && dupa.status === 404 && at.status === 404 && !!atasId,
+    T('„Șterge definitiv” din Coș: emailul și atașamentul nu mai există', def.j.text === '1 email șters definitiv.' && dupa.status === 404 && at.status === 404 && !!atasId,
       JSON.stringify(def.j) + ' ' + dupa.status + ' ' + at.status);
 
     // Trimise: stea, Coș, dovada.
@@ -301,7 +301,7 @@ if (faza === 'golire') {
     const cuSteaT = ((await json('GET', '/api/mail/trimise?stea=1', R)).j.mailuri || []).map((x) => x.id);
     T('steaua și pe emailurile trimise', s1.status === 200 && stT.j.facute === 1 && JSON.stringify(cuSteaT) === JSON.stringify([mesaj.id]), JSON.stringify([s1.j, cuSteaT]));
     const stDov = await act(R, 'sterge', [TR(mesaj.id), TR(inv.id)]);
-    T('„Șterge" pe un mesaj și o invitație: mesajul în Coș, invitația rămâne (dovada) — și se spune', stDov.j.facute === 1 && stDov.j.dovada === 1 &&
+    T('„Șterge” pe un mesaj și o invitație: mesajul în Coș, invitația rămâne (dovada) — și se spune', stDov.j.facute === 1 && stDov.j.dovada === 1 &&
       /1 email n-a fost șters: facturile, contractele, avertismentele și invitațiile rămân/.test(stDov.j.text) &&
       (await cos(R)).some((m) => m.sursa === 'trimis' && m.id === mesaj.id) && ((await json('GET', '/api/mail/trimise', R)).j.mailuri || []).some((x) => x.id === inv.id), JSON.stringify(stDov.j));
     const recT = await act(R, 'recupereaza', [TR(mesaj.id)]);

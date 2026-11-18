@@ -20,7 +20,7 @@ const ETICHETE_STARE = {
   casat: 'casat'
 };
 // Pe unde poate merge o bucată. Ce nu e aici se refuză: un aparat casat nu se mai montează, iar unul
-// de la instalator nu sare direct în „returnat" (n-a fost la client).
+// de la instalator nu sare direct în „returnat” (n-a fost la client).
 const TRECERI = {
   depozit: ['instalator', 'montat', 'defect', 'casat'],
   instalator: ['montat', 'depozit', 'defect'],

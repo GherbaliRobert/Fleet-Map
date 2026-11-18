@@ -1,12 +1,12 @@
-// Super-admin: „Contracte" — toate contractele tuturor clienților, la un loc, ca pe web (raxLoadContracte).
+// Super-admin: „Contracte” — toate contractele tuturor clienților, la un loc, ca pe web (raxLoadContracte).
 //
 // Sus, ce trebuie FĂCUT: banda roșie (firme fără niciun contract, sau cu contractul încheiat care intră
 // totuși în aplicație) și banda portocalie (alarma: contracte care nu se reînnoiesc singure și se apropie
-// de capăt, cu „Reînnoiește"). Dedesubt, lista cu filtre și căutare. Pe fiecare contract, ca pe web (24.09):
+// de capăt, cu „Reînnoiește”). Dedesubt, lista cu filtre și căutare. Pe fiecare contract, ca pe web (24.09):
 // sub stare, PASUL URMĂTOR cu butonul lui (Aprobă → Trimite la semnat → E semnat; după semnare, pasul din
-// drumul clientului), iar la „Dosar", FIECARE LIPSĂ cu butonul ei (Completează, Pune data, Încarcă). Acțiunile
+// drumul clientului), iar la „Dosar”, FIECARE LIPSĂ cu butonul ei (Completează, Pune data, Încarcă). Acțiunile
 // sunt aceleași ca în dosarul firmei (usePasiContract).
-// Partenerii de montaj NU mai stau aici (Alin, 24.09: „nu-i văd rostul în Contracte"): au secțiunea lor,
+// Partenerii de montaj NU mai stau aici (Alin, 24.09: „nu-i văd rostul în Contracte”): au secțiunea lor,
 // Business → Montaj.
 //
 // Telefonul NU socotește capete de contract, zile rămase, preaviz, lipsuri sau pași: le arată cum le dă
@@ -24,7 +24,7 @@ import './admin.css';
 import './detail.css';
 import './contracte.css';
 
-// `trimite` = serverul poate trimite pe email (SMTP pus) — altfel „Trimite la semnat" devine „Am trimis-o".
+// `trimite` = serverul poate trimite pe email (SMTP pus) — altfel „Trimite la semnat” devine „Am trimis-o”.
 type Lista = { tot: any[]; fara: any[]; inc: any[]; trimite: boolean };
 const DE_SEMNAT = ['ciorna', 'aprobat', 'trimis'];
 type Pasi = ReturnType<typeof usePasiContract>;
@@ -46,7 +46,7 @@ export function Contracts() {
   useEffect(incarca, []);
 
   const fisa = (companyId: any) => loc.route(rutaDosar(companyId));
-  // După „Reînnoiește", ca pe web: fișa de contract a firmei, unde actul de prelungire așteaptă aprobarea.
+  // După „Reînnoiește”, ca pe web: fișa de contract a firmei, unde actul de prelungire așteaptă aprobarea.
   const { cere: reinnoieste, ui: uiReinnoire } = useReinnoire((cid) => fisa(cid));
   // Pașii și lipsurile de pe fiecare rând. După orice acțiune, lista se reîncarcă (ca _ctreDupa pe web).
   const pasi = usePasiContract({ trimitePeEmail: !!(d && d.trimite), laSchimbat: incarca });
@@ -101,7 +101,7 @@ export function Contracts() {
                 <input value={cauta} placeholder="Caută după client, număr de contract sau CUI…" onInput={(e: any) => setCauta(e.target.value)} />
               </div>
               {!lista.length ? (
-                <div class="ctr-empty">{tot.length ? 'Niciun contract pentru filtrul ăsta.' : 'Niciun contract încă. Se face din „Client nou" (Companii) sau din fila „Contract" a unei firme.'}</div>
+                <div class="ctr-empty">{tot.length ? 'Niciun contract pentru filtrul ăsta.' : 'Niciun contract încă. Se face din „Client nou” (Companii) sau din fila „Contract” a unei firme.'}</div>
               ) : (
                 <div class="ctr-list">
                   {lista.map((c) => <CardContract c={c} fisa={fisa} reinnoieste={reinnoieste} pasi={pasi} />)}
@@ -143,7 +143,7 @@ function Benzi({ d, fisa, reinnoieste }: { d: Lista; fisa: (id: any) => void; re
                 {inc.length === 1 ? '1 firmă are contractul încheiat, dar intră în continuare în aplicație' : inc.length + de(inc.length) + 'firme au contractul încheiat, dar intră în continuare în aplicație'}
               </div>
               {nume(inc)}
-              <p>— fă-le contract nou sau oprește-le accesul din „Abonament &amp; plăți".</p>
+              <p>— fă-le contract nou sau oprește-le accesul din „Abonament &amp; plăți”.</p>
             </>
           )}
         </div>
@@ -189,7 +189,7 @@ function CardContract({ c, fisa, reinnoieste, pasi }: { c: any; fisa: (id: any) 
   const st = CTR_STARI[c.status] || CTR_STARI.ciorna;
   const total = c.annex && c.annex.monthlyTotal ? Number(c.annex.monthlyTotal) : null;
   const dos = c.dosar || {};
-  // La un contract nesemnat, „Stare" spune deja unde e; „Dosar" spune doar ce LIPSEȘTE — fiecare lipsă cu
+  // La un contract nesemnat, „Stare” spune deja unde e; „Dosar” spune doar ce LIPSEȘTE — fiecare lipsă cu
   // butonul ei, chiar pe rând (Alin, 24.09). La unul semnat: pastila dosarului, apoi lipsurile.
   const linii = pasi.lipsuri(c);
   const dosar = dos.nivel === 'nesemnat'

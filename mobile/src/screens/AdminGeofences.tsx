@@ -17,7 +17,7 @@ import './detail.css';
 // Desenarea pe ecran mic: cercul se face dintr-o atingere (centru) + un cursor pentru rază — mult mai
 // practic cu degetul decât tras de un mâner; poligonul se face atingând vârfurile pe rând.
 //
-// Web-ul mai știe și alte forme (zona „pe străzi", cu { line, width }, sau un poligon cu goluri). Pe
+// Web-ul mai știe și alte forme (zona „pe străzi”, cu { line, width }, sau un poligon cu goluri). Pe
 // acestea telefonul NU le redesenează: le arată pe hartă și lasă doar numele și culoarea, trimițând
 // serverului numai ce s-a schimbat. Altfel o zonă pe străzi se deschidea ca un cerc gol și, după o
 // atingere pe hartă, devenea cerc.
@@ -111,7 +111,7 @@ export function AdminGeofences() {
     mapRef.current = map;
     drawRef.current = L.layerGroup().addTo(map);
 
-    // Context: unde sunt vehiculele, ca să nu desenezi zona „în gol"
+    // Context: unde sunt vehiculele, ca să nu desenezi zona „în gol”
     for (const v of (vehicles.value || [])) {
       if (v.latitude == null || v.longitude == null) continue;
       L.circleMarker([v.latitude, v.longitude], { radius: 3, color: '#64748b', weight: 1, fillOpacity: 0.6 }).addTo(map);
@@ -182,7 +182,7 @@ export function AdminGeofences() {
     finally { setBusy(false); }
   }
   async function sterge(z: Zone) {
-    if (!confirm('Ștergi zona „' + z.name + '"?\n\nAlertele legate de ea rămân, dar nu se mai declanșează.')) return;
+    if (!confirm('Ștergi zona „' + z.name + '”?\n\nAlertele legate de ea rămân, dar nu se mai declanșează.')) return;
     setBusy(true);
     try { await Api.deleteGeofence(z.id); showToast('Zonă ștearsă'); reload(); }
     catch (e: any) { showToast(e?.message || 'Eroare', true); } finally { setBusy(false); }

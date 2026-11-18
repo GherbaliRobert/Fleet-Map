@@ -42,10 +42,10 @@ export function Reports() {
   const [histBusy, setHistBusy] = useState(false);
   const [fuelSeries, setFuelSeries] = useState<any | null>(null); // grafic consum zilnic (time-series) pt. raportul de consum
   const [loading, setLoading] = useState(false);
-  const [job, setJob] = useState<{ id: string; label: string; status: 'running' | 'done' | 'error'; historyId?: number } | null>(null); // badge „se generează în fundal"
+  const [job, setJob] = useState<{ id: string; label: string; status: 'running' | 'done' | 'error'; historyId?: number } | null>(null); // badge „se generează în fundal”
   const [err, setErr] = useState('');
   const [exporting, setExporting] = useState<'' | 'pdf' | 'xlsx'>('');
-  // „Rezumă cu RA Insight": rezumatul stă deasupra raportului; un raport nou îl șterge (ca pe web, #rep-rezumat).
+  // „Rezumă cu RA Insight”: rezumatul stă deasupra raportului; un raport nou îl șterge (ca pe web, #rep-rezumat).
   const [rezumat, setRezumat] = useState<{ busy?: boolean; titlu?: boolean; text?: string } | null>(null);
   useEffect(() => { setRezumat(null); }, [res]);
   // ── Opțiuni de raport (per tip) + interval personalizat + filtru zile/ore ──
@@ -57,12 +57,12 @@ export function Reports() {
   const [osmOver, setOsmOver] = useState(20);       // Depășiri OSM: +X km/h peste limită (0=toate)
   const [geoAddr, setGeoAddr] = useState(true);     // EcoDrive: Adrese exacte (true) / Coordonate rapide (false)
   const [zoneMin, setZoneMin] = useState(2);        // Vizite: durată minimă vizită (min)
-  const [dueAll, setDueAll] = useState(true);       // Scadențe: „Tot" (toate scadențele, fără orizont)
+  const [dueAll, setDueAll] = useState(true);       // Scadențe: „Tot” (toate scadențele, fără orizont)
   const [fdays, setFdays] = useState<string[]>([]); // filtru zile săptămână (mon..sun); gol = toate
   const [hFrom, setHFrom] = useState('');           // interval orar HH:MM
   const [hTo, setHTo] = useState('');
-  const [pvOpen, setPvOpen] = useState<number>(-1); // secțiunea „pe vehicul" deschisă (-1 = niciuna)
-  // „CAN detaliat": semnalele bifate. Lista vine de la server și conține DOAR ce trimit mașinile
+  const [pvOpen, setPvOpen] = useState<number>(-1); // secțiunea „pe vehicul” deschisă (-1 = niciuna)
+  // „CAN detaliat”: semnalele bifate. Lista vine de la server și conține DOAR ce trimit mașinile
   // alese — altfel omul bifează turația pe o mașină fără adaptor CAN și primește un tabel gol.
   const [canSignals, setCanSignals] = useState<{ key: string; label: string; unit: string; group: string; seen: boolean }[]>([]);
   const [canGroups, setCanGroups] = useState<{ key: string; label: string }[]>([]);
@@ -155,7 +155,7 @@ export function Reports() {
     ? (list.find((v) => v.imei === sel[0])?.name || sel[0])
     : `${sel.length} vehicule`;
 
-  // Graficul de consum zilnic (doar pt. raportul „consumption"), din /api/fuel-stats.
+  // Graficul de consum zilnic (doar pt. raportul „consumption”), din /api/fuel-stats.
   async function loadFuelSeries() {
     if (type !== 'consumption') return;
     try {
@@ -166,7 +166,7 @@ export function Reports() {
     } catch { /* fuel-stats opțional */ }
   }
 
-  // Generarea rulează în FUNDAL pe server: badge cu spinner + „Lasă în fundal"; la finalizare vine o notificare
+  // Generarea rulează în FUNDAL pe server: badge cu spinner + „Lasă în fundal”; la finalizare vine o notificare
   // report_ready (WS/push) care rezolvă badge-ul → raportul se randează inline + apare în notificări.
   async function generate() {
     if (job && job.status === 'running') return;

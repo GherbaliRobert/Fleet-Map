@@ -43,7 +43,7 @@ async function waitHealth(ms = 40000) { const t0 = Date.now(); while (Date.now()
     const up = await waitHealth();
     check('server pornit (health)', up);
     if (!up) { console.log('--- boot log ---\n' + bootLog.slice(-2000)); throw new Error('serverul nu a pornit'); }
-    check('log „mod strict ACTIV"', /mod strict ACTIV/.test(bootLog), bootLog.match(/\[STRICT\].*/)?.[0]);
+    check('log „mod strict ACTIV”', /mod strict ACTIV/.test(bootLog), bootLog.match(/\[STRICT\].*/)?.[0]);
 
     const admin = await login('admin', 'admin123'); check('login admin', admin.status === 200, admin.status);
     const REG = '350111222333444', UNREG = '350999888777666';

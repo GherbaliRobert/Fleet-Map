@@ -53,7 +53,7 @@ const ALERT_TYPES: AType[] = [
   { v: 'dtc_error', label: 'Erori motor (DTC)', fields: [] },
   { v: 'overload_legal', label: 'Supraîncărcare (legal)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 40000, ...OFF }] },
   { v: 'overload_construct', label: 'Supraîncărcare (constructiv)', fields: [{ k: 'maxKg', label: 'Limită (kg)', def: 44000, ...OFF }] },
-  // Fără tipul ăsta, o regulă de pe axe deschisă pe telefon ar fi apărut ca „Depășire viteză".
+  // Fără tipul ăsta, o regulă de pe axe deschisă pe telefon ar fi apărut ca „Depășire viteză”.
   { v: 'axle_overload', label: 'Supraîncărcare pe axă', axles: true, fields: [] },
   { v: 'pto_active', label: 'PTO activat', fields: [] },
   { v: 'brake_pad_wear', label: 'Uzură plăcuțe frână', fields: [{ k: 'minPercent', label: 'Prag minim (%)', def: 20 }] },
@@ -71,7 +71,7 @@ function condOf(a: any): Record<string, any> {
   if (typeof c === 'string') { try { c = JSON.parse(c); } catch { c = null; } }
   return (c && typeof c === 'object' && !Array.isArray(c)) ? c : {};
 }
-// „90 km/h", „10 L", „15 min", „30 zile", „3 axe" — sau, cinstit, „fără prag · nu sună" acolo unde un
+// „90 km/h”, „10 L”, „15 min”, „30 zile”, „3 axe” — sau, cinstit, „fără prag · nu sună” acolo unde un
 // prag gol înseamnă că regula nu trimite nimic (combustibil, temperatură, greutate).
 function pragText(a: any): string {
   const c = condOf(a);
@@ -85,7 +85,7 @@ function pragText(a: any): string {
 }
 // Valorile formularului pentru un tip. Fără regulă sursă → valorile implicite (regulă nouă).
 // Cu regulă sursă → valorile ei. Un prag gol rămâne GOL, nu primește valoarea implicită: la combustibil,
-// temperatură și greutate, gol înseamnă „fără prag", iar completarea lui ar schimba regula pe ascuns.
+// temperatură și greutate, gol înseamnă „fără prag”, iar completarea lui ar schimba regula pe ascuns.
 function formCond(t: AType, src: Record<string, any> | null): Record<string, any> {
   const cond: Record<string, any> = {};
   for (const f of t.fields) {
@@ -102,7 +102,7 @@ function formCond(t: AType, src: Record<string, any> | null): Record<string, any
   return cond;
 }
 
-// Alertele „de stare" (27.10): tipurile și fraza vin de la server (alerte_stare.js), o dată. O eroare nu rămâne ținută minte (ca pe web).
+// Alertele „de stare” (27.10): tipurile și fraza vin de la server (alerte_stare.js), o dată. O eroare nu rămâne ținută minte (ca pe web).
 let _cumSuna: Promise<any> | null = null;
 function cumSunaIa(): Promise<any> {
   if (!_cumSuna) _cumSuna = Api.alerteCumSuna().catch(() => null).then((j) => { if (!j) _cumSuna = null; return j; });
@@ -121,11 +121,11 @@ function sunaText(a: any): string[] {
 
 export function AdminAlerts() {
   const loc = useLocation();
-  // Pe lângă „modifică flota", firma poate tăia unui rol editarea alertelor (editariTaiate 'alerte');
+  // Pe lângă „modifică flota”, firma poate tăia unui rol editarea alertelor (editariTaiate 'alerte');
   // serverul refuză atunci adăugarea, pornirea/oprirea, modificarea și ștergerea (requireEdit('alerte')).
-  // Fără verificarea asta, butoanele ar arăta că merg și fiecare apăsare ar da „Acces interzis".
+  // Fără verificarea asta, butoanele ar arăta că merg și fiecare apăsare ar da „Acces interzis”.
   const canWrite = !!me.value?.permissions?.manageFleet && !(me.value?.editariTaiate || []).includes('alerte');
-  // Super-adminul nu are companie proprie. Fără o alegere explicită, regula s-ar salva „fără companie":
+  // Super-adminul nu are companie proprie. Fără o alegere explicită, regula s-ar salva „fără companie”:
   // s-ar declanșa pentru flotele TUTUROR clienților și n-ar apărea în lista niciunuia dintre ei.
   const isSuper = !!me.value?.isSuper;
   const vlist = vehicles.value;
@@ -142,7 +142,7 @@ export function AdminAlerts() {
   // Regula deschisă pentru modificare, așa cum a venit de la server (null = regulă nouă).
   const [editing, setEditing] = useState<any | null>(null);
   const [confirmDel, setConfirmDel] = useState<any | null>(null);
-  // Salvare „pentru toată platforma" care așteaptă confirmarea (ca pe web).
+  // Salvare „pentru toată platforma” care așteaptă confirmarea (ca pe web).
   const [confirmAll, setConfirmAll] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
   // Regulile al căror comutator se salvează acum. Blocare PE REGULĂ: cât se salvează una, celelalte
@@ -153,7 +153,7 @@ export function AdminAlerts() {
 
   const coName = (id: any) => { const c = cos.find((x) => Number(x.id) === Number(id)); return c ? c.name : ('compania #' + id); };
   const zName = (id: any) => { const g = geofences.find((x) => Number(x.id) === Number(id)); return g ? (g.name || ('Zona #' + id)) : ('Zona #' + id); };
-  // Câte zone urmărește regula — „Intrare în zonă" singur nu spune despre CE zone e vorba.
+  // Câte zone urmărește regula — „Intrare în zonă” singur nu spune despre CE zone e vorba.
   function zoneText(a: any) {
     const c = condOf(a);
     const ids: any[] = Array.isArray(c.geofenceIds) ? c.geofenceIds : (c.geofenceId ? [c.geofenceId] : []);
@@ -161,9 +161,9 @@ export function AdminAlerts() {
     if (ids.length === 1) return ' · ' + zName(ids[0]);
     return ' · ' + ids.length + ' zone: ' + ids.slice(0, 2).map(zName).join(', ') + (ids.length > 2 ? ' +' + (ids.length - 2) : '');
   }
-  // Vehiculele companiei alese; pentru „toată platforma" rămân toate, cu compania scrisă lângă nume.
+  // Vehiculele companiei alese; pentru „toată platforma” rămân toate, cu compania scrisă lângă nume.
   // Cele NEASIGNATE (fără company_id) rămân vizibile oricum — altfel ar dispărea din toate listele
-  // deodată și n-ai afla niciodată că există. Sunt etichetate „fără companie".
+  // deodată și n-ai afla niciodată că există. Sunt etichetate „fără companie”.
   const formVehicles = (form.co && form.co !== '__all__')
     ? vlist.filter((v: any) => Number(v.company_id) === Number(form.co) || v.company_id == null)
     : vlist;
@@ -307,7 +307,7 @@ export function AdminAlerts() {
 
   const zonesChecked = zoneKey ? checkedZones().length : 0;
   // Vehiculul regulii poate lipsi din lista afișată (ex. alt filtru de companie). Îl păstrăm ca opțiune,
-  // altfel selectorul ar arăta „Toate vehiculele" și salvarea ar lărgi regula la toată flota.
+  // altfel selectorul ar arăta „Toate vehiculele” și salvarea ar lărgi regula la toată flota.
   const imeiMissing = !!form.imei && !formVehicles.some((v: any) => v.imei === form.imei);
 
   return (

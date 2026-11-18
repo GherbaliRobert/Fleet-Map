@@ -7,9 +7,9 @@
 // Lista (`GET /api/notifications`) era corect izolată; doar ruta de detaliu ocolea regula.
 const { spawn } = require('child_process');
 const os = require('os'), path = require('path'), fs = require('fs');
-// Conturile probei se nasc pe traseul REAL („parola nu există": cont → link → omul își pune parola).
+// Conturile probei se nasc pe traseul REAL („parola nu există”: cont → link → omul își pune parola).
 // Lipsea de la refacerea din 16.09, iar proba crăpa cu `puneParola is not defined` — dar abia după
-// a patra verificare, deci raportul arăta „4/5 trecute" și părea aproape bună.
+// a patra verificare, deci raportul arăta „4/5 trecute” și părea aproape bună.
 const { puneParola } = require('./test_parola');
 
 const PORT = 3153, TCP = 5153;
@@ -59,7 +59,7 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
 
     // Producem o notificare FĂRĂ vehicul, pe o cale reală și declanșabilă: cererea de cont demo.
     // E din aceeași familie ca expirarea permisului sau factura emisă — notificări care nu au IMEI,
-    // deci exact cele care treceau nefiltrate. Ramura „notificarea companiei mele" e aceeași regulă,
+    // deci exact cele care treceau nefiltrate. Ramura „notificarea companiei mele” e aceeași regulă,
     // scrisă o dată, oglindind `_notifWhere` din db.js.
     const cerere = await req(jar(), 'POST', '/api/public/demo-request', {
       name: 'Ion Popescu', email: 'ion.popescu@transporta.ro', phone: '0722123456',

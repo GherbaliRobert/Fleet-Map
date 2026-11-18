@@ -1,6 +1,6 @@
 // Preluare preț carburant — media națională (lei/L) de la PretCarburant.ro.
 // API public, fără autentificare, fără rate-limit pe /preturi/minime (cache 5 min la sursă).
-// Licență CC BY 4.0 → comercial permis CU atribuire vizibilă „Sursa: PretCarburant.ro".
+// Licență CC BY 4.0 → comercial permis CU atribuire vizibilă „Sursa: PretCarburant.ro”.
 const ENDPOINT = 'https://pretcarburant.ro/api/v1/preturi/minime';
 const SOURCE = 'PretCarburant.ro';
 

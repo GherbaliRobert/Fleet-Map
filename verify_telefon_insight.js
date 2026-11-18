@@ -1,33 +1,33 @@
-// verify_telefon_insight.js — RA Insight pe telefon (lotul „discuția", 02.11): telefonul face ce face secțiunea de pe web,
+// verify_telefon_insight.js — RA Insight pe telefon (lotul „discuția”, 02.11): telefonul face ce face secțiunea de pe web,
 // pe aceleași rute, cu aceleași reguli și aceleași cuvinte.
 //
 //   node verify_telefon_insight.js
 //
 // Ce păzește:
-//   1.  butoanele de sub salut, perioadele, lista din „+", meniul „⋯": aceleași ca pe web;
-//   2.  „Azi la tine": aziPrimul și aziButon ale paginii, RULATE lângă cele ale telefonului, pe aceleași cazuri;
+//   1.  butoanele de sub salut, perioadele, lista din „+”, meniul „⋯”: aceleași ca pe web;
+//   2.  „Azi la tine”: aziPrimul și aziButon ale paginii, RULATE lângă cele ale telefonului, pe aceleași cazuri;
 //   3.  pachetul și contorul (/api/ai/quota): incarcaPachet, textContor, actualizeazaCaseta ale paginii, rulate;
 //   4.  textul serverului: md, mdScurt, textGros, _chatTextSimplu, cand, grup, _chatPuneInText, _chatMasini ale paginii, rulate;
 //   5.  răspunsul: bulaAi al paginii, RULAT pe un DOM de carton, lângă planBula de pe telefon — aceleași părți, în aceeași ordine;
 //   6.  ce pleacă la server și ce se ține din răspuns: corpul întrebării, câmpurile mesajului, o singură cale de întrebat;
 //   7.  butoanele: fiecare fel din insightProblemaButon are drum pe telefon (sau, fără pagină încă, nu se desenează);
-//       cartonașul de propunere: câmpurile din „Schimbă", rutele, „Anulează" numărat din `ramasMs`;
+//       cartonașul de propunere: câmpurile din „Schimbă”, rutele, „Anulează” numărat din `ramasMs`;
 //   8.  niciun text de-al serverului scris pe telefon, nicio etichetă altfel decât pe web, niciun HTML de la server, linkuri doar http/https;
-//   9.  navigarea: /ai duce la /insight, rândul din meniu, „Agenți AI" ascuns cu `aiCont`;
+//   9.  navigarea: /ai duce la /insight, rândul din meniu, „Agenți AI” ascuns cu `aiCont`;
 //   10. culorile, măsurate pe ambele teme, și așezarea (fără ieșire în lături, caseta pe zona sigură, sertarul fără umbră cât e închis);
 //   11. ecranele desenate în HTML (cu preact; în CI se sare, ca la verify_telefon_lot5.js);
 //   12. pe server pornit, prin clientul HTTP ADEVĂRAT al telefonului, cu cheia lui: rapoarte cerute în cuvinte, conversații,
 //       cartonașul alertei (Schimbă, dovezile, Da, Anulează, un 409 care aduce starea), notițele, omul fără cont. ZERO cereri la model;
-//   13. lotul 2, paginile: lista și regula „încuiat", numerele, formele cifrelor, fiecare pagină a web-ului RULATĂ pe un DOM de carton
+//   13. lotul 2, paginile: lista și regula „încuiat”, numerele, formele cifrelor, fiecare pagină a web-ului RULATĂ pe un DOM de carton
 //       lângă planul telefonului, pe aceleași răspunsuri (și pe cele adevărate, de pe server), bifele, ghidul, nimic socotit pe telefon;
-//       anunțul „Scrisoarea de luni"; fila veche din Rapoarte a plecat, „Rezumă cu RA Insight" a rămas, ca pe web.
+//       anunțul „Scrisoarea de luni”; fila veche din Rapoarte a plecat, „Rezumă cu RA Insight” a rămas, ca pe web.
 //
 // Regula casei: unde telefonul ține o copie a unei reguli a paginii, proba nu o crede pe cuvânt. Decupează bucata paginii
 // (public/index.html) și pe cea a telefonului (TypeScript, tradus), le RULEAZĂ pe aceleași cazuri și cere același rezultat.
 //
 // Pornește UN server (PGlite, port 3531, TCP 5531, baza în dosarul temporar, ștearsă la final), cu modelul simulat: orice cerere
 // către el se numără și trebuie să rămână zero. În CI (fără mobile/node_modules) compilatorul vine de la rădăcină, iar ce se
-// desenează cu preact se sare, cu un rând „⤼ sărit". `PROBA_CA_IN_CI=1 node verify_telefon_insight.js` face la fel pe calculator.
+// desenează cu preact se sare, cu un rând „⤼ sărit”. `PROBA_CA_IN_CI=1 node verify_telefon_insight.js` face la fel pe calculator.
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -87,8 +87,8 @@ function modul(rel, stubs, globale) {
 }
 
 const html = citeste('public/index.html');
-const INSP = taie(html, '// ── începe „secțiunea RA Insight" ──', '// ── sfârșit „secțiunea RA Insight" ──');
-const COMUNE = html.slice(Math.max(0, html.indexOf('window._insightExtra = function')), html.indexOf('// ── începe „secțiunea RA Insight" ──'));
+const INSP = taie(html, '// ── începe „secțiunea RA Insight” ──', '// ── sfârșit „secțiunea RA Insight” ──');
+const COMUNE = html.slice(Math.max(0, html.indexOf('window._insightExtra = function')), html.indexOf('// ── începe „secțiunea RA Insight” ──'));
 const server = citeste('server.js');
 const F = {
   lib: 'mobile/src/lib/insight.ts', ecran: 'mobile/src/screens/Insight.tsx', bula: 'mobile/src/components/InsightBula.tsx',
@@ -103,12 +103,12 @@ const S = {}; Object.keys(F).forEach((k) => { S[k] = citeste(F[k]); });
 sect('0. Fișierele');
 T('toate fișierele citite de probă există', Object.keys(S).every((k) => !!S[k]), Object.keys(S).filter((k) => !S[k]).join(', '));
 T('găsesc blocul secțiunii și piesele comune în pagină', INSP.length > 1000 && COMUNE.length > 1000);
-T('ecranul vechi „Asistent AI" a plecat, cu tot cu piesele lui', ['mobile/src/screens/AiChat.tsx', 'mobile/src/components/ChatScreen.tsx', 'mobile/src/components/InsightPanel.tsx', 'mobile/src/screens/chat.css'].every((f) => !fs.existsSync(path.join(ROOT, f))));
+T('ecranul vechi „Asistent AI” a plecat, cu tot cu piesele lui', ['mobile/src/screens/AiChat.tsx', 'mobile/src/components/ChatScreen.tsx', 'mobile/src/components/InsightPanel.tsx', 'mobile/src/screens/chat.css'].every((f) => !fs.existsSync(path.join(ROOT, f))));
 
 const LP = modul(F.pagLib);
 const L = modul(F.lib, { './insightPagini': LP, './cereriEchipa': modul('mobile/src/lib/cereriEchipa.ts', { './numar': modul('mobile/src/lib/numar.ts') }) });
 
-sect('1. Butoanele de sub salut, perioadele, „+", „⋯"');
+sect('1. Butoanele de sub salut, perioadele, „+”, „⋯”');
 {
   const ev = (re) => { const m = INSP.match(re); return m ? vm.runInNewContext('(' + m[1] + ')') : null; };
   const CARDURI = ev(/var CARDURI = (\[[\s\S]*?\]);/);
@@ -117,7 +117,7 @@ sect('1. Butoanele de sub salut, perioadele, „+", „⋯"');
   T('…și la fel pe butoane (Start, luna oprită)', J(L.CARDURI_REGULI) === J(reg), J(L.CARDURI_REGULI));
   const per = vm.runInNewContext('(' + taie(html, 'window._CHAT_PERIOADE = ', '.map(function (x) { x.fa').replace('window._CHAT_PERIOADE = ', '') + ')');
   T('aceleași perioade', J(L.PERIOADE) === J(per), J(L.PERIOADE));
-  // Lista din „+", rulată pe web (insightPlus cu un _chatAlege care doar ține minte).
+  // Lista din „+”, rulată pe web (insightPlus cu un _chatAlege care doar ține minte).
   const plusWeb = (rapoarte) => {
     let prins = null;
     const w = { _chatAlege: (b, t, l) => { prins = { t, l }; } };
@@ -126,29 +126,29 @@ sect('1. Butoanele de sub salut, perioadele, „+", „⋯"');
   };
   [true, false].forEach((r) => {
     const a = plusWeb(r), b = L.listaPlus(r);
-    T('„+" (' + (r ? 'cu' : 'fără') + ' rapoarte): aceleași rânduri', a.t === 'Adaugă' && J(a.l.map((x) => [x.text, x.sub, x.k])) === J(b.map((x) => [x.text, x.sub, x.k])), J(b));
+    T('„+” (' + (r ? 'cu' : 'fără') + ' rapoarte): aceleași rânduri', a.t === 'Adaugă' && J(a.l.map((x) => [x.text, x.sub, x.k])) === J(b.map((x) => [x.text, x.sub, x.k])), J(b));
   });
   T('titlurile foilor, ca pe web', ["'Adaugă'", "'Alege mașina'", "'Alege perioada'", "'Ce raport fac?'", "'RA Insight'"].every((t) => INSP.indexOf('_chatAlege(btn, ' + t) >= 0 && S.ecran.indexOf('titlu: ' + t) >= 0));
-  // „⋯": cu aceleași cuvinte și în aceeași ordine ca pe web. Regula lui „Pachet și conturi" (administratorul firmei): verify_telefon_pachete.js.
+  // „⋯”: cu aceleași cuvinte și în aceeași ordine ca pe web. Regula lui „Pachet și conturi” (administratorul firmei): verify_telefon_pachete.js.
   const meniuWeb = taie(INSP, 'window.insightMeniu = function (btn) {', "window._chatAlege(btn, 'RA Insight'");
   const lb = L.listaMeniu({ areConv: true, poateAgenti: true, poatePachet: true }).map((x) => x.text);
   const laWeb = lb.map((t) => meniuWeb.indexOf("text: '" + t + "'"));
-  T('meniul „⋯": fiecare rând există pe web, în aceeași ordine', laWeb.every((x) => x >= 0) && laWeb.every((x, i) => !i || x > laWeb[i - 1]), J(lb) + ' ' + J(laWeb));
+  T('meniul „⋯”: fiecare rând există pe web, în aceeași ordine', laWeb.every((x) => x >= 0) && laWeb.every((x, i) => !i || x > laWeb[i - 1]), J(lb) + ' ' + J(laWeb));
   T('…fără conversație deschisă: notițele, agenții, ghidul', J(L.listaMeniu({ areConv: false, poateAgenti: true }).map((x) => x.k)) === J(['notite', 'agenti', 'ghid']) && J(L.listaMeniu({ areConv: false, poateAgenti: false }).map((x) => x.k)) === J(['notite', 'ghid']));
-  T('…pe o pagină: „Conversație nouă" da, redenumirea și ștergerea nu (ca pe web: `S.ramura === \'general\'`)', J(L.listaMeniu({ areConv: true, peRamura: true, poateAgenti: true }).map((x) => x.k)) === J(['nou', 'notite', 'agenti', 'ghid']) && /var id = S\.ramura === 'general' && S\.conv && S\.conv\.id;/.test(meniuWeb));
-  T('…„Pachet și conturi" doar cu dreptul', L.listaMeniu({ areConv: true, poateAgenti: true }).every((x) => x.k !== 'pachet') && L.listaMeniu({ areConv: false, poateAgenti: false, poatePachet: true }).some((x) => x.k === 'pachet'));
+  T('…pe o pagină: „Conversație nouă” da, redenumirea și ștergerea nu (ca pe web: `S.ramura === \'general\'`)', J(L.listaMeniu({ areConv: true, peRamura: true, poateAgenti: true }).map((x) => x.k)) === J(['nou', 'notite', 'agenti', 'ghid']) && /var id = S\.ramura === 'general' && S\.conv && S\.conv\.id;/.test(meniuWeb));
+  T('…„Pachet și conturi” doar cu dreptul', L.listaMeniu({ areConv: true, poateAgenti: true }).every((x) => x.k !== 'pachet') && L.listaMeniu({ areConv: false, poateAgenti: false, poatePachet: true }).some((x) => x.k === 'pachet'));
   T('…nota de jos, ca pe web', INSP.indexOf(L.NOTA_MENIU) >= 0, L.NOTA_MENIU);
-  T('…„Setările agenților": aceeași condiție ca pe web, duce la ecranul agenților',
+  T('…„Setările agenților”: aceeași condiție ca pe web, duce la ecranul agenților',
     /u\.features && u\.features\.agents !== false && u\.permissions && u\.permissions\.viewReports/.test(meniuWeb) && /u\?\.features && u\.features\.agents !== false && u\?\.permissions\?\.viewReports/.test(S.ecran) && /x\.k === 'agenti'\) du\('\/ai-agents'\)/.test(S.ecran));
   // Salutul, rulat pe web.
   // Din 05.11 prenumele vine de la server (/api/me → prenume, prenume.js); pagina și telefonul doar îl scriu, la fel.
   const prenumeWeb = (p) => new Function('window', functie(INSP, 'function prenume()') + '; return (prenume() ? "Salut, " + prenume() + "! " : "Salut! ") + "Cu ce te pot ajuta?";')({ currentUser: { prenume: p, full_name: 'Tilvar Alin' } });
   ['Alin', '  Ion  ', '', null, 'Ana-Maria'].forEach((p) => T('salutul pentru prenumele ' + J(p), L.textSalut(p) === prenumeWeb(p), L.textSalut(p)));
   T('…prenumele vine de la server, nu din nume (pagina și telefonul)', /return String\(u\.prenume \|\| ''\)\.trim\(\);/.test(functie(INSP, 'function prenume()')) && /textSalut\(u\?\.prenume\)/.test(S.ecran) && !/prenumeDin/.test(S.lib));
-  T('rapoartele din „+": de la server, cu textul pus în casetă', /Api\.insightRapoarte\(\)/.test(S.ecran) && /pune: String\(x\.pune \|\| ''\)/.test(S.ecran) && /'\/api\/insight\/rapoarte'/.test(S.endpoints));
+  T('rapoartele din „+”: de la server, cu textul pus în casetă', /Api\.insightRapoarte\(\)/.test(S.ecran) && /pune: String\(x\.pune \|\| ''\)/.test(S.ecran) && /'\/api\/insight\/rapoarte'/.test(S.endpoints));
 }
 
-sect('2. „Azi la tine": un rând = un clic');
+sect('2. „Azi la tine”: un rând = un clic');
 {
   const webPrimul = (rd, ai, rap) => new Function('areAi', 'poateRapoarte', functie(INSP, 'function aziPrimul(rd)') + '; return aziPrimul;')(() => ai, () => rap)(rd);
   const CAZURI = [
@@ -191,9 +191,9 @@ sect('2. „Azi la tine": un rând = un clic');
       { fel: 'propunere', trimite: 'Propune un șofer' }, { fel: 'acte', ramura: 'mentenanta', trimite: 'Ce expiră?' }, { fel: 'pagina', ramura: 'soferi', trimite: 'Arată' }, { fel: 'pagina', ramura: 'nu-exista', trimite: 'Arată' }, { fel: 'alta' }]
       .forEach((b) => T('aziButon (' + b.fel + ', pachet ' + J(pachet && pachet.ramuri) + '): la fel ca pe web', J(webButon(b, pachet)) === J(telButon(b, pachet)), J(webButon(b, pachet)) + ' / ' + J(telButon(b, pachet))));
   });
-  T('„De ce?" se vede pe rând (se numără); „Propunere ›" la fel; restul, o săgeată', /b\.fel === 'dece' \? <span class="azi-dece">\{b\.text\}<\/span>/.test(S.ecran) && /b\.fel === 'propunere' \? <span class="azi-prop">\{b\.text\}/.test(S.ecran));
-  T('capul, ca pe web: „N de văzut" sau „de la agenți · când"', /dv > 0 \? dv \+ ' de văzut' : 'de la agenți' \+ \(j\.la \? ' · ' \+ cand\(j\.la\) : ''\)/.test(INSP) && /dv > 0 \? dv \+ ' de văzut' : 'de la agenți' \+ \(j\.la \? ' · ' \+ cand\(j\.la\) : ''\)/.test(S.ecran));
-  T('la noi (`platforma`) și fără cont, „Azi la tine" nu apare', /j\.platforma \|\| j\.seatMissing \|\| j\.error/.test(S.ecran));
+  T('„De ce?” se vede pe rând (se numără); „Propunere ›” la fel; restul, o săgeată', /b\.fel === 'dece' \? <span class="azi-dece">\{b\.text\}<\/span>/.test(S.ecran) && /b\.fel === 'propunere' \? <span class="azi-prop">\{b\.text\}/.test(S.ecran));
+  T('capul, ca pe web: „N de văzut” sau „de la agenți · când”', /dv > 0 \? dv \+ ' de văzut' : 'de la agenți' \+ \(j\.la \? ' · ' \+ cand\(j\.la\) : ''\)/.test(INSP) && /dv > 0 \? dv \+ ' de văzut' : 'de la agenți' \+ \(j\.la \? ' · ' \+ cand\(j\.la\) : ''\)/.test(S.ecran));
+  T('la noi (`platforma`) și fără cont, „Azi la tine” nu apare', /j\.platforma \|\| j\.seatMissing \|\| j\.error/.test(S.ecran));
   T('`nivel` doar din lista cunoscută (nu ajunge alt cuvânt în clasă)', L.nivelAzi('r') === 'r' && L.nivelAzi('x" onload="') === 'g' && L.nivelAzi(undefined) === 'g');
 }
 
@@ -227,13 +227,13 @@ async function pachetSiContorul() {
       const { St, box } = await webQuota(q, fond);
       const st = L.stareDinQuota(q, fond);
       const arata = box.style.display !== 'none' && box.textContent !== '';
-      T('rândul de jos, „' + nume + '": același text', (st.fond ? st.fond.text : '') === (arata ? box.textContent : ''), J(st.fond) + ' / ' + box.textContent);
+      T('rândul de jos, „' + nume + '”: același text', (st.fond ? st.fond.text : '') === (arata ? box.textContent : ''), J(st.fond) + ' / ' + box.textContent);
       T('…același amănunt (pe web la mouse, aici la apăsare)', (st.fond ? st.fond.detaliu : '') === (arata ? box.title : ''), J(st.fond) + ' / ' + box.title);
-      T('…același contor, aceeași hotărâre „pe butoane", aceeași „Sursă externă"',
+      T('…același contor, aceeași hotărâre „pe butoane”, aceeași „Sursă externă”',
         st.contor === St.contor && st.peReguli === St.peReguli && J(st.sursaInfo) === J(St.sursaInfo), J([st.contor, St.contor, st.peReguli, St.peReguli]));
       T('…avertizarea (portocaliu) pe același caz', !!(st.fond && st.fond.avert) === /\bw\b/.test(box.className), box.className);
     }
-    // Caseta: placeholder-ul și butonul „Sursă externă", rulate pe web.
+    // Caseta: placeholder-ul și butonul „Sursă externă”, rulate pe web.
     const webCaseta = (St) => {
       const i = { placeholder: '' }, nm = { textContent: '' }, nr = { textContent: '' }, cls = {};
       const sb = { style: {}, title: '', attrs: {}, classList: { toggle: (k, v) => { cls[k] = !!v; } }, setAttribute: (k, v) => { sb.attrs[k] = v; }, querySelector: (s) => (s === '.nm' ? nm : nr) };
@@ -251,12 +251,12 @@ async function pachetSiContorul() {
       const w = webCaseta({ S: { peReguli, pachet, sursaInfo, sursa, contor: '' }, rap });
       T('caseta ' + J([peReguli, !!pachet, rap, !!sursaInfo, sursa]) + ': același placeholder', w.placeholder === L.placeholderCaseta(peReguli, pachet, rap), w.placeholder);
       const b = L.butonSursa(sursaInfo, peReguli, sursa);
-      T('…același buton „Sursă externă" (apare, pornit, gol, contor, nota)', w.arata === !!b && (!b || (b.on === w.on && b.gol === w.gol && b.contor === w.nr && b.nota === w.nota && b.nume === w.nume)), J(w) + ' / ' + J(b));
+      T('…același buton „Sursă externă” (apare, pornit, gol, contor, nota)', w.arata === !!b && (!b || (b.on === w.on && b.gol === w.gol && b.contor === w.nr && b.nota === w.nota && b.nume === w.nume)), J(w) + ' / ' + J(b));
     }
     T('`areAi`, ca pe web', /function areAi\(\) \{ return !S\.peReguli && !\(S\.pachet && !S\.pachet\.ai\); \}/.test(INSP) && L.areAi(false, null) === true && L.areAi(true, PK()) === false && L.areAi(false, PK({ ai: false })) === false);
-    T('„Sursă externă" terminată: apăsarea spune nota, nu pornește nimic; se stinge la o discuție nouă și la una redeschisă',
+    T('„Sursă externă” terminată: apăsarea spune nota, nu pornește nimic; se stinge la o discuție nouă și la una redeschisă',
       /if \(!si\.poate && !sursaOn\) \{ showToast\(String\(si\.nota \|\| ''\), true\); return; \}/.test(S.ecran) && (S.ecran.match(/setSursaOn\(false\)/g) || []).length >= 3 && /if \(!st\.sursaInfo \|\| !st\.sursaInfo\.poate\) setSursaOn\(false\)/.test(S.ecran));
-    T('nicio cifră de pachet și niciun nume de pachet scris pe telefon (doar „· Basic" pe rândul încuiat, ca pe web)', !/\b(Basic|Business|Start)\b/.test(faraComentarii(S.lib + S.ecran + S.bula + S.prop).replace('· Basic', '')) && !/din 200|din 50\b/.test(faraComentarii(S.lib + S.ecran)) && /el\('span', 'insp-ram-pk', '· Basic'\)/.test(INSP));
+    T('nicio cifră de pachet și niciun nume de pachet scris pe telefon (doar „· Basic” pe rândul încuiat, ca pe web)', !/\b(Basic|Business|Start)\b/.test(faraComentarii(S.lib + S.ecran + S.bula + S.prop).replace('· Basic', '')) && !/din 200|din 50\b/.test(faraComentarii(S.lib + S.ecran)) && /el\('span', 'insp-ram-pk', '· Basic'\)/.test(INSP));
   }
 }
 
@@ -276,11 +276,11 @@ async function parteaTextului() {
   ['Simplu.', '**Gros** și subțire **iar**', '## Titlu **gros**\nRând', '- unu\n• doi\n* trei', 'A\n\nB', '<script>alert(1)</script> & **<b>x</b>**', 'Cost: 2 * 3 lei', '', null, 'rând cu spații la coadă   \n  rând cu spații în față',
     // Tabelele din răspuns (05.11): un tabel adevărat pe amândouă; o bară singură sau fără rândul de liniuțe rămâne text.
     'Consumul:\n\n| Mașina | Km | Consum |\n|---|---|---|\n| B 154 UIP · **Logan** | 1.284 | 6,9 l/100 km |\n| B 268 ROY | 2.016 | 8,4 l/100 km |\n\nGata.',
-    '| Coloana „a" | <b>b</b> |\n| :--- | ---: |\n| x & y | 2 * 3 |', '| doar o bară |\nfără liniuțe', 'a | b\n---|---\n1 | 2'].forEach((c) => {
+    '| Coloana „a” | <b>b</b> |\n| :--- | ---: |\n| x & y | 2 * 3 |', '| doar o bară |\nfără liniuțe', 'a | b\n---|---\n1 | 2'].forEach((c) => {
     T('md ' + J(c) + ': aceleași blocuri ca pe web', telMd(c) === webMd(c), telMd(c) + ' / ' + webMd(c));
   });
   T('*italic*, ca `aiMd` (explicația serverului când s-a terminat fondul)', J(L.partiMd('Rămân gratuite: *unde e o mașină, câți km*.')) === J([{ t: 'Rămân gratuite: ' }, { t: 'unde e o mașină, câți km', i: true }, { t: '.' }]), J(L.partiMd('Rămân gratuite: *unde e o mașină, câți km*.')));
-  T('…„2*3" și o listă rămân text', J(L.partiMd('2*3 și 4*5')) === J([{ t: '2*3 și 4*5' }]) && L.mdBlocuri('* unu').map((b) => b.fel)[0] === 'li');
+  T('…„2*3” și o listă rămân text', J(L.partiMd('2*3 și 4*5')) === J([{ t: '2*3 și 4*5' }]) && L.mdBlocuri('* unu').map((b) => b.fel)[0] === 'li');
   const webScurt = new Function(functie(INSP, 'function mdScurt(t)') + '; return mdScurt;')();
   const webGros = (t) => {
     const n = { html: '', appendChild(c) { n.html += c; return n; } };
@@ -291,8 +291,8 @@ async function parteaTextului() {
   };
   const telGros = (t) => L.partiGros(t).map((x) => (x.b ? '<b>' + esc(x.t) + '</b>' : esc(x.t))).join('');
   ['**B 154 UIP** nu transmite de 3 ore.', 'Fără gros', 'A **b** c **d**', '<i>x</i> **<y>**', ''].forEach((c) => {
-    T('rândul din „Azi la tine" ' + J(c) + ': ca mdScurt', telGros(c) === webScurt(c), telGros(c) + ' / ' + webScurt(c));
-    T('rândul din „Gata" ' + J(c) + ': ca textGros', telGros(c) === webGros(c), telGros(c) + ' / ' + webGros(c));
+    T('rândul din „Azi la tine” ' + J(c) + ': ca mdScurt', telGros(c) === webScurt(c), telGros(c) + ' / ' + webScurt(c));
+    T('rândul din „Gata” ' + J(c) + ': ca textGros', telGros(c) === webGros(c), telGros(c) + ' / ' + webGros(c));
   });
   const webSimplu = new Function(functie(COMUNE, 'window._chatTextSimplu = function (t) {').replace('window._chatTextSimplu = function (t) {', 'return (function (t) {') + ');')();
   ['**Gros** normal', '## Titlu\n- unu\n* doi\n• trei', '  spații  ', null].forEach((c) => T('ce se copiază ' + J(c) + ': ca pe web', L.textSimplu(c) === webSimplu(c), L.textSimplu(c)));
@@ -301,7 +301,7 @@ async function parteaTextului() {
   const acum = Date.now();
   [0, 3600e3, 86400e3, 2 * 86400e3, 6 * 86400e3, 7 * 86400e3, 40 * 86400e3].forEach((d) => {
     const iso = new Date(acum - d).toISOString();
-    T('când ' + Math.round(d / 3600e3) + ' h în urmă: „' + L.cand(iso) + '", grupa „' + L.grup(iso) + '"', L.cand(iso) === webCand.cand(iso) && L.grup(iso) === webCand.grup(iso), webCand.cand(iso) + ' / ' + webCand.grup(iso));
+    T('când ' + Math.round(d / 3600e3) + ' h în urmă: „' + L.cand(iso) + '”, grupa „' + L.grup(iso) + '”', L.cand(iso) === webCand.cand(iso) && L.grup(iso) === webCand.grup(iso), webCand.cand(iso) + ' / ' + webCand.grup(iso));
   });
   T('o dată stricată nu scrie nimic', L.cand('nu e o dată') === '' && L.cand(null) === webCand.cand(null));
   // _chatPuneInText: pe web, cu o casetă de carton.
@@ -321,7 +321,7 @@ async function parteaTextului() {
     const fet = async () => ({ ok: true, json: async () => forma });
     const fn = new Function('window', 'fetch', 'Date', 'var _chatMasiniMem = null;' + functie(COMUNE, 'window._chatMasini = async function () {') + '; return window._chatMasini;')({}, fet, Date);
     const a = (await fn()).map((x) => ({ text: x.text, sub: x.sub, pune: x.pune }));
-    T('mașinile din „+" (' + (Array.isArray(forma) ? 'listă' : (forma ? 'obiect' : 'gol')) + '): ca pe web', J(a) === J(L.masiniAlegere(forma)), J(a) + ' / ' + J(L.masiniAlegere(forma)));
+    T('mașinile din „+” (' + (Array.isArray(forma) ? 'listă' : (forma ? 'obiect' : 'gol')) + '): ca pe web', J(a) === J(L.masiniAlegere(forma)), J(a) + ' / ' + J(L.masiniAlegere(forma)));
   }
   T('…din aceeași listă ca harta (/api/devices)', /Api\.devices\(\)/.test(S.ecran) && /fetch\('\/api\/devices'/.test(COMUNE));
   T('linkurile: doar http / https', L.linkSigur('https://a.ro') && L.linkSigur('HTTP://A.RO') && !L.linkSigur('javascript:alert(1)') && !L.linkSigur('data:text/html,x') && !L.linkSigur(' https://a.ro') && !L.linkSigur('') && !L.linkSigur(null) && !L.linkSigur('//a.ro'));
@@ -405,16 +405,16 @@ function parteaBulei() {
     const row = bulaAi(JSON.parse(J(m)));
     const bub = row.children[1];
     const web = clase(bub), plan = L.planBula(JSON.parse(J(m)));
-    T('„' + nume + '": aceleași părți, în aceeași ordine', J(web) === J(plan.ordine), J(web) + ' / ' + J(plan.ordine));
+    T('„' + nume + '”: aceleași părți, în aceeași ordine', J(web) === J(plan.ordine), J(web) + ' / ' + J(plan.ordine));
     const dupa = (cls) => bub.children.filter((c) => String(c.className).split(' ').indexOf(cls) >= 0)[0];
     const txt = dupa('insp-txt');
     T('…același text', (txt ? txt.innerHTML : '') === (plan.text ? new Function(functie(INSP, 'function md(t)') + '; return md;')()(plan.text) : ''), plan.text);
     const okk = dupa('chat-ok');
-    T('…același rând „✓"', (okk ? okk.textContent : '') === plan.verificat, plan.verificat);
+    T('…același rând „✓”', (okk ? okk.textContent : '') === plan.verificat, plan.verificat);
     const jos = dupa('chat-act');
     T('…aceleași butoane jos (Copiază; 👍/👎 doar cu id și nu pe răspunsul rapid)', jos.children.filter((c) => c.tag === 'button').length === (plan.voteaza ? 3 : 1), plan.voteaza);
     const sp = jos.children.filter((c) => String(c.className) === 'chat-sursa')[0];
-    T('…același „Din raportul…"', (sp ? sp.textContent : '') === plan.dinRaport, plan.dinRaport);
+    T('…același „Din raportul…”', (sp ? sp.textContent : '') === plan.dinRaport, plan.dinRaport);
     const su = dupa('insp-surse');
     T('…cel mult două butoane spre rapoarte, cu același text', J(su ? su.children.map((b) => b.textContent) : []) === J(plan.surse.map(L.textSursaRaport)), J(plan.surse.map(L.textSursaRaport)));
     const lim = dupa('chat-lim');
@@ -463,7 +463,7 @@ function parteaCererilor() {
   T('la o eroare, corpul serverului ajunge în bulă (`reply`), iar conversația dispărută se uită', /if \(e\.status === 404\) \{ setConv\(null\); convCurenta = null; \}/.test(S.ecran) && /r\.s === 404\) \{ S\.conv = null; window\._raxConvId = null; \}/.test(ins) && /new ApiError\(status, \(data && data\.error\) \|\| \('Eroare ' \+ status\), data\)/.test(S.client));
   T('conversația rămâne ținută minte cât trăiește aplicația (web: _raxConvId) și se redeschide la întoarcerea pe ecran', /incarcaConv\(convCurenta\)/.test(S.ecran) && /let convCurenta/.test(S.ecran));
   T('fără cont: textul serverului, din amândouă formele (200 cu cheie, 403 cu sesiune)', L.textFaraLoc({ seatMissing: true, message: 'M' }) === 'M' && L.textFaraLoc({ error: 'ai_seat_missing', reply: 'R' }) === 'R' && L.textFaraLoc({ conversatii: [] }) === null && /e\.status === 403 \|\| e\.status === 401/.test(S.ecran));
-  T('„Asistent AI" (ușa veche) rămâne pe server pentru aplicațiile vechi', /app\.post\('\/api\/ai\/chat'/.test(server));
+  T('„Asistent AI” (ușa veche) rămâne pe server pentru aplicațiile vechi', /app\.post\('\/api\/ai\/chat'/.test(server));
 }
 
 function parteaButoanelor() {
@@ -482,19 +482,19 @@ function parteaButoanelor() {
   T('fiecare ecran cerut de server are pereche pe telefon', toateEcranele.every((e) => L.rutaButon({ fel: 'ecran', ecran: e, text: 'x' })) && /ecran: 'maintenance'/.test(citeste('programari.js')) && /ecran: 'documente'/.test(citeste('programari.js')) && /ecran: 'alerts'/.test(citeste('propuneri.js')));
   const rute = (S.app.match(/<Route path="([^"]+)"/g) || []).map((x) => x.match(/"([^"]+)"/)[1]);
   ['/admin/alerts', '/admin/maintenance', '/admin/documents', '/admin/drivers', '/report-schedules', '/reports', '/vehicles/:imei', '/vehicles/:imei/route', '/meniu', '/ai-agents', '/insight', '/insight/:ramura'].forEach((r) => T('ruta ' + r + ' există în App.tsx', rute.indexOf(r) >= 0));
-  T('„Deschide raportul" → Istoric, pe raportul ăsta (ruta pe care Rapoartele o citesc deja)', L.rutaIstoric(7) === '/reports?histId=7' && /\.histId/.test(S.reports));
-  T('„Descarcă Excel": calea existentă a telefonului (fișierul din Istoric)', /exportHistoryReport\(rp\.id, rp\.tip \|\| 'raport', 'xlsx'\)/.test(S.bula) && /\/api\/reports\/history\/\$\{encodeURIComponent\(String\(id\)\)\}\?format=\$\{format\}/.test(citeste('mobile/src/lib/export.ts')));
+  T('„Deschide raportul” → Istoric, pe raportul ăsta (ruta pe care Rapoartele o citesc deja)', L.rutaIstoric(7) === '/reports?histId=7' && /\.histId/.test(S.reports));
+  T('„Descarcă Excel”: calea existentă a telefonului (fișierul din Istoric)', /exportHistoryReport\(rp\.id, rp\.tip \|\| 'raport', 'xlsx'\)/.test(S.bula) && /\/api\/reports\/history\/\$\{encodeURIComponent\(String\(id\)\)\}\?format=\$\{format\}/.test(citeste('mobile/src/lib/export.ts')));
   T('Rapoartele citesc `tip`, `de`, `pana` (ca rinOpenReport)', /\.tip\)/.test(S.reports) && /as any\)\?\.de\)/.test(S.reports) && /as any\)\?\.pana\)/.test(S.reports) && /tq !== 'due'/.test(S.reports) && /type !== 'due'/.test(functie(html, 'async function rinOpenReport(type, imei, from, to)')));
   T('Traseu citește intervalul și punctul; punctul se marchează ca pe web', /as any\)\?\.de\)/.test(S.route) && /as any\)\?\.lat\)/.test(S.route) && /L\.circleMarker\(\[punctLat, punctLng\], \{ radius: 10, color: '#dc2626', weight: 3, fillColor: '#dc2626', fillOpacity: 0\.3 \}\)/.test(S.route) && /L\.circleMarker\(\[Number\(b\.lat\), Number\(b\.lng\)\], \{ radius: 10, color: '#dc2626', weight: 3, fillColor: '#dc2626', fillOpacity: 0\.3 \}\)/.test(COMUNE) && /replace\(\/\[<>&\]\/g, ''\)/.test(S.route));
   T('fișa mașinii: `?edit=fisa` deschide foaia, doar cui are creion', /get\('edit'\) === 'fisa'/.test(S.detaliu) && /!_cerutFisa \|\| !me\.value \|\| !canManage/.test(S.detaliu));
-  // „Anunță echipa": fereastra cererii, cu ce a scris aplicația la consum (ca insightProblemaButon). Restul: verify_telefon_echipa.js.
+  // „Anunță echipa”: fereastra cererii, cu ce a scris aplicația la consum (ca insightProblemaButon). Restul: verify_telefon_echipa.js.
   const usaConsum = L.rutaButon({ fel: 'echipa', text: 'Anunță', problema: 'consum', imei: '35' }, { dovada: 'Nivelul a stat la 22 L' });
-  T('„Anunță echipa": la consum, fereastra primește și ce a scris aplicația', usaConsum === '/echipa?imei=35&problema=consum&ce=' + encodeURIComponent('Nivelul a stat la 22 L') + '&sursa=insight', usaConsum);
+  T('„Anunță echipa”: la consum, fereastra primește și ce a scris aplicația', usaConsum === '/echipa?imei=35&problema=consum&ce=' + encodeURIComponent('Nivelul a stat la 22 L') + '&sursa=insight', usaConsum);
   T('…drumul vechi prin Meniu a plecat', typeof L.rutaSuport === 'undefined' && !/suport=1/.test(S.lib + S.meniu));
   T('…butonul poartă textul serverului', /\{String\(b\.text\)\}/.test(S.bula) && /text: CE\.BUTON/.test(citeste('probleme.js')));
   // Cartonașul.
   const web = functie(INSP, 'function cartonasPropunere(p, gata) {');
-  // Câmpurile din „Schimbă", citite din bucata paginii pe fiecare fel (`f.prag = …`), lângă ce pornește telefonul.
+  // Câmpurile din „Schimbă”, citite din bucata paginii pe fiecare fel (`f.prag = …`), lângă ce pornește telefonul.
   [
     ['alerta', ['prag', 'imei', 'nume'], "if (p.fel === 'alerta') {", "} else if (p.fel === 'revizie' ||"],
     ['revizie', ['tip', 'km', 'data'], "if (p.fel === 'revizie') {", "} else if (p.fel === 'act') {"],
@@ -503,23 +503,23 @@ function parteaButoanelor() {
   ].forEach(([fel, chei, de, pana]) => {
     const bucata = taie(web, de, pana);
     const dinWeb = Array.from(new Set((bucata.match(/\bf\.([a-z]+) = /g) || []).map((x) => x.match(/f\.([a-z]+)/)[1])));
-    T('câmpurile din „Schimbă" (' + fel + '): aceleași ca pe web', J(dinWeb.slice().sort()) === J(chei.slice().sort()) && J(Object.keys(L.campuriStart({ fel, campuri: {} })).sort()) === J(chei.slice().sort()), J(dinWeb));
+    T('câmpurile din „Schimbă” (' + fel + '): aceleași ca pe web', J(dinWeb.slice().sort()) === J(chei.slice().sort()) && J(Object.keys(L.campuriStart({ fel, campuri: {} })).sort()) === J(chei.slice().sort()), J(dinWeb));
   });
-  T('…discuția: doar `nota`, și numai dacă are rândul „Despre"', J(L.campuriStart({ fel: 'discutie', randuri: [{ l: 'Despre' }], campuri: { nota: 'x' } })) === J({ nota: 'x' }) && J(L.campuriStart({ fel: 'discutie', randuri: [{ l: 'Altceva' }] })) === '{}');
+  T('…discuția: doar `nota`, și numai dacă are rândul „Despre”', J(L.campuriStart({ fel: 'discutie', randuri: [{ l: 'Despre' }], campuri: { nota: 'x' } })) === J({ nota: 'x' }) && J(L.campuriStart({ fel: 'discutie', randuri: [{ l: 'Altceva' }] })) === '{}');
   T('…valorile pornesc de la `campuri`', J(L.campuriStart({ fel: 'alerta', campuri: { prag: 120, imei: '1', nume: 'N' } })) === J({ prag: '120', imei: '1', nume: 'N' }));
-  T('„Da": același corp ca pe web (`campuri` la cele cu rânduri, `la` la șofer)', /var corp = p\.randuri \? \(ed \? \{ campuri: ed\(\) \} : \{\}\) : \(ales\.id != null && String\(ales\.id\) !== String\(p\.la\) \? \{ la: ales\.id \} : \{\}\);/.test(web) && /const corp = p\.randuri \? \(ed \? \{ campuri: ed \} : \{\}\) : \(ales\.id != null && String\(ales\.id\) !== String\(p\.la\) \? \{ la: ales\.id \} : \{\}\);/.test(S.prop));
+  T('„Da”: același corp ca pe web (`campuri` la cele cu rânduri, `la` la șofer)', /var corp = p\.randuri \? \(ed \? \{ campuri: ed\(\) \} : \{\}\) : \(ales\.id != null && String\(ales\.id\) !== String\(p\.la\) \? \{ la: ales\.id \} : \{\}\);/.test(web) && /const corp = p\.randuri \? \(ed \? \{ campuri: ed \} : \{\}\) : \(ales\.id != null && String\(ales\.id\) !== String\(p\.la\) \? \{ la: ales\.id \} : \{\}\);/.test(S.prop));
   T('rutele apăsărilor: aplica, refuza, anuleaza, dovezi', ['aplica', 'refuza', 'anuleaza', 'dovezi'].every((f) => web.indexOf("/" + f) >= 0 || INSP.indexOf('/' + f + "'") >= 0) && /'aplica', corp\)/.test(S.prop) && /'refuza'\)/.test(S.prop) && /'anuleaza'\)/.test(S.prop) && /'dovezi', \{ prag, imei \}\)/.test(S.prop));
   T('un 409 aduce starea de acum (`propunere` din corpul erorii), ca pe web', /if \(r\.j\.propunere\) gata\(r\.j\.propunere, null\)/.test(web) && /e\.data\.propunere\) onGata\(e\.data\.propunere, null\)/.test(S.prop));
-  // Ceasul lui „Anulează", rulat pe web.
+  // Ceasul lui „Anulează”, rulat pe web.
   const webCeas = (ms) => {
     const t = { textContent: '' }; const btn = { lastChild: t };
     const doc = { body: { contains: () => true } };
     new Function('document', 'setInterval', functie(INSP, 'function ceasAnulare(btn, ramasMs)') + '; ceasAnulare(arguments[2], arguments[3]);')(doc, () => 0, btn, ms);
     return t.textContent;
   };
-  [598000, 61000, 60000, 9000, 1000, 1500].forEach((x) => T('„Anulează" la ' + x + ' ms: ' + L.textCeas(x), webCeas(x) === L.textCeas(x), webCeas(x)));
+  [598000, 61000, 60000, 9000, 1000, 1500].forEach((x) => T('„Anulează” la ' + x + ' ms: ' + L.textCeas(x), webCeas(x) === L.textCeas(x), webCeas(x)));
   T('…pornește de la `ramasMs` al serverului și pleacă la capăt', /Date\.now\(\) \+ Math\.max\(0, Number\(ramasMs\) \|\| 0\)/.test(S.prop) && /if \(ramas <= 0\) return null;/.test(S.prop) && /p\.ramasMs > 0 \? <CeasAnulare ramasMs=\{p\.ramasMs\}/.test(S.prop));
-  T('pasul următor după „Da" vine ca mesaj nou (`urmator`), ca pe web', J(L.mesajUrmator({ text: 'T', mesajId: 2, urmari: [1], insigna: { x: 1 } })) === J({ rol: 'assistant', id: 2, text: 'T', feedback: null, extra: { source: 'reguli', urmari: [1], insigna: { x: 1 } } }) && L.mesajUrmator(null) === null && /extra: \{ source: 'reguli', urmari: u\.urmari, insigna: u\.insigna \}/.test(INSP));
+  T('pasul următor după „Da” vine ca mesaj nou (`urmator`), ca pe web', J(L.mesajUrmator({ text: 'T', mesajId: 2, urmari: [1], insigna: { x: 1 } })) === J({ rol: 'assistant', id: 2, text: 'T', feedback: null, extra: { source: 'reguli', urmari: [1], insigna: { x: 1 } } }) && L.mesajUrmator(null) === null && /extra: \{ source: 'reguli', urmari: u\.urmari, insigna: u\.insigna \}/.test(INSP));
   T('iconițele cerute de server: un nume necunoscut ia iconița de rezervă, nu ajunge în pagină', L.iconaFa('fa-bell', 'x') === 'bell' && L.iconaFa('fa-nu-exista', 'x') === 'x' && L.iconaFa(undefined, 'x') === 'x');
   T('dovezile: nivelul doar din lista cunoscută', L.nivelDovada('ok') === 'ok' && L.nivelDovada('zzz') === 'i');
 }
@@ -529,7 +529,7 @@ function parteaTextelor() {
   const cod = faraComentarii(S.lib + '\n' + S.ecran + '\n' + S.bula + '\n' + S.prop + '\n' + S.text);
   // Cuvintele pe care le scrie serverul (pachete.insigna, sursa_externa.js, probleme.js, propuneri.js, azi_la_tine.js).
   ['Analiză', 'ANALIZĂ', 'Instant', 'INSTANT', 'din datele de acum', 'Surse de pe internet', 'Căutat pe internet', 'Ce am căutat', 'Am găsit o problemă', 'De verificat', 'Sursă externă', 'Caută pe internet', 'gratuit', 'nu se scade', 'bonus', 'Safe Drive'].forEach((t) => {
-    T('telefonul nu scrie „' + t + '"', cod.indexOf(t) < 0);
+    T('telefonul nu scrie „' + t + '”', cod.indexOf(t) < 0);
   });
   T('…dar serverul le scrie pe cele esențiale', /eticheta: .*'Analiză'|'Analiză'/.test(citeste('pachete.js')) && /'Instant'/.test(citeste('pachete.js')) && /Sursă externă/.test(citeste('sursa_externa.js')));
   // Etichetele pe care le scrie și pagina: aceleași cuvinte.
@@ -542,10 +542,10 @@ function parteaTextelor() {
     'Pragul, în km/h', 'Kilometrii termenului', 'Data termenului', 'Perioada raportului', 'Ora trimiterii', 'Adresele de email, despărțite prin virgulă', 'Despre ce ați vorbit', 'Formatul', 'Alt șofer',
     'Mulțumim! Ne ajută să știm ce merge.', 'Mulțumim — ne uităm la ce n-a mers.', 'Nimic nu se potrivește.', 'Lista e goală.', 'Caută…', 'Răspuns bun', 'Răspuns slab', 'Copiază răspunsul', 'Editează întrebarea', 'Copiază întrebarea',
     'Adaugă mașina, perioada sau un raport', 'La ultimul mesaj', 'Cifrele le-am luat din rapoarte.', 'Cifrele le-am luat din aplicație și din sursele de mai sus.', 'Din raportul ', 'Din rapoartele ', 'Am copiat răspunsul.', 'Eroare de rețea: ', 'Nu s-a putut face.', 'Nu s-a putut anula.'];
-  ET.forEach((t) => T('„' + t.slice(0, 60) + '": același cuvânt pe web și pe telefon', (INSP + COMUNE).indexOf(t) >= 0 && (S.lib + S.ecran + S.bula + S.prop).indexOf(t) >= 0, ((INSP + COMUNE).indexOf(t) >= 0 ? 'lipsește pe telefon' : 'lipsește pe web')));
+  ET.forEach((t) => T('„' + t.slice(0, 60) + '”: același cuvânt pe web și pe telefon', (INSP + COMUNE).indexOf(t) >= 0 && (S.lib + S.ecran + S.bula + S.prop).indexOf(t) >= 0, ((INSP + COMUNE).indexOf(t) >= 0 ? 'lipsește pe telefon' : 'lipsește pe web')));
   T('placeholder-ele casetei, aceleași', ['Scrie o întrebare sau cere un raport…', 'Scrie o întrebare…', 'Apasă „+” sau scrie o întrebare…', 'Apasă „+” ca să alegi…'].every((t) => INSP.indexOf(t) >= 0 && S.lib.indexOf(t) >= 0));
   T('fondatorul: același cuvânt pe web și pe telefon', INSP.indexOf('Fondator · fără limită') >= 0 && S.lib.indexOf('Fondator · fără limită') >= 0);
-  // Regula veche, „pe cont", a fost scoasă pe 11.11 (Alin: „Scoate"): cuvintele contorului ei nu mai sunt nici pe web, nici pe telefon.
+  // Regula veche, „pe cont”, a fost scoasă pe 11.11 (Alin: „Scoate”): cuvintele contorului ei nu mai sunt nici pe web, nici pe telefon.
   T('regula veche, scoasă: contorul ei nu mai e nici pe web, nici pe telefon',
     ['Întrebările lunii s-au terminat: până pe ', 'Întrebări · ', 'Un cont în plus aduce încă ', 'questionsPerSeat'].every((t) => INSP.indexOf(t) < 0 && S.lib.indexOf(t) < 0));
   // Niciun HTML de la server.
@@ -553,21 +553,21 @@ function parteaTextelor() {
     T(n + ': fără innerHTML / dangerouslySetInnerHTML', !/dangerouslySetInnerHTML|innerHTML/.test(faraComentarii(s)));
   });
   T('textul serverului trece doar prin noduri (Md, Gros), fără `aiMd`', /<Md text=\{plan\.text\} \/>/.test(S.bula) && /<Gros text=\{rd\.text\} \/>/.test(S.ecran) && /<Gros text=\{p\.gata\.text\} \/>/.test(S.prop) && !/aiMd/.test(faraComentarii(S.bula + S.ecran + S.prop + S.text)));
-  T('Românește, cu diacritice (fără „Masina", „Sterge", „Salveaza" pe ecran)', !/'(Masina|Sterge|Salveaza|Inchide|Schimba|Intrebare)\b/.test(cod));
+  T('Românește, cu diacritice (fără „Masina”, „Sterge”, „Salveaza” pe ecran)', !/'(Masina|Sterge|Salveaza|Inchide|Schimba|Intrebare)\b/.test(cod));
   T('iconițele cu nume necunoscut de server nu se pun în clasă sau în pagină', !/class=\{[^}]*\bp\.ic\b/.test(S.prop));
 }
 
 function parteaNavigarii() {
   sect('9. Navigarea');
-  T('/insight e păzit ca web-ul (ecranul „insight" tăiat din rol → pagina calmă)', /insight: pazit\('insight', Insight, 'RA Insight'\)/.test(S.app) && /<Route path="\/insight" component=\{P\.insight\} \/>/.test(S.app));
+  T('/insight e păzit ca web-ul (ecranul „insight” tăiat din rol → pagina calmă)', /insight: pazit\('insight', Insight, 'RA Insight'\)/.test(S.app) && /<Route path="\/insight" component=\{P\.insight\} \/>/.test(S.app));
   T('/ai duce la /insight (anunțuri vechi), înlocuind adresa', /<Route path="\/ai" component=\{SpreInsight\} \/>/.test(S.app) && /function SpreInsight\(\) \{[\s\S]*?loc\.route\('\/insight', true\)/.test(S.app));
   T('App.tsx nu mai încarcă ecranul vechi', !/AiChat/.test(S.app));
-  T('meniul: rândul „RA Insight" duce la /insight, cu aceeași condiție ca pe web (și cheia lui pentru „NOU", din 05.11)', /u\?\.features\?\.ai_assistant !== false && vede\('insight'\) && item\('sparkles', 'RA Insight', \(\) => loc\.route\('\/insight'\), undefined, '', 'insight'\)/.test(S.meniu) && /feats\.ai_assistant !== false/.test(html));
-  T('meniul: grupa clientului se cheamă „Management", ca pe web, ca drumurile din textele serverului să existe; fondatorul își păstrează numele',
+  T('meniul: rândul „RA Insight” duce la /insight, cu aceeași condiție ca pe web (și cheia lui pentru „NOU”, din 05.11)', /u\?\.features\?\.ai_assistant !== false && vede\('insight'\) && item\('sparkles', 'RA Insight', \(\) => loc\.route\('\/insight'\), undefined, '', 'insight'\)/.test(S.meniu) && /feats\.ai_assistant !== false/.test(html));
+  T('meniul: grupa clientului se cheamă „Management”, ca pe web, ca drumurile din textele serverului să existe; fondatorul își păstrează numele',
     /<div class="mn-sec">\{u\?\.isSuper \? 'Administrare' : 'Management'\}<\/div>/.test(S.meniu) && /data-vert="partener" data-group="management">\s*<button[^>]*>.*<span>Management<\/span>/.test(html) &&
     /Management › Alerte › Adaugă regulă/.test(citeste('propuneri.js')) && /Management › Șoferi/.test(citeste('soferi_masini.js') + html));
-  T('meniul: „Asistent AI" a plecat', !/Asistent AI/.test(faraComentarii(S.meniu)) && !/route\('\/ai'\)/.test(S.meniu));
-  T('meniul: „Agenți AI" iese cu `aiCont`, ca pe web', /perms\.viewReports && !u\?\.aiCont && vede\('insight'\) && item\('shield', 'Agenți AI'/.test(S.meniu) && /feats\.agents !== false && me\.permissions && me\.permissions\.viewReports && !me\.aiCont/.test(html));
+  T('meniul: „Asistent AI” a plecat', !/Asistent AI/.test(faraComentarii(S.meniu)) && !/route\('\/ai'\)/.test(S.meniu));
+  T('meniul: „Agenți AI” iese cu `aiCont`, ca pe web', /perms\.viewReports && !u\?\.aiCont && vede\('insight'\) && item\('shield', 'Agenți AI'/.test(S.meniu) && /feats\.agents !== false && me\.permissions && me\.permissions\.viewReports && !me\.aiCont/.test(html));
   T('`aiCont` e pe tipul profilului și îl dă serverul', /aiCont\?: boolean;/.test(S.endpoints) && /aiCont: !isSuper\(a\.role\) && features\.ai_assistant !== false && aiSeat/.test(server));
   // Nimeni altcineva nu duce la adresa veche.
   const toate = [];
@@ -578,7 +578,7 @@ function parteaNavigarii() {
   T('bara de jos n-are chatul vechi', !/\/ai\b/.test(citeste('mobile/src/components/TabBar.tsx')));
   T('adresaAnunt nu duce la adresa veche', !/['"`]\/ai['"`]/.test(S.push));
   T('ecranul n-are bara de file (caseta stă pe zona sigură)', !/path === '\/insight'/.test(S.app));
-  T('butonul „înapoi" închide sertarul și foile, nu ecranul', /useInapoiInchide\(sertar,/.test(S.ecran) && /useInapoiInchide\(!!foaie,/.test(S.ecran));
+  T('butonul „înapoi” închide sertarul și foile, nu ecranul', /useInapoiInchide\(sertar,/.test(S.ecran) && /useInapoiInchide\(!!foaie,/.test(S.ecran));
   T('sertarul: Conversație nouă, căutare, conversațiile pe zile, Redenumește, Șterge, rândul pachetului', ['class="insp-nou"', 'class="insp-cauta-r"', 'class="insp-zi"', 'title="Redenumește"', 'title="Șterge"', 'class={\'insp-fond\''].every((x) => S.ecran.indexOf(x) >= 0));
   T('fereastra cererilor a luat locul foii de suport: telefonul nu mai cheamă `/api/support`, ruta rămâne pe server pentru telefoanele de dinainte', !/\/api\/support/.test(S.endpoints.replace(/\/\/[^\n]*/g, '')) && /app\.post\('\/api\/support'/.test(citeste('server.js')));
 }
@@ -601,7 +601,7 @@ function parteaCulorilor() {
     }
     T('tema ' + nume + ': textul închis #06210F pe verdele casei', contrast(hex('#06210F'), hex(t['--accent'])) >= 4.5);
     T('tema ' + nume + ': semnul din capul listei (culorile siglei) = ' + contrast(hex(t['--i-stea']), hex(t['--i-stea-fund'])).toFixed(2), contrast(hex(t['--i-stea']), hex(t['--i-stea-fund'])) >= 4.5, t['--i-stea'] + ' / ' + t['--i-stea-fund']);
-    for (const tx of ['--text-primary', '--text-secondary', '--i-marca', '--i-atentie', '--i-bun']) { const c = contrast(hex(t[tx]), hex(t['--i-recbox'])); T('tema ' + nume + ': ' + tx + ' pe caseta „Ce recomandă" = ' + c.toFixed(2), c >= 4.5, t[tx]); }
+    for (const tx of ['--text-primary', '--text-secondary', '--i-marca', '--i-atentie', '--i-bun']) { const c = contrast(hex(t[tx]), hex(t['--i-recbox'])); T('tema ' + nume + ': ' + tx + ' pe caseta „Ce recomandă” = ' + c.toFixed(2), c >= 4.5, t[tx]); }
     // Etichetele colorate cu fundal translucid, puse peste panoul paginii.
     const peste = (fg, a, fond) => hex(fond).map((x, i) => fg[i] * a + x * (1 - a));
     for (const [tx, fund] of [['--i-atentie', [[249, 115, 22], 0.15]], ['--i-bun', [[34, 197, 94], 0.12]]]) { const c = contrast(hex(t[tx]), peste(fund[0], fund[1], t['--bg-panel'])); T('tema ' + nume + ': ' + tx + ' pe eticheta lui = ' + c.toFixed(2), c >= 4.5, t[tx]); }
@@ -628,7 +628,7 @@ function parteaCulorilor() {
   // Așezarea: nimic nu trece de ecran la 360 px.
   T('coloana răspunsului se poate strânge (minmax(0, 1fr)), iar textul lung se rupe', /grid-template-columns: 26px minmax\(0, 1fr\)/.test(S.css) && /\.insp-a \.bub \{[^}]*overflow-wrap: anywhere/.test(S.css));
   T('rândul casetei și cartonașele nu împing ecranul (min-width: 0)', ['.chat-unelte', '.chat-rap', '.chat-prop', '.chat-prob', '.chat-gata', '.chat-prop-w', '.chat-raps', '.chat-probs'].every((k) => new RegExp(k.replace('.', '\\.') + ' \\{[^}]*min-width: 0').test(S.css)));
-  T('…pe ecranul îngust, „Sursă externă" = globul și „7 din 10" (ca pe web), numele rămâne pentru cititorul de ecran', /aria-label=\{sursa\.nume/.test(S.ecran) && !/class="nm"/.test(S.ecran) && /\.chat-un\.chat-sursa \.nm \{ display: none; \}/.test(citeste('public/css/app.css')));
+  T('…pe ecranul îngust, „Sursă externă” = globul și „7 din 10” (ca pe web), numele rămâne pentru cititorul de ecran', /aria-label=\{sursa\.nume/.test(S.ecran) && !/class="nm"/.test(S.ecran) && /\.chat-un\.chat-sursa \.nm \{ display: none; \}/.test(citeste('public/css/app.css')));
   T('continuările derulează în lături DOAR în rândul lor', /\.chat-urm \{[^}]*overflow-x: auto/.test(S.css));
   T('caseta stă pe zona sigură și deasupra tastaturii', /\.insp-scrie \{[^}]*calc\(10px \+ max\(var\(--sab\), var\(--insp-kb, 0px\)\)\)/.test(S.css) && /visualViewport/.test(S.ecran) && /--insp-kb/.test(S.ecran));
   T('sertarul: închis fără umbră, deschis cu umbră (nicio fâșie gri)', !/^\.insp-st \{[^}]*box-shadow/m.test(S.css) && /\.insp\.st-deschis \.insp-st \{[^}]*box-shadow/.test(S.css) && /^\.insp-st \{[^}]*translateX\(-104%\)/m.test(S.css));
@@ -707,29 +707,29 @@ function parteaDesenului() {
   T('…linkul rău nu se desenează, cel bun iese cu toate atributele', htm.indexOf('javascript:') < 0 && htm.indexOf('Rea') < 0 && /href="https:\/\/exemplu\.ro\/a"[^>]*target="_blank"[^>]*rel="noopener noreferrer nofollow"/.test(htm));
   T('…îngroșat, titlu, italic', htm.indexOf('<b>Gros</b>') >= 0 && htm.indexOf('insp-md-h') >= 0 && htm.indexOf('<em>ital</em>') >= 0);
   T('…insigna din server, cu clasele ei', /chat-ins-et ai">Analiză</.test(htm) && htm.indexOf('1 întrebare') >= 0);
-  T('…cartonașul raportului: titlu, cifre, „fără rânduri", două butoane, Istoric, nota', ['Foaie de parcurs · B 1 ABC · azi', 'Curse', 'fără rânduri', 'Deschide raportul', 'Descarcă Excel', 'E și în Istoric rapoarte, până pe 09.11.', 'Raportul e tăiat.'].every((x) => htm.indexOf(x) >= 0));
+  T('…cartonașul raportului: titlu, cifre, „fără rânduri”, două butoane, Istoric, nota', ['Foaie de parcurs · B 1 ABC · azi', 'Curse', 'fără rânduri', 'Deschide raportul', 'Descarcă Excel', 'E și în Istoric rapoarte, până pe 09.11.', 'Raportul e tăiat.'].every((x) => htm.indexOf(x) >= 0));
   T('…problema: titlu, dovadă, butoanele cu drum, nota; cel fără drum lipsește', ['Viteză 159', 'la 14:32', 'Vezi pe hartă', 'Anunță echipa RA Track', 'Nota de sub'].every((x) => htm.indexOf(x) >= 0) && htm.indexOf('Fără drum') < 0);
   T('…`actiuni`: cu drum da (și pagina RA Drive); o `ramura` necunoscută, nu', htm.indexOf('Deschide Alerte') >= 0 && htm.indexOf('Vezi RA Drive') >= 0 && htm.indexOf('Vezi altceva') < 0);
-  T('…„ținut minte": creierașul pe rândul din discuție', /class="mem"><svg/.test(htm));
+  T('…„ținut minte”: creierașul pe rândul din discuție', /class="mem"><svg/.test(htm));
   T('…👍 aprins după `feedback`', /chat-ib on"[^>]*title="Răspuns bun"/.test(htm));
   const pdes = r(h(PR.CartonasPropunere, { p: { id: 5, stare: 'propusa', titlu: 'Șofer', masina: { nr: 'B 1', rest: 'Logan' }, sofer: { de: 'Ion', la: 'Mihai' }, deCand: 'de azi', la: 3, poate: true, alternative: [{ id: 4, nume: 'Vasile', text: 'Vasile · B' }], dovezi: [{ nivel: 'ok', text: 'Are B' }], butonDa: 'Da, trece-l' }, onGata() {}, laButon() {} }));
   T('cartonașul de șofer: mașina, de la → la, de când, Da / Schimbă / Nu', ['Mașina', 'B 1', ' · Logan', 'Ion', '→', 'Mihai', 'de azi', 'Are B', 'Da, trece-l', 'Schimbă', '>Nu<'].every((x) => pdes.indexOf(x) >= 0), pdes);
   const pgata = r(h(PR.CartonasPropunere, { p: { id: 5, stare: 'aplicata', titlu: 'Șofer', imei: '1', sofer: { la: 'Mihai' }, apasat: 'Ai apăsat Da · 10:00', ramasMs: 90000, gata: { text: '**Mihai** e pe B 1', jurnal: 'E în jurnal.' } }, onGata() {}, laButon() {} }));
-  T('după „Da": „Gata" cu îngroșat, „Anulează · mai ai 1:30", fișa mașinii, jurnalul; fără Da/Nu', /<b>Mihai<\/b> e pe B 1/.test(pgata) && pgata.indexOf('Anulează · mai ai 1:30') >= 0 && pgata.indexOf('Vezi fișa mașinii') >= 0 && pgata.indexOf('E în jurnal.') >= 0 && pgata.indexOf('Ai apăsat Da · 10:00') >= 0 && pgata.indexOf('>Nu<') < 0, pgata);
+  T('după „Da”: „Gata” cu îngroșat, „Anulează · mai ai 1:30”, fișa mașinii, jurnalul; fără Da/Nu', /<b>Mihai<\/b> e pe B 1/.test(pgata) && pgata.indexOf('Anulează · mai ai 1:30') >= 0 && pgata.indexOf('Vezi fișa mașinii') >= 0 && pgata.indexOf('E în jurnal.') >= 0 && pgata.indexOf('Ai apăsat Da · 10:00') >= 0 && pgata.indexOf('>Nu<') < 0, pgata);
   const pdisc = r(h(PR.CartonasPropunere, { p: { id: 5, stare: 'anulata', titlu: 'T', sofer: {}, anulareText: 'Am anulat tot.', apasat: 'Anulată' }, onGata() {}, laButon() {} }));
   T('anulat: textul serverului', pdisc.indexOf('Am anulat tot.') >= 0 && pdisc.indexOf('fără șofer') >= 0);
   const prm = r(h(PR.CartonasPropunere, { p: { id: 5, stare: 'aplicata', titlu: 'T', randuri: [], ramasMs: 0, gata: { text: 'Gata', buton: { fel: 'ramura', ramura: 'safedrive', text: 'Vezi RA Drive' } } }, onGata() {}, laButon() {} }));
-  T('„Gata" cu buton spre o pagină: butonul e acolo, fără „Anulează" la capăt', prm.indexOf('Gata') >= 0 && prm.indexOf('Vezi RA Drive') >= 0 && prm.indexOf('Anulează') < 0);
+  T('„Gata” cu buton spre o pagină: butonul e acolo, fără „Anulează” la capăt', prm.indexOf('Gata') >= 0 && prm.indexOf('Vezi RA Drive') >= 0 && prm.indexOf('Anulează') < 0);
   const prm2 = r(h(PR.CartonasPropunere, { p: { id: 5, stare: 'aplicata', titlu: 'T', randuri: [], ramasMs: 0, gata: { text: 'Gata', buton: { fel: 'ramura', ramura: 'nu-exista', text: 'Vezi altceva' } } }, onGata() {}, laButon() {} }));
-  T('„Gata" cu buton spre o pagină necunoscută: răspunsul rămâne, butonul lipsește', prm2.indexOf('Gata') >= 0 && prm2.indexOf('Vezi altceva') < 0);
+  T('„Gata” cu buton spre o pagină necunoscută: răspunsul rămâne, butonul lipsește', prm2.indexOf('Gata') >= 0 && prm2.indexOf('Vezi altceva') < 0);
   const u1 = r(h(B.BulaOm, { text: 'Întrebare <b>x</b>', l }));
   T('bula omului: text, Editează, Copiază', u1.indexOf('Întrebare &lt;b>x&lt;/b>') >= 0 && u1.indexOf('Editează întrebarea') >= 0 && u1.indexOf('Copiază întrebarea') >= 0, u1);
   T('continuările: textul lor', r(h(B.Urmari, { urmari: [{ text: 'Și ieri?' }, { trimite: 'Doar' }, { text: 'C' }, { text: 'D' }], l })).split('<button').length - 1 === 3);
   T('Md: bloc gol, listă', r(h(TX.Md, { text: 'a\n\n- b' })).indexOf('insp-md-li') >= 0);
   const scr = r(h(E.Insight, {}));
-  T('ecranul, la intrare: salutul, caseta, butoanele, sertarul, „⋯"', ['Salut, Alin! Cu ce te pot ajuta?', 'Ce probleme are flota?', 'Km săptămâna trecută', 'Ce acte expiră?', 'Scrie o întrebare sau cere un raport…', 'Conversație nouă', 'Caută în conversații', 'aria-label="Mai multe"', 'aria-label="Conversații"', 'chat-caseta'].every((x) => scr.indexOf(x) >= 0), scr.slice(0, 600));
+  T('ecranul, la intrare: salutul, caseta, butoanele, sertarul, „⋯”', ['Salut, Alin! Cu ce te pot ajuta?', 'Ce probleme are flota?', 'Km săptămâna trecută', 'Ce acte expiră?', 'Scrie o întrebare sau cere un raport…', 'Conversație nouă', 'Caută în conversații', 'aria-label="Mai multe"', 'aria-label="Conversații"', 'chat-caseta'].every((x) => scr.indexOf(x) >= 0), scr.slice(0, 600));
   T('…ecran de sine stătător: fără bara de file în el', scr.indexOf('tabbar') < 0 && /screen insp/.test(scr));
-  T('…în sertar, „Domenii" (închise la început; „Pagini" până pe 05.11)', /class="insp-pag"/.test(scr) && />Domenii</.test(scr) && !/>Pagini</.test(scr) && scr.indexOf('insp-ramuri') < 0);
+  T('…în sertar, „Domenii” (închise la început; „Pagini” până pe 05.11)', /class="insp-pag"/.test(scr) && />Domenii</.test(scr) && !/>Pagini</.test(scr) && scr.indexOf('insp-ramuri') < 0);
   // O pagină are adresa ei: titlul pe bara de sus, fără caseta discuției.
   ruta.params = { ramura: 'combustibil' };
   const scrP = r(h(E.Insight, {}));
@@ -756,7 +756,7 @@ function parteaDesenului() {
   const htS = r(h(PG.PlanDesenat, { p: LPg.planSoferi(cazuri.soferi), l: lp, bife: { stare: [{ checked: true, disabled: false }], schimba() {} } }));
   T('Șoferi: bifa pe rând', /type="checkbox"/.test(htS) && /checked/.test(htS), htS.slice(0, 200));
   const htI = r(h(PG.PaginaIncuiata, { k: 'combustibil' }));
-  T('PaginaIncuiata: textul de pe web, fără „Vezi pachetele"', htI.replace(/&amp;/g, '&').indexOf(LPg.TEXT_INCUIAT) >= 0 && htI.indexOf('Combustibil') >= 0 && htI.indexOf('Vezi pachetele') < 0, htI);
+  T('PaginaIncuiata: textul de pe web, fără „Vezi pachetele”', htI.replace(/&amp;/g, '&').indexOf(LPg.TEXT_INCUIAT) >= 0 && htI.indexOf('Combustibil') >= 0 && htI.indexOf('Vezi pachetele') < 0, htI);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -851,12 +851,12 @@ async function parteaServerului() {
   const st = L.stareDinQuota(q, false);
   T('/api/ai/quota: pachetul, cu textele serverului; rândul de jos', !!st.pachet && st.pachet.nume === 'Basic' && st.fond.text === 'Basic · ' + st.pachet.scurt && st.contor === st.pachet.scurt && !st.peReguli, J(st));
   const azi = await Api.insightAzi();
-  T('„Azi la tine": rândurile de la server, un clic pe rând', Array.isArray(azi.randuri) && azi.randuri.every((rd) => typeof rd.text === 'string' && Array.isArray(rd.butoane)) && azi.randuri.length <= 3, J(azi).slice(0, 300));
+  T('„Azi la tine”: rândurile de la server, un clic pe rând', Array.isArray(azi.randuri) && azi.randuri.every((rd) => typeof rd.text === 'string' && Array.isArray(rd.butoane)) && azi.randuri.length <= 3, J(azi).slice(0, 300));
   azi.randuri.forEach((rd) => { const b = L.aziPrimul(rd, L.areAi(st.peReguli, st.pachet), true); if (b) T('…rândul are un drum: ' + b.fel, !!L.aziActiune(b), J(b)); });
   const raps = await Api.insightRapoarte();
-  T('„Raport" din „+": lista serverului, cu textul de pus în casetă', (raps.rapoarte || []).length > 10 && raps.rapoarte.every((x) => /^Fă-mi raportul „/.test(x.pune)));
+  T('„Raport” din „+”: lista serverului, cu textul de pus în casetă', (raps.rapoarte || []).length > 10 && raps.rapoarte.every((x) => /^Fă-mi raportul „/.test(x.pune)));
   const dev = L.masiniAlegere(await Api.devices());
-  T('„Mașina" din „+": mașinile omului', dev.length === 2 && dev[0].pune === 'B 101 TEL' && dev[0].text === 'B 101 TEL · Dacia Logan', J(dev));
+  T('„Mașina” din „+”: mașinile omului', dev.length === 2 && dev[0].pune === 'B 101 TEL' && dev[0].text === 'B 101 TEL · Dacia Logan', J(dev));
 
   // Un raport cerut în cuvinte.
   const j1 = await Api.insightIntreaba(L.corpIntrebare('Fă-mi foaia de parcurs pentru B 101 TEL, azi', {}));
@@ -864,7 +864,7 @@ async function parteaServerului() {
   T('raportul cerut în cuvinte: cartonașul, fără text, cu insigna serverului', p1.carduri.length === 1 && p1.carduri[0].label === 'Foaie de parcurs' && !p1.text && !!p1.insigna && p1.ordine.indexOf('rapoarte') >= 0, J(p1.ordine));
   T('…cartonașul are tot ce desenează telefonul', ['id', 'label', 'vehicul', 'perioada', 'pana', 'kpi'].every((k) => p1.carduri[0][k] !== undefined), J(p1.carduri[0]));
   const h1 = await Api.reportHistoryItem(p1.carduri[0].id);
-  T('„Deschide raportul": îl găsește Istoricul (aceeași rută ca Rapoartele)', !!(h1 && h1.report && Array.isArray(h1.report.rows)), J(h1).slice(0, 200));
+  T('„Deschide raportul”: îl găsește Istoricul (aceeași rută ca Rapoartele)', !!(h1 && h1.report && Array.isArray(h1.report.rows)), J(h1).slice(0, 200));
   T('…conversația vine în răspuns, ca și mesajul', !!j1.conversatieId && !!j1.mesajId);
   T('…continuările, de la server', (j1.urmari || []).length > 0 && j1.urmari.every((u) => u.text));
   // Continuarea, de pe buton, în aceeași conversație.
@@ -887,26 +887,26 @@ async function parteaServerului() {
   // Cartonașul alertei: Schimbă, dovezile, Da, Anulează, 409.
   const ja = await Api.insightIntreaba(L.corpIntrebare('Anunță-mă când B 101 TEL trece de 120 km/h', {}));
   const pa = ja.propunere || {};
-  T('cartonașul alertei: `fel`, rândurile, „Schimbă" din `campuri`, dovezile', pa.fel === 'alerta' && pa.stare === 'propusa' && Array.isArray(pa.randuri) && !!pa.campuri && Array.isArray(pa.dovezi) && pa.poate === true, J(pa).slice(0, 500));
+  T('cartonașul alertei: `fel`, rândurile, „Schimbă” din `campuri`, dovezile', pa.fel === 'alerta' && pa.stare === 'propusa' && Array.isArray(pa.randuri) && !!pa.campuri && Array.isArray(pa.dovezi) && pa.poate === true, J(pa).slice(0, 500));
   T('…planul îl desenează, cu fraza deasupra', L.planBula(L.mesajDinRaspuns(ja)).ordine.indexOf('propunere') >= 0);
   const start = L.campuriStart(pa);
-  T('…câmpurile din „Schimbă" pornesc din server', start.prag === String(pa.campuri.prag) && start.imei === String(pa.campuri.imei), J(start));
+  T('…câmpurile din „Schimbă” pornesc din server', start.prag === String(pa.campuri.prag) && start.imei === String(pa.campuri.imei), J(start));
   const dv = await Api.insightActiune(pa.id, 'dovezi', { prag: '110', imei: start.imei });
   T('…pragul schimbat: dovezile vin din nou', Array.isArray(dv.dovezi) && dv.dovezi.length > 0, J(dv));
   const ap = await Api.insightActiune(pa.id, 'aplica', { campuri: Object.assign({}, start, { prag: '110', nume: '' }) });
-  T('„Da": starea, „Gata", ceasul lui „Anulează"', ap.propunere && ap.propunere.stare === 'aplicata' && ap.propunere.gata && ap.propunere.gata.text && ap.propunere.ramasMs > 0 && L.rutaButon(ap.propunere.gata.buton) === '/admin/alerts', J(ap).slice(0, 400));
+  T('„Da”: starea, „Gata”, ceasul lui „Anulează”', ap.propunere && ap.propunere.stare === 'aplicata' && ap.propunere.gata && ap.propunere.gata.text && ap.propunere.ramasMs > 0 && L.rutaButon(ap.propunere.gata.buton) === '/admin/alerts', J(ap).slice(0, 400));
   let dublu = null;
   try { await Api.insightActiune(pa.id, 'aplica', {}); } catch (e) { dublu = e; }
   T('a doua apăsare: 409, iar eroarea poartă starea de acum (ApiError.data)', dublu && dublu.status === 409 && dublu.data && dublu.data.propunere && dublu.data.propunere.stare === 'aplicata', dublu && J({ s: dublu.status, d: dublu.data }));
   const an = await Api.insightActiune(pa.id, 'anuleaza');
-  T('„Anulează": starea și textul serverului', an.propunere && an.propunere.stare === 'anulata' && !!an.text && !!an.propunere.anulareText, J(an).slice(0, 300));
+  T('„Anulează”: starea și textul serverului', an.propunere && an.propunere.stare === 'anulata' && !!an.text && !!an.propunere.anulareText, J(an).slice(0, 300));
   const cAl = await Api.insightConversatie(ja.conversatieId);
   const mAl = cAl.mesaje.filter((m) => m.extra && m.extra.propunere)[0];
   T('…redeschisă, conversația arată starea de ACUM a cartonașului', mAl && mAl.extra.propunere.stare === 'anulata', mAl && J(mAl.extra.propunere).slice(0, 200));
   // Un cartonaș refuzat.
   const jn = await Api.insightIntreaba(L.corpIntrebare('Anunță-mă când B 202 TEL trece de 130 km/h', { conversatieId: ja.conversatieId }));
   const rf = await Api.insightActiune(jn.propunere.id, 'refuza');
-  T('„Nu": starea serverului; fraza pleacă din bulă', rf.propunere.stare === 'refuzata' && !L.planBula({ id: 1, text: 'x', extra: { propunere: rf.propunere } }).text);
+  T('„Nu”: starea serverului; fraza pleacă din bulă', rf.propunere.stare === 'refuzata' && !L.planBula({ id: 1, text: 'x', extra: { propunere: rf.propunere } }).text);
 
   // Notițele.
   const n0 = await Api.insightNotite();
@@ -925,18 +925,18 @@ async function parteaServerului() {
   // Omul fără cont: pe telefon (cheie) vine 200 cu seatMissing.
   await tel('dispecer@telefon.ro');
   const man2 = await Api.me();
-  T('omul fără cont: `aiCont` fals, „Agenți AI" rămâne în meniu', man2.aiCont === false);
+  T('omul fără cont: `aiCont` fals, „Agenți AI” rămâne în meniu', man2.aiCont === false);
   const lm = await Api.insightConversatii('');
-  T('…conversațiile: refuzul, cu textul serverului („Pachet și conturi")', /Pachet și conturi/.test(String(L.textFaraLoc(lm))), J(lm));
-  T('…„Azi la tine" nu apare (`seatMissing`)', (await Api.insightAzi()).seatMissing === true);
+  T('…conversațiile: refuzul, cu textul serverului („Pachet și conturi”)', /Pachet și conturi/.test(String(L.textFaraLoc(lm))), J(lm));
+  T('…„Azi la tine” nu apare (`seatMissing`)', (await Api.insightAzi()).seatMissing === true);
   const qm = await Api.aiQuota();
   T('…`seat: false` în /api/ai/quota', qm.seat === false, J(qm).slice(0, 200));
 
-  // Fondatorul: fără pachet, fără „Azi la tine".
+  // Fondatorul: fără pachet, fără „Azi la tine”.
   client.setAuthToken((await Api.mobileLogin('admin', 'test1234', 'proba')).token);
   const qs = await Api.aiQuota();
-  T('fondatorul: „Fondator · fără limită"', L.stareDinQuota(qs, true).contor === 'Fondator · fără limită' && L.stareDinQuota(qs, true).fond.text === 'Fondator · fără limită', J(qs).slice(0, 200));
-  T('…„Azi la tine": gol, cu `platforma`', (await Api.insightAzi()).platforma === true);
+  T('fondatorul: „Fondator · fără limită”', L.stareDinQuota(qs, true).contor === 'Fondator · fără limită' && L.stareDinQuota(qs, true).fond.text === 'Fondator · fără limită', J(qs).slice(0, 200));
+  T('…„Azi la tine”: gol, cu `platforma`', (await Api.insightAzi()).platforma === true);
   await paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om });
   T('ZERO cereri către model din partea telefonului (Scrisoarea de luni, care se scria lunea, a ieșit pe 04.11)', nModel() === 0, String(nModel()));
 }
@@ -1061,13 +1061,13 @@ async function comparaPagina(nume, k, j, o) {
   T(nume + ': aceleași texte, în aceeași ordine ca pagina web (' + a.length + ')', unde < 0, unde < 0 ? '' : 'la ' + unde + ': web ' + J(a.slice(Math.max(0, unde - 1), unde + 3)) + ' / telefon ' + J(b.slice(Math.max(0, unde - 1), unde + 3)));
 }
 async function parteaPaginilor() {
-  sect('13. Paginile: lista, regula „încuiat", numerele, formele cifrelor');
+  sect('13. Paginile: lista, regula „încuiat”, numerele, formele cifrelor');
   const RAM = vm.runInNewContext('(' + (INSP.match(/var RAMURI = (\[[\s\S]*?\n {6}\]);/) || ['', '[]'])[1] + ')');
   const peWeb = RAM.filter((r) => r.k !== 'general' && r.gata !== false).map((r) => ({ k: r.k, et: r.et, sub: r.sub || null, pachet: !!r.pachet, meniu: !!r.meniu }));
   T('aceleași pagini ca pe web, în aceeași ordine, cu aceleași nume', J(LP.RAMURI.map((r) => ({ k: r.k, et: r.et, sub: r.sub || null, pachet: !!r.pachet, meniu: !!r.meniu }))) === J(peWeb), J(LP.RAMURI.map((r) => r.k)));
   const webPagini = new Function('RAMURI', functie(INSP, 'function pagini()') + '; return pagini;')(RAM);
-  T('„Pagini": fără discuție și fără ghid (el stă în „⋯")', J(LP.pagini().map((r) => r.k)) === J(webPagini().map((r) => r.k)) && LP.pagini().every((r) => r.k !== 'ghid'));
-  // Rândurile din sertar, rulate pe web: încuiat, „· Basic", numerele, suma.
+  T('„Pagini”: fără discuție și fără ghid (el stă în „⋯”)', J(LP.pagini().map((r) => r.k)) === J(webPagini().map((r) => r.k)) && LP.pagini().every((r) => r.k !== 'ghid'));
+  // Rândurile din sertar, rulate pe web: încuiat, „· Basic”, numerele, suma.
   const webRanduri = (pachet, numere, ramura, cerut) => {
     const ids = {};
     const St = { pachet, numere, ramura, paginiDeschise: cerut };
@@ -1081,18 +1081,18 @@ async function parteaPaginilor() {
   for (const [nume, pachet, numere, ramura, cerut] of [['Basic, închise', PK, { mentenanta: 2, combustibil: 3, scrisoare: 1 }, 'general', false], ['Basic, deschise', PK, { soferi: 1 }, 'general', true], ['pe o pagină', PK, {}, 'combustibil', false], ['Start', START, { scrisoare: 1, mentenanta: 2 }, 'general', true], ['fără pachet', null, { orecondus: 4 }, 'general', true]]) {
     const w = webRanduri(pachet, numere, ramura, cerut);
     const desc = LP.paginiDeschise(cerut, ramura === 'general' ? null : ramura);
-    T('„' + nume + '": deschise la fel', w.desc === desc);
+    T('„' + nume + '”: deschise la fel', w.desc === desc);
     const tot = LP.sumaNumere(numere, pachet);
-    T('„' + nume + '": aceeași sumă (' + tot + ') când sunt închise', (desc ? 0 : tot) === w.suma, w.suma);
+    T('„' + nume + '”: aceeași sumă (' + tot + ') când sunt închise', (desc ? 0 : tot) === w.suma, w.suma);
     if (desc) {
       const tel = LP.pagini().map((r) => { const inc = LP.ramuraIncuiata(r, pachet); const n = numere[r.k]; return { k: ramura === r.k, inc, t: [r.et].concat(r.sub ? [r.sub] : [], inc ? ['· Basic'] : [], n > 0 ? [String(n)] : []) }; });
-      T('„' + nume + '": aceleași rânduri', J(tel) === J(w.randuri), J(tel) + ' / ' + J(w.randuri));
+      T('„' + nume + '”: aceleași rânduri', J(tel) === J(w.randuri), J(tel) + ' / ' + J(w.randuri));
     }
   }
-  T('„Pagini" rămân deschise cât stai pe una (ca insightPagini)', /const urm = !pagDesc; setPaginiCerut\(urm \|\| !!\(rPag && pagini\(\)\.indexOf\(rPag\) >= 0\)\)/.test(S.ecran) && /S\.paginiDeschise = !paginiDeschise\(\);/.test(INSP));
+  T('„Pagini” rămân deschise cât stai pe una (ca insightPagini)', /const urm = !pagDesc; setPaginiCerut\(urm \|\| !!\(rPag && pagini\(\)\.indexOf\(rPag\) >= 0\)\)/.test(S.ecran) && /S\.paginiDeschise = !paginiDeschise\(\);/.test(INSP));
   const webLoc = paginaWeb('deseneazaIncuiata', {}, { ramura: 'combustibil', RAMURI: RAM });
   webLoc.f(webLoc.main);
-  T('pagina încuiată: același text ca pe web, fără „Vezi pachetele" (pentru un om care nu e administrator, nici pe web)', texteDom(webLoc.main).join('|') === 'Combustibil|' + LP.TEXT_INCUIAT, texteDom(webLoc.main).join('|'));
+  T('pagina încuiată: același text ca pe web, fără „Vezi pachetele” (pentru un om care nu e administrator, nici pe web)', texteDom(webLoc.main).join('|') === 'Combustibil|' + LP.TEXT_INCUIAT, texteDom(webLoc.main).join('|'));
   // Formele cifrelor, rulate pe web.
   const F3 = new Function(functie(INSP, 'function sdLei(n)') + functie(INSP, 'function sdNr(x, z)') + functie(INSP, 'function sdCant(n, unu, multi)') + '; return { sdLei, sdNr, sdCant };')();
   [0, 1, 2, 19, 20, 100, 101, 1234.56, -3, null, undefined, 'x'].forEach((n) => {
@@ -1106,24 +1106,24 @@ async function parteaPaginilor() {
   const cu = (o, x) => Object.assign({}, o, x);
   await comparaPagina('RA Drive, plin', 'safedrive', C.safedrive);
   await comparaPagina('RA Drive, fără drept de note și de prețuri', 'safedrive', cu(C.safedrive, { poateNota: false, preturi: cu(C.safedrive.preturi, { poateSchimba: false }), grupe: [grupaUna()], inaintePregatire: false, fata: {}, ferestre: [] }));
-  await comparaPagina('RA Drive, „Pregătesc luna" cu procent', 'safedrive', { luni: C.safedrive.luni, grupe: [], lunaAleasa: '2026-11', pregatire: { procent: 37 } });
-  await comparaPagina('RA Drive, „Pregătesc luna" fără procent', 'safedrive', { luni: C.safedrive.luni, lunaAleasa: '2026-11', pregatire: { procent: null } });
+  await comparaPagina('RA Drive, „Pregătesc luna” cu procent', 'safedrive', { luni: C.safedrive.luni, grupe: [], lunaAleasa: '2026-11', pregatire: { procent: 37 } });
+  await comparaPagina('RA Drive, „Pregătesc luna” fără procent', 'safedrive', { luni: C.safedrive.luni, lunaAleasa: '2026-11', pregatire: { procent: null } });
   await comparaPagina('RA Drive, nicio mașină', 'safedrive', { luni: C.safedrive.luni, lunaAleasa: '2026-11', gol: true });
   await comparaPagina('RA Drive, lună goală', 'safedrive', { luni: C.safedrive.luni, lunaAleasa: '2026-11', eticheta: 'noiembrie 2026', masini: [] });
   await comparaPagina('RA Drive, fără șoferi, locuri, recomandări', 'safedrive', cu(C.safedrive, { soferi: [], locuri: [], recomandari: [], flota: cu(C.safedrive.flota, { ore: [0, 0], scor: null, costPeMasina: null }) }));
   await comparaPagina('Combustibil, plin', 'combustibil', C.combustibil);
   await comparaPagina('Combustibil, fără evenimente', 'combustibil', cu(C.combustibil, { scaderi: [], recomandari: [], evenimente: {}, pesteNorma: [], grupe: [], fata: {}, flota: cu(C.combustibil.flota, { procentEstimat: 0, masini: 1, l100: null }) }));
-  await comparaPagina('Combustibil, „Pregătesc luna"', 'combustibil', { luni: C.combustibil.luni, lunaAleasa: '2026-10', pregatire: {} });
+  await comparaPagina('Combustibil, „Pregătesc luna”', 'combustibil', { luni: C.combustibil.luni, lunaAleasa: '2026-10', pregatire: {} });
   await comparaPagina('Combustibil, nicio mașină', 'combustibil', { lunaAleasa: '2026-10', gol: true });
   await comparaPagina('Ore de condus, plin', 'orecondus', C.orecondus);
   await comparaPagina('Ore de condus, fără încălcări, nesupus', 'orecondus', cu(C.orecondus, { atentie: null, incalcari: [], recomandari: [], grupe: [], fata: {}, flota: { text: '1h', soferi: 1, tahograf: 0, supusi: false }, soferi: [cu(C.orecondus.soferi[1], {})] }));
   await comparaPagina('Ore de condus, doar GPS, supus', 'orecondus', cu(C.orecondus, { incalcari: [], flota: { text: '1h', soferi: 3, tahograf: 3, supusi: true, faraSofer: 0 }, soferi: [cu(C.orecondus.soferi[0], { azi: null })] }));
-  await comparaPagina('Ore de condus, „Pregătesc săptămâna"', 'orecondus', { saptamani: C.orecondus.saptamani, saptamanaAleasa: '2026-10-26', pregatire: {} });
+  await comparaPagina('Ore de condus, „Pregătesc săptămâna”', 'orecondus', { saptamani: C.orecondus.saptamani, saptamanaAleasa: '2026-10-26', pregatire: {} });
   await comparaPagina('Ore de condus, nimic', 'orecondus', { saptamani: C.orecondus.saptamani, saptamanaAleasa: '2026-10-26', eticheta: 'x', soferi: [] });
   await comparaPagina('Mentenanță, plin', 'mentenanta', C.mentenanta);
   await comparaPagina('Mentenanță, totul la zi', 'mentenanta', { rezumat: {}, randuri: [], explicatii: [] });
   await comparaPagina('Șoferi, plin', 'soferi', C.soferi);
-  await comparaPagina('Șoferi, după „Aplică"', 'soferi', C.soferi, { dupa: { text: 'Gata: o schimbare.', gata: [{ text: 'Mihai e pe B 1.' }], sarite: [{ motiv: 'B 2 s-a schimbat' }], ramasMs: 90000, actiuneId: 5 } });
+  await comparaPagina('Șoferi, după „Aplică”', 'soferi', C.soferi, { dupa: { text: 'Gata: o schimbare.', gata: [{ text: 'Mihai e pe B 1.' }], sarite: [{ motiv: 'B 2 s-a schimbat' }], ramasMs: 90000, actiuneId: 5 } });
   await comparaPagina('Șoferi, fără drept', 'soferi', cu(C.soferi, { poate: false, aproba: 'Maria' }));
   await comparaPagina('Șoferi, fără nimic de propus', 'soferi', cu(C.soferi, { propuneri: [], faraPropunere: [], inRegula: [], deCompletat: [] }));
   await comparaPagina('Șoferi, fără șoferi', 'soferi', { texte: { intro: 'Intro' }, faraSoferi: true });
@@ -1147,25 +1147,25 @@ async function parteaPaginilor() {
     const w = webLeaga(PR, ckk(...c)), t = LP.legaBife(PR, ckk(...c));
     T('bifele ' + J(c) + ': la fel ca pe web', J(w.stare) === J(t.stare) && w.text === LP.textAplica(t.n) && w.off === !t.n, J(w) + ' / ' + J(t));
   });
-  T('„Aplică": același corp, doar cele bifate; după, numerele se reîncarcă', /\.map\(\(x\) => \(\{ imei: x\.imei, la: x\.la \}\)\)/.test(S.pagini) && /map\(function \(b\) \{ return \{ imei: b\.p\.imei, la: b\.p\.la \}; \}\)/.test(INSP) && /l\.numere\(\);\n\s*await aduce\(r\)/.test(S.pagini) && /\/api\/insight\/soferi-masini\/aplica/.test(S.endpoints) && /'\/api\/insight\/soferi-masini\/aplica', \{ schimbari: sch \}/.test(INSP));
+  T('„Aplică”: același corp, doar cele bifate; după, numerele se reîncarcă', /\.map\(\(x\) => \(\{ imei: x\.imei, la: x\.la \}\)\)/.test(S.pagini) && /map\(function \(b\) \{ return \{ imei: b\.p\.imei, la: b\.p\.la \}; \}\)/.test(INSP) && /l\.numere\(\);\n\s*await aduce\(r\)/.test(S.pagini) && /\/api\/insight\/soferi-masini\/aplica/.test(S.endpoints) && /'\/api\/insight\/soferi-masini\/aplica', \{ schimbari: sch \}/.test(INSP));
   // Nimic socotit pe telefon: paginile nu adună cifre și nu ghicesc stări.
   const codPag = faraComentarii(S.pagini);
   T('InsightPagini.tsx nu scrie cifre de bani sau reguli (fără sume, fără praguri)', !/\.reduce\(|Math\.(round|max|min)|\*\s*\d|km\/h|l\/100/.test(codPag), (codPag.match(/\.reduce\(|Math\.(round|max|min)|\*\s*\d|km\/h|l\/100/) || [''])[0]);
   T('fără innerHTML în fișierele paginilor', !/dangerouslySetInnerHTML|innerHTML/.test(faraComentarii(S.pagini + S.pagLib)));
   T('fără `|| 1,5` sau alte prețuri de rezervă: prețurile vin din `valori`', /P\.valori/.test(S.pagini) && !/preturi\s*\|\|\s*\{\s*\w+:/.test(codPag));
-  T('„Pregătesc…" se reia singură, la aceleași pauze ca pe web', /j\.pregatire \? 2500 : 4000/.test(functie(INSP, 'function sdIar(main, j)')) && /p\.reia = 2500/.test(S.pagLib) && /p\.reia = 4000/.test(S.pagLib) && /setTimeout\(aduce, p\.reia\)/.test(S.pagini));
-  T('prețurile și „Am vorbit cu el": doar cu dreptul dat de server', /j\.poateNota/.test(S.pagLib) && /P\.poateSchimba/.test(S.pagini) && /poateNota: permReq\(req, 'manageFleet'\)/.test(server));
+  T('„Pregătesc…” se reia singură, la aceleași pauze ca pe web', /j\.pregatire \? 2500 : 4000/.test(functie(INSP, 'function sdIar(main, j)')) && /p\.reia = 2500/.test(S.pagLib) && /p\.reia = 4000/.test(S.pagLib) && /setTimeout\(aduce, p\.reia\)/.test(S.pagini));
+  T('prețurile și „Am vorbit cu el”: doar cu dreptul dat de server', /j\.poateNota/.test(S.pagLib) && /P\.poateSchimba/.test(S.pagini) && /poateNota: permReq\(req, 'manageFleet'\)/.test(server));
   T('rutele paginilor sunt cele ale web-ului', ["'/api/insight/safe-drive'", "'/api/insight/combustibil'", "'/api/insight/ore-condus'", "'/api/insight/mentenanta'", "'/api/insight/ghid'", "'/api/insight/soferi-masini'", "'/api/insight/ramuri'", "'/api/insight/safe-drive/preturi'", "'/api/insight/safe-drive/discutie'"].every((r) => S.endpoints.indexOf(r) >= 0 && INSP.indexOf(r) >= 0));
-  T('textul „Am vorbit cu el": aceleași cuvinte în foaie', ['De azi, RA Drive compară manevrele bruște la 100 km de dinainte și de după discuție — vezi rezultatul aici, peste câteva zile.', 'Da, am vorbit', 'O notă scurtă (nu e obligatorie)', 'Discuția dispare din RA Drive (de exemplu, dacă ai trecut-o din greșeală).', 'Scoți discuția?', 'Discuția s-a trecut ✓', 'Prețurile s-au salvat ✓', 'Prețurile de pornire s-au pus la loc ✓'].every((t) => INSP.indexOf(t) >= 0 && S.pagini.indexOf(t) >= 0));
+  T('textul „Am vorbit cu el”: aceleași cuvinte în foaie', ['De azi, RA Drive compară manevrele bruște la 100 km de dinainte și de după discuție — vezi rezultatul aici, peste câteva zile.', 'Da, am vorbit', 'O notă scurtă (nu e obligatorie)', 'Discuția dispare din RA Drive (de exemplu, dacă ai trecut-o din greșeală).', 'Scoți discuția?', 'Discuția s-a trecut ✓', 'Prețurile s-au salvat ✓', 'Prețurile de pornire s-au pus la loc ✓'].every((t) => INSP.indexOf(t) >= 0 && S.pagini.indexOf(t) >= 0));
   T('erorile paginilor: aceleași titluri ca pe web', ['RA Drive nu s-a putut deschide', 'Combustibil nu s-a putut deschide', 'Ore de condus nu s-a putut deschide', 'Mentenanță & acte nu s-a putut deschide', 'Pagina nu s-a putut deschide'].every((t) => INSP.indexOf(t) >= 0 && S.pagini.indexOf(t) >= 0));
 
-  sect('13.2 /insight: pagina și discuția, „Înapoi"');
+  sect('13.2 /insight: pagina și discuția, „Înapoi”');
   T('pagina are adresa ei, păzită ca discuția', /<Route path="\/insight\/:ramura" component=\{P\.insight\} \/>/.test(S.app));
-  T('„Înapoi" de pe o pagină: istoricul, adică discuția; din sertar sau din foaie, întâi se închid ele', /if \(!ramura\) loc\.route\('\/meniu'\); else if \(history\.length > 1\) history\.back\(\); else loc\.route\('\/insight', true\);/.test(S.ecran) && /dupaInapoi\(\(\) => loc\.route\(d\.ruta, d\.inlocuieste\)\)/.test(S.ecran) && /export function dupaInapoi\(fn: \(\) => void\) \{ if \(inapoiInCurs\) inapoiInCurs\.then\(fn\); else fn\(\); \}/.test(S.inapoi));
+  T('„Înapoi” de pe o pagină: istoricul, adică discuția; din sertar sau din foaie, întâi se închid ele', /if \(!ramura\) loc\.route\('\/meniu'\); else if \(history\.length > 1\) history\.back\(\); else loc\.route\('\/insight', true\);/.test(S.ecran) && /dupaInapoi\(\(\) => loc\.route\(d\.ruta, d\.inlocuieste\)\)/.test(S.ecran) && /export function dupaInapoi\(fn: \(\) => void\) \{ if \(inapoiInCurs\) inapoiInCurs\.then\(fn\); else fn\(\); \}/.test(S.inapoi));
   T('o pagină în locul alteia înlocuiește adresa (Înapoi nu trece prin toate)', /function deschidePagina\(k: string\) \{ du\(rutaRamura\(k\), !!ramura\); \}/.test(S.ecran));
-  T('foile din pagini se închid tot cu „înapoi"', /useInapoiInchide\(!!sheet,/.test(S.pagini));
+  T('foile din pagini se închid tot cu „înapoi”', /useInapoiInchide\(!!sheet,/.test(S.pagini));
   T('conversația rămâne (id și ce e scris în casetă) cât stai pe o pagină', /let ciornaMem = '';/.test(S.ecran) && /useState\(ciornaMem\)/.test(S.ecran) && /\[mesaje\.length, trimitere, ramura\]/.test(S.ecran));
-  T('„Întreabă RA Insight" dintr-o pagină: o discuție nouă, cu începutul scris, nu trimis', /function intreabaDespre\(inceput: string\) \{[\s\S]{0,240}setText\(String\(inceput \|\| ''\)\);[\s\S]{0,160}du\('\/insight', true\);/.test(S.ecran) && !/intreabaDespre[\s\S]{0,240}trimite\(/.test(S.ecran.slice(S.ecran.indexOf('function intreabaDespre'), S.ecran.indexOf('function intreabaDespre') + 300)));
+  T('„Întreabă RA Insight” dintr-o pagină: o discuție nouă, cu începutul scris, nu trimis', /function intreabaDespre\(inceput: string\) \{[\s\S]{0,240}setText\(String\(inceput \|\| ''\)\);[\s\S]{0,160}du\('\/insight', true\);/.test(S.ecran) && !/intreabaDespre[\s\S]{0,240}trimite\(/.test(S.ecran.slice(S.ecran.indexOf('function intreabaDespre'), S.ecran.indexOf('function intreabaDespre') + 300)));
   T('o pagină de la Basic nu cere nimic până nu știe pachetul (pe Start, cartonașul încuiat)', /!qGata && rPag && rPag\.pachet \?/.test(S.ecran) && /ramuraIncuiata\(rPag, stare\.pachet\) \? <PaginaIncuiata k=\{ramura\} laPachete=\{admin \? vedePachetele : undefined\} \/>/.test(S.ecran));
   T('numerele: din /api/insight/ramuri, la intrare și după ce s-a schimbat ceva', /Api\.insightRamuri\(\)/.test(S.ecran) && /numere: incarcaNumere/.test(S.ecran) && /l\.numere\(\);/.test(S.pagini));
   // Pe ecran: cartonașele, fără ieșire în lături.
@@ -1178,23 +1178,23 @@ async function parteaPaginilor() {
 function grupaUna() { return { id: null, eticheta: 'Toată flota' }; }
 
 function parteaAnuntului() {
-  sect('13.3 Rapoartele (anunțul „Scrisoarea de luni" a ieșit pe 04.11)');
+  sect('13.3 Rapoartele (anunțul „Scrisoarea de luni” a ieșit pe 04.11)');
   const P = modul(F.push, { '@capacitor/core': { Capacitor: { isNativePlatform: () => false, getPlatform: () => 'web' } }, '../api/endpoints': { Api: {} }, '../app/store': { showToast: () => {} },
     './factura': { rutaFactura: () => '/billing' }, './contracte': { RUTA_NEASIGNATE: '/x' }, './calendarMontaj': { rutaCalendarMontaj: () => '/y' }, './incarcare': { rutaPlanSofer: () => '/z', rutaPlanSimulator: () => '/z', RUTA_PLANURI: '/z' } });
   T('Scrisoarea de luni a ieșit (04.11): anunțul ei nu mai are loc pe telefon, iar pagina nu-l mai așteaptă', P.TIPURI_CU_LOC.indexOf('scrisoare_luni') < 0 && P.adresaAnunt('scrisoare_luni', { scrisoareId: 12 }) === null &&
     !/scrisoare/.test(S.ecran) && /const PUSH_CU_ID = new Set\(\[\]\);/.test(server));
   T('…detaliul marchează citit și duce la adresa anunțului', /const spre = x \? adresaAnunt\(x\.type, x\.data\) : null;\s*if \(spre\) \{\s*if \(!x\.acknowledged\) Api\.ackNotification\(Number\(id\)\)/.test(faraComentarii(S.notifDetail)));
   // Fila veche din Rapoarte.
-  T('fila „RA Insight" din Rapoarte a plecat (cererile în cuvinte stau în RA Insight)', !/InsightPanel|rp-tabs|setTab|tab === 'insight'/.test(S.reports) && !/\.rp-tabs|\.rp-tab\b|\.insight-/.test(S.reportsCss));
+  T('fila „RA Insight” din Rapoarte a plecat (cererile în cuvinte stau în RA Insight)', !/InsightPanel|rp-tabs|setTab|tab === 'insight'/.test(S.reports) && !/\.rp-tabs|\.rp-tab\b|\.insight-/.test(S.reportsCss));
   T('…și ce folosea doar ea: rutele din endpoints.ts; pe server rămân, pentru telefoanele vechi', !/reportsAgent|insightPresets|insightRun|aiChat/.test(S.endpoints) && /app\.post\('\/api\/ai\/reports-agent'/.test(server) && /app\.get\('\/api\/insight\/presets'/.test(server) && /app\.post\('\/api\/insight\/run'/.test(server));
-  // Ce leagă Rapoartele web de RA Insight: „Rezumă cu RA Insight" și eticheta din Istoric.
+  // Ce leagă Rapoartele web de RA Insight: „Rezumă cu RA Insight” și eticheta din Istoric.
   const rez = functie(html, 'window.insightSummarizeReport = async function () {');
-  T('web: „Rezumă cu RA Insight", cel mult 60 de rânduri, același corp', /Rezumă cu RA Insight/.test(html) && /\.slice\(0, 60\)/.test(rez) && /type: 'tabel', report: \{ columns: head, rows: rows \}/.test(rez));
+  T('web: „Rezumă cu RA Insight”, cel mult 60 de rânduri, același corp', /Rezumă cu RA Insight/.test(html) && /\.slice\(0, 60\)/.test(rez) && /type: 'tabel', report: \{ columns: head, rows: rows \}/.test(rez));
   T('telefon: același buton, același corp, același drum de texte', /Rezumă cu RA Insight/.test(S.reports) && /\.slice\(0, 60\)/.test(S.reports) && /type: 'tabel', report \}/.test(S.endpoints) && /'\/api\/ai\/report-summary'/.test(S.endpoints) && /j\.summary \|\| j\.reply \|\| j\.message \|\| j\.error \|\| 'Nu am putut face rezumatul acum\.'/.test(S.reports) && /j\.summary \|\| j\.reply \|\| j\.message \|\| j\.error \|\| 'Nu am putut face rezumatul acum\.'/.test(rez) && /Generează întâi raportul, apoi apasă din nou\./.test(S.reports) && /Generează întâi raportul, apoi apasă din nou\./.test(rez));
   T('…un raport nou șterge rezumatul de dinainte, ca pe web', /useEffect\(\(\) => \{ setRezumat\(null\); \}, \[res\]\)/.test(S.reports) && /_rz\.style\.display = 'none'; _rz\.innerHTML = ''/.test(html));
   T('…rezumatul e text: fără HTML', !/dangerouslySetInnerHTML/.test(S.reports));
   T('…doar unde RA Insight e pornit și neascuns din rol', /me\.value\?\.features\?\.ai_assistant !== false && !ecranAscuns\('insight'\) && \(/.test(S.reports));
-  T('Istoric rapoarte: eticheta „din RA Insight", ca pe web', /h\.status === 'insight' && <span class="rh-ins"[^>]*>[\s\S]{0,60}din RA Insight/.test(S.reports) && /h\.status === 'insight' \? '<span class="rh-ins"/.test(html));
+  T('Istoric rapoarte: eticheta „din RA Insight”, ca pe web', /h\.status === 'insight' && <span class="rh-ins"[^>]*>[\s\S]{0,60}din RA Insight/.test(S.reports) && /h\.status === 'insight' \? '<span class="rh-ins"/.test(html));
   const cssR = S.reportsCss;
   T('…culorile ei au pereche pe ambele teme (verdele casei; pe tema deschisă #166534)', /\.rh-ins \{[^}]*color: #3FE07D/.test(cssR) && /:root\[data-theme="light"\] \.rh-ins \{ color: #166534/.test(cssR) && !/#6d28d9|#a78bfa|#c4b5fd/i.test(cssR));
 }
@@ -1232,14 +1232,14 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
   const prIn = JSON.parse(J(preturi.valori)); prIn[preturi.clase[0].k].frana = 2.25;
   await Api.insightSafeDrivePreturi(prIn);
   const sd2 = await adresa('safedrive', () => Api.insightSafeDrive());
-  T('…„Salvează prețurile" se ține minte, „Înapoi la prețurile de pornire" le pune la loc', sd2.preturi.valori[preturi.clase[0].k].frana === 2.25);
+  T('…„Salvează prețurile” se ține minte, „Înapoi la prețurile de pornire” le pune la loc', sd2.preturi.valori[preturi.clase[0].k].frana === 2.25);
   await Api.insightSafeDrivePreturi({});
   const sd3 = await adresa('safedrive', () => Api.insightSafeDrive());
   T('…la loc', J(sd3.preturi.valori) === J(preturi.implicite), J(sd3.preturi.valori).slice(0, 120));
   await Api.insightDiscutie(ion.id, 'despre frâne');
   await sleep(50);
   const lnD = await adresa('safedrive', () => Api.insightSafeDrive({ luna: sd.lunaAleasa }));
-  T('„Am vorbit cu el": se trece (ruta de pe web)', true);
+  T('„Am vorbit cu el”: se trece (ruta de pe web)', true);
   await comparaPagina('RA Drive, după discuție', 'safedrive', lnD);
 
   const cb = await adresa('combustibil', () => Api.insightCombustibil());
@@ -1254,7 +1254,7 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
   const mt = await Api.insightMentenanta();
   T('Mentenanță & acte: actul trecut și revizia care urmează, cu textele serverului', (mt.randuri || []).some((x) => x.stare === 'depasit' && x.ecran === 'documente') && (mt.randuri || []).some((x) => x.stare === 'curand' && x.ecran === 'maintenance'), J(mt.randuri).slice(0, 300));
   await comparaPagina('Mentenanță, răspunsul adevărat', 'mentenanta', mt);
-  mt.randuri.forEach((x) => T('…„' + x.ce + '" duce pe un ecran al telefonului (' + x.ecran + ')', !!L.rutaButon({ fel: 'ecran', ecran: x.ecran })));
+  mt.randuri.forEach((x) => T('…„' + x.ce + '” duce pe un ecran al telefonului (' + x.ecran + ')', !!L.rutaButon({ fel: 'ecran', ecran: x.ecran })));
   const sf = await Api.insightSoferiMasini();
   T('Șoferi pe mașini: ce e de rezolvat și propunerile', (sf.propuneri || []).length > 0 && !!sf.rezumat && sf.poate === true, J(sf).slice(0, 300));
   await comparaPagina('Șoferi, răspunsul adevărat', 'soferi', sf);
@@ -1263,11 +1263,11 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
   T('…suma, când sunt închise', LP.sumaNumere(nr, { ramuri: true }) >= nr.soferi + nr.mentenanta, J(nr));
   const pa = sf.propuneri.filter((x) => !x.dupa)[0];
   const ap = await Api.insightAplicaSoferi([{ imei: pa.imei, la: pa.la }]);
-  T('„Aplică cele bifate": „Gata", ceasul lui „Anulează", acțiunea', ap.ok === true && (ap.gata || []).length === 1 && ap.ramasMs > 0 && !!ap.actiuneId, J(ap));
+  T('„Aplică cele bifate”: „Gata”, ceasul lui „Anulează”, acțiunea', ap.ok === true && (ap.gata || []).length === 1 && ap.ramasMs > 0 && !!ap.actiuneId, J(ap));
   const sf2 = await Api.insightSoferiMasini();
-  await comparaPagina('Șoferi, după „Aplică", cu rândul „Gata"', 'soferi', sf2, { dupa: ap });
+  await comparaPagina('Șoferi, după „Aplică”, cu rândul „Gata”', 'soferi', sf2, { dupa: ap });
   const an = await Api.insightActiune(ap.actiuneId, 'anuleaza');
-  T('…„Anulează" (ruta comună) întoarce schimbarea, cu textul serverului', !!an.text, J(an));
+  T('…„Anulează” (ruta comună) întoarce schimbarea, cu textul serverului', !!an.text, J(an));
   const gh = await Api.insightGhid();
   T('Ghidul: capitolele, cu titlu', (gh.sectiuni || []).length > 5 && gh.sectiuni.every((g) => g.cheie && g.titlu));
 
@@ -1277,7 +1277,7 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
     const r = await f();
     T('fără cont, ' + nume + ': refuzul cu textul serverului, fără date', r.seatMissing === true && /Pachet și conturi/.test(String(r.message)) && !r.masini && !r.scrisori && !r.soferi && !r.randuri, J(r).slice(0, 160));
   }
-  T('…ghidul e de citit și fără cont (ca pe web, până la cartonașul „nu e pornit")', ((await Api.insightGhid()).sectiuni || []).length > 5);
+  T('…ghidul e de citit și fără cont (ca pe web, până la cartonașul „nu e pornit”)', ((await Api.insightGhid()).sectiuni || []).length > 5);
 
   // O firmă pe Start: paginile de la Basic sunt încuiate, serverul le refuză oricum.
   const coS = (await R('POST', '/api/companies', { name: 'Firma Start SRL' })).j;
@@ -1288,7 +1288,7 @@ async function paginilePeServer({ R, Api, client, tel, co, MAS, PAROLA, om }) {
   const qS = await Api.aiQuota();
   const stS = L.stareDinQuota(qS, false);
   T('Start: pachetul fără ramuri, deci paginile sunt încuiate; ghidul, nu', !!stS.pachet && stS.pachet.ramuri === false && ['soferi', 'safedrive', 'combustibil', 'mentenanta', 'orecondus'].every((k) => LP.ramuraIncuiata(LP.ramuraDupa(k), stS.pachet)) && !LP.ramuraIncuiata(LP.ramuraDupa('ghid'), stS.pachet), J(stS.pachet));
-  T('…„Actele" din „Azi la tine" pleacă drept întrebare', J(L.aziActiune({ fel: 'acte', ramura: 'mentenanta', trimite: 'Ce expiră?' }, stS.pachet)) === J({ trimite: 'Ce expiră?', buton: true }));
+  T('…„Actele” din „Azi la tine” pleacă drept întrebare', J(L.aziActiune({ fel: 'acte', ramura: 'mentenanta', trimite: 'Ce expiră?' }, stS.pachet)) === J({ trimite: 'Ce expiră?', buton: true }));
   for (const [nume, f] of [['RA Drive', () => Api.insightSafeDrive()], ['Combustibil', () => Api.insightCombustibil()], ['Ore de condus', () => Api.insightOreCondus()], ['Mentenanță', () => Api.insightMentenanta()], ['Șoferi', () => Api.insightSoferiMasini()], ['numere', () => Api.insightRamuri()]]) {
     let e = null; try { await f(); } catch (x2) { e = x2; }
     T('Start, ' + nume + ': 403 de la server, cu mesajul lui', e && e.status === 403 && e.message === 'ramuri_pachet' && /Basic/.test((e.data || {}).message || ''), e && J({ s: e.status, m: e.message, d: e.data }));
@@ -1334,6 +1334,6 @@ for (const semnal of ['SIGINT', 'SIGTERM']) process.on(semnal, () => { rele++; c
   pornesteServerul();   // se încălzește cât rulează bucățile fără server
   for (const [nume, f] of [['pachetul', pachetSiContorul], ['textul', parteaTextului], ['bula', parteaBulei], ['cererile', parteaCererilor], ['butoanele', parteaButoanelor], ['textele', parteaTextelor], ['navigarea', parteaNavigarii], ['culorile', parteaCulorilor], ['paginile', parteaPaginilor], ['anunțul și Rapoartele', parteaAnuntului], ['desenul', parteaDesenului], ['serverul', parteaServerului]]) {
     // O parte care crapă se numără ca picată și nu le ascunde pe celelalte.
-    try { await f(); } catch (e) { rele++; console.log('  ✗ EROARE în „' + nume + '": ' + ((e && e.stack) || e)); }
+    try { await f(); } catch (e) { rele++; console.log('  ✗ EROARE în „' + nume + '”: ' + ((e && e.stack) || e)); }
   }
 })().catch((e) => { rele++; console.log('  ✗ EROARE: ' + ((e && e.stack) || e)); }).then(gata);

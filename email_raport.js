@@ -1,8 +1,8 @@
 'use strict';
-// email_raport.js — emailul cu raportul programat (29.10; Alin: „da, e o idee bună"). Până atunci emailul avea două rânduri
+// email_raport.js — emailul cu raportul programat (29.10; Alin: „da, e o idee bună”). Până atunci emailul avea două rânduri
 // și un Excel atașat — exact forma pe care filtrele de spam o bănuiesc la un expeditor nou (raportul lui Alin ajungea în Spam
 // la Yahoo). Acum spune ce raport e, pe ce perioadă și pe ce mașini, cifrele de sus ale raportului (aceleași ca pe cartonașul
-// din RA Insight — reports.kpiRaport), are linkul „Deschide raportul în aplicație" (spre Istoric rapoarte) și spune de ce
+// din RA Insight — reports.kpiRaport), are linkul „Deschide raportul în aplicație” (spre Istoric rapoarte) și spune de ce
 // primește omul emailul. Fișierul rămâne atașat.
 // Regulile și TEXTELE stau aici, curate (fără bază de date, fără rețea); report_schedules.js adună datele, mailer.js pune
 // chenarul casei.
@@ -22,7 +22,7 @@ function linkRaport(baza, historyId) {
   const id = Number(historyId);
   return Number.isInteger(id) && id > 0 ? b + '/app?raport=' + id : b + '/app';
 }
-// Pe ce mașini: una anume („Dacia Logan 3 · B 154 UIP") sau toată flota („Toată flota · 5 mașini").
+// Pe ce mașini: una anume („Dacia Logan 3 · B 154 UIP”) sau toată flota („Toată flota · 5 mașini”).
 function textMasini(o) {
   o = o || {};
   if (o.vehicul) return String(o.vehicul);

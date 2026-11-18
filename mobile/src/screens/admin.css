@@ -105,7 +105,7 @@
 
 /* Bife multiple (categorii de permis). Ținta de atingere e 34px — sub atât, degetul ratează.
    `.hi` = categorie profesionistă, marcată cu un punct, exact ca pe web (.drv-cat.pro). NU cu albastru:
-   în ecranul ăsta albastrul înseamnă deja „card de tahograf", iar Tb/Tv sunt profesioniste FĂRĂ tahograf
+   în ecranul ăsta albastrul înseamnă deja „card de tahograf”, iar Tb/Tv sunt profesioniste FĂRĂ tahograf
    — două albastre diferite pe același rând ar spune că troleibuzul are tahograf. */
 .chips { display: flex; flex-direction: column; gap: 9px; }
 .chips-g { display: flex; flex-direction: column; gap: 5px; }
@@ -124,7 +124,7 @@
    (Revizia lotului 5, 01.10.) */
 :root[data-theme="light"] .adm-empty { color: var(--text-secondary); }
 
-/* Utilizatori, pe o firmă cu pachet: linkul spre „Pachet și conturi" și eticheta de pe rând (ca pe web). */
+/* Utilizatori, pe o firmă cu pachet: linkul spre „Pachet și conturi” și eticheta de pe rând (ca pe web). */
 .rau-pk { margin-left: 2px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: 800; color: var(--rau-pk, #3fe07d); text-align: left; }
 :root[data-theme="light"] .rau-pk { color: #166534; }
 .adm-pill.rau-ra { color: #3FE07D; background: rgba(63, 224, 125, .15); }

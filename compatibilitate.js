@@ -14,11 +14,11 @@
 //
 // Cum se citesc listele (verificat pe listele din 2025):
 //   • LV-CAN200 / ALL-CAN300: câte o foaie pe fel de vehicul (Cars, Trucks, Buses...), antetul pe rândul
-//     2, anii scriși „2016>" = de la 2016 încolo. Un „+" albastru = „depinde de dotarea mașinii";
-//     unul portocaliu = „poate lipsi cu cititorul fără contact". Jos, două rânduri de legendă.
-//   • FMX150: o foaie, antetul pe rândul 3, deasupra grupul („Standard" / „Extended" — cei extinși se
-//     cer separat de la Teltonika, deci nu-i numărăm), anii „2017+" sau „2013-2016", „+*" = experimental,
-//     „+" pe galben = lipsește cu ECAN02.
+//     2, anii scriși „2016>" = de la 2016 încolo. Un „+” albastru = „depinde de dotarea mașinii”;
+//     unul portocaliu = „poate lipsi cu cititorul fără contact”. Jos, două rânduri de legendă.
+//   • FMX150: o foaie, antetul pe rândul 3, deasupra grupul („Standard” / „Extended” — cei extinși se
+//     cer separat de la Teltonika, deci nu-i numărăm), anii „2017+” sau „2013-2016”, „+*” = experimental,
+//     „+” pe galben = lipsește cu ECAN02.
 
 const LISTE = {
   lvcan:  { nume: 'LV-CAN200',  pentru: 'FMC130 + modulul LV-CAN200' },
@@ -44,13 +44,13 @@ function norm(s) {
 const MARCI_ALIAS = { 'MERCEDES BENZ': 'MERCEDES', MB: 'MERCEDES', VW: 'VOLKSWAGEN', KINGLONG: 'KING LONG',
   'GREAT WALL MOTOR': 'GREAT WALL', 'CASE IH': 'CASE', 'MAN STEYR': 'MAN', 'MITSUBISHI FUSO': 'FUSO' };
 function cheieMarca(m) { const n = norm(m); return MARCI_ALIAS[n] || n; }
-// „LOGAN MCV" → „Logan MCV": cuvintele scurte și codurile (MCV, GT, FH, 5G) rămân cu litere mari.
+// „LOGAN MCV” → „Logan MCV”: cuvintele scurte și codurile (MCV, GT, FH, 5G) rămân cu litere mari.
 function titlu(s) {
   return String(s).split(' ').map((w) => (w.length <= 3 || /\d/.test(w)) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
 // ─── Anii ─────────────────────────────────────────────────────────────────────────────────────────
-// „2016>" / „2017+" = de la; „2013-2016" = între; „<=2010" = până la; gol = nu spune.
+// „2016>" / „2017+” = de la; „2013-2016” = între; „<=2010" = până la; gol = nu spune.
 function ani(text) {
   const t = String(text == null ? '' : text).trim();
   const nr = (t.match(/\b(19[5-9]\d|20\d\d|21\d\d)\b/g) || []).map(Number);
@@ -67,10 +67,10 @@ function aniText(de, pana) {
 }
 
 // ─── Modelul: bază, generație, etichete ───────────────────────────────────────────────────────────
-// „LOGAN (III) (LPG)" → bază [LOGAN], generația 3, etichete [III, LPG]
-// „Logan mk2 facelift" → bază [LOGAN], generația 2
-// „OCTAVIA IV (NX)"   → bază [OCTAVIA], generația 4, etichete [NX]
-// „3 (G20 / G21)"     → bază [3], etichete [G20 G21] — cifra de la început e NUMELE modelului
+// „LOGAN (III) (LPG)” → bază [LOGAN], generația 3, etichete [III, LPG]
+// „Logan mk2 facelift” → bază [LOGAN], generația 2
+// „OCTAVIA IV (NX)”   → bază [OCTAVIA], generația 4, etichete [NX]
+// „3 (G20 / G21)”     → bază [3], etichete [G20 G21] — cifra de la început e NUMELE modelului
 const ROMANE = { II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10 };
 const ZGOMOT = new Set(['FACELIFT', 'E5', 'E6']);
 function descompuneModel(model) {
@@ -82,7 +82,7 @@ function descompuneModel(model) {
     if (i > 0 && ROMANE[x]) { gen = ROMANE[x]; return; }
     const mk = /^MK(\d{1,2})$/.exec(x); if (mk) { gen = Number(mk[1]); return; }
     if (ZGOMOT.has(x)) return;
-    if (/^\d$/.test(x) && t[i - 1] === 'FACELIFT') return;       // „facelift 2"
+    if (/^\d$/.test(x) && t[i - 1] === 'FACELIFT') return;       // „facelift 2”
     baza.push(x);
   });
   etichete.forEach((e) => { if (gen == null && ROMANE[e]) gen = ROMANE[e]; });
@@ -100,7 +100,7 @@ function eticheteVariante(etichete) { return etichete.filter((e) => VARIANTE[e])
 
 // ─── Datele care se citesc ────────────────────────────────────────────────────────────────────────
 // Cheia din rândul normalizat ← antetul coloanei (în engleză, cum îl scrie Teltonika).
-// „bord" = citit din mașină; „socotit" = numărat de aparat (mai puțin precis, dar merge).
+// „bord” = citit din mașină; „socotit” = numărat de aparat (mai puțin precis, dar merge).
 const COLOANE = [
   ['km', 'bord', /^total mileage of the vehicle|^total mileage \(km\)$/],
   ['km', 'socotit', /^vehicle mileage.*counted|^total mileage \(counted\)$/],
@@ -196,7 +196,7 @@ function citesteFoi(foi, numeFisier) {
     const col = (re) => a.vals.findIndex((v) => re.test(v));
     const cMarca = col(/^(brand|manufacturer)$/), cModel = col(/^model$/), cAn = col(/^(year|model year)$/);
     const cProg = col(/^program/), cCan = col(/number of can|^can lines$/), cCat = col(/^category$/), cComb = col(/^fuel type$/), cReg = col(/^region$/);
-    // Coloanele de date. La FMX150, grupul „Extended" (deasupra antetului) se cere separat — nu-l numărăm.
+    // Coloanele de date. La FMX150, grupul „Extended” (deasupra antetului) se cere separat — nu-l numărăm.
     const deasupra = foaie.randuri[a.r - 1] || [];
     const cDate = [];
     a.vals.forEach((v, i) => {
@@ -231,7 +231,7 @@ function citesteFoi(foi, numeFisier) {
   if (randuri.length < 20) throw new Error('Am găsit doar ' + randuri.length + ' mașini în fișier — nu pare lista întreagă.');
   return { tip, randuri };
 }
-// Ziua listei, din numele fișierului: „…_2025_07_23_…" (an, lună, zi) sau „…_12_02_2025…" (lună, zi, an,
+// Ziua listei, din numele fișierului: „…_2025_07_23_…” (an, lună, zi) sau „…_12_02_2025…” (lună, zi, an,
 // cum își numește Teltonika listele FMX150). Fără o dată limpede → null: nu inventăm una.
 function dataDinNume(numeFisier) {
   const f = String(numeFisier || '');
@@ -258,27 +258,27 @@ function pregateste(randuri) {
 function marcaDin(peMarca, marca) {
   const k = cheieMarca(marca); if (!k) return [];
   if (peMarca.has(k)) return peMarca.get(k);
-  // „Mercedes" găsește „MERCEDES-BENZ"; „Land" nu găsește nimic (prea scurt, ar fi o ghicire).
+  // „Mercedes” găsește „MERCEDES-BENZ”; „Land” nu găsește nimic (prea scurt, ar fi o ghicire).
   if (k.length >= 3) for (const [kk, v] of peMarca) if (kk.startsWith(k + ' ') || k.startsWith(kk + ' ')) return v;
   return [];
 }
 
 // ─── Potrivirea unei mașini pe o listă ────────────────────────────────────────────────────────────
 // `m` = { marca, model, an, combustibil }. Ordinea de alegere, pe românește:
-//   1. cel mai PRECIS model: „Sandero Stepway" întâi pe rândurile STEPWAY, abia apoi pe SANDERO;
-//   2. anul: rândul trebuie să-l cuprindă. La „de la 2013" și „de la 2021", pentru 2024 câștigă cel mai
+//   1. cel mai PRECIS model: „Sandero Stepway” întâi pe rândurile STEPWAY, abia apoi pe SANDERO;
+//   2. anul: rândul trebuie să-l cuprindă. La „de la 2013” și „de la 2021”, pentru 2024 câștigă cel mai
 //      nou (lista adaugă un rând când se schimbă generația, fără să-l închidă pe cel vechi);
 //   3. combustibilul: electric și hibrid sunt obligatorii (alt program), GPL doar contează la egalitate;
 //   4. generația scrisă de om (Logan 2), apoi variantele (fără etichete întâi), apoi programul cel mai nou.
 function potriveste(peMarca, m) {
   // `note` = ce trebuie VERIFICAT (pe ecran, portocaliu); `info` = bine de știut (gri). Amestecate, totul
-  // arăta a problemă — și „merge și cu FMC150" nu e o problemă.
+  // arăta a problemă — și „merge și cu FMC150” nu e o problemă.
   const out = { stare: 'nu', ales: null, variante: [], alteModele: [], note: [], info: [] };
   const lista = marcaDin(peMarca, m.marca);
   if (!lista.length) { out.note.push('marca nu e pe listă'); return out; }
   const u = descompuneModel(m.model);
   const uTok = new Set(u.baza.concat(u.etichete.flatMap((x) => x.split(' '))));
-  // Cifra singură de la capăt („Logan 2") poate fi generația — dacă modelul din listă n-o are în nume.
+  // Cifra singură de la capăt („Logan 2”) poate fi generația — dacă modelul din listă n-o are în nume.
   const ultim = u.baza[u.baza.length - 1];
   const genOm = u.gen != null ? u.gen : (u.baza.length > 1 && /^[1-9]$/.test(ultim) ? Number(ultim) : null);
   const an = Number(m.an) > 1900 ? Math.round(Number(m.an)) : null;
@@ -304,9 +304,9 @@ function potriveste(peMarca, m) {
     if (!bune.length && nivel.length && (comb === 'hibrid')) { bune = nivel.filter((p) => p.e.comb !== 'electric'); relaxat = bune.length > 0; }
     if (bune.length) { alese = bune; break; }
   }
-  // Omul scrie „Actros" sau „Golf", lista scrie „ACTROS MP4" sau „GOLF 7": cuvântul în plus e o
+  // Omul scrie „Actros” sau „Golf”, lista scrie „ACTROS MP4” sau „GOLF 7”: cuvântul în plus e o
   // generație (are cifre). Atunci luăm rândul bun pe an, dar spunem că trebuie verificat. Un cuvânt în
-  // plus FĂRĂ cifre („LOGAN VAN", „TRANSIT CUSTOM") e alt model — acolo nu ghicim.
+  // plus FĂRĂ cifre („LOGAN VAN”, „TRANSIT CUSTOM”) e alt model — acolo nu ghicim.
   if (!alese.length) {
     const gen = mai.filter((p) => inAn(p) && combOk(p) && p.baza.filter((t) => !uTok.has(t)).every((t) => /\d/.test(t)));
     if (gen.length) { alese = gen; generatiePeNume = true; }
@@ -367,7 +367,7 @@ function dateCitite(e, comb) {
     const c = d[k] || '';
     out.push({ k, et: DATE_ET[k], da: !!c, socotit: c.charAt(0) === 's', depinde: c.indexOf('q') >= 0, exp: c.indexOf('x') >= 0, faraContact: c.indexOf('c') >= 0 });
   }
-  // La GPL, „merge pe GPL" contează doar dacă n-avem nici nivelul, nici consumul.
+  // La GPL, „merge pe GPL” contează doar dacă n-avem nici nivelul, nici consumul.
   const gn = out.find((x) => x.k === 'gplNivel'), gc = out.find((x) => x.k === 'gplConsum');
   if (gn && gc && (gn.da || gc.da)) return out.filter((x) => x.k !== 'gplStare');
   return out;
@@ -470,7 +470,7 @@ function modele(listePregatite, marca) {
   return [...s].sort((a, b) => a.localeCompare(b, 'ro', { numeric: true }));
 }
 
-// ─── Șablonul „Mașinile clientului" (28.09) ──────────────────────────────────────────────────────
+// ─── Șablonul „Mașinile clientului” (28.09) ──────────────────────────────────────────────────────
 // Alin: „LIPEȘTE DIN EXCEL nu e ok. Vreau buton de export a unui șablon fix, cu ce trebuie să identifice
 // calculatorul nostru, și buton de încărcare a șablonului." Coloanele stau AICI, o dată: după ele se face
 // șablonul (report_export.js → `sablonMasiniXlsx`) și tot după ele se citește fișierul completat. Capul de
@@ -484,7 +484,7 @@ const SABLON_COLOANE = [
 ];
 const SABLON_MAX = 500;   // rânduri de mașini citite dintr-un șablon (și rânduri pregătite în el)
 // Ce arată lista modelului când n-are ce propune (marca nescrisă sau necunoscută). Dacă cineva îl alege din
-// greșeală, citirea îl socotește model LIPSĂ — nu „un model numit așa".
+// greșeală, citirea îl socotește model LIPSĂ — nu „un model numit așa”.
 const SABLON_FARA_SUGESTII = '(fără sugestii — scrieți modelul)';
 function combustibilDin(t) {
   const s = norm(t);
@@ -521,9 +521,9 @@ function citesteSablon(foi) {
         if (!v.marca || !v.model) { probleme.push({ rand: nr, ce: !v.marca && !v.model ? 'lipsesc marca și modelul' : (!v.marca ? 'lipsește marca' : 'lipsește modelul') + ' — rândul nu l-am luat' }); continue; }
         if (masini.length >= SABLON_MAX) { probleme.push({ rand: nr, ce: 'am citit doar primele ' + SABLON_MAX + ' de mașini' }); break; }
         const m = { marca: v.marca.slice(0, 60), model: v.model.slice(0, 80), an: null, combustibil: '', buc: 1, rand: nr };
-        if (v.an) { const a = Number(String(v.an).replace(/\.0+$/, '')); if (Number.isInteger(a) && a >= 1950 && a <= 2100) m.an = a; else probleme.push({ rand: nr, ce: 'anul „' + v.an + '" nu e un an (ex. 2024)' }); }
-        if (v.comb) { m.combustibil = combustibilDin(v.comb); if (!m.combustibil) probleme.push({ rand: nr, ce: 'combustibilul „' + v.comb + '" nu-l recunosc' }); }
-        if (v.buc) { const b = Number(String(v.buc).replace(/\.0+$/, '')); if (Number.isInteger(b) && b >= 1 && b <= 10000) m.buc = b; else probleme.push({ rand: nr, ce: 'bucăți „' + v.buc + '" — am pus 1' }); }
+        if (v.an) { const a = Number(String(v.an).replace(/\.0+$/, '')); if (Number.isInteger(a) && a >= 1950 && a <= 2100) m.an = a; else probleme.push({ rand: nr, ce: 'anul „' + v.an + '” nu e un an (ex. 2024)' }); }
+        if (v.comb) { m.combustibil = combustibilDin(v.comb); if (!m.combustibil) probleme.push({ rand: nr, ce: 'combustibilul „' + v.comb + '” nu-l recunosc' }); }
+        if (v.buc) { const b = Number(String(v.buc).replace(/\.0+$/, '')); if (Number.isInteger(b) && b >= 1 && b <= 10000) m.buc = b; else probleme.push({ rand: nr, ce: 'bucăți „' + v.buc + '” — am pus 1' }); }
         masini.push(m);
       }
       return { masini, probleme };

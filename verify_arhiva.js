@@ -1,4 +1,4 @@
-// verify_arhiva.js — „Dispozitive arhivate": cimitirul cu bilet de întoarcere.
+// verify_arhiva.js — „Dispozitive arhivate”: cimitirul cu bilet de întoarcere.
 //
 //   node verify_arhiva.js
 //
@@ -7,15 +7,15 @@
 // datele înapoi — apoi se șterge, cum scrie în contract (Anexa GDPR). Până pe 24.09 se ținea 2 ani:
 // hârtia promitea una, aplicația făcea alta. Ecranul ăsta e singurul loc de unde ajungi la el.
 //
-// Ce prinde proba (toate, bube găsite pe 17.09 la analiza cartonașului „Arhivate"):
-//   • butonul „Istoric" să nu facă nimic. Scria în selectorul altui panou (Hotspot), iar lista de
-//     vehicule oricum ascunde arhivatele — deci pe ecran scria „istoricul rămâne accesibil" și
+// Ce prinde proba (toate, bube găsite pe 17.09 la analiza cartonașului „Arhivate”):
+//   • butonul „Istoric” să nu facă nimic. Scria în selectorul altui panou (Hotspot), iar lista de
+//     vehicule oricum ascunde arhivatele — deci pe ecran scria „istoricul rămâne accesibil” și
 //     singurul buton care ți-l dădea era mort;
 //   • termenul de păstrare socotit în ecran. E regula CONTRACTULUI (`ZILE_DATE_DUPA_INCETARE`, în
 //     contracts.js); ecranul doar arată cifra primită, altfel ar apărea a doua regulă;
 //   • lista plată, fără căutare — la trei aparate merge, la șaizeci nu mai găsești nimic;
 //   • portocaliul pus din construcție pe cartonaș: arhivat nu e o problemă, e un capăt normal;
-//   • butonul „Restaurează" scris cu text închis pe fundal închis (contrast 1,0, măsurat).
+//   • butonul „Restaurează” scris cu text închis pe fundal închis (contrast 1,0, măsurat).
 //
 // Codul nu se copiază aici: se decupează din sursă și se execută.
 const fs = require('fs');
@@ -33,10 +33,10 @@ function bloc(a, b) {
   if (i < 0 || j < 0 || j <= i) throw new Error('nu găsesc blocul ' + a);
   return html.slice(i, j);
 }
-const blocIstoric = bloc('// ── începe „istoricul unui aparat arhivat" ──', '// ── sfârșit „istoricul unui aparat arhivat" ──');
-const blocArhiva = bloc('// ── începe „arhiva, pe firme" ──', '// ── sfârșit „arhiva, pe firme" ──');
+const blocIstoric = bloc('// ── începe „istoricul unui aparat arhivat” ──', '// ── sfârșit „istoricul unui aparat arhivat” ──');
+const blocArhiva = bloc('// ── începe „arhiva, pe firme” ──', '// ── sfârșit „arhiva, pe firme” ──');
 
-sect('1. Butonul „Istoric" duce chiar la istoric');
+sect('1. Butonul „Istoric” duce chiar la istoric');
 // (căutăm CODUL, nu comentariul de deasupra — el pomenește `#hs-imei` tocmai ca să explice buba)
 T('nu mai scrie în selectorul altui panou', !/getElementById\('hs-imei'\)/.test(blocIstoric));
 T('cere vehiculul anume, prin `_hpCerut`', /window\._hpCerut = String\(imei\)/.test(blocIstoric));
@@ -51,13 +51,13 @@ T('scrie pe rând că e arhivat (altfel n-ai ști de ce n-are date noi)',
   /d\.status === 'archived' \? ' \(arhivat\)' : ''/.test(fnFill));
 // La cerere, și DOAR nouă: clientul nu vede aparatele arhivate (hotărât 18.09, aplicat pe server 29.09).
 T('serverul chiar știe să includă arhivatele (doar pentru noi)', /if \(!\(req\.query\.includeArchived && req\.isSuper\)\) devices = devices\.filter\(d => d\.status !== 'archived'\)/.test(server));
-T('„Dispozitive arhivate" e o rută doar a noastră', /app\.get\('\/api\/archived-devices', requireAuth, requireSuperadmin, withScope/.test(server));
+T('„Dispozitive arhivate” e o rută doar a noastră', /app\.get\('\/api\/archived-devices', requireAuth, requireSuperadmin, withScope/.test(server));
 
 sect('2. Termenul: 30 de zile de la ARHIVARE, cum scrie în contract (24.09)');
 const C = require('./contracts.js');
 const cpdf = fs.readFileSync(P('contract_pdf.js'), 'utf8');
 T('cifra stă într-un singur loc, lângă regulile contractului', C.ZILE_DATE_DUPA_INCETARE === 30, String(C.ZILE_DATE_DUPA_INCETARE));
-T('hârtia contractului o citește de acolo (nu „30" scris de mână)',
+T('hârtia contractului o citește de acolo (nu „30” scris de mână)',
   /C\.numar\(C\.ZILE_DATE_DUPA_INCETARE, 'zi', 'zile'\) \+ ' de la încetare/.test(cpdf) && !/în termen de 30 de zile de la încetare/.test(cpdf));
 T('și serverul o citește de acolo', /const zile = contracte\.ZILE_DATE_DUPA_INCETARE;/.test(server));
 T('NU mai e o setare de mediu (e o promisiune semnată)', !/ARCHIVE_RETENTION_DAYS/.test(server.replace(/^\s*\/\/.*$/gm, '')));
@@ -91,7 +91,7 @@ T('și copia din arhivă', /_stergeImeiPeLoturi\('positions_archive', imei\)/.te
 T('și cursele (au locuri și adrese)', /DELETE FROM trips WHERE imei = \$1/.test(bucSterge));
 T('și alertele declanșate', /DELETE FROM alert_history WHERE imei = \$1/.test(bucSterge));
 T('pe loturi după timp, nu după ctid (pe hypertable ctid nu e unic)', /timestamp <= \$2/.test(db) && !/ctid/.test(bucSterge));
-T('marcat „șters" DOAR dacă toate au mers', /if \(!out\.erori\.length\) await pool\.query\('UPDATE devices SET istoric_sters_at/.test(bucSterge));
+T('marcat „șters” DOAR dacă toate au mers', /if \(!out\.erori\.length\) await pool\.query\('UPDATE devices SET istoric_sters_at/.test(bucSterge));
 T('rulează zilnic', /const runArchivePurge = \(\) => stergeIstoricArhivate\(\)/.test(server) && /setInterval\(runArchivePurge, 24 \* 60 \* 60 \* 1000\)/.test(server));
 T('și se poate porni de mână (super-admin)', /app\.post\('\/api\/admin\/arhiva\/sterge-istoric', requireAuth, requireSuperadmin/.test(server));
 T('fiecare ștergere lasă rând în jurnalul de audit', /entity: 'istoric_aparat'/.test(server));
@@ -99,8 +99,8 @@ T('fiecare ștergere lasă rând în jurnalul de audit', /entity: 'istoric_apara
 sect('3b. Ecranul spune ce se pierde și când');
 T('pragul de avertizare e scris o dată (ultima săptămână)', /var ARH_PRAG_ZILE = 7;/.test(blocArhiva));
 T('cuvintele termenului stau într-un singur loc', /function _arhTermen\(d\)/.test(blocArhiva));
-T('„istoricul se șterge pe <zi> (în N zile)"', /'istoricul se șterge pe ' \+ zi \+ ' \(în ' \+ _arhZile\(z\) \+ '\)'/.test(blocArhiva));
-T('și „s-a șters", pentru cele trecute', /istoricul s-a șters/.test(blocArhiva));
+T('„istoricul se șterge pe <zi> (în N zile)”', /'istoricul se șterge pe ' \+ zi \+ ' \(în ' \+ _arhZile\(z\) \+ '\)'/.test(blocArhiva));
+T('și „s-a șters”, pentru cele trecute', /istoricul s-a șters/.test(blocArhiva));
 T('bandă de sus când sunt aparate pe ducă', /arch-note-warn[\s\S]{0,300}istoricul pe ducă/.test(blocArhiva));
 T('care spune și cum dai datele înapoi: butonul „Descarcă tot istoricul” (02.10)', /scoate-l acum: butonul „Descarcă tot istoricul” de pe rândul mașinii/.test(blocArhiva) && !/Export CSV/.test(blocArhiva));
 // Butonul stă pe rândul mașinii, între „Istoric” și „Restaurează”, și lipsește când istoricul s-a șters deja.
@@ -111,24 +111,24 @@ T('fișa contractului încheiat amintește de arhivare și de cele 30 de zile', 
 
 sect('4. Grupate pe firme, cu căutare');
 T('grupurile se fac pe firmă', /function _arhGrupuri\(rows\)/.test(blocArhiva));
-T('„Fără firmă" stă la urmă, restul alfabetic', /if \(a\.k === '_fara'\) return 1;[\s\S]{0,120}localeCompare\(b\.nume, 'ro'\)/.test(blocArhiva));
-T('poartă același chenar ca „Dispozitive"', /rax-devgr/.test(blocArhiva));
+T('„Fără firmă” stă la urmă, restul alfabetic', /if \(a\.k === '_fara'\) return 1;[\s\S]{0,120}localeCompare\(b\.nume, 'ro'\)/.test(blocArhiva));
+T('poartă același chenar ca „Dispozitive”', /rax-devgr/.test(blocArhiva));
 T('fiecare grup are sumar', /' aparat' : ' aparate'/.test(blocArhiva));
-T('și buton „Deschide firma"', /Deschide firma/.test(blocArhiva));
+T('și buton „Deschide firma”', /Deschide firma/.test(blocArhiva));
 T('un grup cu ceva de rezolvat stă MEREU deschis', /var deschis = !!q \|\| pb > 0/.test(blocArhiva));
 T('există căutare', /rax-dev-search[\s\S]{0,140}_arhCautaSet/.test(blocArhiva));
 T('care caută și după firmă', /raCauta\(q, d\.name, d\.plate, d\.imei, d\.company_name\)/.test(blocArhiva));
 T('lista nu mai are derulare proprie (bară în bară)', !/\.arch-list \{[^}]*overflow-y: auto/.test(html));
-T('când e goală, te trimite în „Dispozitive", nu la vechiul loc',
+T('când e goală, te trimite în „Dispozitive”, nu la vechiul loc',
   /Niciun aparat arhivat[\s\S]{0,900}raxAdminTab\(\\'devices\\'\)[\s\S]{0,80}Deschide Dispozitive/.test(blocArhiva) &&
   !/Management → Vehicule/.test(blocArhiva));
 
-sect('5. Cartonașul „Arhivate" nu mai e portocaliu din construcție');
+sect('5. Cartonașul „Arhivate” nu mai e portocaliu din construcție');
 const cardArh = (html.match(/<button class="adash-card[^"]*" data-card="archived"[\s\S]*?<\/button>/) || [])[0] || '';
 T('cartonașul există', !!cardArh);
-T('și NU poartă „adash-warn" scris în pagină', !/adash-warn/.test(cardArh), cardArh.slice(0, 60));
+T('și NU poartă „adash-warn” scris în pagină', !/adash-warn/.test(cardArh), cardArh.slice(0, 60));
 T('are rândul de stare, ca celelalte', /adash-sub" id="adash-s-archived"/.test(cardArh));
-T('cartonașul nu mai promite „2 ani"', !/istoric păstrat 2 ani/.test(html));
+T('cartonașul nu mai promite „2 ani”', !/istoric păstrat 2 ani/.test(html));
 // Din 30.10 starea se socotește într-o funcție comună (`_adashStareArhiva`, citită și de cifrele din chatul fondatorilor): ea spune
 // `warn` doar când e ceva pe ducă, iar cartonașul aprinde portocaliul doar atunci.
 T('portocaliul se aprinde din cod, doar când e ceva', /if \(peDuca\) return \{ warn: true, parti: \[\{ t: peDuca \+ ' cu istoricul pe ducă', ton: 'w' \}\] \};/.test(html) &&
@@ -136,7 +136,7 @@ T('portocaliul se aprinde din cod, doar când e ceva', /if \(peDuca\) return \{ 
 T('și se stinge la fel de ușor', /if \(card\) card\.classList\.remove\('adash-warn'\);/.test(html));
 T('lista mare se cere DOAR dacă există arhivate', /if \(!n \|\| !sub\) return;/.test(html));
 
-sect('6. Butonul „Restaurează" chiar se vede');
+sect('6. Butonul „Restaurează” chiar se vede');
 // `.ra-camp .btn-sm { background: transparent }` + regula globală care forțează textul închis
 // (`.btn-primary { color:#06210F !important }`) dădeau text închis pe fundal închis: contrast 1,0.
 T('scrierea veche a butonului principal e în familia casei',
@@ -144,7 +144,7 @@ T('scrierea veche a butonului principal e în familia casei',
 T('și la hover', /\.ra-camp \.rax-btn\.primary:hover, \.ra-camp \.btn-sm\.btn-primary:hover/.test(css));
 T('regula care le face transparente e tot acolo (deci fără ea n-ar avea rost)',
   /\.ra-camp \.rax-btn, \.ra-camp \.btn-sm,[^{]*\{[\s\S]{0,320}background:transparent/.test(css));
-T('ecranul arhivei chiar e „ra-camp"', /<div id="admin-tab-archived" class="ra-camp"/.test(html));
+T('ecranul arhivei chiar e „ra-camp”', /<div id="admin-tab-archived" class="ra-camp"/.test(html));
 
 // ─── 7. Pe server pornit: arhivez, îmbătrânesc 31 de zile, șterg — și chiar nu mai e nimic ───
 const { spawn } = require('child_process');
@@ -190,7 +190,7 @@ function gata() {
   const a1 = lista.find(d => d.imei === IMEI) || {};
   T('arhivat azi: 30 de zile de stat', a1.purge_zile === 30 && a1.purge_total_zile === 30, JSON.stringify({ z: a1.purge_zile, t: a1.purge_total_zile }));
   T('istoricul arhivat se vede în continuare', await istoric(IMEI) >= 3);
-  // Primul aparat „a fost arhivat" acum 31 de zile; al doilea, acum 10.
+  // Primul aparat „a fost arhivat” acum 31 de zile; al doilea, acum 10.
   await R('POST', '/api/test/arhivat-de', { imei: IMEI, zile: 31 });
   await R('POST', '/api/test/arhivat-de', { imei: IMEI2, zile: 10 });
   const rap = (await R('POST', '/api/admin/arhiva/sterge-istoric')).j || {};
@@ -200,7 +200,7 @@ function gata() {
   T('iar celălalt (10 zile) e neatins', await istoric(IMEI2) >= 3, String(await istoric(IMEI2)));
   lista = (await R('GET', '/api/archived-devices')).j;
   const d1 = lista.find(d => d.imei === IMEI) || {}, d2 = lista.find(d => d.imei === IMEI2) || {};
-  T('aparatul rămâne pe listă, marcat „istoric șters"', d1.istoric_sters === true && d1.purge_zile === 0);
+  T('aparatul rămâne pe listă, marcat „istoric șters”', d1.istoric_sters === true && d1.purge_zile === 0);
   T('celălalt mai are 20 de zile', d2.purge_zile === 20, String(d2.purge_zile));
   T('a doua rulare nu mai șterge nimic', ((await R('POST', '/api/admin/arhiva/sterge-istoric')).j.sterse || []).length === 0);
   await R('PUT', '/api/devices/' + IMEI2 + '/status', { status: 'active' });

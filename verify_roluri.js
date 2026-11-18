@@ -1,4 +1,4 @@
-// verify_roluri.js — „Roluri" (Setări → Oameni și drepturi), pe server pornit.
+// verify_roluri.js — „Roluri” (Setări → Oameni și drepturi), pe server pornit.
 //
 //   node verify_roluri.js
 //
@@ -7,7 +7,7 @@
 //   O firmă poate DOAR să scadă din drepturile unui rol. Niciodată să adauge.
 //
 // De aceea în bază se ține lista celor TĂIATE, nu lista drepturilor. Chiar dacă cineva ar scrie de
-// mână în tabelă, sau ar trimite prin API o listă cu „manageCompanies", rezultatul rămâne un rol cu
+// mână în tabelă, sau ar trimite prin API o listă cu „manageCompanies”, rezultatul rămâne un rol cu
 // mai puține drepturi — nu cu mai multe. Probele de mai jos încearcă exact asta.
 //
 // Al doilea lucru apărat: tăierea trebuie să AIBĂ EFECT imediat, pe toate căile — și pe rutele care
@@ -56,8 +56,8 @@ const login = async (u, p) => {
   const PUT = (u, b, c) => fetch(B + u, { method: 'PUT', headers: c ? { 'Content-Type': 'application/json', Cookie: c } : H, body: JSON.stringify(b) });
   const DEL = (u, c) => fetch(B + u, { method: 'DELETE', headers: { Cookie: c || ck } });
 
-  // O firmă, cu un admin și un manager. Managerul e cobaiul: are din start „vede toată flota",
-  // „modifică flota" și „trimite comenzi".
+  // O firmă, cu un admin și un manager. Managerul e cobaiul: are din start „vede toată flota”,
+  // „modifică flota” și „trimite comenzi”.
   const co = await (await POST('/api/companies', { name: 'Firma Roluri' })).json();
   await puneParola(await POST('/api/users', { username: 'admin.r@test.ro', full_name: 'Admin R', role: 'admin', company_id: co.id }), 'Str4da-Verde-2026', B);
   await puneParola(await POST('/api/users', { username: 'manager.r@test.ro', full_name: 'Manager R', role: 'manager', company_id: co.id }), 'Str4da-Verde-2026', B);
@@ -81,7 +81,7 @@ const login = async (u, p) => {
   T('un drept pe care rolul nu-l are nu apare deloc',
     rolMgr && rolMgr.drepturi.every(d => d.cheie !== 'manageUsers'),
     rolMgr && rolMgr.drepturi.map(d => d.cheie).join(', '));
-  // Pe ecran apar DOAR drepturi care păzesc ceva pe server. „sendCommands"/„ackAlerts"/„viewAudit"
+  // Pe ecran apar DOAR drepturi care păzesc ceva pe server. „sendCommands”/„ackAlerts”/„viewAudit”
   // există în tabela de roluri, dar nu păzesc nicio rută — o bifă care nu face nimic e mai rea decât
   // lipsa ei. Dacă vreodată sunt puse la treabă, proba asta pică și le punem la loc pe ecran.
   T('nu oferim bife care nu fac nimic',
@@ -95,7 +95,7 @@ const login = async (u, p) => {
   const inainte = await GET('/api/devices', ckM);
   T('managerul vede flota', inainte.status === 200, inainte.status);
   const meIn = await (await GET('/api/me', ckM)).json();
-  T('și are dreptul „modifică flota"', meIn.permissions && meIn.permissions.manageFleet === true, JSON.stringify(meIn.permissions));
+  T('și are dreptul „modifică flota”', meIn.permissions && meIn.permissions.manageFleet === true, JSON.stringify(meIn.permissions));
 
   sect('3. Tăierea unui drept se aplică imediat');
   const sv = await PUT('/api/company-roles/manager', { nume: 'Operator depou', taiate: ['manageFleet'] }, ckA);
@@ -107,11 +107,11 @@ const login = async (u, p) => {
     JSON.stringify(meDupa.permissions));
   T('fără să se delogheze', !!meDupa.username, meDupa.username);
   T('numele nou al rolului ajunge la interfață', meDupa.roleLabel === 'Operator depou', meDupa.roleLabel);
-  // Ce n-a fost tăiat rămâne neatins — altfel am „reparat" o ușă stricând alta.
+  // Ce n-a fost tăiat rămâne neatins — altfel am „reparat” o ușă stricând alta.
   T('celelalte drepturi rămân', meDupa.permissions && meDupa.permissions.viewReports === true, JSON.stringify(meDupa.permissions));
 
   sect('4. Nu se pot ADĂUGA drepturi, oricât ar încerca cineva');
-  // Trimitem ca „tăiat" un drept pe care rolul nu-l are: n-are ce face, dar nici nu trebuie să
+  // Trimitem ca „tăiat” un drept pe care rolul nu-l are: n-are ce face, dar nici nu trebuie să
   // devină cumva un drept în plus.
   const strecurat = await PUT('/api/company-roles/manager', { nume: 'Operator depou', taiate: ['manageCompanies', 'manageUsers'] }, ckA);
   T('cererea e acceptată, dar filtrată', strecurat.status === 200, strecurat.status);
@@ -126,7 +126,7 @@ const login = async (u, p) => {
   const peSuper = await PUT('/api/company-roles/superadmin', { taiate: ['manageCompanies'] }, ckA);
   T('nici cel de super-admin', peSuper.status === 400, peSuper.status);
 
-  sect('5. „Vede toată flota" tăiat înseamnă chiar mai puține mașini');
+  sect('5. „Vede toată flota” tăiat înseamnă chiar mai puține mașini');
   // Dreptul ăsta nu e o poartă, e un FILTRU: dacă tăierea n-ar ajunge și la lista de vehicule,
   // omul ar continua să vadă toată flota, deși pe ecran scrie că nu are voie.
   await POST('/api/devices', { imei: '9911000000002', plate: 'RO 02 ROL' });
@@ -168,10 +168,10 @@ const login = async (u, p) => {
     T('și nu poate tăia drepturi', rp.status === 403 || rp.status === 401, rp.status);
   }
 
-  sect('9. Regula „doar scădere" e scrisă în cod, nu doar în ecran');
+  sect('9. Regula „doar scădere” e scrisă în cod, nu doar în ecran');
   const srvTxt = fs.readFileSync('./server.js', 'utf8');
-  const i = srvTxt.indexOf('// ── începe „roluri de firmă"');
-  const j = srvTxt.indexOf('// ── sfârșit „roluri de firmă" ──', i);
+  const i = srvTxt.indexOf('// ── începe „roluri de firmă”');
+  const j = srvTxt.indexOf('// ── sfârșit „roluri de firmă” ──', i);
   T('găsesc bucata între repere', i > 0 && j > i, 'i=' + i + ' j=' + j);
   if (i > 0 && j > i) {
     const F = new Function('COMPANY_ASSIGNABLE_ROLES', 'ROLE_PERMISSIONS', 'permsFor', 'db',
@@ -181,9 +181,9 @@ const login = async (u, p) => {
       function (r) { return { manageUsers: false, manageFleet: true, sendCommands: true, viewReports: true, ackAlerts: true, viewAll: true, viewAudit: false }; },
       {});
 
-    // Chiar dacă în bază ar ajunge un „drept tăiat" inventat, el nu poate deveni un drept ACORDAT.
+    // Chiar dacă în bază ar ajunge un „drept tăiat” inventat, el nu poate deveni un drept ACORDAT.
     const cuGunoi = F.efective('manager', { manager: { taiate: new Set(['manageUsers', 'manageCompanies']) } });
-    T('un drept pe care rolul nu-l are rămâne pe „nu"', cuGunoi.manageUsers === false, JSON.stringify(cuGunoi));
+    T('un drept pe care rolul nu-l are rămâne pe „nu”', cuGunoi.manageUsers === false, JSON.stringify(cuGunoi));
     T('și nu apare de nicăieri unul nou', cuGunoi.manageCompanies === undefined, JSON.stringify(cuGunoi));
     const taiat = F.efective('manager', { manager: { taiate: new Set(['manageFleet']) } });
     T('ce s-a tăiat chiar dispare', taiat.manageFleet === false, JSON.stringify(taiat));
@@ -214,7 +214,7 @@ const login = async (u, p) => {
   const progr = await POST('/api/report-schedules', { report_type: 'trips', period: 'day', frequency: 'daily', hour: 6, format: 'pdf' }, ckM);
   T('și nici programat pe email nu se poate scoate', progr.status === 403, progr.status);
 
-  // ECRANE: tăiat = ruta ecranului răspunde „acces interzis", nu doar se ascunde din meniu.
+  // ECRANE: tăiat = ruta ecranului răspunde „acces interzis”, nu doar se ascunde din meniu.
   await PUT('/api/company-roles/manager', { nume: 'Operator depou', taiate: [], ecrane: ['soferi'] }, ckA);
   const ecrTaiat = await GET('/api/drivers', ckM);
   T('un ecran tăiat e închis și pe server', ecrTaiat.status === 403, ecrTaiat.status);
@@ -230,7 +230,7 @@ const login = async (u, p) => {
   const scrieAlta = await PUT('/api/company/fuel-prices', { motorina: 7.4 }, ckM);
   T('iar ce n-a fost tăiat merge mai departe', scrieAlta.status === 200, scrieAlta.status);
 
-  // Și în meniu: un ecran tăiat nu trebuie să rămână ca buton care răspunde „acces interzis".
+  // Și în meniu: un ecran tăiat nu trebuie să rămână ca buton care răspunde „acces interzis”.
   const htmlMeniu = fs.readFileSync('./public/index.html', 'utf8');
   T('butoanele din meniu știu de ce ecran aparțin', (htmlMeniu.match(/data-ecran=/g) || []).length >= 14,
     (htmlMeniu.match(/data-ecran=/g) || []).length);
@@ -340,9 +340,9 @@ const login = async (u, p) => {
   const stergeLiber = await DEL('/api/company-roles/' + nj.rol, ckA);
   T('după ce nu-l mai are nimeni, se șterge', stergeLiber.status === 200, stergeLiber.status);
 
-  sect('14. „Rol nou": fereastra aplicației, nu a browserului');
-  // Erau două `prompt()`-uri de browser, iar în al doilea omul trebuia să SCRIE „manager",
-  // „dispatcher" sau „viewer". Adică trebuia să ghicească niște cuvinte englezești pe care nu le
+  sect('14. „Rol nou”: fereastra aplicației, nu a browserului');
+  // Erau două `prompt()`-uri de browser, iar în al doilea omul trebuia să SCRIE „manager”,
+  // „dispatcher” sau „viewer”. Adică trebuia să ghicească niște cuvinte englezești pe care nu le
   // văzuse nicăieri. Acum alege dintr-o listă în care scrie ce poate fiecare.
   const html = htmlMeniu;
   const q1 = html.indexOf('    // ── Rol nou: fereastra aplicației');
@@ -356,14 +356,14 @@ const login = async (u, p) => {
       !/window\.rolNou = async function \(\) \{\s*\n\s*var nume = prompt/.test(html));
     T('cele trei șabloane sunt exact rolurile pe care firma le poate da',
       N.BAZE.map(b => b[0]).join(',') === 'manager,dispatcher,viewer', N.BAZE.map(b => b[0]).join(','));
-    N.BAZE.forEach(b => T('„' + b[1] + '" spune pe ecran ce poate face', b[2].length > 30, b[2]));
+    N.BAZE.forEach(b => T('„' + b[1] + '” spune pe ecran ce poate face', b[2].length > 30, b[2]));
 
     const h = N.html({ nume: '', baza: 'dispatcher' });
     T('are câmp pentru nume', /id="rol-nm-nume"/.test(h));
     T('are cele trei șabloane ca butoane', (h.match(/rol-nm-b[ "]/g) || []).length >= 3, h.slice(0, 200));
     T('cel ales e aprins, și numai el', (h.match(/rol-nm-b on/g) || []).length === 1);
     T('scrie negru pe alb că poți doar să tai', /poți doar să tai/.test(h));
-    T('nu cere nimănui să scrie „dispatcher"', !/Scrie: manager/.test(h) && !/scrie.{0,12}dispatcher/i.test(h), h);
+    T('nu cere nimănui să scrie „dispatcher”', !/Scrie: manager/.test(h) && !/scrie.{0,12}dispatcher/i.test(h), h);
     T('numele scris de om nu sparge fereastra',
       N.html({ nume: '"><img src=x onerror=alert(1)>', baza: 'manager' }).indexOf('<img src=x') < 0);
     T('cât se creează, butonul nu se poate apăsa de două ori', /disabled/.test(N.html({ nume: 'X', baza: 'viewer', lucrez: true })));
@@ -386,7 +386,7 @@ const login = async (u, p) => {
     T('spune că rolurile sunt ale unei firme', /Rolurile sunt ale unei firme/.test(G));
     T('și de ce nu se poate aici', /nu ține de o firmă anume/.test(G), G.slice(0, 200));
     T('nu lasă niciun buton pe care serverul l-ar refuza', !/<button/.test(G), G);
-    // Alin a pus comutatorul pe „Admin de firmă" și a primit același refuz. Explicația trebuie să
+    // Alin a pus comutatorul pe „Admin de firmă” și a primit același refuz. Explicația trebuie să
     // spună și asta, altfel ecranul îl trimite a doua oară în același zid.
     T('spune limpede că nici comutatorul nu ajută', /comutatorul de sus nu schimbă asta/i.test(G), G);
   }
@@ -396,8 +396,8 @@ const login = async (u, p) => {
   // Parola pusă de administrator: tot fereastra aplicației, și fără regula falsă de dinainte.
   T('resetarea parolei nu mai trece prin prompt-ul browserului',
     !/var np = prompt\('Parolă nouă pentru/.test(html));
-  // Regula de azi (verificaParola): minim 10 caractere și două feluri de caractere. „8" a rămas în urmă o vreme.
-  T('și nu mai promite „minim 4" sau „minim 8 caractere", când serverul cere 10',
+  // Regula de azi (verificaParola): minim 10 caractere și două feluri de caractere. „8” a rămas în urmă o vreme.
+  T('și nu mai promite „minim 4” sau „minim 8 caractere”, când serverul cere 10',
     !/min 4 caractere/.test(html) && !/minim 8 caractere/.test(html) && /minim 10 caractere/.test(html));
 
   console.log('\n──────────────────────────────');

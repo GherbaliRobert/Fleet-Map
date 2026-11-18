@@ -1,4 +1,4 @@
-/* statsflota.css — „Statistici flotă" pe telefon: același ecran ca pe web (openDashboard), pe o coloană. */
+/* statsflota.css — „Statistici flotă” pe telefon: același ecran ca pe web (openDashboard), pe o coloană. */
 .sf { padding: 12px 14px 24px; }
 .sf-h { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
   color: var(--text-muted); margin: 18px 0 9px; }

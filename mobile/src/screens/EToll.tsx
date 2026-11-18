@@ -8,14 +8,14 @@ import { areFlota, FaraDreptFlota } from './modulGarda';
 import './admin.css';
 import './detail.css'; // .sheet*
 import './tollro.css';
-import './tacho.css'; // .th-up* — blocul care se desface („Vreau să introduc eu kilometrii")
+import './tacho.css'; // .th-up* — blocul care se desface („Vreau să introduc eu kilometrii”)
 import './etoll.css';
 
 // TollRo — taxa rutieră pe kilometru pentru marfă peste 3,5 t. Același ecran ca pe web (openEtollDemo,
 // public/js/demo-modules-ui.js), pe o coloană:
-//   • „O cursă nouă" (implicit) — cât te va costa un drum pe care încă nu l-ai făcut: alegi mașina și
+//   • „O cursă nouă” (implicit) — cât te va costa un drum pe care încă nu l-ai făcut: alegi mașina și
 //     două adrese, serverul face traseul și îl colorează pe tipuri de drum.
-//   • „Ce a costat până acum" — toată flota, pe o perioadă, cea mai scumpă mașină prima.
+//   • „Ce a costat până acum” — toată flota, pe o perioadă, cea mai scumpă mașină prima.
 //
 // Vehiculul se ALEGE DIN FLOTĂ, iar profilul de taxare vine de la server, din fișa lui. Cine plătește și
 // de ce (autoturism, remorcă, utilaj, sub 3,5 t, fără masă) stă O SINGURĂ DATĂ, în tollro.js; telefonul
@@ -28,7 +28,7 @@ type Cost = { stare: 'asteapta' | 'lucreaza' | 'gata' | 'eroare'; total?: number
 type Adresa = { label: string; lat: number; lng: number };
 
 export function EToll() {
-  // Pe web modulul stă în „Management", pe care îl vede doar cine poate modifica flota.
+  // Pe web modulul stă în „Management”, pe care îl vede doar cine poate modifica flota.
   if (!areFlota()) return <FaraDreptFlota titlu="Taxa de drum (TollRo)" />;
   return <ETollEcran />;
 }
@@ -54,8 +54,8 @@ function ETollEcran() {
       </header>
 
       <div class="content has-tabbar" style="padding:0 14px 96px">
-        {/* Două întrebări diferite, două file: „cât mă va costa" (dispecerul care dă un preț, de zece ori pe
-            zi — de aceea e implicită) și „cât m-a costat" (o dată pe lună). */}
+        {/* Două întrebări diferite, două file: „cât mă va costa” (dispecerul care dă un preț, de zece ori pe
+            zi — de aceea e implicită) și „cât m-a costat” (o dată pe lună). */}
         <div class="trf-file">
           <button class={'trf-fila' + (fila === 'cursa' ? ' on' : '')} onClick={() => setFila('cursa')}><Icon name="route" size={15} /> O cursă nouă</button>
           <button class={'trf-fila' + (fila === 'flota' ? ' on' : '')} onClick={() => setFila('flota')}><Icon name="clock" size={15} /> Ce a costat până acum</button>
@@ -69,7 +69,7 @@ function ETollEcran() {
   );
 }
 
-// ═══ „Ce a costat până acum" — toată flota, ordonată după cost ═══════════════════════════════════════
+// ═══ „Ce a costat până acum” — toată flota, ordonată după cost ═══════════════════════════════════════
 // Costurile NU vin într-un singur răspuns: tipul drumului se află de la OpenStreetMap, care acceptă o cerere
 // pe secundă. Cerem mașină cu mașină și umplem lista pe măsură ce vin; se poate opri la jumătate.
 function FilaFlota({ cfg, flota }: { cfg: any; flota: any }) {
@@ -94,7 +94,7 @@ function FilaFlota({ cfg, flota }: { cfg: any; flota: any }) {
     if (lucreaza) { opreste.current = true; return; }
     if (!flota) return;
     if (!de || !pana) { showToast('Alege intervalul', true); return; }
-    if (de > pana) { showToast('„De la" e după „Până la" — alege intervalul din nou', true); return; }
+    if (de > pana) { showToast('„De la” e după „Până la” — alege intervalul din nou', true); return; }
     if (!taxabile.length) { showToast('Niciun vehicul cu taxă pe kilometru în flotă', true); return; }
     opreste.current = false;
     setLucreaza(true);
@@ -114,7 +114,7 @@ function FilaFlota({ cfg, flota }: { cfg: any; flota: any }) {
         const z = r.rezultat;
         cost = { stare: 'gata', total: z.total, linii: z.linii, kmTaxati: z.linii.reduce((a: number, l: any) => a + (l.taxabil ? l.km : 0), 0), brut: r };
       } else {
-        // „Nu s-a mișcat" nu e o eroare: e un cost de zero și trebuie să se vadă ca atare.
+        // „Nu s-a mișcat” nu e o eroare: e un cost de zero și trebuie să se vadă ca atare.
         const msg = (r && r.error) || (r && r.rezultat && r.rezultat.motiv) || 'nu s-a putut calcula';
         cost = /nu există traseu|aproape nu s-a deplasat/i.test(msg)
           ? { stare: 'gata', total: 0, linii: [], kmTaxati: 0, nuSaMiscat: true }
@@ -195,7 +195,7 @@ function FilaFlota({ cfg, flota }: { cfg: any; flota: any }) {
                 </div>
               ) : (
                 <>
-                  {/* „Până acum" cât timp mai sunt mașini în lucru: un total care încă se mișcă, citit ca
+                  {/* „Până acum” cât timp mai sunt mașini în lucru: un total care încă se mișcă, citit ca
                       definitiv, ajunge într-o ofertă greșită. */}
                   {gata.length > 0 && (
                     <div class="tr-tot">
@@ -224,7 +224,7 @@ function FilaFlota({ cfg, flota }: { cfg: any; flota: any }) {
   );
 }
 
-// Detaliul unei mașini din listă: fișa ei, defalcarea costului și „Vreau să introduc eu kilometrii".
+// Detaliul unei mașini din listă: fișa ei, defalcarea costului și „Vreau să introduc eu kilometrii”.
 // Se deschide doar pentru mașinile care intră la taxă (`aplicabil` din /api/tollro/flota).
 function DetaliuVehicul({ v, cost, onClose }: { v: any; cost?: Cost; onClose: () => void }) {
   const [prof, setProf] = useState<any>(undefined);
@@ -318,7 +318,7 @@ function DetaliuVehicul({ v, cost, onClose }: { v: any; cost?: Cost; onClose: ()
                       ? <div class="tr-mic">Se calculează costul pentru mașina asta…</div>
                       : cost && cost.stare === 'asteapta'
                         ? <div class="tr-mic">Mașina își așteaptă rândul la calcul.</div>
-                        : <div class="tr-mic">Apasă „Calculează toată flota" ca să vezi cât a costat în perioada aleasă — sau scrie tu kilometrii, mai jos.</div>}
+                        : <div class="tr-mic">Apasă „Calculează toată flota” ca să vezi cât a costat în perioada aleasă — sau scrie tu kilometrii, mai jos.</div>}
           </div>
 
           <div class="th-up" style="margin-top:14px">
@@ -344,10 +344,10 @@ function DetaliuVehicul({ v, cost, onClose }: { v: any; cost?: Cost; onClose: ()
   );
 }
 
-// ═══ „O cursă nouă" ═══════════════════════════════════════════════════════════════════════════════
+// ═══ „O cursă nouă” ═══════════════════════════════════════════════════════════════════════════════
 // Omul alege TREI lucruri: mașina, de unde, până unde. Restul (serie de șasiu, masă, axe, normă, treaptă)
 // vine din fișa vehiculului și NU se poate atinge de aici — pe ecranul concurenței, un camion de 41 t putea
-// fi încadrat „3,5–7,5 t" în același formular, iar costul ieșea de trei ori mai mic.
+// fi încadrat „3,5–7,5 t” în același formular, iar costul ieșea de trei ori mai mic.
 function FilaCursa({ cfg, flota, rutare }: { cfg: any; flota: any; rutare: { pornit: boolean; motiv?: string | null; deProba?: boolean } | null }) {
   const [q, setQ] = useState('');
   const [imei, setImei] = useState('');
@@ -392,7 +392,7 @@ function FilaCursa({ cfg, flota, rutare }: { cfg: any; flota: any; rutare: { por
 
   const d = prof && prof.vehicul, inc = prof && prof.incadrare;
   // `aplicabil` / `motiv` vin din lista flotei (tollro.js): profilul singur socotește treapta doar din masă și
-  // ar da „Se taxează" și unei remorci sau unui utilaj cu masa trecută în fișă.
+  // ar da „Se taxează” și unei remorci sau unui utilaj cu masa trecută în fișă.
   const aplic = rand ? !!rand.aplicabil : !!inc;
   const t = (kg: number | null) => (kg ? (kg / 1000).toLocaleString('ro-RO') + ' t' : null);
   const treapta = aplic && inc ? ((cfg?.categorii || []).find((c: any) => c.key === inc.categorie) || {}).eticheta || null : null;

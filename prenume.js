@@ -1,16 +1,16 @@
 'use strict';
-// prenume.js — prenumele din salut („Salut, Alin!", „Bună dimineața, Alin!"). O SINGURĂ regulă, pe server: /api/me îl dă ca
+// prenume.js — prenumele din salut („Salut, Alin!”, „Bună dimineața, Alin!”). O SINGURĂ regulă, pe server: /api/me îl dă ca
 // `prenume` (pagina și telefonul doar îl scriu), iar salutul asistentului nostru (azi_la_noi.salut) îl ia tot de aici.
 //
-// De ce nu „primul cuvânt din nume": mulți scriu numele ca în acte, cu numele de familie întâi („Tilvar Alin") — salutul spunea atunci
-// „Salut, Tilvar!" (Alin, 05.11: „aș vrea să-i apară prenumele… și în asistentul fondatorilor"). Regula, în ordine:
-//   1. cuvântul din nume care e un PRENUME ȘTIUT (lista de mai jos; „Tilvar Alin" → „Alin", „Popescu Ion" → „Ion"), primul dintre ele;
-//   2. altfel primul cuvânt (un prenume pe care lista nu-l știe: „Jonas Weber"), dar nu un cuvânt de birou („Administrator",
-//      „Dispecer Tura 2" — salutul rămâne atunci „Salut!");
+// De ce nu „primul cuvânt din nume”: mulți scriu numele ca în acte, cu numele de familie întâi („Tilvar Alin”) — salutul spunea atunci
+// „Salut, Tilvar!” (Alin, 05.11: „aș vrea să-i apară prenumele… și în asistentul fondatorilor”). Regula, în ordine:
+//   1. cuvântul din nume care e un PRENUME ȘTIUT (lista de mai jos; „Tilvar Alin” → „Alin”, „Popescu Ion” → „Ion”), primul dintre ele;
+//   2. altfel primul cuvânt (un prenume pe care lista nu-l știe: „Jonas Weber”), dar nu un cuvânt de birou („Administrator”,
+//      „Dispecer Tura 2” — salutul rămâne atunci „Salut!”);
 //   3. fără nume (sau un nume care e o adresă de email): din adresa de email, doar dacă o bucată e un prenume știut
-//      („alin.tilvar@ratrack.ro" → „Alin"); „office@…", „admin" → nimic, iar salutul e fără nume („Salut!").
-// Un cuvânt scris numai cu MAJUSCULE sau numai cu litere mici („TILVAR ALIN", „alin") iese „Alin". Din email, prenumele se scrie cu
-// diacriticele lui („ionut" → „Ionuț").
+//      („alin.tilvar@ratrack.ro” → „Alin”); „office@…”, „admin” → nimic, iar salutul e fără nume („Salut!”).
+// Un cuvânt scris numai cu MAJUSCULE sau numai cu litere mici („TILVAR ALIN”, „alin”) iese „Alin”. Din email, prenumele se scrie cu
+// diacriticele lui („ionut” → „Ionuț”).
 
 // Prenumele știute: românești (și cele luate din alte limbi, obișnuite la noi), plus maghiare și germane din România.
 const LISTA = [
@@ -52,12 +52,12 @@ function fara(s) {
 }
 const STIUTE = new Map();
 LISTA.forEach(function (p) { STIUTE.set(fara(p), p); });
-// Un cuvânt e un prenume știut — întreg sau, cu cratimă („Ana-Maria", „Ioan-Alexandru"), după prima lui parte.
+// Un cuvânt e un prenume știut — întreg sau, cu cratimă („Ana-Maria”, „Ioan-Alexandru”), după prima lui parte.
 function estePrenume(w) {
   const k = fara(w);
   return STIUTE.has(k) || (k.indexOf('-') > 0 && STIUTE.has(k.split('-')[0]));
 }
-// „TILVAR" / „tilvar" → „Tilvar", „ana-maria" → „Ana-Maria"; scrierea amestecată rămâne cum a pus-o omul („DeLuca").
+// „TILVAR” / „tilvar” → „Tilvar”, „ana-maria” → „Ana-Maria”; scrierea amestecată rămâne cum a pus-o omul („DeLuca”).
 function scris(w) {
   const curat = String(w).replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
   if (curat.length > 1 && (curat === curat.toUpperCase() || curat === curat.toLowerCase()) && curat.toUpperCase() !== curat.toLowerCase()) {
@@ -70,12 +70,12 @@ function prenumeDin(fullName, email) {
   const cuv = String(fullName || '').trim().split(/\s+/).filter(function (w) { return w && w.indexOf('@') < 0 && /\p{L}/u.test(w) && !/\d/.test(w); });
   for (const w of cuv) if (estePrenume(scris(w))) return scris(w);
   if (cuv.length && !GENERICE.has(fara(scris(cuv[0])))) return scris(cuv[0]);
-  // Fără nume: din adresa de email (cea din „nume", dacă omul și-a scris acolo emailul, apoi cea de autentificare).
+  // Fără nume: din adresa de email (cea din „nume”, dacă omul și-a scris acolo emailul, apoi cea de autentificare).
   const adrese = [String(fullName || '').trim(), String(email || '').trim()].filter(Boolean);
   for (const a of adrese) {
     const local = a.split('@')[0];
     for (const t of local.split(/[^\p{L}]+/u)) {
-      if (t && STIUTE.has(fara(t))) return STIUTE.get(fara(t));   // (un cuvânt de birou nu e în listă: „office@" → nimic)
+      if (t && STIUTE.has(fara(t))) return STIUTE.get(fara(t));   // (un cuvânt de birou nu e în listă: „office@” → nimic)
     }
   }
   return '';

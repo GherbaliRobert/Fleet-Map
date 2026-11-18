@@ -6,9 +6,9 @@ import { AntetFondator } from '../components/FondatorUi';
 import './admin.css';
 import './fondator.css';
 
-// „Jurnal audit" (Sistem) — jurnalul platformei, cross-tenant: cine, ce, pe ce, de unde (ca pe web, openAudit).
+// „Jurnal audit” (Sistem) — jurnalul platformei, cross-tenant: cine, ce, pe ce, de unde (ca pe web, openAudit).
 // DOAR super-admin (serverul cere requireSuperadmin). Pe telefon, un cartonaș pe intrare; detaliile (JSON) se
-// desfac la atingere, iar lista se lungește cu „Încarcă mai multe" (serverul dă cel mult 500 odată).
+// desfac la atingere, iar lista se lungește cu „Încarcă mai multe” (serverul dă cel mult 500 odată).
 const PAS = 100;
 function cand(v: any) { try { return new Date(v).toLocaleString('ro-RO'); } catch { return String(v || ''); } }
 function detalii(v: any): string {

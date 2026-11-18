@@ -52,20 +52,20 @@ const CAN_LABELS: Record<string, [string, string]> = {
   can_axle5_load: ['Sarcină axa 5', 'kg'], can_load_weight: ['Greutate totală', 'kg'],
   can_ambient_temp: ['Temp. exterioară', '°C'],
 };
-// Cheie necunoscută → etichetă prezentabilă (fără „can_…" brut): can_door_status → „Door status"
+// Cheie necunoscută → etichetă prezentabilă (fără „can_…” brut): can_door_status → „Door status”
 function prettyKey(k: string): string {
   return k.replace(/^can_/, '').replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
-// Direcția busolă din unghi (0–360): „NE (45°)". Identic cu web getDirectionName.
+// Direcția busolă din unghi (0–360): „NE (45°)”. Identic cu web getDirectionName.
 function getDirectionName(angle?: number): string {
   if (angle == null) return '—';
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SV', 'V', 'NV'];
   return dirs[Math.round(angle / 45) % 8] + ' (' + Math.round(angle) + '°)';
 }
 
-// Ore motor: Index TOTAL al vehiculului (IO 104) dacă există; altfel „timp funcționare" (102/103) ETICHETAT onest,
-// ca să nu pară kilometrajul-în-ore. Identic cu fișa web (evită „5h" afișat ca index total pe autoturisme).
+// Ore motor: Index TOTAL al vehiculului (IO 104) dacă există; altfel „timp funcționare” (102/103) ETICHETAT onest,
+// ca să nu pară kilometrajul-în-ore. Identic cu fișa web (evită „5h” afișat ca index total pe autoturisme).
 function engineHoursOf(io: any): { value: string; label: string } {
   if (io?.can_engine_total_hours !== undefined) return { value: String(Math.round(io.can_engine_total_hours)), label: 'Index ore motor' };
   if (io?.can_engine_worktime) return { value: String(Math.floor(io.can_engine_worktime / 60)), label: 'Ore funcționare motor' };
@@ -73,8 +73,8 @@ function engineHoursOf(io: any): { value: string; label: string } {
   return { value: '—', label: 'Index ore motor' };
 }
 
-// Status „live" nuanțat, cu prag de prospețime 3 min — identic cu fișa web (updateDetailPanel).
-// „În mișcare" (verde) DOAR dacă a transmis recent; viteză>0 dintr-un pachet vechi → „⚠️ fără semnal recent".
+// Status „live” nuanțat, cu prag de prospețime 3 min — identic cu fișa web (updateDetailPanel).
+// „În mișcare” (verde) DOAR dacă a transmis recent; viteză>0 dintr-un pachet vechi → „⚠️ fără semnal recent”.
 function liveStatus(v: any, off: number): { cls: string; text: string; detail: string } {
   if (!v || !v.timestamp) return { cls: 'gone', text: 'Fără date', detail: '' };
   const ageMs = Date.now() - new Date(v.timestamp).getTime();
@@ -82,7 +82,7 @@ function liveStatus(v: any, off: number): { cls: string; text: string; detail: s
   const fresh = ageMs < 180000;
   const ign = !!(v.io && (v.io.ignition === 1 || v.io.ignition === true));
   const movedAt = (v as any).moved_at;
-  const movedRecently = !!(movedAt && (Date.now() - movedAt) < 150000); // histerezis: crawl în trafic + contact pornit → tot „în mișcare"
+  const movedRecently = !!(movedAt && (Date.now() - movedAt) < 150000); // histerezis: crawl în trafic + contact pornit → tot „în mișcare”
   const moving = (v.speed || 0) > 3 || (movedRecently && ign);
   const ago = fmtAgo(v.timestamp);
   if (!online) return { cls: 'gone', text: '⚠️ Oprit (fără semnal)', detail: 'ultima · ' + ago };
@@ -92,7 +92,7 @@ function liveStatus(v: any, off: number): { cls: string; text: string; detail: s
   return { cls: 'off', text: 'Oprit', detail: 'ultima · ' + ago };
 }
 
-// Câmp în grila „Detalii live": etichetă + valoare (opțional full-width / colorat).
+// Câmp în grila „Detalii live”: etichetă + valoare (opțional full-width / colorat).
 function G({ label, value, cls, full }: { label: string; value: any; cls?: string; full?: boolean }) {
   return <div class={'g' + (full ? ' full' : '')}><span class="gl">{label}</span><span class={'gv ' + (cls || '')}>{value}</span></div>;
 }
@@ -117,15 +117,15 @@ export function VehicleDetail() {
   const [sheet, setSheet] = useState<'' | 'can' | 'sensors' | 'tacho'>('');
   const [sensors, setSensors] = useState<any[] | null>(null);
   // Lista de sonde a venit CHIAR de la server (nu e goală din cauza unei erori). Fără asta, o eroare de rețea
-  // ar arăta „nicio sondă", iar o sondă adăugată apoi ar înlocui, la salvare, sondele care n-au apucat să vină.
+  // ar arăta „nicio sondă”, iar o sondă adăugată apoi ar înlocui, la salvare, sondele care n-au apucat să vină.
   const [sensorsOk, setSensorsOk] = useState(false);
   const [notifs, setNotifs] = useState<NotificationItem[]>([]);
   const [navOpen, setNavOpen] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [distribuie, setDistribuie] = useState(false); // „Distribuie locația” (21.10)
-  // Pe lângă „modifică flota", firma poate tăia unui rol anume editarea vehiculelor (editariTaiate din
+  // Pe lângă „modifică flota”, firma poate tăia unui rol anume editarea vehiculelor (editariTaiate din
   // /api/me). Serverul refuză atunci salvarea fișei — deci creionul nu apare, ca omul să nu completeze un
-  // formular întreg și să primească „Acces interzis" la final.
+  // formular întreg și să primească „Acces interzis” la final.
   const canManage = !!me.value?.permissions?.manageFleet && !(me.value?.editariTaiate || []).includes('vehicule');
   // Același lucru pentru acte: firma poate tăia editarea documentelor separat de cea a fișei. Serverul
   // refuză atunci adăugarea, modificarea, ștergerea și scanarea actelor (requireEdit('documente')).
@@ -138,7 +138,7 @@ export function VehicleDetail() {
   // Filele tehnice din foaia de editare (Config Camion, Sonda combustibil, Sonde avansat). Se trimit la server
   // DOAR dacă omul a schimbat ceva în ele — rutele lor înlocuiesc tot, deci un apel inutil e un risc inutil.
   const camInit = useRef<Record<string, string>>({});
-  // Fila „Încărcare" (simulatorul de încărcare): cifrele obișnuite de la server + semiremorcile firmei.
+  // Fila „Încărcare” (simulatorul de încărcare): cifrele obișnuite de la server + semiremorcile firmei.
   const [incMeta, setIncMeta] = useState<IncMeta | null>(null);
   const [incRemorci, setIncRemorci] = useState<Remorca[]>([]);
   const [calRows, setCalRowsRaw] = useState<RandCal[]>([]);
@@ -148,13 +148,13 @@ export function VehicleDetail() {
   function setCalRows(r: RandCal[]) { setCalRowsRaw(r); setCalDirty(true); }
   function setSondeEdit(l: SondaEdit[]) { setSondeEditRaw(l); setSondeDirty(true); }
 
-  // Venit din notificarea de scadență („ITP expiră în 3 zile") → deschidem direct editarea, unde
+  // Venit din notificarea de scadență („ITP expiră în 3 zile”) → deschidem direct editarea, unde
   // stau actele. Fără asta, notificarea te lăsa în fișă și porneai să cauți butonul de editare.
   const _cerutDocs = new URLSearchParams((loc.url || '').split('?')[1] || '').get('edit') === 'docs';
 
   // Ruterul (preact-iso) PĂSTREAZĂ ecranul ăsta când se schimbă doar :imei (ex. atingi o notificare despre
   // mașina B cât stai pe fișa mașinii A). Fără gardă, un răspuns întârziat pentru A ar ateriza peste B — iar
-  // „Salvează" ar scrie fișa și sondele lui A pe vehiculul B. `imeiCur` e vehiculul afișat ACUM.
+  // „Salvează” ar scrie fișa și sondele lui A pe vehiculul B. `imeiCur` e vehiculul afișat ACUM.
   const imeiCur = useRef(imei);
   imeiCur.current = imei;
   const incaAici = (i: string) => imeiCur.current === i;
@@ -184,7 +184,7 @@ export function VehicleDetail() {
   }, [imei]);
 
   function openEdit() {
-    // Fără fișa completă, formularul ar porni gol și „Salvează" ar goli toate câmpurile vehiculului.
+    // Fără fișa completă, formularul ar porni gol și „Salvează” ar goli toate câmpurile vehiculului.
     // `full.imei !== imei`: fișa de pe ecran e încă a vehiculului dinainte (cel nou se încarcă) — formularul
     // ar porni cu datele altei mașini.
     if (!full || String(full.imei) !== String(imei)) { showToast('Se încarcă fișa vehiculului…'); loadFull(); return; }
@@ -220,9 +220,9 @@ export function VehicleDetail() {
   useEffect(() => {
     if (docsDeschise.current || !_cerutDocs || !me.value || ecranAscuns('documente')) return;
     // Fără creion (rolul nu poate edita fișa), foaia de editare — unde stau actele — nu se deschide.
-    // Butonul din notificare („Documentele vehiculului", „Completează") ar fi lăsat omul pe fișă, fără
-    // nimic deschis. Îl ducem la ecranul „Documente vehicule": acolo le vede (și le modifică, dacă rolul
-    // lui are voie). Înlocuim adresa, ca „Înapoi" să ducă la notificare, nu iar aici.
+    // Butonul din notificare („Documentele vehiculului”, „Completează”) ar fi lăsat omul pe fișă, fără
+    // nimic deschis. Îl ducem la ecranul „Documente vehicule”: acolo le vede (și le modifică, dacă rolul
+    // lui are voie). Înlocuim adresa, ca „Înapoi” să ducă la notificare, nu iar aici.
     if (!canManage) { docsDeschise.current = true; loc.route('/admin/documents', true); return; }
     // Fișa încă a vehiculului dinainte (s-a schimbat :imei) → așteptăm fișa noului vehicul.
     if (!full || String(full.imei) !== String(imei) || editOpen) return;
@@ -231,7 +231,7 @@ export function VehicleDetail() {
     setTimeout(() => { try { document.querySelector('.veh-docs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* */ } }, 260);
   }, [full, _cerutDocs, me.value]);
 
-  // `?edit=fisa`: butonul „Completează la …" din RA Insight (web: openEditModal). Fără creion, rămâne fișa de citit.
+  // `?edit=fisa`: butonul „Completează la …” din RA Insight (web: openEditModal). Fără creion, rămâne fișa de citit.
   const _cerutFisa = new URLSearchParams((loc.url || '').split('?')[1] || '').get('edit') === 'fisa';
   const fisaDeschisa = useRef(false);
   useEffect(() => {
@@ -249,8 +249,8 @@ export function VehicleDetail() {
   }, [editOpen, sensors, sensorsOk]);
 
   // ── Ce file tehnice are vehiculul ăsta (ca pe web, aplicaVizibilitateTaburi) ──
-  // „Config Camion": doar la categoriile cu axe și dacă firma n-a scos fila (Afișaj pentru toți → tab_camion).
-  // „Sonda combustibil" + „Sonde (avansat)": doar dacă mașina ARE deja sonde sau o calibrare și firma n-a scos
+  // „Config Camion”: doar la categoriile cu axe și dacă firma n-a scos fila (Afișaj pentru toți → tab_camion).
+  // „Sonda combustibil” + „Sonde (avansat)”: doar dacă mașina ARE deja sonde sau o calibrare și firma n-a scos
   // filele (tab_sonde). Montarea primei sonde rămâne la noi, la instalare.
   const prefs = uiPrefs.value || {};
   const tankCal = calibDinFull((full as any)?.tank_calibration);
@@ -258,7 +258,7 @@ export function VehicleDetail() {
   const arataSonde = prefs.tab_sonde !== false && areSonde;
   const arataCamionLa = (tip: any) => prefs.tab_camion !== false && TIPURI_CU_AXE.includes(String(tip || ''));
   const arataCamionEdit = arataCamionLa(ef.vehicle_type);
-  // „Încărcare": modulul firmei + un vehicul care cară marfă (lista serverului) sau cu felul deja ales — ca pe web.
+  // „Încărcare”: modulul firmei + un vehicul care cară marfă (lista serverului) sau cu felul deja ales — ca pe web.
   const incPornit = modulIncarcare(me.value);
   const arataIncEdit = incPornit && (((incMeta && incMeta.tipuriCuMarfa) || []).includes(String(ef.vehicle_type || '')) || !!ef.inc_fel);
 
@@ -270,7 +270,7 @@ export function VehicleDetail() {
       // Modelul GPS și cartela SIM NU pleacă de aici (sunt doar de citit).
       const spec: any = specsDeTrimis(ef);
       spec.name = ef.name || null; spec.plate = ef.plate || null; spec.vehicle_type = ef.vehicle_type || null;
-      if (incPornit) Object.assign(spec, incDeTrimis(ef, String(ef.inc_fel || ''), incMeta));   // fila „Încărcare"
+      if (incPornit) Object.assign(spec, incDeTrimis(ef, String(ef.inc_fel || ''), incMeta));   // fila „Încărcare”
       await Api.updateDeviceDetails(imei, spec);
       await Api.assignDevice(imei, ef.driver_id ? Number(ef.driver_id) : null, ef.group_id ? Number(ef.group_id) : null);
       if (me.value?.isSuper) await Api.setCanInterface(imei, ef.can_interface || null).catch(() => {}); // doar super-admin
@@ -303,12 +303,12 @@ export function VehicleDetail() {
   const volt = voltageStr(io);
   const gps = gpsQuality(v?.satellites);
   const gsm = gsmQuality(io.gsm_signal);
-  // Mașină oprită + motor stins → tracker în sleep (transmite din oră în oră) → GPS „în așteptare", nu „fără fix"
+  // Mașină oprită + motor stins → tracker în sleep (transmite din oră în oră) → GPS „în așteptare”, nu „fără fix”
   const ign = !!(io && (io.ignition === 1 || (io.ignition as any) === true));
   const gpsStandby = (v?.speed || 0) === 0 && !ign;
   const veh = [full?.brand, full?.model].filter(Boolean).join(' ') || full?.vehicle_type || v?.vehicle_type || '';
   const driver = full?.driver_name || '';
-  // AdBlue (în „Date CAN") doar pentru diesel (motorină) + EURO 6
+  // AdBlue (în „Date CAN”) doar pentru diesel (motorină) + EURO 6
   const _ftd = String((full as any)?.fuel_type || '').toLowerCase();
   const _emd = String((full as any)?.emission_class || '').toLowerCase().replace(/[\s_-]/g, '');
   const adblueOk = (_ftd.includes('motorin') || _ftd.includes('diesel')) && _emd.includes('euro6');
@@ -316,7 +316,7 @@ export function VehicleDetail() {
   const tachoOk = usesTachograph(full?.vehicle_type || v?.vehicle_type);
   const ll = v && v.latitude != null ? `${v.latitude},${v.longitude}` : '';
 
-  // ── Citiri „live" pentru grila „Detalii live" (paritate cu fișa web) ──
+  // ── Citiri „live” pentru grila „Detalii live” (paritate cu fișa web) ──
   const live = liveStatus(v, off);
   const eng = engineHoursOf(io);
   const rpm = io.can_engine_rpm !== undefined ? io.can_engine_rpm + ' RPM' : null;
@@ -325,7 +325,7 @@ export function VehicleDetail() {
     ? (io.can_adblue_level_pct + '%' + (io.can_adblue_level_liters !== undefined ? ' · ' + Number(io.can_adblue_level_liters).toFixed(1) + ' L' : ''))
     : null;
   // Combustibil: sondă → câmp REZOLVAT (fuel_level_liters) → CAN, din io-ul live SAU din io-ul stocat (/full) ca rezervă.
-  // „(ultima)" când CAN-ul e stale (motor oprit) — ca să nu dispară ultima cantitate cunoscută. Roșu sub 15 L.
+  // „(ultima)” când CAN-ul e stale (motor oprit) — ca să nu dispară ultima cantitate cunoscută. Roșu sub 15 L.
   const fio: any = (full as any)?.io_data || {};
   const tank = (typeof io.tank_level_liters === 'number' ? io.tank_level_liters : fio.tank_level_liters);
   const fuelLnum = (typeof io.fuel_level_liters === 'number' && io.fuel_level_liters > 0) ? io.fuel_level_liters
@@ -335,7 +335,7 @@ export function VehicleDetail() {
   const fuelPct = io.can_fuel_level_pct ?? fio.can_fuel_level_pct;
   const tankCap = Number((full as any)?.tank_capacity) || 0;
   // % REAL = litri ÷ capacitate rezervor (configurată în fișă). NU afișăm can_fuel_level_pct BRUT la senzorii
-  // factory (Logan/Caddy) — e nesigur (ex. 42 L raportat ca „100%"). Fără capacitate configurată → doar litri.
+  // factory (Logan/Caddy) — e nesigur (ex. 42 L raportat ca „100%”). Fără capacitate configurată → doar litri.
   const fuelPctReal = (fuelLnum != null && tankCap > 0) ? Math.max(0, Math.min(100, Math.round(fuelLnum / tankCap * 100))) : null;
   const staleNote = (v as any)?.can_stale ? ' (ultima)' : '';
   let fuelStr: string | null = null, fuelLow = false, fuelSrc = '';
@@ -349,7 +349,7 @@ export function VehicleDetail() {
   const pills = notifs.filter((n) => n.imei === imei && !n.acknowledged).slice(0, 4);
   const isSuper = !!me.value?.isSuper;
   const canStale = !!(v as any)?.can_stale;
-  // „Ultima interogare": cu motorul oprit CAN-ul e carry-forward → arăt ora snapshot-ului real; altfel ultima transmisie
+  // „Ultima interogare”: cu motorul oprit CAN-ul e carry-forward → arăt ora snapshot-ului real; altfel ultima transmisie
   const lastQ = (canStale && (v as any)?.can_snapshot_ts) ? (v as any).can_snapshot_ts : v?.timestamp;
 
   function openUrl(url: string) { try { (window as any).open(url, '_system'); } catch { window.open(url, '_blank'); } }
@@ -417,19 +417,19 @@ export function VehicleDetail() {
           </div>
         )}
 
-        {/* Martorii de bord, sub harta: ce cere atentie chiar acum, fara sa intri in „Date CAN". */}
+        {/* Martorii de bord, sub harta: ce cere atentie chiar acum, fara sa intri in „Date CAN”. */}
         <CanTellTales io={io} />
 
         <div class="d-actions">
-          {/* Cu ecranul „Traseu" / „Rapoarte" tăiat din rol, serverul refuză istoricul / rapoartele — butonul
+          {/* Cu ecranul „Traseu” / „Rapoarte” tăiat din rol, serverul refuză istoricul / rapoartele — butonul
               ar duce într-o eroare. Ca pe web, nu mai apare. */}
           {!ecranAscuns('traseu') && <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/route`)}><Icon name="route" size={18} class="ic" /> Vezi traseu</button>}
           {!ecranAscuns('rapoarte') && <button class="d-act" onClick={() => loc.route(`/reports?imei=${encodeURIComponent(imei)}`)}><Icon name="report" size={18} class="ic" /> Creează raport</button>}
           <button class="d-act" onClick={() => loc.route(`/vehicles/${encodeURIComponent(imei)}/can`)}><Icon name="cpu" size={18} class="ic" /> Date CAN</button>
-          {/* „Are sonde" = sonde configurate SAU o calibrare simplă (voltaj → litri), ca pe web. */}
+          {/* „Are sonde” = sonde configurate SAU o calibrare simplă (voltaj → litri), ca pe web. */}
           {areSonde && <button class="d-act" onClick={openSensors}><Icon name="droplet" size={18} class="ic" /> Senzori</button>}
           {me.value?.features?.tahograf && tachoOk && <button class="d-act" onClick={() => setSheet('tacho')}><Icon name="disc" size={18} class="ic" /> Tahograf</button>}
-          {/* „Merg după el" — navigatia obisnuita te duce unde ERA masina; asta arata unde e ACUM. */}
+          {/* „Merg după el” — navigatia obisnuita te duce unde ERA masina; asta arata unde e ACUM. */}
           <button class="d-act" disabled={!ll} onClick={() => loc.route('/vehicles/' + imei + '/follow')}><Icon name="compass" size={18} class="ic" /> Merg după el</button>
           <button class="d-act" disabled={!ll} onClick={() => setNavOpen((o) => !o)}><Icon name="navigate" size={18} class="ic" /> Navighează</button>
           {/* „Distribuie locația” (21.10): linkul live pentru oricine, ca pe WhatsApp — doar cui îl poate face (serverul spune). */}
@@ -443,7 +443,7 @@ export function VehicleDetail() {
           {ll && <button class="d-act" onClick={() => openUrl(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll}`)}><Icon name="eye" size={18} class="ic" /> Street View</button>}
         </div>
 
-        {/* „Anunță echipa RA Track", ca pe web (#detail-echipa): o mașină care nu transmite o face serverul „nu transmite". Noi nu trimitem cereri. */}
+        {/* „Anunță echipa RA Track”, ca pe web (#detail-echipa): o mașină care nu transmite o face serverul „nu transmite”. Noi nu trimitem cereri. */}
         {!me.value?.isSuper && (
           <button type="button" class="d-echipa" onClick={() => loc.route(usaFisa(imei))}>
             <Icon name="headset" size={16} /><span>Ceva nu merge la aparat? <b>Anunță echipa RA Track</b></span><Icon name="chevronR" size={14} />
@@ -478,7 +478,7 @@ export function VehicleDetail() {
         </div>
 
         {/* Fișa tehnică — arată doar secțiunile care au ceva completat, ca să nu umple ecranul cu liniuțe. */}
-        {/* Echipamentul GPS (SIM) și „Config camion" (costuri) — doar pentru cine are „modifică flota", ca pe web. */}
+        {/* Echipamentul GPS (SIM) și „Config camion” (costuri) — doar pentru cine are „modifică flota”, ca pe web. */}
         <VehicleSpecsView full={full} admin={!!me.value?.permissions?.manageFleet}
           camion={!!me.value?.permissions?.manageFleet && arataCamionLa((full as any)?.vehicle_type)} />
 
@@ -488,8 +488,8 @@ export function VehicleDetail() {
           <div class="d-stat"><Icon name="clock" size={18} class="ic" /><span class="lbl">Timp de conducere</span><span class="val">{fmtDuration(daily?.movingTime)}</span></div>
           <div class="d-stat"><Icon name="clock" size={18} class="ic" /><span class="lbl">Staționare (motor pornit)</span><span class="val">{fmtDuration(daily?.stoppedTime)}</span></div>
           <div class="d-stat"><Icon name="mapPin" size={18} class="ic" /><span class="lbl">Opriri</span><span class="val">{daily?.stops ?? 0}</span></div>
-          {daily?.fuelConsumed != null && <div class="d-stat"><Icon name="droplet" size={18} class="ic" /><span class="lbl">{/* Cuvintele de pe web: „Consum azi", cu „(est.)" doar când e estimat. Fără „(senzor)" — cifra vine
-              din contorul de combustibil al mașinii, nu dintr-o sondă — și fără „CAN", care pentru client e jargon. */}{daily.fuelEstimated ? 'Consum azi (est.)' : 'Consum azi'}</span><span class="val">{daily.fuelConsumed} L</span></div>}
+          {daily?.fuelConsumed != null && <div class="d-stat"><Icon name="droplet" size={18} class="ic" /><span class="lbl">{/* Cuvintele de pe web: „Consum azi”, cu „(est.)” doar când e estimat. Fără „(senzor)” — cifra vine
+              din contorul de combustibil al mașinii, nu dintr-o sondă — și fără „CAN”, care pentru client e jargon. */}{daily.fuelEstimated ? 'Consum azi (est.)' : 'Consum azi'}</span><span class="val">{daily.fuelConsumed} L</span></div>}
           {daily?.lastIgnitionOn && <div class="d-stat"><Icon name="zap" size={18} class="ic" /><span class="lbl">Ultim contact pornit</span><span class="val" style="font-size:13px">{fmtDateTime(daily.lastIgnitionOn)}</span></div>}
           <div class="d-gauge">
             <div class="d-stat" style="border:none;padding-bottom:6px"><Icon name="gauge" size={18} class="ic" /><span class="lbl">Viteză</span><span class="val">{daily?.maxSpeed || 0} km/h</span></div>
@@ -532,7 +532,7 @@ export function VehicleDetail() {
             </div>
             <div class="sheet-body">
               <div class="frm">
-                {/* Fișa tehnică, pe secțiuni pliabile — „Identificare" (nume, număr, tip, marcă, VIN…) e deschisă
+                {/* Fișa tehnică, pe secțiuni pliabile — „Identificare” (nume, număr, tip, marcă, VIN…) e deschisă
                     implicit, restul se deschid la nevoie, ca formularul să nu fie un perete de 35 de câmpuri. */}
                 <VehicleSpecsForm val={ef} set={setEF} isSuper={!!me.value?.isSuper} ascunde={arataCamionEdit ? CHEI_GREUTATI_CAMION : []} />
                 {/* Filele tehnice de pe web, ca secțiuni pliabile. Apar exact când apar și pe web. */}
@@ -603,10 +603,10 @@ export function VehicleDetail() {
                       <option value="fms">FMS / J1939 (FMC650, camioane)</option>
                       <option value="tacho">Tahograf direct (DSRC)</option>
                     </select>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:3px">„FMS" la camioane cu FMC650 — altfel RPM/combustibil/temperatură pot fi greșit decodate. Se aplică pachetelor noi.</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:3px">„FMS” la camioane cu FMC650 — altfel RPM/combustibil/temperatură pot fi greșit decodate. Se aplică pachetelor noi.</div>
                   </div>
                 )}
-                {/* „Sursă contact" stă acum în secțiunea Tehnic (super-admin) din fișă — un singur loc pentru el. */}
+                {/* „Sursă contact” stă acum în secțiunea Tehnic (super-admin) din fișă — un singur loc pentru el. */}
                 <div class="frm-actions">
                   <button class="btn btn-primary" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Se salvează…' : 'Salvează'}</button>
                 </div>
@@ -616,16 +616,16 @@ export function VehicleDetail() {
                 </div>
                 {/* Actele vehiculului + scanarea lor. setFisa varsă propunerile confirmate direct în
                     formularul de deasupra (ef) — aceleași câmpuri, aceeași salvare, nicio cale nouă. */}
-                {/* Fără ecranul „Documente" în rolul omului, serverul refuză lista — iar blocul ar spune fals „niciun act". */}
+                {/* Fără ecranul „Documente” în rolul omului, serverul refuză lista — iar blocul ar spune fals „niciun act”. */}
                 {/* Cu editarea actelor tăiată din rol, blocul ar oferi scanare, adăugare, modificare și
-                    ștergere — toate refuzate de server cu „Acces interzis". În locul lui, o notă scurtă. */}
+                    ștergere — toate refuzate de server cu „Acces interzis”. În locul lui, o notă scurtă. */}
                 {!ecranAscuns('documente') && (docsTaiate
                   ? <div class="veh-docs" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text-muted);line-height:1.5">
                     <div style="font-weight:700;color:var(--text-secondary);margin-bottom:4px"><Icon name="fileBar" size={13} /> Documente vehicul</div>
                     Rolul tău nu poate modifica actele. Le vezi în Meniu → Documente vehicule.
                   </div>
                   : <VehicleDocs imei={imei} fisa={ef} setFisa={(patch: any) => setEf((p: any) => ({ ...p, ...patch }))} />)}
-                {/* Fila „Service" de pe web = mentenanța acestei mașini. Se ascunde singură când rolul n-are ecranul Mentenanță. */}
+                {/* Fila „Service” de pe web = mentenanța acestei mașini. Se ascunde singură când rolul n-are ecranul Mentenanță. */}
                 <VehicleService imei={imei} />
               </div>
             </div>
@@ -698,7 +698,7 @@ export function CanList({ io, adblueOk, showRaw }: { io: any; adblueOk?: boolean
   );
 }
 
-// Super-admin: TOATE semnalele brute (pentru mapare IO), nu doar cele „utile" — echivalentul panoului IO din web.
+// Super-admin: TOATE semnalele brute (pentru mapare IO), nu doar cele „utile” — echivalentul panoului IO din web.
 // Aplatizează și flag-urile decodate (_security_flags / _control_flags etc.) un nivel, ca panoul web (_sf_/_cf_).
 function RawIo({ io }: { io: any }) {
   const flat: Record<string, any> = {};
@@ -725,11 +725,11 @@ function RawIo({ io }: { io: any }) {
 }
 
 // Tahograf — semnalele transmise LIVE (carduri șofer, timpi de condus/odihnă) extrase din IO. Fișierele .DDD
-// descărcate se analizează separat (secțiunea „Tahograf" din meniu).
+// descărcate se analizează separat (secțiunea „Tahograf” din meniu).
 function TachoLive({ io }: { io: any }) {
   const d = io || {};
   const keys = Object.keys(d).filter((k) => /tacho|driver1|driver2|driver_card|card_present|tachograph|driving|drive_time|rest_time|working_time/i.test(k));
-  if (!keys.length) return <div class="center-msg">Niciun semnal de tahograf transmis live de acest vehicul. Fișierele descărcate (.DDD) se analizează în secțiunea „Tahograf" din meniu.</div>;
+  if (!keys.length) return <div class="center-msg">Niciun semnal de tahograf transmis live de acest vehicul. Fișierele descărcate (.DDD) se analizează în secțiunea „Tahograf” din meniu.</div>;
   return (
     <>
       {keys.map((k) => {

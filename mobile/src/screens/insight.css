@@ -161,7 +161,7 @@
 .chat-seocupa { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; color: var(--i-seocupa); padding: 6px 11px; border-radius: 99px; background: var(--i-seocupa-fund); min-width: 0; }
 .chat-seocupa svg { flex: none; }
 
-/* Cartonașul „RA Insight face, cu Da-ul tău" */
+/* Cartonașul „RA Insight face, cu Da-ul tău” */
 .chat-prop-w { display: grid; gap: 6px; margin: 8px 0 6px; min-width: 0; }
 .chat-prop { border: 1px solid var(--border); border-left: 3px solid var(--i-dungi-marca); border-radius: 12px; background: var(--bg-panel); padding: 12px; display: grid; gap: 10px; min-width: 0; }
 .chat-prop.inchis { background: var(--bg-dark); }
@@ -220,7 +220,7 @@
 .chat-trimite:disabled { opacity: .6; }
 .chat-jos { position: absolute; left: 50%; bottom: calc(100px + max(var(--sab), var(--insp-kb, 0px))); transform: translateX(-50%); width: 38px; height: 38px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border-light); color: var(--text-secondary); display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); z-index: 3; }
 
-/* „Azi la tine" */
+/* „Azi la tine” */
 .insp-azi { width: 100%; text-align: left; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; margin: 16px 0 6px; box-sizing: border-box; }
 .azi-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .azi-tit { font-weight: 800; font-size: 14.5px; color: var(--text-primary); }
@@ -237,7 +237,7 @@
 .azi-tx { font-size: 13.5px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
 .azi-tx b { font-weight: 800; }
 
-/* Foaia de alegere („+", Mașina, Perioada, Raport, „⋯") și notițele */
+/* Foaia de alegere („+”, Mașina, Perioada, Raport, „⋯”) și notițele */
 .insp-al .sheet-body { padding-top: 6px; }
 .insp-al-cauta { width: 100%; height: 42px; margin: 4px 0 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-primary); padding: 0 12px; font-size: 15px; }
 .insp-al-i { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 9px 6px; border-radius: 9px; color: var(--text-primary); font-size: 14.5px; font-weight: 600; text-align: left; }
@@ -254,7 +254,7 @@
 .insp-not-i { margin-top: 8px; font-size: 12.5px; color: var(--text-secondary); }
 .insp-not-b { margin-top: 12px; }
 
-/* ── Paginile din „Domenii" și ghidul (lotul 2) — după .sdp-*, .ssm-*, .insp-ghid* de pe web ── */
+/* ── Paginile din „Domenii” și ghidul (lotul 2) — după .sdp-*, .ssm-*, .insp-ghid* de pe web ── */
 .insp-pag { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 8px; border-radius: 9px; font-size: 13.5px; font-weight: 800; color: var(--text-primary); text-align: left; }
 .insp-pag > svg:first-child { color: var(--text-secondary); flex: none; }
 .insp-pag-s { margin-left: auto; color: var(--text-secondary); flex: none; transition: transform .15s; }
@@ -413,7 +413,7 @@
 .insp-ghid-text .det svg { vertical-align: -2px; }
 .insp-ghid-q { margin-top: 12px; }
 
-/* ── „Vezi pachetele" și trecerea (lotul 3). Pe tema deschisă verdele casei n-are contrast: --i-pk-verde. ── */
+/* ── „Vezi pachetele” și trecerea (lotul 3). Pe tema deschisă verdele casei n-are contrast: --i-pk-verde. ── */
 .insp { --i-pk-verde: #4ade80; --i-pk-tau-fund: var(--accent); --i-pk-tau-text: #06210F; --i-pk-eti-fund: #FFFFFF; --i-pk-eti-text: #0B0E11; --i-pk-ai: rgba(255, 255, 255, .05); --i-pk-ai-cant: rgba(255, 255, 255, .35); --i-pk-urm: #fbbf24; --i-pk-urm-cant: #f59e0b; --i-pk-urm-fund: rgba(245, 158, 11, .08); --i-pk-glob: #93c5fd; }
 :root[data-theme="light"] .insp { --i-pk-verde: #166534; --i-pk-tau-fund: #166534; --i-pk-tau-text: #fff; --i-pk-eti-fund: #0B0E11; --i-pk-eti-text: #3FE07D; --i-pk-ai: rgba(15, 23, 42, .04); --i-pk-ai-cant: rgba(15, 23, 42, .35); --i-pk-urm: #92400e; --i-pk-urm-cant: #b45309; --i-pk-urm-fund: rgba(180, 83, 9, .07); --i-pk-glob: #1d4ed8; }
 .insp-fond.link { text-decoration: underline; text-underline-offset: 3px; }
@@ -470,7 +470,7 @@
 .chat-pas.pk-pt-ok { background: var(--i-pk-tau-fund); border-color: var(--i-pk-tau-fund); color: var(--i-pk-tau-text); }
 .chat-pas.pk-pt-ok:disabled { opacity: .45; }
 
-/* ── „Pachet și conturi": un om = un cartonaș; contorul și limita pe rânduri, fără tabel lat. ── */
+/* ── „Pachet și conturi”: un om = un cartonaș; contorul și limita pe rânduri, fără tabel lat. ── */
 .pkc-cap { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .pkc-cap h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text-primary); }
 .pkc-pill { margin-left: 8px; vertical-align: 2px; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: var(--i-marca); background: var(--i-marca-fund); }
@@ -498,7 +498,7 @@
 .pkc-cota b { font-size: 16px; color: var(--text-primary); }
 .pkc-cota span { font-size: 12.5px; color: var(--text-secondary); }
 .pkc-nota { font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
-/* Cifra care nu încape (16.11, web: .pkc-ni): mesajul rămâne sub listă, cu „Treci la Pro" și „Pune N pentru …". */
+/* Cifra care nu încape (16.11, web: .pkc-ni): mesajul rămâne sub listă, cu „Treci la Pro” și „Pune N pentru …”. */
 .pkc-ni { position: relative; min-width: 0; padding: 12px 44px 12px 14px; border: 1px solid var(--border-light); border-left: 4px solid var(--i-pk-urm-cant); border-radius: 12px; background: var(--bg-panel); display: grid; gap: 6px; }
 .pkc-ni-t { font-size: 13.5px; font-weight: 700; color: var(--text-primary); line-height: 1.45; overflow-wrap: anywhere; }
 .pkc-ni-r { font-size: 13px; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }

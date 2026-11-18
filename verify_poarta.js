@@ -9,7 +9,7 @@
 //     Error: Cannot find module '.../billing.js'
 //
 // `billing.js` fusese șters deliberat pe 15.09, odată cu Stripe. Numele lui a rămas scris în
-// `.github/workflows/ci.yml`. Fiindcă pasul „Lint" cade primul, NIMIC din ce urmează nu s-a mai
+// `.github/workflows/ci.yml`. Fiindcă pasul „Lint” cade primul, NIMIC din ce urmează nu s-a mai
 // executat: nici probele unitare, nici `npm test`, nici cele treisprezece suite de securitate.
 // Poarta arăta ca o poartă, dar nu mai apăra nimic. Al doilea gard mort, găsit în aceeași trecere:
 // `tools/gen-can-icons.js` scria CRLF, iar `can_icons.js` e stocat cu LF, deci `--check` pica pe
@@ -69,7 +69,7 @@ const rupte = [];
 T('niciun `require` local rupt în probele porții', rupte.length === 0, rupte.join(' · '));
 
 sect('3. Ce s-a scos odată cu Stripe a plecat de tot');
-// Regula de fond („RA Track NU funcționează pe planuri") e păzită de `verify_fara_planuri.js`.
+// Regula de fond („RA Track NU funcționează pe planuri”) e păzită de `verify_fara_planuri.js`.
 // Aici se apără doar urma rămasă în poartă — locul care n-a fost curățat atunci.
 T('poarta nu mai numește `billing.js`', !/^\s*node\s+(?:--check\s+)?billing\.js/m.test(ci));
 T('și nici proba lui', !/^\s*node\s+test_billing\.js/m.test(ci) && !fs.existsSync(P('test_billing.js')));
@@ -95,7 +95,7 @@ sect('5. Telefonul se verifică întreg, ca la APK (13.11)');
 const pasTel = (ci.match(/- name: Telefonul \(TypeScript, ca la APK\)[\s\S]*?(?=\n\s*-\s+name:|\n\s*#\s*2\))/) || [''])[0];
 T('poarta are pasul telefonului: în `mobile/`, cu `npm ci` și `tsc --noEmit`', /working-directory:\s*mobile/.test(pasTel) && /npm ci --ignore-scripts/.test(pasTel) && /npx tsc --noEmit -p tsconfig\.json/.test(pasTel), pasTel.slice(0, 200));
 T('…și șterge modulele telefonului după (probele din `npm test` sunt gândite fără ele)', /rm -rf node_modules/.test(pasTel));
-T('…înaintea pasului „Smoke" (oprire la prima greșeală)', ci.indexOf('Telefonul (TypeScript, ca la APK)') > 0 && ci.indexOf('Telefonul (TypeScript, ca la APK)') < ci.indexOf('name: Smoke tests'));
+T('…înaintea pasului „Smoke” (oprire la prima greșeală)', ci.indexOf('Telefonul (TypeScript, ca la APK)') > 0 && ci.indexOf('Telefonul (TypeScript, ca la APK)') < ci.indexOf('name: Smoke tests'));
 T('telefonul are ce verifica: `tsconfig.json` și `package-lock.json` în `mobile/`', fs.existsSync(P('mobile/tsconfig.json')) && fs.existsSync(P('mobile/package-lock.json')));
 
 console.log('\n──────────────────────────────');

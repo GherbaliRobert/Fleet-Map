@@ -1,4 +1,4 @@
-// verify_schimba_aparat.js — „Schimbă aparatul": aparatul nou preia mașina, istoricul rămâne (Robert, 29.10: „1 da, 2 acum").
+// verify_schimba_aparat.js — „Schimbă aparatul”: aparatul nou preia mașina, istoricul rămâne (Robert, 29.10: „1 da, 2 acum”).
 //
 //   node verify_schimba_aparat.js
 //
@@ -6,7 +6,7 @@
 // acelei mașini?" — nu aveam: mașina ERA aparatul (cheia ei e IMEI-ul), deci un aparat nou însemna o mașină nouă, goală, iar
 // cea veche ori se plătea de două ori, ori se arhiva și își pierdea istoricul în 30 de zile. Acum aparatul nou PREIA mașina.
 // Proba ține: regula (aparat_schimbat.js), codul (serverul, baza, pagina) și tot drumul pe server pornit, în mod strict, cu
-// trackere adevărate pe TCP: aparatul vechi refuzat, cel nou pe aceeași mașină, contorul de km continuat, „Neasignate" mutat,
+// trackere adevărate pe TCP: aparatul vechi refuzat, cel nou pe aceeași mașină, contorul de km continuat, „Neasignate” mutat,
 // stocul, abonamentul neatins, refuzurile, întoarcerea la aparatul de la montaj.
 
 const fs = require('fs');
@@ -52,31 +52,31 @@ const cand = A.candidati({
     { serie: 'SN-1', tip: 'fmc130', stare: 'depozit' }, { serie: '860000000000004', tip: 'fmc130', stare: 'montat' }, { serie: '860000000000005', tip: 'fmc130', stare: 'instalator' }],
   neasignate: [{ imei: '860000000000005', gps_model: null, last_tx: new Date().toISOString() }, { imei: 'TEST111' }],
 });
-T('candidații: din stoc nemontat + din „Neasignate"; fără cel de acum, fără cele ocupate, fără ce nu e IMEI, fără ce e montat',
+T('candidații: din stoc nemontat + din „Neasignate”; fără cel de acum, fără cele ocupate, fără ce nu e IMEI, fără ce e montat',
   J(cand.map((c) => c.imei)) === J(['860000000000005', '860000000000002', '860000000000003']), J(cand));
-T('…cel din „Neasignate" e primul (cel mai probabil chiar aparatul montat azi) și primește modelul din stoc', cand[0].sursa === 'neasignat' && cand[0].model === 'Teltonika FMC130' && /^transmite deja, din „Neasignate” \(ultima poziție azi, \d\d:\d\d\)$/.test(cand[0].unde), J(cand[0]));
-T('…unde stă cel din stoc: „în depozit" / „la instalator · Ionescu"', cand[1].unde === 'în depozit' && cand[2].unde === 'la instalator · Ionescu' && cand[2].model === 'Teltonika FMC650');
+T('…cel din „Neasignate” e primul (cel mai probabil chiar aparatul montat azi) și primește modelul din stoc', cand[0].sursa === 'neasignat' && cand[0].model === 'Teltonika FMC130' && /^transmite deja, din „Neasignate” \(ultima poziție azi, \d\d:\d\d\)$/.test(cand[0].unde), J(cand[0]));
+T('…unde stă cel din stoc: „în depozit” / „la instalator · Ionescu”', cand[1].unde === 'în depozit' && cand[2].unde === 'la instalator · Ionescu' && cand[2].model === 'Teltonika FMC650');
 const veh = { imei: '860000000000001', plate: 'B 77 TIR', name: 'Actros' };
 const tc = A.textConfirmare({ vehicul: veh, candidat: cand[0], aparatAcum: '860000000000001', vechiul: 'defect', vechiInStoc: true });
-T('confirmarea: mașina, aparatul nou, istoricul rămâne, ce trece din „Neasignate", aparatul vechi în stoc',
+T('confirmarea: mașina, aparatul nou, istoricul rămâne, ce trece din „Neasignate”, aparatul vechi în stoc',
   /^B 77 TIR \(Actros\) primește aparatul 860000000000005 \(Teltonika FMC130\)\.\nIstoricul mașinii rămâne întreg/.test(tc) && /abonamentul merg mai departe\./.test(tc) &&
   /„Neasignate” trece pe mașină/.test(tc) && /Aparatul vechi \(860000000000001\) nu mai e primit; în stoc trece pe „defect”\.$/.test(tc), tc);
-T('…„retur" când merge, iar fără bucată în stoc spune că acolo nu se schimbă nimic',
+T('…„retur” când merge, iar fără bucată în stoc spune că acolo nu se schimbă nimic',
   /în stoc trece pe „retur”/.test(A.textConfirmare({ vehicul: veh, candidat: cand[1], aparatAcum: 'x', vechiul: 'retur', vechiInStoc: true })) &&
   /nu e în stocul nostru, deci acolo nu se schimbă nimic\.$/.test(A.textConfirmare({ vehicul: veh, candidat: cand[1], aparatAcum: 'x', vechiul: 'defect', vechiInStoc: false })));
-T('după: „3 poziții", „20 de poziții", „o poziție"', /3 poziții trimise din „Neasignate” au trecut/.test(A.textDupa({ vehicul: veh, nou: 'n', pozitiiMutate: 3 })) &&
+T('după: „3 poziții”, „20 de poziții”, „o poziție”', /3 poziții trimise din „Neasignate” au trecut/.test(A.textDupa({ vehicul: veh, nou: 'n', pozitiiMutate: 3 })) &&
   /20 de poziții trimise/.test(A.textDupa({ vehicul: veh, nou: 'n', pozitiiMutate: 20 })) && /1 poziție trimisă din „Neasignate” a trecut/.test(A.textDupa({ vehicul: veh, nou: 'n', pozitiiMutate: 1 })) &&
   !/poziți/.test(A.textDupa({ vehicul: veh, nou: 'n', pozitiiMutate: 0 })));
 T('rândul din fișă (îl vede și clientul): data și că istoricul a rămas; fără schimbări — nimic',
   /^Aparatul GPS a fost schimbat pe \d\d\.\d\d\.\d{4}\. Istoricul de dinainte rămâne pe mașină\.$/.test(A.notaFisa([{ la: Date.now() }], veh)) && A.notaFisa([], veh) === null);
-T('ce se întâmplă cu aparatul vechi: doar stările în care stocul îl lasă să treacă din „montat"', J(A.VECHIUL.map((v) => v.k)) === J(['defect', 'retur']) &&
+T('ce se întâmplă cu aparatul vechi: doar stările în care stocul îl lasă să treacă din „montat”', J(A.VECHIUL.map((v) => v.k)) === J(['defect', 'retur']) &&
   A.VECHIUL.every((v) => require('./stoc.js').poateTrece('montat', v.k)) && A.vechiulValid('retur') && !A.vechiulValid('casat'));
 
 sect('2. Codul (server, bază, pagină)');
 const iHand = server.indexOf("const vehicul = aparatSchimbat.vehiculPentru(imeiAparat, _aparate);");
 const iStrict = server.indexOf('if (STRICT_DEVICES && registeredLoaded && (!_imeiPrimit(imei)');
 T('la conectare, IMEI-ul aparatului se traduce în cheia mașinii ÎNAINTE de verificarea strictă', iHand > 0 && iStrict > iHand && /imei = vehicul;/.test(server.slice(iHand, iStrict)));
-T('…aparatul scos e refuzat în ORICE mod (nu doar strict) și nu intră la „încercări"', /if \(vehicul == null\) \{[\s\S]{0,400}reason: 'aparat_inlocuit'[\s\S]{0,80}socket\.destroy\(\);/.test(server.slice(iHand, iStrict)) && !/logDeviceAttempt/.test(server.slice(iHand, iStrict)));
+T('…aparatul scos e refuzat în ORICE mod (nu doar strict) și nu intră la „încercări”', /if \(vehicul == null\) \{[\s\S]{0,400}reason: 'aparat_inlocuit'[\s\S]{0,80}socket\.destroy\(\);/.test(server.slice(iHand, iStrict)) && !/logDeviceAttempt/.test(server.slice(iHand, iStrict)));
 T('harta se încarcă ÎNAINTE ca serverul TCP să primească pe cineva (în lista de acceptate)', /await _aparateReincarca\(\);[^\n]*\n\s*registeredLoaded = true;/.test(server));
 const iCont = server.indexOf('aparatSchimbat.continuaContorul(parsed.records, _st)'), iIns = server.indexOf('await db.insertPositions(imei, parsed.records)');
 T('contorul continuă ÎNAINTE de scriere și de harta live', iCont > 0 && iIns > iCont);
@@ -87,10 +87,10 @@ T('…și ștergerea definitivă se uită la aparatul montat acum', /const _apar
 T('arhivarea, restaurarea și ștergerea reîncarcă harta', (server.match(/await _aparateReincarca\(\);/g) || []).length >= 5);
 T('baza: un aparat pe O SINGURĂ mașină (index unic) + istoricul schimbărilor', /CREATE UNIQUE INDEX IF NOT EXISTS uq_devices_aparat ON devices\(aparat_imei\) WHERE aparat_imei IS NOT NULL/.test(dbjs) && /CREATE TABLE IF NOT EXISTS schimbari_aparat/.test(dbjs));
 T('…istoricul intră în copii (BUSINESS_TABLES)', require('./backup.js').BUSINESS_TABLES.indexOf('schimbari_aparat') >= 0 || /'schimbari_aparat'/.test(fs.readFileSync('./backup.js', 'utf8')));
-T('…mutarea din „Neasignate" nu numără cu rowCount (lipsește în PGlite): RETURNING id', /ON CONFLICT DO NOTHING RETURNING id/.test(dbjs.slice(dbjs.indexOf('async function schimbaAparat'))));
-const bloc = html.slice(html.indexOf('// ── începe „Schimbă aparatul"'), html.indexOf('// ── sfârșit „Schimbă aparatul"'));
+T('…mutarea din „Neasignate” nu numără cu rowCount (lipsește în PGlite): RETURNING id', /ON CONFLICT DO NOTHING RETURNING id/.test(dbjs.slice(dbjs.indexOf('async function schimbaAparat'))));
+const bloc = html.slice(html.indexOf('// ── începe „Schimbă aparatul”'), html.indexOf('// ── sfârșit „Schimbă aparatul”'));
 T('fișa: cheia mașinii (edit-imei) e ascunsă, pe ecran stă aparatul montat acum', /<input type="hidden" id="edit-imei">/.test(html) && /id="edit-imei-aparat" disabled/.test(html) && /aparatInFisa\(dev\);/.test(html));
-T('…butonul „Schimbă aparatul" doar la noi, pe mașina unei firme, nearhivată', /currentUser\.role === 'superadmin' && dev && dev\.company_id != null && dev\.status !== 'archived'/.test(bloc));
+T('…butonul „Schimbă aparatul” doar la noi, pe mașina unei firme, nearhivată', /currentUser\.role === 'superadmin' && dev && dev\.company_id != null && dev\.status !== 'archived'/.test(bloc));
 T('…la deschiderea altei mașini, nota și butonul celei dinainte nu rămân', /aparatInFisa\(\{ imei: imei \}\);/.test(html));
 T('pagina nu verifică și nu socotește: doar cele două rute, textele de la server cu textContent', bloc.length > 2000 &&
   (bloc.match(/fetch\(/g) || []).length === 2 && !/\.innerHTML = (?!'<i class="fas fa-right-left"><\/i> ')/.test(bloc) && /ales\.confirmare\[vechiul\]/.test(bloc));
@@ -169,13 +169,13 @@ function tracker(imei, ts, odoM) {
   const K = '860000000088001', Y = '860000000088002', Z = '860000000088003', V2 = '860000000088004', X = '860000000088777';
   const acum = Date.now();
   const co = (await R('POST', '/api/companies', { name: 'Transport Schimb SRL' })).j || {};
-  // Stocul: aparatul de la montaj (K), unul de rezervă în depozit (Y), unul la instalator care va transmite din „Neasignate" (Z)
+  // Stocul: aparatul de la montaj (K), unul de rezervă în depozit (Y), unul la instalator care va transmite din „Neasignate” (Z)
   // și aparatul altei mașini (V2).
   const intr = await R('POST', '/api/stoc/intrare', { tip: 'fmc130', serii: [K, Y, Z, V2].join('\n'), cost_eur: 45 });
   T('stocul: 4 trackere intră', intr.s === 200 && intr.j.adaugate === 4, J(intr));
   const mk = await R('POST', '/api/devices', { imei: K, company_id: co.id, name: 'Actros', plate: 'TM 77 SCH', sim_number: '0700111222' });
   const mv = await R('POST', '/api/devices', { imei: V2, company_id: co.id, name: 'Alt camion', plate: 'TM 88 ALT' });
-  T('două mașini pe firmă (aparatele lor trec în stoc pe „montat")', mk.s === 200 && mv.s === 200, J([mk, mv]));
+  T('două mașini pe firmă (aparatele lor trec în stoc pe „montat”)', mk.s === 200 && mv.s === 200, J([mk, mv]));
   const tk1 = await tracker(K, acum - 600000, 100000);
   T('aparatul de la montaj transmite (contor 100 km)', tk1.primit && tk1.ack === 1, J(tk1));
   await sleep(400);
@@ -186,7 +186,7 @@ function tracker(imei, ts, odoM) {
   const imeisCand = ((g1.j || {}).candidati || []).map((c) => c.imei);
   T('fereastra: aparatul de acum, cartela, aparatul vechi e în stoc', g1.s === 200 && g1.j.aparatAcum === K && g1.j.sim === '0700111222' && g1.j.vechiInStoc === true && !g1.j.nuSePoate, J(g1.j).slice(0, 300));
   T('…candidații: din stoc Y și Z; nu K (cel de acum), nu V2 (pe altă mașină)', imeisCand.indexOf(Y) >= 0 && imeisCand.indexOf(Z) >= 0 && imeisCand.indexOf(K) < 0 && imeisCand.indexOf(V2) < 0, J(imeisCand));
-  T('…cu confirmarea gata scrisă de server, pentru „defect" și pentru „retur"', ((g1.j.candidati || [])[0] || {}).confirmare && /primește aparatul/.test(g1.j.candidati[0].confirmare.defect) && /„retur”/.test(g1.j.candidati[0].confirmare.retur));
+  T('…cu confirmarea gata scrisă de server, pentru „defect” și pentru „retur”', ((g1.j.candidati || [])[0] || {}).confirmare && /primește aparatul/.test(g1.j.candidati[0].confirmare.defect) && /„retur”/.test(g1.j.candidati[0].confirmare.retur));
 
   // Refuzurile, înainte de orice schimbare.
   const ref = [
@@ -204,12 +204,12 @@ function tracker(imei, ts, odoM) {
   const s1 = await R('POST', '/api/devices/' + K + '/schimba-aparat', { nou: Y, vechiul: 'defect', sim: '0700333444', motiv: 'nu mai pornește' });
   T('schimbarea din stoc: gata, cu textul serverului', s1.s === 200 && /^Gata: TM 77 SCH \(Actros\) are acum aparatul 860000000088002\./.test(s1.j.text) && /Aparatul vechi a trecut în stoc pe „defect”\./.test(s1.j.text), J(s1));
   let fisa = (await R('GET', '/api/devices/' + K + '/full')).j || {};
-  T('fișa: aceeași mașină (nume, număr), aparatul nou, cartela nouă, modelul din stoc, rândul „schimbat pe…"',
+  T('fișa: aceeași mașină (nume, număr), aparatul nou, cartela nouă, modelul din stoc, rândul „schimbat pe…”',
     fisa.imei === K && fisa.plate === 'TM 77 SCH' && fisa.name === 'Actros' && fisa.aparat_acum === Y && fisa.aparat_imei === Y && fisa.sim_number === '0700333444' &&
     fisa.gps_model === 'Teltonika FMC130' && /^Aparatul GPS a fost schimbat pe /.test(fisa.aparat_nota || ''), J({ a: fisa.aparat_acum, s: fisa.sim_number, m: fisa.gps_model, n: fisa.aparat_nota }));
   let stoc = ((await R('GET', '/api/stoc')).j || {}).aparate || [];
   const stare = (s) => (stoc.filter((x) => x.serie === s)[0] || {}).stare;
-  T('stocul: aparatul nou „montat", cel vechi „defect"', stare(Y) === 'montat' && stare(K) === 'defect', J([stare(Y), stare(K)]));
+  T('stocul: aparatul nou „montat”, cel vechi „defect”', stare(Y) === 'montat' && stare(K) === 'defect', J([stare(Y), stare(K)]));
 
   const tkVechi = await tracker(K, acum - 300000, 100500);
   T('aparatul vechi nu mai e primit (n-ar mai scrie pe mașină în același timp cu cel nou)', !tkVechi.primit, J(tkVechi));
@@ -221,37 +221,37 @@ function tracker(imei, ts, odoM) {
   T('istoricul mașinii: poziția aparatului vechi + ale celui nou, pe ACEEAȘI mașină', Array.isArray(pozK) && pozK.length === 3, J(pozK && pozK.length));
   T('…contorul continuă fără salt: 100 km → 100 km → 101 km (nu 5 km)', J(ist(pozK)) === J([100000, 100000, 101000]), J(ist(pozK)));
   const pozY = (await R('GET', '/api/history/' + Y + '?from=' + encodeURIComponent(new Date(acum - 3600000).toISOString()))).j;
-  T('…și nimic pe o „mașină nouă" cu IMEI-ul aparatului nou', !Array.isArray(pozY) || pozY.length === 0, J(pozY));
+  T('…și nimic pe o „mașină nouă” cu IMEI-ul aparatului nou', !Array.isArray(pozY) || pozY.length === 0, J(pozY));
   const devs = (await R('GET', '/api/admin/devices')).j || [];
   T('nicio mașină nouă în Dispozitive pentru aparatul nou, iar abonamentul mașinii rămâne cel de la început',
     !devs.some((d) => d.imei === Y) && (devs.filter((d) => d.imei === K)[0] || {}).abonament_de_la === aboInainte, J(devs.map((d) => d.imei)));
   const inv = ((await R('GET', '/api/device-inventory')).j || []).filter((r) => r.imei === K)[0] || {};
   T('Inventar: rândul mașinii spune aparatul montat acum', inv.aparat_imei === Y, J(inv));
 
-  // A doua schimbare: aparatul nou a fost montat ÎNAINTE să apăsăm — transmite deja din „Neasignate".
+  // A doua schimbare: aparatul nou a fost montat ÎNAINTE să apăsăm — transmite deja din „Neasignate”.
   const tz1 = await tracker(Z, acum - 120000, 2000);
-  T('aparatul Z, din stoc, sună și ajunge la „Neasignate"', tz1.primit && tz1.ack === 1, J(tz1));
+  T('aparatul Z, din stoc, sună și ajunge la „Neasignate”', tz1.primit && tz1.ack === 1, J(tz1));
   await sleep(400);
   T('…ca rând fără firmă', ((await R('GET', '/api/admin/devices')).j || []).some((d) => d.imei === Z && d.company_id == null));
   const g2 = await R('GET', '/api/devices/' + K + '/schimba-aparat');
   const cz = ((g2.j || {}).candidati || []).filter((c) => c.imei === Z)[0];
-  T('fereastra îl pune primul, „transmite deja, din Neasignate"', cz && g2.j.candidati[0].imei === Z && cz.sursa === 'neasignat' && /^transmite deja, din „Neasignate”/.test(cz.unde) && /„Neasignate” trece pe mașină/.test(cz.confirmare.defect), J(g2.j && g2.j.candidati));
+  T('fereastra îl pune primul, „transmite deja, din Neasignate”', cz && g2.j.candidati[0].imei === Z && cz.sursa === 'neasignat' && /^transmite deja, din „Neasignate”/.test(cz.unde) && /„Neasignate” trece pe mașină/.test(cz.confirmare.defect), J(g2.j && g2.j.candidati));
   T('…și istoricul schimbărilor', (g2.j.istoric || []).length === 1 && new RegExp(K + ' → ' + Y + ' · admin · aparatul vechi: defect · „nu mai pornește”').test(g2.j.istoric[0]), J(g2.j.istoric));
   const s2 = await R('POST', '/api/devices/' + K + '/schimba-aparat', { nou: Z, vechiul: 'retur' });
-  T('schimbarea din „Neasignate": o poziție trece pe mașină', s2.s === 200 && /1 poziție trimisă din „Neasignate” a trecut pe mașină\./.test(s2.j.text) && /„retur”/.test(s2.j.text), J(s2));
-  T('…rândul lui din „Neasignate" a dispărut', !((await R('GET', '/api/admin/devices')).j || []).some((d) => d.imei === Z));
+  T('schimbarea din „Neasignate”: o poziție trece pe mașină', s2.s === 200 && /1 poziție trimisă din „Neasignate” a trecut pe mașină\./.test(s2.j.text) && /„retur”/.test(s2.j.text), J(s2));
+  T('…rândul lui din „Neasignate” a dispărut', !((await R('GET', '/api/admin/devices')).j || []).some((d) => d.imei === Z));
   const tz2 = await tracker(Z, acum - 60000, 2500);
   T('Z sună din nou și scrie pe mașină', tz2.primit && tz2.ack === 1, J(tz2));
-  T('Y (scos, „retur") nu mai e primit', !(await tracker(Y, acum - 50000, 7000)).primit);
+  T('Y (scos, „retur”) nu mai e primit', !(await tracker(Y, acum - 50000, 7000)).primit);
   await sleep(400);
   pozK = (await R('GET', '/api/history/' + K + '?from=' + encodeURIComponent(new Date(acum - 3600000).toISOString()) + '&to=' + encodeURIComponent(new Date(acum + 60000).toISOString()))).j;
   T('istoricul: 5 poziții, cu contorul continuat și peste a doua schimbare (101 km → 101 km → 101,5 km)', J(ist(pozK)) === J([100000, 100000, 101000, 101000, 101500]), J(ist(pozK)));
   stoc = ((await R('GET', '/api/stoc')).j || {}).aparate || [];
-  T('stocul: Z „montat", Y „retur"', stare(Z) === 'montat' && stare(Y) === 'retur', J([stare(Z), stare(Y)]));
+  T('stocul: Z „montat”, Y „retur”', stare(Z) === 'montat' && stare(Y) === 'retur', J([stare(Z), stare(Y)]));
 
-  // Înapoi la aparatul de la montaj, reparat: întâi în depozit, apoi „Schimbă aparatul".
+  // Înapoi la aparatul de la montaj, reparat: întâi în depozit, apoi „Schimbă aparatul”.
   const inapoiRefuz = await R('POST', '/api/devices/' + K + '/schimba-aparat', { nou: K });
-  T('aparatul de la montaj, încă „defect", nu se poate pune înapoi', inapoiRefuz.s === 400 && /nu e în stocul nostru/.test(inapoiRefuz.j.error), J(inapoiRefuz));
+  T('aparatul de la montaj, încă „defect”, nu se poate pune înapoi', inapoiRefuz.s === 400 && /nu e în stocul nostru/.test(inapoiRefuz.j.error), J(inapoiRefuz));
   await R('POST', '/api/stoc/muta', { ids: [((stoc.filter((x) => x.serie === K)[0]) || {}).id], stare: 'depozit' });
   const s3 = await R('POST', '/api/devices/' + K + '/schimba-aparat', { nou: K });
   fisa = (await R('GET', '/api/devices/' + K + '/full')).j || {};
@@ -264,6 +264,6 @@ function tracker(imei, ts, odoM) {
   await R('PUT', '/api/devices/' + V2 + '/status', { status: 'archived' });
   const gArh = await R('GET', '/api/devices/' + V2 + '/schimba-aparat');
   const pArh = await R('POST', '/api/devices/' + V2 + '/schimba-aparat', { nou: Y });
-  T('mașina arhivată: „Restaureaz-o întâi", la fereastră și la schimbare', /Restaureaz-o întâi/.test((gArh.j || {}).nuSePoate || '') && pArh.s === 400 && /Restaureaz-o întâi/.test(pArh.j.error), J([gArh.j && gArh.j.nuSePoate, pArh]));
+  T('mașina arhivată: „Restaureaz-o întâi”, la fereastră și la schimbare', /Restaureaz-o întâi/.test((gArh.j || {}).nuSePoate || '') && pArh.s === 400 && /Restaureaz-o întâi/.test(pArh.j.error), J([gArh.j && gArh.j.nuSePoate, pArh]));
   gata();
 })().catch((e) => { console.log('  ✗ proba a crăpat: ' + (e && e.stack || e)); rele++; gata(); });

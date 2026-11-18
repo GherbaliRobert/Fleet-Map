@@ -1,4 +1,4 @@
-// verify_mail_primite.js — panoul Mail al fondatorilor, etapa 2: „Primite" + „Răspunde" (Robert, 12.10: „hai cu etapa 2").
+// verify_mail_primite.js — panoul Mail al fondatorilor, etapa 2: „Primite” + „Răspunde” (Robert, 12.10: „hai cu etapa 2”).
 //
 //   node verify_mail_primite.js
 //
@@ -7,15 +7,15 @@
 // brute, făcute aici, exact ca Worker-ul. Nu pleacă niciun email adevărat: răspunsurile ajung la un Brevo FALS, local.
 // Ce păzește:
 //   1. regulile (mail_primit.js): citirea emailului (text, HTML, imaginile din corp, atașamentele, cele prea mari doar cu
-//      numele), expeditorul nedovedit, adresa noastră, subiectul „Re:", mesajul citat, anunțul fără date ale omului;
+//      numele), expeditorul nedovedit, adresa noastră, subiectul „Re:”, mesajul citat, anunțul fără date ale omului;
 //   2. ușa: fără parolă / cu parolă greșită 401, adresă străină 422, același email de două ori = un singur rând,
-//      plafonul pe expeditor (429) — iar Worker-ul duce în căsuța de rezervă orice răspuns care nu e „ok";
+//      plafonul pe expeditor (429) — iar Worker-ul duce în căsuța de rezervă orice răspuns care nu e „ok”;
 //   3. cine vede: adresa comună — toți fondatorii (citit de unul = citit); adresa personală — doar omul ei (404 / 403
 //      pentru celălalt, și la atașamente); un administrator de firmă — nimic (403);
 //   4. deschis: imaginile din corp puse de server, atașamentul se DESCARCĂ (niciodată deschis în pagină), firma
-//      expeditorului recunoscută, avertismentul la expeditorul nedovedit; „necitit", „șterge" (cu rând în audit);
-//   5. „Răspunde": pleacă de pe adresa pe care a venit emailul, la adresa de răspuns a omului, cu „Re:", cu antetele de
-//      discuție (și fără ele, dacă Brevo le refuză), apare în „Trimise" ca „Răspuns", iar emailul primit spune cine a răspuns;
+//      expeditorului recunoscută, avertismentul la expeditorul nedovedit; „necitit”, „șterge” (cu rând în audit);
+//   5. „Răspunde”: pleacă de pe adresa pe care a venit emailul, la adresa de răspuns a omului, cu „Re:”, cu antetele de
+//      discuție (și fără ele, dacă Brevo le refuză), apare în „Trimise” ca „Răspuns”, iar emailul primit spune cine a răspuns;
 //   6. anunțul: pe adresa comună la amândoi, pe cea personală doar la om; fără nume și fără subiect;
 //   7. pagina, telefonul, Worker-ul și copia: aceleași rute, aceleași cuvinte, cadrul izolat, bulina din meniu.
 'use strict';
@@ -74,22 +74,22 @@ const fals = http.createServer((req, res) => {
     m1.de_la === 'ion@client.ro' && m1.de_nume === 'Ion Pop' && m1.raspuns_catre === 'birou@client.ro' && m1.subiect === 'Întrebare despre factură' &&
     /am o întrebare/.test(m1.html) && /am o întrebare/.test(m1.text || ''), JSON.stringify({ de: m1.de_la, r: m1.raspuns_catre, s: m1.subiect, t: m1.text }));
   const tx = mp.textDinHtml('<h3>Logistica Cluj</h3><p>Avem 30 de mașini &amp; 2 remorci.</p><img src="cid:x"><style>p{}</style>');
-  T('textul făcut din HTML păstrează literele titlurilor (nu „LOGISTICA CLUJ" în citat), fără imagini și stiluri',
+  T('textul făcut din HTML păstrează literele titlurilor (nu „LOGISTICA CLUJ” în citat), fără imagini și stiluri',
     /^Logistica Cluj\n+Avem 30 de mașini & 2 remorci\.$/.test(tx), JSON.stringify(tx));
-  T('imaginea din corp rămâne „cid:" în HTML (o pune serverul la deschidere, nu umflă corpul păstrat)', /src="cid:sigla1"/.test(m1.html) && !/data:image/.test(m1.html));
+  T('imaginea din corp rămâne „cid:” în HTML (o pune serverul la deschidere, nu umflă corpul păstrat)', /src="cid:sigla1"/.test(m1.html) && !/data:image/.test(m1.html));
   const atasPdf = m1.atasamente.filter((a) => a.nume === 'Contract semnat.pdf')[0], atasImg = m1.atasamente.filter((a) => a.cid === 'sigla1')[0];
-  T('atașamentele: PDF-ul păstrat cu numele lui; imaginea din corp marcată „în corp"',
+  T('atașamentele: PDF-ul păstrat cu numele lui; imaginea din corp marcată „în corp”',
     atasPdf && atasPdf.pastrat && atasPdf.tip === 'application/pdf' && Buffer.from(atasPdf.continut).toString('base64') === PDF && atasImg && atasImg.inCorp && m1.intreg,
     JSON.stringify(m1.atasamente.map((a) => ({ n: a.nume, p: a.pastrat, c: a.inCorp }))));
   const mare = Buffer.alloc(mp.ATAS_PASTRAT_MAX + 1000, 7).toString('base64');
   const m2 = await mp.citeste(mime({ from: 'a@b.ro', subiect: 'Mare', text: 'x', atas: [{ nume: 'mic.pdf', b64: PDF }, { nume: 'film.mp4', tip: 'video/mp4', b64: mare }] }));
   const fm = m2.atasamente.filter((a) => a.nume === 'film.mp4')[0];
-  T('un atașament peste ' + Math.round(mp.ATAS_PASTRAT_MAX / 1048576) + ' MB rămâne doar cu numele; emailul nu mai e „întreg" (Worker-ul îl trimite și în rezervă)',
+  T('un atașament peste ' + Math.round(mp.ATAS_PASTRAT_MAX / 1048576) + ' MB rămâne doar cu numele; emailul nu mai e „întreg” (Worker-ul îl trimite și în rezervă)',
     fm && !fm.pastrat && fm.continut === null && m2.atasamente.filter((a) => a.nume === 'mic.pdf')[0].pastrat && m2.intreg === false);
   const lung = await mp.citeste(mime({ from: 'a@b.ro', subiect: 'Buletin', html: '<p>' + 'x'.repeat(mp.HTML_MAX + 10) + '</p>' }));
-  T('un HTML prea lung nu se păstrează tăiat: rămâne textul, emailul nu mai e „întreg"', lung.html === null && lung.intreg === false && (lung.text || '').length > 0);
+  T('un HTML prea lung nu se păstrează tăiat: rămâne textul, emailul nu mai e „întreg”', lung.html === null && lung.intreg === false && (lung.text || '').length > 0);
   const AR = (s) => [{ key: 'arc-authentication-results', line: 'ARC-Authentication-Results: i=1; mx.cloudflare.net; ' + s }];
-  T('expeditorul: DMARC picat → „picat"; SPF picat fără semnătură → „picat"; semnătură bună → „trecut"; fără antet → nimic',
+  T('expeditorul: DMARC picat → „picat”; SPF picat fără semnătură → „picat”; semnătură bună → „trecut”; fără antet → nimic',
     mp.verificare(AR('dkim=none; spf=pass; dmarc=fail')) === 'picat' && mp.verificare(AR('dkim=none; spf=softfail; dmarc=none')) === 'picat' &&
     mp.verificare(AR('dkim=pass; spf=fail; dmarc=pass')) === 'trecut' && mp.verificare([]) === null && mp.verificare(AR('spf=none')) === null);
   T('…contează antetul de SUS (al serverului care a primit), nu unul scris mai jos de expeditor',
@@ -98,9 +98,9 @@ const fals = http.createServer((req, res) => {
   T('adresa noastră: cea spusă de Cloudflare câștigă; una străină → nimic; fără ea, din To/Cc',
     mp.adresaNoastra(NOI, 'Robert.Gherbali@ratrack.ro', null, null) === 'robert.gherbali@ratrack.ro' && mp.adresaNoastra(NOI, 'x@altundeva.ro', { value: [{ address: 'contact@ratrack.ro' }] }, null) === null &&
     mp.adresaNoastra(NOI, '', { value: [{ address: 'cineva@x.ro' }] }, { value: [{ address: 'contact@ratrack.ro' }] }) === 'contact@ratrack.ro');
-  T('subiectul răspunsului: „Re:" o singură dată', mp.subiectRaspuns('Ofertă') === 'Re: Ofertă' && mp.subiectRaspuns('RE: Ofertă') === 'RE: Ofertă' && mp.subiectRaspuns('Răspuns: x') === 'Răspuns: x' && mp.subiectRaspuns('') === 'Re: (fără subiect)');
+  T('subiectul răspunsului: „Re:” o singură dată', mp.subiectRaspuns('Ofertă') === 'Re: Ofertă' && mp.subiectRaspuns('RE: Ofertă') === 'RE: Ofertă' && mp.subiectRaspuns('Răspuns: x') === 'Răspuns: x' && mp.subiectRaspuns('') === 'Re: (fără subiect)');
   const c = mp.citat({ de_nume: 'Ion Pop', de_la: 'ion@client.ro', trimis_la: new Date('2026-10-12T08:30:00Z'), text: 'Salut\nAm o întrebare' });
-  T('mesajul citat: ziua și ora României, cine a scris, fiecare rând cu „> "', /Pe 12\.10\.2026, la 11:30, Ion Pop <ion@client\.ro> a scris:\n> Salut\n> Am o întrebare$/.test(c), JSON.stringify(c));
+  T('mesajul citat: ziua și ora României, cine a scris, fiecare rând cu „> ”', /Pe 12\.10\.2026, la 11:30, Ion Pop <ion@client\.ro> a scris:\n> Salut\n> Am o întrebare$/.test(c), JSON.stringify(c));
   const cl = mp.citat({ de_la: 'a@b.ro', text: 'cuvânt '.repeat(2000) });
   T('…tăiat la ' + mp.CITAT_MAX + ' de caractere, cu „[…]"', cl.length < mp.CITAT_MAX * 1.3 && /\[…\]$/.test(cl));
   const pr = mp.pentruRaspuns({ catre: 'contact@ratrack.ro', de_la: 'ion@client.ro', raspuns_catre: 'birou@client.ro', subiect: 'X', text: 'y' });
@@ -108,7 +108,7 @@ const fals = http.createServer((req, res) => {
   const h = mp.cuImagini('<img src="cid:a"><img src="cid:b"><img src="cid:c">', [{ cid: 'a', tip: 'image/png', octeti: 10, continut_b64: 'QUJD' },
     { cid: 'b', tip: 'application/pdf', octeti: 10, continut_b64: 'QUJD' }, { cid: 'c', tip: 'image/png', octeti: mp.IMAGINE_IN_CORP_MAX + 1, continut_b64: 'QUJD' }]);
   T('imaginile din corp: doar imagini, doar până la ' + Math.round(mp.IMAGINE_IN_CORP_MAX / 1048576) + ' MB', h === '<img src="data:image/png;base64,QUJD"><img src="cid:b"><img src="cid:c">', h);
-  // Robert, 14.10: „nu pot să văd imaginile din mailuri" — o poză de telefon (3–5 MB) trecea de 2 MB și rămânea „cid:", iar
+  // Robert, 14.10: „nu pot să văd imaginile din mailuri” — o poză de telefon (3–5 MB) trecea de 2 MB și rămânea „cid:”, iar
   // poza trimisă ca atașament (iPhone) se vedea doar ca nume de fișier.
   T('o poză de telefon încape: imaginea din corp se arată până la cât se păstrează pe un email (cel puțin 10 MB)',
     mp.IMAGINE_IN_CORP_MAX === mp.ATAS_PASTRAT_MAX && mp.ATAS_PASTRAT_MAX >= 10 * 1048576);
@@ -119,22 +119,22 @@ const fals = http.createServer((req, res) => {
   T('pozele atașate se arată sub email: cele care nu sunt deja în corp, doar imagini de pixeli (fără SVG), doar cele păstrate',
     JSON.stringify(ia.map((x) => x.id)) === '[2,3]' && ia[0].src === 'data:image/jpeg;base64,QUJD' && ia[0].nume === 'IMG_1.jpg', JSON.stringify(ia));
   const a1 = mp.anunt('contact@ratrack.ro', 1), a3 = mp.anunt('contact@ratrack.ro', 3), a20 = mp.anunt('contact@ratrack.ro', 20);
-  T('anunțul: „Email nou", „3 emailuri noi", „20 de emailuri noi" — fără nume, fără subiect',
+  T('anunțul: „Email nou”, „3 emailuri noi”, „20 de emailuri noi” — fără nume, fără subiect',
     a1.titlu === 'Email nou pe contact@ratrack.ro' && a3.titlu === '3 emailuri noi pe contact@ratrack.ro' && a20.titlu === '20 de emailuri noi pe contact@ratrack.ro' && /ca să le citești/.test(a3.corp));
 
   // ─── 7. Pagina, telefonul, Worker-ul, copia (fără server) ─────────────────────────────────────────
   console.log('7. Pagina, telefonul, Worker-ul, copia');
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-  const BLOC = (PAG.match(/── începe „Panoul Mail"[\s\S]*?── sfârșit „Panoul Mail" ──/) || [''])[0];
-  T('pagina: filele Primite / Trimise (și celelalte dosare), cu rutele serverului (listă, deschis, necitit, șters = acțiunea „sterge", atașament, bulina)',
+  const BLOC = (PAG.match(/── începe „Panoul Mail”[\s\S]*?── sfârșit „Panoul Mail” ──/) || [''])[0];
+  T('pagina: filele Primite / Trimise (și celelalte dosare), cu rutele serverului (listă, deschis, necitit, șters = acțiunea „sterge”, atașament, bulina)',
     ['/api/mail/primite', '/api/mail/necitite', "/necitit'", "'/atasamente/'", "'/api/mail/actiune'"].every((r) => BLOC.indexOf(r) >= 0) &&
     /window\.raxMailSterge = function \(id\) \{ raxMailActiune\('sterge', \[\{ sursa: 'primit', id: Number\(id\) \}\]\); \};/.test(BLOC) && /window\.raxMailFila = function/.test(BLOC));
-  T('pagina: emailul PRIMIT în cadru izolat (fără scripturi), linkurile în altă filă, imaginile din afară oprite până la „Arată imaginile"',
+  T('pagina: emailul PRIMIT în cadru izolat (fără scripturi), linkurile în altă filă, imaginile din afară oprite până la „Arată imaginile”',
     /if \(primit\) f\.setAttribute\('sandbox', 'allow-popups allow-popups-to-escape-sandbox'\);\s*else f\.setAttribute\('sandbox', ''\);/.test(BLOC) &&
     /img-src ' \+ \(!primit \|\| cuImagini \? 'https: ' : ''\) \+ 'data:/.test(BLOC) && /<base target="_blank">/.test(BLOC) && /raxMailImagini/.test(BLOC));
-  T('pagina: „Răspunde" ia adresa, destinatarul, subiectul și citatul de la server (pentruRaspuns) și trimite raspunsLa',
+  T('pagina: „Răspunde” ia adresa, destinatarul, subiectul și citatul de la server (pentruRaspuns) și trimite raspunsLa',
     /m\.pentruRaspuns\.subiect/.test(BLOC) && /corp\.raspunsLa = _mail\.raspunsLa/.test(BLOC) && !/'Re: '/.test(BLOC));
-  T('pagina: bulina pe rândul „Mail", pornită doar la fondatori, reîmprospătată de anunț; anunțul duce în Mail → Primite',
+  T('pagina: bulina pe rândul „Mail”, pornită doar la fondatori, reîmprospătată de anunț; anunțul duce în Mail → Primite',
     /<span>Mail<\/span><span class="nav-mail-nr" id="nav-mail-nr"/.test(PAG) && /currentUser\.role === 'superadmin' && window\._mailNumara\) \{ window\._mailNumara\(\);/.test(PAG) &&
     /notif\.type === 'mail_nou' && window\._mailNumara\) window\._mailNumara\(\)/.test(PAG) && /_notifDate\[id\]\.mail\) \{ closeNotifications\(\); if \(window\.raxMailFila\) window\.raxMailFila\('primite', true\); goSistem\('mail'\);/.test(PAG));
   T('pagina: atributele cheamă funcții de pe window, nu scriu în variabile', !/on(click|input)="_mail\./.test(BLOC));
@@ -154,9 +154,9 @@ const fals = http.createServer((req, res) => {
   T('telefonul: aceleași cuvinte ca pagina', !lipsa.length, lipsa.join(' | '));
   T('telefonul: emailul primit tot în cadru izolat; imaginile din afară doar la cerere', (MOB.match(/<iframe sandbox=""/g) || []).length === 2 && /srcdoc=\{csp\(imagini\)/.test(MOB));
   T('telefonul: pozele atașate sub email, ca pe pagină (o atingere = descărcare)', /\(deschis\.imagini \|\| \[\]\)\.length > 0 &&/.test(MOB) && /onClick=\{\(\) => atasament\(\{ id: i\.id, nume: i\.nume \}\)\}/.test(MOB));
-  T('telefonul: anunțul „Email nou" duce în Mail', /if \(tip === 'mail_nou'\) return '\/admin\/mail';/.test(PUSH) && /TIPURI_CU_LOC = \[[^\]]*'mail_nou'/.test(PUSH));
+  T('telefonul: anunțul „Email nou” duce în Mail', /if \(tip === 'mail_nou'\) return '\/admin\/mail';/.test(PUSH) && /TIPURI_CU_LOC = \[[^\]]*'mail_nou'/.test(PUSH));
   const W = fs.readFileSync(path.join(__dirname, 'tools', 'mail-worker.mjs'), 'utf8');
-  T('Worker-ul: trimite emailul întreg cu parola și adresa; la orice „nu" (sau „nu întreg") îl duce în rezervă; fără rezervă, îl refuză (expeditorul află)',
+  T('Worker-ul: trimite emailul întreg cu parola și adresa; la orice „nu” (sau „nu întreg”) îl duce în rezervă; fără rezervă, îl refuză (expeditorul află)',
     /'X-RA-Secret': env\.RA_SECRET, 'X-RA-Catre': message\.to/.test(W) && /body: raw/.test(W) && /if \(ok && intreg\) return;/.test(W) &&
     /if \(env\.BACKUP\) \{ await message\.forward\(env\.BACKUP\); return; \}/.test(W) && /message\.setReject\(/.test(W));
   const backup = require('./backup');
@@ -231,7 +231,7 @@ const fals = http.createServer((req, res) => {
     const a0 = await json('GET', '/api/mail/adrese', R);
     T('panoul spune că primirea e pornită (parola de primire e pusă pe server)', a0.j.primire === true);
     const hl0 = ((await json('GET', '/api/admin/health', R)).j.checks || []).filter((c) => c.key === 'mail_primit')[0] || {};
-    T('„Stare producție" are rândul „Email primit": pornit, niciun email încă', hl0.level === 'ok' && /^pornit — niciun email primit încă$/.test(hl0.detail || ''), JSON.stringify(hl0));
+    T('„Stare producție” are rândul „Email primit”: pornit, niciun email încă', hl0.level === 'ok' && /^pornit — niciun email primit încă$/.test(hl0.detail || ''), JSON.stringify(hl0));
 
     // ─── 2. Ușa ───
     const raw1 = mime({ from: '"Șef Transport" <sef@transport-primit.ro>', replyTo: 'birou@transport-primit.ro', subiect: 'Contractul semnat',
@@ -292,12 +292,12 @@ const fals = http.createServer((req, res) => {
     const dF = (await json('GET', '/api/mail/primite/' + (lR.filter((m) => m.subiect === 'Confirmați contul')[0] || {}).id, A)).j;
     T('expeditorul nedovedit: avertismentul îl scrie serverul', /poate fi fals/.test(dF.avertisment || '') && d.avertisment === null, String(dF.avertisment));
     const nc = await json('POST', '/api/mail/primite/' + contractR.id + '/necitit', A);
-    T('„Marchează necitit" (de Alin, pe adresa comună): înapoi necitit pentru toți', nc.status === 200 && (await json('GET', '/api/mail/necitite', R)).j.total === 2);
+    T('„Marchează necitit” (de Alin, pe adresa comună): înapoi necitit pentru toți', nc.status === 200 && (await json('GET', '/api/mail/necitite', R)).j.total === 2);
 
     // ─── 5. Răspunde ───
     const nB = primite.length;
     const pr0 = d.pentruRaspuns || {};
-    T('ce se pune în „Răspunde" vine de la server: de pe contact@, către adresa de răspuns, „Re:", mesajul citat',
+    T('ce se pune în „Răspunde” vine de la server: de pe contact@, către adresa de răspuns, „Re:”, mesajul citat',
       pr0.de_la === 'contact@ratrack.ro' && pr0.catre === 'birou@transport-primit.ro' && pr0.subiect === 'Re: Contractul semnat' && /Șef Transport <sef@transport-primit\.ro> a scris:\n> /.test(pr0.text || ''),
       JSON.stringify(pr0).slice(0, 300));
     const gres = await json('POST', '/api/mail/trimite', R, { de_la: 'robert.gherbali@ratrack.ro', catre: pr0.catre, subiect: pr0.subiect, text: 'Mulțumim!' + pr0.text, raspunsLa: contractR.id });
@@ -314,7 +314,7 @@ const fals = http.createServer((req, res) => {
     T('emailul primit spune cine a răspuns și când (văzut și de Robert); e citit', dupa.raspuns && /^Răspuns de Alin Tîlvar, pe \d\d\.\d\d\.\d{4}, la \d\d:\d\d$/.test(dupa.raspuns.text) && dupa.citit === true,
       JSON.stringify(dupa.raspuns));
     const tr = ((await json('GET', '/api/mail/trimise', R)).j.mailuri || []).filter((m) => m.subiect === 'Re: Contractul semnat')[0] || {};
-    T('în „Trimise": felul „Răspuns", cu firma expeditorului și cu cine l-a scris', tr.fel === 'raspuns' && tr.felText === 'Răspuns' && tr.firma === 'Transport Primit SRL' && tr.cine === 'Alin Tîlvar',
+    T('în „Trimise”: felul „Răspuns”, cu firma expeditorului și cu cine l-a scris', tr.fel === 'raspuns' && tr.felText === 'Răspuns' && tr.firma === 'Transport Primit SRL' && tr.cine === 'Alin Tîlvar',
       JSON.stringify(tr).slice(0, 250));
     const nC = primite.length;
     const rs2 = await json('POST', '/api/mail/trimite', R, { de_la: 'robert.gherbali@ratrack.ro', catre: 'oferte@furnizor.ro', subiect: 'Re: ANTET Oferta de aparate', text: 'Mulțumesc.', raspunsLa: ofertaR.id });
@@ -337,7 +337,7 @@ const fals = http.createServer((req, res) => {
     const pm = await primeste(mime({ from: 'arhiva@client.ro', subiect: 'Toate pozele', text: 'Vedeți atașat.', atas: [{ nume: 'poze.zip', tip: 'application/zip', b64: mare }] }), 'contact@ratrack.ro');
     const pmD = (await json('GET', '/api/mail/primite/' + pm.j.id, R)).j;
     const pmAt = await fetch(B + '/api/mail/primite/' + pm.j.id + '/atasamente/' + ((pmD.atasamente || [])[0] || {}).id, { headers: { Cookie: R } });
-    T('emailul prea mare: intră, răspunde „nu întreg" (ca Worker-ul să-l ducă și în rezervă), atașamentul doar cu numele, textul scris de server',
+    T('emailul prea mare: intră, răspunde „nu întreg” (ca Worker-ul să-l ducă și în rezervă), atașamentul doar cu numele, textul scris de server',
       pm.status === 200 && pm.j.intreg === false && (pmD.atasamente || [])[0].pastrat === false && /prea mare/.test(pmD.neintreg || '') && pmAt.status === 404,
       JSON.stringify(pm.j) + ' ' + pmAt.status);
     // Pozele (14.10): una mare lipită în text (3 MB, ca de pe telefon) și una trimisă ca atașament lângă un text simplu (iPhone).
@@ -353,7 +353,7 @@ const fals = http.createServer((req, res) => {
       b64l(Buffer.from('JPEG proba')), '--M1--', ''].join('\r\n');
     const pMare = await primeste(Buffer.from(rawMare), 'contact@ratrack.ro'), pIph = await primeste(Buffer.from(rawIph), 'contact@ratrack.ro');
     const dMare = (await json('GET', '/api/mail/primite/' + pMare.j.id, R)).j, dIph = (await json('GET', '/api/mail/primite/' + pIph.j.id, R)).j;
-    T('o poză de 3 MB lipită în text se vede (nu mai rămâne „cid:")', pMare.status === 200 && /<img src="data:image\/jpeg;base64,/.test(dMare.html || '') && !/cid:/.test(dMare.html || ''),
+    T('o poză de 3 MB lipită în text se vede (nu mai rămâne „cid:”)', pMare.status === 200 && /<img src="data:image\/jpeg;base64,/.test(dMare.html || '') && !/cid:/.test(dMare.html || ''),
       String(dMare.html || '').slice(0, 120));
     T('poza trimisă ca atașament lângă un text simplu (iPhone) se arată sub email și se poate descărca', pIph.status === 200 && (dIph.imagini || []).length === 1 &&
       dIph.imagini[0].nume === 'IMG_0001.jpg' && dIph.imagini[0].src === 'data:image/jpeg;base64,' + Buffer.from('JPEG proba').toString('base64') &&
@@ -367,13 +367,13 @@ const fals = http.createServer((req, res) => {
     const dinCos = (await json('GET', '/api/mail/primite/' + idSt, R)).j;
     const inPrimite = ((await json('GET', '/api/mail/primite', R)).j.mailuri || []).some((m) => m.id === idSt);
     const cosR = ((await json('GET', '/api/mail/cos', R)).j.mailuri || []).some((m) => m.sursa === 'primit' && m.id === idSt);
-    T('„Șterge" (Alin, pe adresa comună): emailul pleacă din Primite în Coș, pentru toți (Robert îl vede în Coș)',
+    T('„Șterge” (Alin, pe adresa comună): emailul pleacă din Primite în Coș, pentru toți (Robert îl vede în Coș)',
       st.status === 200 && dinCos.dosar === 'cos' && !inPrimite && cosR, st.status + ' ' + dinCos.dosar + ' ' + inPrimite + ' ' + cosR);
     const stDef = await json('DELETE', '/api/mail/primite/' + idSt + '?definitiv=1', A);
     const dupaSt = await json('GET', '/api/mail/primite/' + idSt, R);
     const aud = await json('GET', '/api/audit?limit=200', S);
     const randuri = Array.isArray(aud.j) ? aud.j : (aud.j.rows || aud.j.entries || aud.j.logs || []);
-    T('…din Coș, „Șterge definitiv": dispare pentru toți, cu rânduri în audit (fără conținut)',
+    T('…din Coș, „Șterge definitiv”: dispare pentru toți, cu rânduri în audit (fără conținut)',
       stDef.status === 200 && dupaSt.status === 404 && randuri.some((r) => r.action === 'mail_sterge') && randuri.some((r) => r.action === 'mail_definitiv') &&
       !JSON.stringify(randuri).includes('Dați clic'), stDef.status + ' ' + dupaSt.status);
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }

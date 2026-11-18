@@ -10,8 +10,8 @@ import './detail.css';
 import './firma.css';
 import './companii.css';
 
-// „Mută între companii" (fondatori) — al doilea cartonaș din Companii pe web (RAX_MOVE_CFG / raxMove*).
-// Trei feluri: vehicule, utilizatori, șoferi — unul câte unul (butonul „Mută" din rând) sau în lot (bifele +
+// „Mută între companii” (fondatori) — al doilea cartonaș din Companii pe web (RAX_MOVE_CFG / raxMove*).
+// Trei feluri: vehicule, utilizatori, șoferi — unul câte unul (butonul „Mută” din rând) sau în lot (bifele +
 // bara de jos, o singură cerere). Aceleași rute ca web-ul, toate requireSuperadmin; regulile stau pe server
 // (un aparat arhivat nu se mută, o firmă nu rămâne fără niciun administrator, demo-ul e doar pentru aparatele
 // simulate). Compania demo nu apare: nici în liste, nici ca destinație. Adresa: /admin/muta.
@@ -30,7 +30,7 @@ const CFG: Record<Fel, Cfg> = {
     et: 'Utilizatori', label: 'utilizatori', icon: 'user', gol: 'Niciun utilizator.', id: (u) => String(u.id),
     nume: (u) => u.full_name || u.username, sub: (u) => [u.username, u.role].filter(Boolean).join(' · '),
     pastreaza: (u) => u.role !== 'superadmin', // super-adminul e al platformei, nu se mută
-    // „Neasignat" NU pentru utilizatori: un cont fără firmă ar sări peste abonament și module.
+    // „Neasignat” NU pentru utilizatori: un cont fără firmă ar sări peste abonament și module.
     faraNeasignat: true,
   },
   drivers: {
@@ -56,7 +56,7 @@ export function MutaCompanii() {
   function citesteFirme() { return Api.companies().then((l) => setFirme(Array.isArray(l) ? l : [])).catch(() => {}); }
   function citeste(f: Fel) {
     setErr('');
-    // Fără arhivate: nu se mută (serverul le refuză și în lot), deci n-au ce căuta în listă și sub „Bifează tot".
+    // Fără arhivate: nu se mută (serverul le refuză și în lot), deci n-au ce căuta în listă și sub „Bifează tot”.
     const p = f === 'devices' ? Api.devicesLite() : f === 'users' ? Api.usersLite() : Api.driversLite();
     return p.then((l) => setDate((d) => ({ ...d, [f]: Array.isArray(l) ? l : [] })))
       .catch((e: any) => { setErr(e?.message || 'Eroare la încărcare'); setDate((d) => ({ ...d, [f]: [] })); });
@@ -83,7 +83,7 @@ export function MutaCompanii() {
       return { ...b, [fel]: m };
     });
   }
-  const numeDest = (v: string) => (v === '' ? 'NEASIGNAT' : '„' + (numeFirma[v] || '#' + v) + '"');
+  const numeDest = (v: string) => (v === '' ? 'NEASIGNAT' : '„' + (numeFirma[v] || '#' + v) + '”');
   const laFinal = async () => { await Promise.all([citeste(fel), citesteFirme()]); };
 
   function mutaUnul(x: any) {
@@ -92,7 +92,7 @@ export function MutaCompanii() {
     const v = dest[id] != null ? dest[id] : acum;
     if (v === acum) { showToast('Deja acolo', true); return; }
     setIntreb({
-      t: 'Mută „' + cfg.nume(x) + '" la ' + numeDest(v) + '?',
+      t: 'Mută „' + cfg.nume(x) + '” la ' + numeDest(v) + '?',
       ok: async () => {
         const co = v === '' ? null : parseInt(v);
         if (fel === 'devices') await Api.moveDevice(id, co);
@@ -146,7 +146,7 @@ export function MutaCompanii() {
         <button class="h-btn" onClick={laFinal} aria-label="Reîncarcă"><Icon name="refresh" size={20} /></button>
       </header>
       <div class="content co-page">
-        <div class="fm-note">Alege tipul, bifează rândurile, selectează destinația în bara de jos și apasă „Mută selectate". Poți muta unul singur cu butonul „Mută" din rând.</div>
+        <div class="fm-note">Alege tipul, bifează rândurile, selectează destinația în bara de jos și apasă „Mută selectate”. Poți muta unul singur cu butonul „Mută” din rând.</div>
         <div class="co-tabs" role="tablist" style="margin-bottom:10px">
           {(Object.keys(CFG) as Fel[]).map((k) => (
             <button role="tab" aria-selected={fel === k} class={fel === k ? 'on' : ''} onClick={() => { setFel(k); setQ(''); }}>

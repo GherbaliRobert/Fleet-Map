@@ -1,4 +1,4 @@
-// Catalogul steagurilor CAN — nume pe românește, iconiță și ce înseamnă „aprins".
+// Catalogul steagurilor CAN — nume pe românește, iconiță și ce înseamnă „aprins”.
 //
 // Sursa e `can_flags.js` de pe server, adus prin `GET /api/can-flags`. Panoul CAN din web citește
 // EXACT aceleași date, prin `/js/can-flags.js`. NU scrie aici o listă proprie de etichete: așa au
@@ -21,7 +21,7 @@ export interface CanFlag {
 export interface CanGroup { key: string; label: string; icon: string; mi: IconName; }
 export interface CanCatalog {
   groups: CanGroup[]; flags: CanFlag[]; kindText: Record<string, [string, string]>; undecoded: string[];
-  /** ordinea plăcuțelor din banda „Starea mașinii" — vine de la server, ca să nu fie două ordini */
+  /** ordinea plăcuțelor din banda „Starea mașinii” — vine de la server, ca să nu fie două ordini */
   stateBand?: string[];
   /** adaptorul în repaus: ce plăcuțe nu se arată atunci și nota de deasupra (can_flags.js) */
   repaus?: { ascunse: string[]; text: string };
@@ -31,7 +31,7 @@ export interface CanCatalog {
 // proaspăt (ca aplicația să meargă fără semnal), deci un câmp nou lipsește la prima deschidere de
 // după actualizare — și ecranul construit pe el iese gol.
 //   v2: `mereu`, `ascuns`, treapta ca o singură plăcuță
-//   v3: `stateBand` (ordinea benzii „Starea mașinii") — fără el, banda de martori de sub hartă
+//   v3: `stateBand` (ordinea benzii „Starea mașinii”) — fără el, banda de martori de sub hartă
 //       rămânea goală pe o mașină fără martori aprinși.
 //   v4: `repaus` (adaptorul CAN în repaus: frâna de mână și pedalele nu se arată, cu nota lor)
 const KEY = 'can_flags_v4';
@@ -69,13 +69,13 @@ export async function loadCanCatalog(): Promise<CanCatalog | null> {
   return await _fromServer();
 }
 
-/** Textul stării: „Deschisă" / „Închisă", „Aprins" / „Stins". Aceleași cuvinte ca în web. */
+/** Textul stării: „Deschisă” / „Închisă”, „Aprins” / „Stins”. Aceleași cuvinte ca în web. */
 export function canStateText(cat: CanCatalog, f: CanFlag, aprins: boolean): string {
   const per = f.st || cat.kindText[f.kind] || cat.kindText.info || ['Da', 'Nu'];
   return per[aprins ? 0 : 1];
 }
 
-/** Culoarea stării aprinse. „info"/„code" rămân neutre: în paleta noastră verdele înseamnă „e bine". */
+/** Culoarea stării aprinse. „info”/„code” rămân neutre: în paleta noastră verdele înseamnă „e bine”. */
 export function canColor(kind: CanKind): string {
   if (kind === 'warn') return 'var(--red)';
   if (kind === 'open') return 'var(--orange)';
@@ -123,7 +123,7 @@ export function canMerge(tot: Record<string, any>): boolean {
   if (c !== undefined && c !== null && c !== '') return Number(c) === 1 || c === true;
   return Number(tot.can_engine_rpm) > 0 || Number(tot.can_vehicle_speed) > 0 || Number(tot.speed_io) > 3;
 }
-/** Adaptorul CAN chiar doarme: el o spune ȘI mașina nu merge. În mers, „în repaus" e un semnal greșit. */
+/** Adaptorul CAN chiar doarme: el o spune ȘI mașina nu merge. În mers, „în repaus” e un semnal greșit. */
 export function canInRepaus(tot: Record<string, any>): boolean { return !!tot._sf_can_sleep_mode && !canMerge(tot); }
 
 /** `io` = valorile aparatului (contactul, turația, viteza), ca regula de repaus să știe dacă mașina merge. */
@@ -133,7 +133,7 @@ export function canBenzi(cat: CanCatalog, flat: Record<string, any>, io?: any): 
   const peCheie: Record<string, CanFlag> = {};
   cat.flags.forEach((f) => { peCheie[f.key] = f; });
   const puse = new Set<string>();
-  // În repaus se ascund stările vechi; în mers, „în repaus" e un semnal greșit și nu se arată.
+  // În repaus se ascund stările vechi; în mers, „în repaus” e un semnal greșit și nu se arată.
   const ascunseRepaus = (cat.repaus && cat.repaus.ascunse) || REPAUS_IMPLICIT;
   const ascuns = (k: string) => (k === '_sf_can_sleep_mode' ? !repaus : repaus && ascunseRepaus.indexOf(k) >= 0);
   // Ordinea vine de la server. Dacă lipsește (catalog salvat mai vechi, server mai bătrân), NU

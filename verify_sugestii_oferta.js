@@ -47,11 +47,11 @@ T('la CAN se poate alege: FMC130 + LV-CAN200 sau FMC150', /seg\('lvcan', 'FMC130
 T('la camioane se propun Tahograful (28 / 90 de zile) și e-Transport', /cardului șoferului la 28 de zile și a tahografului la 90/.test(html) && /<b>e-Transport<\/b>/.test(html));
 
 sect('3. Butonul pune recomandarea — și doar el');
-const aplica = html.slice(html.indexOf('window.raxOfAplicaRecomandarea = function'), html.indexOf('// ── sfârșit „recomandarea pentru flotă" ──'));
-T('„Aplică" pune cantitățile la pașii 4 și 5', ['of-dq130', 'of-dq150', 'of-dq650', 'of-dqLvCan', 'of-qGps', 'of-qLvCan', 'of-qCanInc', 'of-qFms'].every((id) => aplica.indexOf("pune('" + id + "'") >= 0));
-T('...și le ține minte ca „scrise de mână" (un număr de mașini schimbat după nu le calcă)', /_ofAtinse\[id\] = true;/.test(aplica));
+const aplica = html.slice(html.indexOf('window.raxOfAplicaRecomandarea = function'), html.indexOf('// ── sfârșit „recomandarea pentru flotă” ──'));
+T('„Aplică” pune cantitățile la pașii 4 și 5', ['of-dq130', 'of-dq150', 'of-dq650', 'of-dqLvCan', 'of-qGps', 'of-qLvCan', 'of-qCanInc', 'of-qFms'].every((id) => aplica.indexOf("pune('" + id + "'") >= 0));
+T('...și le ține minte ca „scrise de mână” (un număr de mașini schimbat după nu le calcă)', /_ofAtinse\[id\] = true;/.test(aplica));
 T('...fără să atingă prețurile', !/of-dFmc|of-mGps|of-pPlain/.test(aplica));
-// Alin, 28.09: „DA — oferta iese corectă din prima". Completarea automată folosește ACEEAȘI regulă (rulată aici).
+// Alin, 28.09: „DA — oferta iese corectă din prima”. Completarea automată folosește ACEEAȘI regulă (rulată aici).
 const srcOf = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
 const completeaza = new Function('document', '_ofN', '_ofCanMod', '_ofAtinse', '_ofPropuneTarife',
   srcOf('function _ofRecomandare(', 'function _ofRecAcum(') + srcOf('function _ofPropune(id, val) {', '// Ce se propune, din câte vehicule')

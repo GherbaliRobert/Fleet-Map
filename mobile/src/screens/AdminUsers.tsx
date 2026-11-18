@@ -15,17 +15,17 @@ import { LINK_CONTURI, TITLU_RA, arataEticheta, cuPachetFirmei, randConturi } fr
 
 // PAROLA NU EXISTĂ (decizie 16.09): nimeni nu scrie parola altcuiva. Contul se deschide pe o adresă de email,
 // omul primește un link și își pune singur parola. Dacă emailul nu poate pleca, serverul întoarce linkul și îl
-// arătăm pe ecran, ca adminul să-l ducă mai departe. Un singur buton pe rând: „Trimite link de parolă".
+// arătăm pe ecran, ca adminul să-l ducă mai departe. Un singur buton pe rând: „Trimite link de parolă”.
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 // Numele standard din listă, ca pe web (ROLE_LABELS). Numele date de firmă le bat (vin din /api/company-roles).
-// UN SINGUR NUME pentru administratorul firmei. Rândurile vechi pot avea încă „admin" — scriu la fel.
+// UN SINGUR NUME pentru administratorul firmei. Rândurile vechi pot avea încă „admin” — scriu la fel.
 const LIST_NAME: Record<string, string> = { company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer', superadmin: 'Super-admin' };
 // Explicația din paranteză din formularul de adăugare (web: #new-role). La redenumire se schimbă doar numele.
 const EXPL: Record<string, string> = { manager: 'toată flota, editează', dispatcher: 'atribuit + confirmă alerte', viewer: 'vede doar vehiculele atribuite' };
-// Rolurile care au „Vede toată flota" din oficiu (ROLE_PERMISSIONS.viewAll pe server). Firma îl poate tăia din manager.
+// Rolurile care au „Vede toată flota” din oficiu (ROLE_PERMISSIONS.viewAll pe server). Firma îl poate tăia din manager.
 const VIEW_ALL_BASE = ['superadmin', 'company_admin', 'admin', 'manager'];
 const ADMIN_ROLES = ['company_admin', 'admin', 'superadmin'];
-// Zilele de liniște după care „văzut" se scrie portocaliu (USR_LINISTE pe web).
+// Zilele de liniște după care „văzut” se scrie portocaliu (USR_LINISTE pe web).
 const LINISTE_ZILE = 40;
 const LINK_SFAT_NOU = 'Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.';
 
@@ -41,7 +41,7 @@ function zileDe(v: any): number | null {
   if (!t || isNaN(t)) return null;
   return Math.floor((Date.now() - t) / 86400000);
 }
-// „azi · ieri · acum 9 zile", ca pe web (_usrCandVazut).
+// „azi · ieri · acum 9 zile”, ca pe web (_usrCandVazut).
 function candVazut(u: any) {
   const z = zileDe(u.last_login);
   if (z === null) return { text: 'n-a intrat niciodată', niciodata: true, vechi: false, zile: 0 };
@@ -59,7 +59,7 @@ function expira(u: any): { text: string; aproape: boolean } | null {
   if (zile <= 3) return { text: 'expiră în ' + zile + (zile === 1 ? ' zi' : ' zile'), aproape: true };
   return { text: 'acces până la ' + new Date(t).toLocaleDateString('ro-RO'), aproape: false };
 }
-// Lista din „Avea: …" se taie la opt, ca pe web (_usrListaScurta).
+// Lista din „Avea: …” se taie la opt, ca pe web (_usrListaScurta).
 function listaScurta(l: string[]) {
   return l.length <= 8 ? l.join(', ') : (l.slice(0, 8).join(', ') + ' și încă ' + (l.length - 8));
 }
@@ -71,7 +71,7 @@ export function AdminUsers() {
   const myUsername = me.value?.username;
   const isSuper = !!me.value?.isSuper;
   const [items, setItems] = useState<any[] | null>(null);
-  // Pachetul RA Insight al firmei (doar la administratorul ei — noi nu avem o firmă a noastră aici): conturile se dau din „Pachet și conturi".
+  // Pachetul RA Insight al firmei (doar la administratorul ei — noi nu avem o firmă a noastră aici): conturile se dau din „Pachet și conturi”.
   const [pachetRa, setPachetRa] = useState<any | null>(null);
   const [roles, setRoles] = useState<any[]>([]);
   const [err, setErr] = useState('');
@@ -127,14 +127,14 @@ export function AdminUsers() {
     if (u.role_slug) { const r = byKey[u.role_slug]; return (r && (r.nume || r.numeStandard)) || u.role_slug_name || 'Rol propriu'; }
     return (byKey[u.role] && byKey[u.role].nume) || LIST_NAME[u.role] || u.role;
   }
-  // „Vede toată flota": din rolul de bază, minus tăierea făcută de firmă (drepturi → viewAll).
+  // „Vede toată flota”: din rolul de bază, minus tăierea făcută de firmă (drepturi → viewAll).
   function seesAll(key: string, baseFallback?: string) {
     if (!VIEW_ALL_BASE.includes(baseOf(key, baseFallback))) return false;
     const r = byKey[key];
     const d = r && Array.isArray(r.drepturi) ? r.drepturi.find((x: any) => x.cheie === 'viewAll') : null;
     return !(d && d.are === false);
   }
-  // Serverul socotește „vede toată flota" cu tăierile firmei omului (sees_all) — singura sursă corectă pentru
+  // Serverul socotește „vede toată flota” cu tăierile firmei omului (sees_all) — singura sursă corectă pentru
   // super-admin, care nu primește rolurile altor firme. Calculul local rămâne doar pentru un server vechi.
   const vedeTot = (u: any) => u.role === 'superadmin' || (typeof u.sees_all === 'boolean' ? u.sees_all : seesAll(userRoleKey(u), u.role));
   const faraAcces = (u: any) => !vedeTot(u) && (Number(u.device_count) || 0) + (Number(u.group_count) || 0) === 0;
@@ -149,7 +149,7 @@ export function AdminUsers() {
   //  • super-adminul, la ADĂUGARE → doar cont de platformă: ecranul ăsta e, la noi, pentru un coleg nou la RA Track.
   //    Administratorul unei firme client se face din Companii → firma → Utilizatori; restul, de adminul ei.
   //  • super-adminul, la EDITARE → toate rolurile standard, ca pe web.
-  // „Client" nu se mai oferă (aceleași drepturi ca Viewer).
+  // „Client” nu se mai oferă (aceleași drepturi ca Viewer).
   function roleOptions(forAdd: boolean): RoleOpt[] {
     if (isSuper && forAdd) return [{ v: 'superadmin', baza: 'superadmin', label: 'Super-admin (PLATFORMĂ — toate companiile)' }];
     const std = (k: string, short: string): RoleOpt => {
@@ -207,7 +207,7 @@ export function AdminUsers() {
     if (a) a();
   }
   // Un singur buton pentru amândouă nevoile: invitația care n-a ajuns și parola uitată (ca pe web, _usrLinkParola).
-  // Pornit din foaia „Editează", refuzul (429 după 5 pe oră, cont dezactivat) rămâne în foaie până îl închide omul;
+  // Pornit din foaia „Editează”, refuzul (429 după 5 pe oră, cont dezactivat) rămâne în foaie până îl închide omul;
   // un toast de 2-3 secunde pierdea exact propozițiile astea. De pe rândul din listă rămâne toastul.
   async function trimiteLink(u: any, dinFoaie?: boolean) {
     if (!u || u.id == null) return;
@@ -233,7 +233,7 @@ export function AdminUsers() {
   function roleRetryNotice(t: AccessTarget, opt: RoleOpt, why: string, invite: InviteNote) {
     setNotice({
       err: true,
-      text: 'Contul ' + t.username + ' a fost creat, dar rolul „' + roleName(opt.v) + '" nu s-a putut pune (' + why + '). '
+      text: 'Contul ' + t.username + ' a fost creat, dar rolul „' + roleName(opt.v) + '” nu s-a putut pune (' + why + '). '
         + 'Până atunci contul rămâne ' + roleName('viewer') + ' și nu vede nicio mașină.' + (invite ? ' ' + invite.text : ''),
       retry: { label: 'Pune din nou rolul', run: () => { retryRole(t, opt, invite); } },
     });
@@ -242,7 +242,7 @@ export function AdminUsers() {
     setRetrying(true);
     try {
       await Api.updateUser(t.id, { role: opt.v });
-      setNotice({ text: 'Rolul „' + roleName(opt.v) + '" a fost pus pe contul ' + t.username + '.' + (invite ? ' ' + invite.text : ''), err: !!(invite && invite.err) });
+      setNotice({ text: 'Rolul „' + roleName(opt.v) + '” a fost pus pe contul ' + t.username + '.' + (invite ? ' ' + invite.text : ''), err: !!(invite && invite.err) });
       await reload();
       if (!seesAll(opt.v, opt.baza)) setAccessFor(t);
     } catch (e: any) {
@@ -261,7 +261,7 @@ export function AdminUsers() {
     }
     if (full_name.length < 2) { setFormErr('Completează numele afișat — așa apare persoana în aplicație.'); return; }
     if (isEdit) {
-      // Un cont FOLOSIT, căruia i se schimbă adresa, e aproape întotdeauna o încercare de a-l „preda" altui om.
+      // Un cont FOLOSIT, căruia i se schimbă adresa, e aproape întotdeauna o încercare de a-l „preda” altui om.
       // Istoricul rămâne pe cont, iar adresa de autentificare NU se schimbă de aici (ca pe web).
       const emailNou = String(form.email || '').trim();
       if (editing.last_login && emailNou && emailNou !== (editing.email || '')) {
@@ -274,7 +274,7 @@ export function AdminUsers() {
     // Acordarea rolului de platformă e ireversibilă din perspectiva datelor văzute → confirmare explicită.
     if (form.role === 'superadmin' && (!isEdit || editing.role !== 'superadmin')) {
       const who = isEdit ? editing.username : username;
-      if (!confirm('Acorzi rolul de SUPER-ADMIN?\n\n„' + who + '" va vedea și administra TOATE companiile, toate vehiculele și facturarea platformei — nu doar o companie.')) return;
+      if (!confirm('Acorzi rolul de SUPER-ADMIN?\n\n„' + who + '” va vedea și administra TOATE companiile, toate vehiculele și facturarea platformei — nu doar o companie.')) return;
     }
     setSaving(true);
     try {
@@ -282,12 +282,12 @@ export function AdminUsers() {
         // Emailul pleacă TĂIAT (ca pe web): un spațiu scăpat ar ajunge în bază, iar linkul de parolă ar pleca pe o adresă greșită.
         const body: any = { full_name, email: String(form.email || '').trim() || null, phone: form.phone || null, functie: String(form.functie || '').trim(), active: form.active };
         // Rolul pleacă DOAR dacă adminul l-a schimbat: altfel o simplă corectură de telefon ar muta un om de pe
-        // rolul propriu pe cel standard (sau ar fi refuzată ca „Rol invalid" la rolurile pe care nu le poate atinge).
+        // rolul propriu pe cel standard (sau ar fi refuzată ca „Rol invalid” la rolurile pe care nu le poate atinge).
         if (!lockRole && !isSelf && form.role !== initialRole) {
           body.role = form.role;
           // Rol STANDARD ales → spunem explicit că omul iese de pe rolul propriu (ca pe web). Serverul păstrează
-          // rolul propriu când primește doar rolul standard din care derivă: fără asta, „Dispecer" ales pentru un
-          // om cu rol propriu făcut din Dispecer se salva „cu succes", dar omul rămânea pe rolul propriu.
+          // rolul propriu când primește doar rolul standard din care derivă: fără asta, „Dispecer” ales pentru un
+          // om cu rol propriu făcut din Dispecer se salva „cu succes”, dar omul rămânea pe rolul propriu.
           const ales = optOf(form.role);
           if (!(ales && ales.propriu)) body.role_slug = null;
         }
@@ -321,7 +321,7 @@ export function AdminUsers() {
         }
         const role = form.role;
         await reload();
-        // Rolurile fără „Vede toată flota" au nevoie de vehicule atribuite: deschidem alegerea lor (ca pe web) —
+        // Rolurile fără „Vede toată flota” au nevoie de vehicule atribuite: deschidem alegerea lor (ca pe web) —
         // DUPĂ foaia cu linkul, dacă apare, ca să nu se suprapună.
         const needsAccess = created && created.id != null && role !== 'superadmin' && !seesAll(role, opt ? opt.baza : role);
         const deschideAcces = needsAccess ? () => setAccessFor(target) : undefined;
@@ -340,8 +340,8 @@ export function AdminUsers() {
     finally { setSaving(false); }
   }
 
-  // ── „Scoate din firmă" ──────────────────────────────────────────────────────────────────────
-  // Contul DISPARE (nu se dezactivează); dacă omul revine, i se face altul. Nu există traseu de „înlocuire"
+  // ── „Scoate din firmă” ──────────────────────────────────────────────────────────────────────
+  // Contul DISPARE (nu se dezactivează); dacă omul revine, i se face altul. Nu există traseu de „înlocuire”
   // (decizie 16.09): adminul pune drepturile pe omul nou de mână — de-aia fereastra spune întâi CE avea omul,
   // pe nume (numere de înmatriculare, grupe), fiindcă după ștergere legăturile se duc cu contul.
   async function ceAvea(u: any): Promise<string> {
@@ -410,8 +410,8 @@ export function AdminUsers() {
   const seatRand = randConturi(items || [], pachetRa);
 
   // ── Căutare, ordine, pastile, Admini/Utilizatori (ca pe web: _usrPotrivit, _usrTrece, _usrOrdoneaza) ──
-  // Pastilele se socotesc pe lista ÎNTREAGĂ, nu pe ce a rămas după căutare — altfel „N-au intrat niciodată: 0"
-  // ar minți doar fiindcă ai scris ceva în casetă. O pastilă cu 0 nu ocupă loc. „Fără acces" e gospodăria
+  // Pastilele se socotesc pe lista ÎNTREAGĂ, nu pe ce a rămas după căutare — altfel „N-au intrat niciodată: 0”
+  // ar minți doar fiindcă ai scris ceva în casetă. O pastilă cu 0 nu ocupă loc. „Fără acces” e gospodăria
   // adminului de firmă (el împarte mașinile) — la noi nu apare.
   const toti = items || [];
   const eAdmin = (u: any) => ADMIN_ROLES.includes(u.role);
@@ -425,7 +425,7 @@ export function AdminUsers() {
       default: return true;
     }
   };
-  // Fără diacritice: „stefan" îl găsește pe „Ștefan"; prinde și numele rolului dat de firmă (listLabel știe de rolul propriu).
+  // Fără diacritice: „stefan” îl găsește pe „Ștefan”; prinde și numele rolului dat de firmă (listLabel știe de rolul propriu).
   const q = faraDiacritice(cauta).trim();
   const potrivit = (u: any) => !q || faraDiacritice([u.username, u.full_name, u.email, u.phone, listLabel(u), u.company_name].join(' ')).indexOf(q) >= 0;
   const zileLogare = (u: any) => zileDe(u.last_login);
@@ -530,7 +530,7 @@ export function AdminUsers() {
             </span>
           </div>
         )}
-        {/* Spune de ce e gol: „n-ai pe nimeni" și „nu s-a potrivit nimeni" sunt două lucruri diferite. */}
+        {/* Spune de ce e gol: „n-ai pe nimeni” și „nu s-a potrivit nimeni” sunt două lucruri diferite. */}
         {items != null && shownItems.length === 0 && !err && (
           <div class="adm-empty"><Icon name="user" size={40} class="ic" />
             <div>{toti.length ? 'Niciun cont nu se potrivește. Șterge din căutare sau apasă „Toți”.' : 'Niciun utilizator.'}</div>
@@ -546,8 +546,8 @@ export function AdminUsers() {
             {l.map((u) => {
               const vaz = candVazut(u);
               const exp = expira(u);
-              // „Fără acces" e gospodăria adminului de firmă (el împarte mașinile) — la fondator semnul nu se aprinde.
-              // Pe un cont DEZACTIVAT sfaturile n-au rost („atribuie-i vehicule", „dezactivează-l"): acolo tac.
+              // „Fără acces” e gospodăria adminului de firmă (el împarte mașinile) — la fondator semnul nu se aprinde.
+              // Pe un cont DEZACTIVAT sfaturile n-au rost („atribuie-i vehicule”, „dezactivează-l”): acolo tac.
               const activ = u.active !== false;
               const faraAccesClient = !isSuper && activ && faraAcces(u);
               const sfat = faraAccesClient

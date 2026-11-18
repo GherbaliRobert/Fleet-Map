@@ -9,7 +9,7 @@
 // ─── Decizia de proiectare care contează ────────────────────────────────────────────────────────
 // Tabelele NU sunt scrise aici într-o listă. Se descoperă la rulare, din catalogul bazei, și pentru
 // fiecare se caută cum se leagă de o companie. Motivul: schema crește prin ALTER TABLE, iar o listă
-// scrisă de mână rămâne tăcut în urmă. La o obligație legală, „credeam că am șters" e cea mai urâtă
+// scrisă de mână rămâne tăcut în urmă. La o obligație legală, „credeam că am șters” e cea mai urâtă
 // cădere cu putință — mai rea decât o eroare, pentru că nu se vede.
 //
 // Ce NU poate fi legat de o companie e RAPORTAT explicit, nu ignorat: preferăm să spunem „tabela

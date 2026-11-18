@@ -7,7 +7,7 @@
 //
 // Modelul nu completează câmpuri. El doar transcrie ce vede — sarcina la care greșește cel mai
 // puțin. Extragerea rămâne în docparse.js, unde e testată (test_docparse.js) și unde o greșeală
-// se repară cu o regulă, nu cu „poate merge mai bine promptul".
+// se repară cu o regulă, nu cu „poate merge mai bine promptul”.
 //
 // Nimic de aici nu scrie în baza de date. Ieșirea e o PROPUNERE; omul confirmă în interfață.
 
@@ -28,9 +28,9 @@ const PROMPT_TRANSCRIE =
 // Varianta naivă — `items.map(it => it.str).join(' ')` — pare rezonabilă și e greșită în două feluri,
 // amândouă văzute pe o poliță RCA adevărată:
 //   • Un PDF poate emite fiecare LITERĂ ca element separat (titluri cu spațiere mărită). Lipite cu
-//     spațiu, „ORIGINAL" devine „O R I G I N A L" — nepotrivibil cu orice regulă.
+//     spațiu, „ORIGINAL” devine „O R I G I N A L” — nepotrivibil cu orice regulă.
 //   • Rândurile dispar, iar coloanele unui tabel se amestecă: eticheta unui câmp ajunge lipită de
-//     valoarea altuia. De acolo veneau emitenți de forma „9. NUMELE SI ADRESA".
+//     valoarea altuia. De acolo veneau emitenți de forma „9. NUMELE SI ADRESA”.
 //
 // Corect: grupăm elementele pe RÂND (după coordonata verticală), le ordonăm pe orizontală, și punem
 // spațiu doar unde există o distanță reală între ele.
@@ -73,7 +73,7 @@ async function _textDinPdf(buf) {
   return randuriTot.join('\n');
 }
 
-// Un PDF „are text" dacă extragerea produce destul conținut cât să merite parsarea. Un scan pur
+// Un PDF „are text” dacă extragerea produce destul conținut cât să merite parsarea. Un scan pur
 // întoarce câteva caractere rătăcite — acela merge la model, ca imagine… doar că modelul nostru
 // primește imagini, nu PDF-uri, deci scanul-PDF rămâne deocamdată refuzat politicos (vezi scan()).
 const PRAG_TEXT_UTIL = 80;
@@ -151,7 +151,7 @@ async function scan({ b64, mime, tip = 'auto', onUsage }) {
             ' "power_kw" (putere, kW), "max_weight_legal" (masa maximă, kg),' +
             ' "passenger_seats" (număr locuri) — toate ca NUMERE, fără unitate\n\n' +
             'Reguli: dacă un câmp nu apare în text, pune null. NU inventa. Datele românești sunt zi.lună.an — ' +
-            'convertește-le. Dacă vezi un interval („valabil de la X până la Y"), X e issue_date și Y e expiry_date.\n\n' +
+            'convertește-le. Dacă vezi un interval („valabil de la X până la Y”), X e issue_date și Y e expiry_date.\n\n' +
             'TEXT:\n' + String(text).slice(0, 6000) + '\n\nRăspunde doar cu obiectul JSON.',
         }],
         maxTokens: 300,
@@ -166,7 +166,7 @@ async function scan({ b64, mime, tip = 'auto', onUsage }) {
           // Datele trec prin ACELAȘI validator ca restul — modelul poate întoarce o dată imposibilă,
           // iar o dată greșită de expirare e mai rea decât una lipsă.
           // Numerele trec prin aceleași plaje de plauzibilitate ca la reguli: modelul poate
-          // întoarce „1598 cm3" ca text sau o putere de 99999, iar o valoare absurdă
+          // întoarce „1598 cm3” ca text sau o putere de 99999, iar o valoare absurdă
           // completată automat nu mai e verificată de nimeni.
           if (NUMERICE[k]) {
             const n = parseInt(String(v).replace(/[^0-9-]/g, ''), 10);
@@ -195,7 +195,7 @@ async function scan({ b64, mime, tip = 'auto', onUsage }) {
     tipDetectat: rezultat.tip,
     campuri: rezultat.campuri,
     incredere: rezultat.incredere,
-    // textul transcris se întoarce ca omul să poată verifica „de unde a luat asta" în ecranul
+    // textul transcris se întoarce ca omul să poată verifica „de unde a luat asta” în ecranul
     // de confirmare — trunchiat, nu e nevoie de tot pentru context
     text: String(text).slice(0, 4000),
   };

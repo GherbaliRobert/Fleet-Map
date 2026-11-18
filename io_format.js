@@ -282,8 +282,8 @@ function formatIoLabel(key, catalogById) {
     'can_engine_oil_pressure': 'Presiune ulei',
     'can_intake_air_temp': 'Temp. aer admisie',
     'can_outside_temp': 'Temp. exterioara',
-    // Semnale de bază — lipseau, deci se generau din cheie („Can Engine Rpm"). Sunt cele mai
-    // des văzute din toată aplicația: panoul CAN, raportul „CAN detaliat", explicațiile IO.
+    // Semnale de bază — lipseau, deci se generau din cheie („Can Engine Rpm”). Sunt cele mai
+    // des văzute din toată aplicația: panoul CAN, raportul „CAN detaliat”, explicațiile IO.
     'can_engine_rpm': 'Turatie motor',
     'can_engine_temp': 'Temp. lichid racire',
     'can_engine_load': 'Sarcina motor',

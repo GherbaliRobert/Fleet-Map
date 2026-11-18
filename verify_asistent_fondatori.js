@@ -1,6 +1,6 @@
-// verify_asistent_fondatori.js — asistentul fondatorilor, etapa 1, pasul 1 (macheta „tot un chat", Alin, 30.10: „1. da, 2. da,
-// 3. da"): pe verticala Fondator, „Acasă" e chatul asistentului; primul mesaj = salutul, cele 4 cifre de azi (aceleași ca pe
-// cartonașele vechi) și „Azi la noi" (pe reguli, cel mult 5 rânduri, în ordinea hotărâtă). Bula verde de pe verticala Fondator
+// verify_asistent_fondatori.js — asistentul fondatorilor, etapa 1, pasul 1 (macheta „tot un chat”, Alin, 30.10: „1. da, 2. da,
+// 3. da"): pe verticala Fondator, „Acasă” e chatul asistentului; primul mesaj = salutul, cele 4 cifre de azi (aceleași ca pe
+// cartonașele vechi) și „Azi la noi” (pe reguli, cel mult 5 rânduri, în ordinea hotărâtă). Bula verde de pe verticala Fondator
 // duce acolo. Clientul nu vede nimic nou.
 //
 //   node verify_asistent_fondatori.js                 (regula + pagina + culorile + serverul pornit)
@@ -23,7 +23,7 @@ if (process.argv.indexOf('--faza=seed') >= 0) {
     await db.createInvoice({ companyId: co, series: 'RAT', number: 950, year: an, fullNumber: 'RAT-' + an + '-00950', type: 'invoice', status: 'issued',
       issueDate: scadenta - 15 * ZI, dueDate: scadenta, periodStart: scadenta - 45 * ZI, periodEnd: scadenta - 15 * ZI,
       subtotal: 1025.49, vatAmount: 215.35, total: 1240.84, lines: [{ desc: 'Abonament monitorizare GPS', qty: 1, unitPrice: 1025.49, net: 1025.49 }] });
-    // Soldul Anthropic (30.10, Alin: „da acum"): 20 $ scriși acum 20 de zile. Cheltuieli pe Haiku 4.5 (1 $ la un milion de
+    // Soldul Anthropic (30.10, Alin: „da acum”): 20 $ scriși acum 20 de zile. Cheltuieli pe Haiku 4.5 (1 $ la un milion de
     // tokeni intrați): 5 $ ÎNAINTE de scriere (nu se scad), 3 $ acum 15 zile și 3,5 $ acum 3 zile (se scad) → rămân 13,50 $;
     // ritmul ultimelor 7 zile = 3,5 $ ÷ 7 = 0,50 $ pe zi → 27 de zile. Socoteala veche spunea 20 $.
     await db.setSetting('anthropic_sold', JSON.stringify({ usd: 20, la: acum - 20 * ZI }));
@@ -44,23 +44,23 @@ const sect = (s) => console.log('\n' + s);
 const P = (f) => path.join(__dirname, f);
 const citeste = (f) => fs.readFileSync(P(f), 'utf8').replace(/\r\n/g, '\n');
 
-sect('1. Regula „Azi la noi" (azi_la_noi.js)');
+sect('1. Regula „Azi la noi” (azi_la_noi.js)');
 const ACUM = Date.parse('2026-10-30T06:05:00Z');   // vineri, 08:05 pe ora României
 const ZI = 86400000, ORA = 3600000;
 const F = (o) => Object.assign({ companyId: 3, firma: 'Trans Expres', numar: 'RAT-2026-0142', totalRon: 1240, zileIntarziere: 12, zilePanaLaOprire: 3 }, o || {});
 let r = A.randuri({ acum: ACUM, nume: 'Alin Tilvar' });
-T('fără nimic de văzut: zero rânduri și „totul e în regulă"', r.randuri.length === 0 && r.deVazut === 0 && r.deVazutText === 'totul e în regulă', JSON.stringify(r));
+T('fără nimic de văzut: zero rânduri și „totul e în regulă”', r.randuri.length === 0 && r.deVazut === 0 && r.deVazutText === 'totul e în regulă', JSON.stringify(r));
 T('ziua din bara de sus, pe ora României', r.zi === 'Vineri, 30 octombrie', r.zi);
 T('ora din antet', r.ora === '08:05', r.ora);
 T('salutul cu prenumele, după ora României', r.salut === '**Bună dimineața, Alin!** Iată cum stăm azi.', r.salut);
-T('seara: „Bună seara", fără prenume dacă lipsește', A.salut('', Date.parse('2026-10-30T17:30:00Z')) === '**Bună seara!** Iată cum stăm azi.');
-T('la prânz: „Bună ziua"', /^\*\*Bună ziua, Robert!/.test(A.salut('Robert Gherbali', Date.parse('2026-10-30T10:00:00Z'))));
+T('seara: „Bună seara”, fără prenume dacă lipsește', A.salut('', Date.parse('2026-10-30T17:30:00Z')) === '**Bună seara!** Iată cum stăm azi.');
+T('la prânz: „Bună ziua”', /^\*\*Bună ziua, Robert!/.test(A.salut('Robert Gherbali', Date.parse('2026-10-30T10:00:00Z'))));
 
 r = A.randuri({ acum: ACUM, facturi: [F()] });
 T('o factură întârziată: rândul roșu, cu firma, numărul, suma, zilele și oprirea', r.randuri.length === 1 && r.randuri[0].nivel === 'r' &&
   r.randuri[0].text === '**Trans Expres**: factura RAT-2026-0142 (1.240 lei) e întârziată de 12 zile; accesul se oprește în 3 zile.', JSON.stringify(r.randuri[0]));
 T('și duce în fișa firmei, pe fila Facturi', JSON.stringify(r.randuri[0].tinta) === JSON.stringify({ fel: 'firma', id: 3, fila: 'facturi' }));
-T('„azi" și „oprit" se spun pe față', /accesul se oprește azi\.$/.test(A.randuri({ acum: ACUM, facturi: [F({ zilePanaLaOprire: 0 })] }).randuri[0].text) &&
+T('„azi” și „oprit” se spun pe față', /accesul se oprește azi\.$/.test(A.randuri({ acum: ACUM, facturi: [F({ zilePanaLaOprire: 0 })] }).randuri[0].text) &&
   /accesul e oprit\.$/.test(A.randuri({ acum: ACUM, facturi: [F({ zilePanaLaOprire: -1 })] }).randuri[0].text));
 T('o factură în euro își poartă moneda', /\(500 EUR\)/.test(A.randuri({ acum: ACUM, facturi: [F({ totalRon: 500, moneda: 'EUR' })] }).randuri[0].text));
 r = A.randuri({ acum: ACUM, facturi: [F({ zilePanaLaOprire: 8 }), F({ companyId: 4, firma: 'Logistic Est', totalRon: 1025, zilePanaLaOprire: 1 }), F({ companyId: 5, firma: 'Agro Nord', totalRon: 650.4, zilePanaLaOprire: 12 })] });
@@ -70,10 +70,10 @@ T('și duce în Companii', JSON.stringify(r.randuri[0].tinta) === JSON.stringify
 
 r = A.randuri({ acum: ACUM, cereri: [{ nr: 14, firma: 'Cargo Vest', titlu: 'Nu transmite', la: ACUM - 5 * ORA }] });
 T('o cerere nepreluată: cu numărul, firma, problema și de cât așteaptă', r.randuri[0].text === 'Cererea nr. 14 de la **Cargo Vest** („Nu transmite”) așteaptă de 5 ore.', r.randuri[0].text);
-T('… spre „Cereri de la clienți"', r.randuri[0].buton === 'Cereri de la clienți' && r.randuri[0].tinta.tab === 'cereri');
-T('„40 de minute", „2 zile", „1 zi" — cu „de" unde trebuie', A.deCand(ACUM - 40 * 60000, ACUM) === '40 de minute' && A.deCand(ACUM - 50 * ORA, ACUM) === '2 zile' && A.deCand(ACUM - 25 * ORA, ACUM) === '1 zi');
+T('… spre „Cereri de la clienți”', r.randuri[0].buton === 'Cereri de la clienți' && r.randuri[0].tinta.tab === 'cereri');
+T('„40 de minute”, „2 zile”, „1 zi” — cu „de” unde trebuie', A.deCand(ACUM - 40 * 60000, ACUM) === '40 de minute' && A.deCand(ACUM - 50 * ORA, ACUM) === '2 zile' && A.deCand(ACUM - 25 * ORA, ACUM) === '1 zi');
 r = A.randuri({ acum: ACUM, demo: [{ nume: 'Ion Pop SRL', la: ACUM - 2 * ORA }] });
-T('o cerere de cont demo nouă (doar firma, fără date personale), spre „Cereri demo"', r.randuri[0].text === 'O cerere de cont demo nouă, de la **Ion Pop SRL**, de 2 ore.' && r.randuri[0].tinta.tab === 'demoreq', r.randuri[0].text);
+T('o cerere de cont demo nouă (doar firma, fără date personale), spre „Cereri demo”', r.randuri[0].text === 'O cerere de cont demo nouă, de la **Ion Pop SRL**, de 2 ore.' && r.randuri[0].tinta.tab === 'demoreq', r.randuri[0].text);
 
 const sf = Date.parse('2026-11-30T10:00:00Z'), pv = Date.parse('2026-10-31T10:00:00Z');
 r = A.randuri({ acum: ACUM, contracteExpira: [{ companyId: 5, firma: 'Agro Nord', sfarsit: sf, ultimaZiPreaviz: pv }] });
@@ -86,7 +86,7 @@ T('preavizul trecut și contractul expirat se spun altfel (expiratul e roșu)',
 r = A.randuri({ acum: ACUM, contracteTrimise: [{ companyId: 6, firma: 'Fresh Food', trimisLa: ACUM - 6 * ZI }] });
 T('trimis la semnat de 6 zile: încă nu e de văzut (pragul e 7)', r.randuri.length === 0 && A.ZILE_LA_SEMNAT === 7);
 r = A.randuri({ acum: ACUM, contracteTrimise: [{ companyId: 6, firma: 'Fresh Food', trimisLa: ACUM - 9 * ZI }] });
-T('de 9 zile: „așteaptă semnătura de 9 zile"', r.randuri[0] && r.randuri[0].text === 'Contractul cu **Fresh Food** așteaptă semnătura de 9 zile.', JSON.stringify(r.randuri));
+T('de 9 zile: „așteaptă semnătura de 9 zile”', r.randuri[0] && r.randuri[0].text === 'Contractul cu **Fresh Food** așteaptă semnătura de 9 zile.', JSON.stringify(r.randuri));
 
 r = A.randuri({ acum: ACUM, montajMaine: [{ firma: 'Cargo Vest', instalator: 'Ion', masini: 10, lipsa: ['client'] }] });
 T('montajul de mâine neconfirmat: cine nu l-a confirmat', r.randuri[0].text === 'Montajul de mâine la **Cargo Vest** (Ion, 10 mașini) nu e confirmat de client.', r.randuri[0].text);
@@ -95,7 +95,7 @@ r = A.randuri({ acum: ACUM, termenMontaj: [{ firma: 'Logistic Est', text: 'mai s
 T('termenul de montaj: textul vine gata de la server', r.randuri[0].text === 'Montajul la **Logistic Est**: mai sunt 5 zile (10 din 50 de mașini montate).' && r.randuri[0].nivel === 'w', r.randuri[0].text);
 
 r = A.randuri({ acum: ACUM, montajDeFacturat: [{ firma: 'Logistic Est', masini: 18, perioada: '20–26.10' }] });
-T('montaj gata de facturat, spre „Montaj de facturat"', r.randuri[0].text === 'Montaj gata de facturat: **Logistic Est**, 18 mașini (20–26.10).' && r.randuri[0].tinta.fel === 'facturare' && r.randuri[0].tinta.sectiune === 'montaj', JSON.stringify(r.randuri[0]));
+T('montaj gata de facturat, spre „Montaj de facturat”', r.randuri[0].text === 'Montaj gata de facturat: **Logistic Est**, 18 mașini (20–26.10).' && r.randuri[0].tinta.fel === 'facturare' && r.randuri[0].tinta.sectiune === 'montaj', JSON.stringify(r.randuri[0]));
 r = A.randuri({ acum: ACUM, luna: 'octombrie', abonamentNeemis: [{ firma: 'Agro Nord' }] });
 T('abonamentul neemis după 1', r.randuri[0].text === 'Abonamentul pe octombrie nu e emis încă la **Agro Nord**.', r.randuri[0].text);
 
@@ -106,13 +106,13 @@ T('stocul sub prag', r.randuri[0].text === 'Stocul de **Teltonika FMC130** a sc�
 
 // Soldul Anthropic NU mai e un rând aici din 04.11: are banda lui, mereu la vedere, sub cele patru cifre (sold_ai.js, verify_sold_ai.js).
 r = A.randuri({ acum: ACUM, firma: { emailEroare: 'Brevo refuză adresa serverului nostru.', emitentLipsa: ['numele firmei', 'CUI-ul'], soldUsd: 4.1, soldZile: 12.4 } });
-T('firma noastră: emailul și „Date emitent", pe rând (soldul are banda lui)', r.randuri.length === 2 &&
+T('firma noastră: emailul și „Date emitent”, pe rând (soldul are banda lui)', r.randuri.length === 2 &&
   r.randuri[0].text === 'Emailurile nu pleacă. Brevo refuză adresa serverului nostru.' &&
   r.randuri[1].text === '„Date emitent” incomplete: lipsesc numele firmei și CUI-ul. Fără ele nu pleacă nicio factură.', JSON.stringify(r.randuri.map((x) => x.text)));
 T('… spre Stare producție și Date emitent', r.randuri[0].tinta.tab === 'dashboard' && r.randuri[1].tinta.fel === 'emitent');
 T('soldul nu mai e niciodată un rând (nici pe terminate) și nici pragul vechi de 14 zile', A.randuri({ acum: ACUM, firma: { soldUsd: 1, soldZile: 1 } }).randuri.length === 0 && typeof A.ZILE_SOLD === 'undefined');
 
-// Ordinea și tăietura: firma noastră (pusă prima în date) iese ultima; peste 5, „N de văzut · primele 5".
+// Ordinea și tăietura: firma noastră (pusă prima în date) iese ultima; peste 5, „N de văzut · primele 5”.
 r = A.randuri({ acum: ACUM, firma: { emitentLipsa: ['CUI-ul'] }, stocSubPrag: [{ model: 'FMC130', buc: 1, prag: 3 }], montajDeFacturat: [{ firma: 'X', masini: 2 }],
   montajMaine: [{ firma: 'Y', lipsa: ['instalator'] }], contracteExpira: [{ companyId: 1, firma: 'Z', sfarsit: sf, ultimaZiPreaviz: pv }],
   cereri: [{ nr: 1, firma: 'W', titlu: 'Altceva', la: ACUM - ORA }], facturi: [F()] });
@@ -125,24 +125,24 @@ T('sumele: 1.240 lei, 12.345 lei, 4,10 $, 0,05 $', A.lei(1240) === '1.240 lei' &
 const sursaRegula = citeste('azi_la_noi.js');
 T('regula e curată: fără bază de date, fără server, fără model', !/require\('\.\/(db|server|ai)'\)/.test(sursaRegula) && !/fetch\(|pool\./.test(sursaRegula));
 
-sect('2. Pagina: „Acasă" = chatul asistentului (verticala Fondator)');
+sect('2. Pagina: „Acasă” = chatul asistentului (verticala Fondator)');
 const html = citeste('public/index.html');
-const i0 = html.indexOf('// ── începe „asistentul fondatorilor" ──'), i1 = html.indexOf('// ── sfârșit „asistentul fondatorilor" ──');
+const i0 = html.indexOf('// ── începe „asistentul fondatorilor” ──'), i1 = html.indexOf('// ── sfârșit „asistentul fondatorilor” ──');
 const bloc = i0 > 0 && i1 > i0 ? html.slice(i0, i1) : '';
 T('blocul paginii se găsește, între repere', !!bloc);
 T('pagina are locul ei (#asistent-view) și e legată ca RA Insight', /<div id="asistent-view" class="modal-overlay"><\/div>/.test(html) &&
   /asistent: 'asistent-view'/.test(html) && /asistent: 'renderAsistentPage'/.test(html));
 const acasa = (html.match(/<button class="nav-item nav-sub"[^>]*>(?:(?!<\/button>)[\s\S])*?<span>Acasă<\/span><\/button>/) || [])[0] || '';
-T('„Acasă" din meniul nostru deschide chatul (și se aprinde prin data-view)', /data-view="asistent"/.test(acasa) && /navGo\(this, function\(\)\{ showView\('asistent'\); \}\)/.test(acasa), acasa);
+T('„Acasă” din meniul nostru deschide chatul (și se aprinde prin data-view)', /data-view="asistent"/.test(acasa) && /navGo\(this, function\(\)\{ showView\('asistent'\); \}\)/.test(acasa), acasa);
 const gestiune = html.slice(html.indexOf('data-group="gestiune"') - 80, html.indexOf('data-group="module"'));
-T('… și stă în grupa „Gestiune" de pe verticala Fondator (clientul n-o vede)', /data-vert="fondator" data-group="gestiune"/.test(gestiune) && gestiune.indexOf(acasa) > 0);
+T('… și stă în grupa „Gestiune” de pe verticala Fondator (clientul n-o vede)', /data-vert="fondator" data-group="gestiune"/.test(gestiune) && gestiune.indexOf(acasa) > 0);
 T('după autentificare, fondatorul aterizează în chat', /if \(vertCurenta\(suntemNoi, setOchiCitit\(window\.localStorage\)\) === 'fondator'\) \{\s*try \{ showView\('asistent'\); \} catch/.test(html));
 T('trecerea pe verticala Fondator duce tot acolo', /showView\(ochi === 'firma' \? 'localizare' : 'asistent'\)/.test(html));
 T('bula verde: pe verticala Fondator → chatul asistentului, altfel RA Insight', /window\.raxToggleAI = function \(\) \{ showView\(window\._asfVerticalaNoastra && window\._asfVerticalaNoastra\(\) \? 'asistent' : 'insight'\); \};/.test(html));
-T('… iar „verticala noastră" = super-admin pe verticala Fondator', /window\._asfVerticalaNoastra = function \(\) \{\s*return !!\(window\.currentUser && currentUser\.isSuper\) && vertCurenta\(true, setOchiCitit\(window\.localStorage\)\) === 'fondator';/.test(html));
+T('… iar „verticala noastră” = super-admin pe verticala Fondator', /window\._asfVerticalaNoastra = function \(\) \{\s*return !!\(window\.currentUser && currentUser\.isSuper\) && vertCurenta\(true, setOchiCitit\(window\.localStorage\)\) === 'fondator';/.test(html));
 T('bula se ascunde cât stai în chat, ca în RA Insight', /currentView === 'insight' \|\| currentView === 'asistent'\)\) \$\('rax-fabs'\)\.style\.display = 'none'/.test(html) &&
   /if \(name !== 'insight' && name !== 'asistent' && window\._raxUpdateFabs\)/.test(html) && /fb\.style\.display = 'none'/.test(bloc));
-T('pagina cere „Azi la noi" de la server și cifrele din aceeași socoteală ca cartonașele', /fetch\('\/api\/admin\/azi-la-noi'/.test(bloc) && /window\._acasaCifre\(\)/.test(bloc));
+T('pagina cere „Azi la noi” de la server și cifrele din aceeași socoteală ca cartonașele', /fetch\('\/api\/admin\/azi-la-noi'/.test(bloc) && /window\._acasaCifre\(\)/.test(bloc));
 T('stilurile sunt ale chatului RA Insight (insp / azi / chat); din pasul 4, cu lista conversațiilor în stânga', /class="insp asf" id="asf"/.test(bloc) && /'insp-a'/.test(bloc) && /'azi-r apas'/.test(bloc) && /window\._chatInsigna\(/.test(bloc));
 // Textele de la server se pun ca TEXT: ce primește innerHTML e doar scris în pagină (iconițe, scheletul) — o iconiță venită din
 // date trece întâi prin /^fa-[a-z-]+$/.
@@ -150,10 +150,10 @@ const dreapta = []; bloc.replace(/\.innerHTML\s*=\s*([^;]+);/g, (_, x) => { drea
 const curat = (x) => /^'/.test(x) && !/\b(j|r|c|p|d|t|x|rd|b)\.(text|salut|l|t|buton|zi|gol|deVazutText|nume|firma)\b/.test(x.replace(/\/\^fa-\[a-z-\]\+\$\/\.test\(c\.ic \|\| ''\) \? c\.ic : /, ''));
 T('innerHTML doar cu bucăți scrise în pagină, niciodată cu text de la server', dreapta.length >= 5 && dreapta.every(curat), dreapta.filter((x) => !curat(x)).join(' | ') || String(dreapta.length));
 T('îngroșatul din text se face cu noduri <b>, fără innerHTML', /function textGros\(t\)[\s\S]{0,400}el\('b', null, m\[1\]\)/.test(bloc));
-T('un singur loc pentru „unde duce un clic" (firma, neasignate, facturare, emitent, secțiune)', /window\._asfDu = function \(t\)/.test(bloc) &&
+T('un singur loc pentru „unde duce un clic” (firma, neasignate, facturare, emitent, secțiune)', /window\._asfDu = function \(t\)/.test(bloc) &&
   ['firma', 'neasignate', 'facturare', 'emitent', 'sectiune'].every((f) => bloc.indexOf("t.fel === '" + f + "'") > 0));
 T('rândurile și cifrele trec prin el', (bloc.match(/window\._asfDu\(/g) || []).length >= 2);
-T('o eroare de server nu lasă pagina goală: mesaj + „Reîncarcă"', /Nu am putut încărca „Azi la noi”/.test(bloc) && /'Reîncarcă'/.test(bloc));
+T('o eroare de server nu lasă pagina goală: mesaj + „Reîncarcă”', /Nu am putut încărca „Azi la noi”/.test(bloc) && /'Reîncarcă'/.test(bloc));
 T('o cerere veche întârziată nu suprascrie una nouă (tura)', /if \(tura !== _tura\) return;/.test(bloc));
 
 // Cele 4 cifre: ACEEAȘI socoteală ca pe cartonașe — funcțiile comune, rulate, dau exact ce scriau cartonașele înainte.
@@ -183,15 +183,15 @@ const useri = [[], [{ last_login: 1 }], [{ last_login: null }, { last_login: 2 }
 T('Utilizatori (la noi): aceeași scriere ca înainte, pe 4 cazuri', f._usrStareAcasa && useri.every((l) => f._adashStareHtml(f._usrStareAcasa(l, false)) === vechiUseri(l)),
   f._usrStareAcasa ? useri.map((l) => f._adashStareHtml(f._usrStareAcasa(l, false))).join(' | ') : 'lipsește');
 const vizibil = (h) => String(h).replace(/<[^>]+>/g, '');
-// 30.10 (Alin: „da acum"): firmele suspendate se spun SEPARAT — una suspendată de noi, fără nicio factură neplătită, nu e „restanță".
+// 30.10 (Alin: „da acum”): firmele suspendate se spun SEPARAT — una suspendată de noi, fără nicio factură neplătită, nu e „restanță”.
 const scrieCo = (fc, rs, su) => f._adashStareCompanii ? vizibil(f._adashStareHtml(f._adashStareCompanii({ companies_fara_contract: fc, companies_restante: rs, companies_suspendate: su }))) : '';
-T('Companii: suspendatele separat — „1 suspendată", „2 suspendate", „20 de suspendate"; fără ele, scrierea de dinainte',
+T('Companii: suspendatele separat — „1 suspendată”, „2 suspendate”, „20 de suspendate”; fără ele, scrierea de dinainte',
   scrieCo(0, 0, 1) === '0 fără contract · 0 restanțe · 1 suspendată' && scrieCo(1, 2, 2) === '1 fără contract · 2 restanțe · 2 suspendate' &&
   scrieCo(0, 0, 20) === '0 fără contract · 0 restanțe · 20 de suspendate' && scrieCo(0, 0, 0) === 'toate în regulă' && scrieCo(2, 0, 0) === '2 fără contract · 0 restanțe',
   [scrieCo(0, 0, 1), scrieCo(1, 2, 2), scrieCo(0, 0, 20), scrieCo(0, 0, 0), scrieCo(2, 0, 0)].join(' | '));
 T('… iar suspendata e roșie', f._adashStareCompanii && /<span style="color:var\(--red\);">1 suspendată<\/span>$/.test(f._adashStareHtml(f._adashStareCompanii({ companies_suspendate: 1 }))));
 const arhive = [[{ purge_zile: 3, purge_total_zile: 30 }, { purge_zile: 20, purge_total_zile: 30 }], [{ istoric_sters: true }], [{ istoric_sters: true }, { istoric_sters: true }], [{ purge_zile: 25, purge_total_zile: 30 }]];
-T('Arhivate: „pe ducă" (portocaliu), „s-a șters", „păstrat 30 de zile"', f._adashStareArhiva && (function () {
+T('Arhivate: „pe ducă” (portocaliu), „s-a șters”, „păstrat 30 de zile”', f._adashStareArhiva && (function () {
   const a = arhive.map((rows) => f._adashStareArhiva(rows));
   return a[0].warn && vizibil(f._adashStareHtml(a[0].parti)) === '1 cu istoricul pe ducă' && !a[1].warn && vizibil(f._adashStareHtml(a[1].parti)) === 'istoricul s-a șters' &&
     vizibil(f._adashStareHtml(a[2].parti)) === 'istoricul lor s-a șters' && vizibil(f._adashStareHtml(a[3].parti)) === 'istoric păstrat 30 de zile de la arhivare';
@@ -203,10 +203,10 @@ T('… și cifrele din chat (`_acasaCifre`) tot pe ele, din aceleași surse', /\
 T('… cu aceleași nume ca pe cartonașe', ['Companii', 'Utilizatori', 'Dispozitive active', 'Arhivate'].every((n) => ac.indexOf("l: '" + n + "'") > 0));
 T('cartonașele vechi rămân (pentru `showView(\'administrare\')` fără secțiune)', /<div id="admin-dash">/.test(html) && /window\.raxAdminHome = function/.test(html));
 
-// Bulina „Cereri demo" (30.10, Alin: „da acum"): o numără serverul, de la pornire și la fiecare cerere nouă — nu din lista filtrată.
+// Bulina „Cereri demo” (30.10, Alin: „da acum”): o numără serverul, de la pornire și la fiecare cerere nouă — nu din lista filtrată.
 {
   const numara = taieBucata(html, 'window._demoReqNumara = async function () {', '\n    };');
-  T('bulina „Cereri demo": `_demoReqNumara` cere numărul cererilor noi de la server și îl pune în ambele locuri',
+  T('bulina „Cereri demo”: `_demoReqNumara` cere numărul cererilor noi de la server și îl pune în ambele locuri',
     /fetch\('\/api\/admin\/demo-requests\/numar'/.test(numara) && /\['rax-demoreq-badge', 'nav-demoreq-badge'\]/.test(numara), numara.slice(0, 300));
   T('… o cere de la pornire (doar la fondatori), apoi la 2 minute',
     /if \(currentUser\.role === 'superadmin' && window\._demoReqNumara\) \{ window\._demoReqNumara\(\); setInterval\(window\._demoReqNumara, 120000\); \}/.test(html));
@@ -235,7 +235,7 @@ T('avatarul asistentului e verde-turcoaz, pe ambele teme — RA Insight are verd
   && /\.insp-a \.av \{[^}]*background: linear-gradient\(135deg, #3FE07D, #2BB763\)/.test(css));
 T('pagina e întinsă pe tot ecranul, ca RA Insight', /#asistent-view\.as-view \{ padding: 0; align-items: stretch; overflow: hidden; \}/.test(css));
 T('pe telefon: cifrele pe două coloane, butonul fiecărui rând sub text', /@media \(max-width: 600px\) \{\s*\.asf-cif \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/.test(css) && /\.asf \.bub \.azi-r \.azi-prop \{ grid-column: 2;/.test(css));
-T('regulile noi nu ating „Azi la tine" al clienților (toate sub .asf)', !/^\.insp-a \.bub \.azi-r/m.test(css) && /^\.asf \.azi-st\.n/m.test(css));
+T('regulile noi nu ating „Azi la tine” al clienților (toate sub .asf)', !/^\.insp-a \.bub \.azi-r/m.test(css) && /^\.asf \.azi-st\.n/m.test(css));
 
 async function peServer() {
   const os = require('os');
@@ -268,11 +268,11 @@ async function peServer() {
     const j = r.j || {};
     T('cu ziua, ora și salutul', /^[A-ZȘȚĂÎÂ][a-zăâîșț]+, \d{1,2} [a-zăâîșț]+$/.test(j.zi || '') && /^\d{2}:\d{2}$/.test(j.ora || '') && /^\*\*Bun[ăa] [a-zăâîșț]+[^*]*!\*\* Iată cum stăm azi\.$/.test(j.salut || ''), JSON.stringify([j.zi, j.ora, j.salut]));
     const rb = (j.randuri || []).find((x) => x.fel === 'bani');
-    T('factura întârziată: rândul „bani", întâiul', rb && j.randuri[0] === rb && /^\*\*Trans Expres SRL\*\*: factura RAT-\d{4}-00950 \(1\.241 lei\) e întârziată de 12 zile; accesul se oprește în 4 zile\.$/.test(rb.text), JSON.stringify(j.randuri));
+    T('factura întârziată: rândul „bani”, întâiul', rb && j.randuri[0] === rb && /^\*\*Trans Expres SRL\*\*: factura RAT-\d{4}-00950 \(1\.241 lei\) e întârziată de 12 zile; accesul se oprește în 4 zile\.$/.test(rb.text), JSON.stringify(j.randuri));
     T('… și duce în fișa ei, pe fila Facturi', rb && rb.tinta.fel === 'firma' && Number(rb.tinta.id) === Number(seedR.co) && rb.tinta.fila === 'facturi');
     const fe = (j.randuri || []).filter((x) => x.fel === 'firma').map((x) => x.text);
-    T('emailul nepus se spune (aceeași socoteală ca „Stare producție")', fe.indexOf('Emailurile nu pleacă. Serverul n-are Brevo sau SMTP pus.') >= 0, JSON.stringify(fe));
-    T('„Date emitent" goale se spun (regula facturii automate: numele + CUI-ul)', fe.indexOf('„Date emitent” incomplete: lipsesc numele firmei și CUI-ul. Fără ele nu pleacă nicio factură.') >= 0, JSON.stringify(fe));
+    T('emailul nepus se spune (aceeași socoteală ca „Stare producție”)', fe.indexOf('Emailurile nu pleacă. Serverul n-are Brevo sau SMTP pus.') >= 0, JSON.stringify(fe));
+    T('„Date emitent” goale se spun (regula facturii automate: numele + CUI-ul)', fe.indexOf('„Date emitent” incomplete: lipsesc numele firmei și CUI-ul. Fără ele nu pleacă nicio factură.') >= 0, JSON.stringify(fe));
     // Soldul Anthropic: ce s-a cheltuit DE LA scrierea lui se scade; zilele, la ritmul ultimelor 7 zile (pregătirea: 20 $ acum 20 de zile).
     const usage = await cere('GET', '/api/admin/ai-usage', S);
     const sold = ((usage.j || {}).pachete || {}).sold || {};
@@ -280,56 +280,56 @@ async function peServer() {
       sold.scris === 20 && Math.abs(sold.cheltuit - 6.5) < 0.005 && Math.abs(sold.usd - 13.5) < 0.005, JSON.stringify(sold));
     T('… iar zilele = ce a rămas ÷ cheltuiala pe zi a ultimelor 7 zile (0,50 $) = 27', sold.zile === 27 && Math.abs(sold.peZi - 0.5) < 0.0001 && sold.ritmZile === 7, JSON.stringify(sold));
     // Banda banilor pentru AI (04.11): proba pornește serverul FĂRĂ cheia Anthropic, deci banda spune asta, roșu (cu cheie și sold, banda e
-    // probată în verify_sold_ai.js). Soldul de mai sus rămâne socotit în „RA Insight · control".
-    T('soldul nu e un rând în „Azi la noi": banda de sus spune, roșu, că serverul n-are cheia Anthropic', !(j.randuri || []).some((x) => /Anthropic/.test(x.text)) && j.ai && j.ai.nivel === 'r' &&
+    // probată în verify_sold_ai.js). Soldul de mai sus rămâne socotit în „RA Insight · control”.
+    T('soldul nu e un rând în „Azi la noi”: banda de sus spune, roșu, că serverul n-are cheia Anthropic', !(j.randuri || []).some((x) => /Anthropic/.test(x.text)) && j.ai && j.ai.nivel === 'r' &&
       /^\*\*Cheia Anthropic nu e pusă pe server\.\*\*/.test((j.ai.randuri[0] || {}).text || ''), JSON.stringify(j.ai));
     // Clientul
     const co = await cere('POST', '/api/companies', S, { name: 'Firma Client SRL' });
     const u = await cere('POST', '/api/users', S, { username: 'client.admin@proba.ro', full_name: 'Ion Client', role: 'company_admin', company_id: co.j.id });
     await puneParola(u.j, 'Str4da-Verde-2026', B);
     const C = await login('client.admin@proba.ro', 'Str4da-Verde-2026');
-    T('clientul NU primește „Azi la noi" (doar fondatorii)', !!C && (await cere('GET', '/api/admin/azi-la-noi', C)).s === 403);
+    T('clientul NU primește „Azi la noi” (doar fondatorii)', !!C && (await cere('GET', '/api/admin/azi-la-noi', C)).s === 403);
     T('fără cont, nimic', (await cere('GET', '/api/admin/azi-la-noi', null)).s === 401);
     const sup = await cere('POST', '/api/support', C, { message: 'Nu merge aplicația pe telefon.' });
     T('clientul trimite o cerere', sup.s === 200, JSON.stringify(sup.j));
     r = await cere('GET', '/api/admin/azi-la-noi', S);
-    T('fără „proaspăt", memoria de 2 minute (cererea nouă încă nu apare)', r.s === 200 && !(r.j.randuri || []).some((x) => x.fel === 'clienti'));
+    T('fără „proaspăt”, memoria de 2 minute (cererea nouă încă nu apare)', r.s === 200 && !(r.j.randuri || []).some((x) => x.fel === 'clienti'));
     r = await cere('GET', '/api/admin/azi-la-noi?proaspat=1', S);
     const rc = (r.j.randuri || []).find((x) => x.fel === 'clienti');
-    // Modul de probă (SEED_TEST) pune la pornire două aparate fără firmă care „transmit" (TEST111, TEST222): rândul lor e corect.
+    // Modul de probă (SEED_TEST) pune la pornire două aparate fără firmă care „transmit” (TEST111, TEST222): rândul lor e corect.
     T('cererea nepreluată apare după bani; aparatele fără firmă, înaintea firmei noastre', rc && r.j.randuri.map((x) => x.fel).join(',') === 'bani,clienti,aparate,firma,firma', JSON.stringify((r.j.randuri || []).map((x) => x.fel + ': ' + x.text)));
     T('… cu numărul, firma, problema și de cât așteaptă', rc && /^Cererea nr\. \d+ de la \*\*Firma Client SRL\*\* \(„[^”]+”\) așteaptă de 1 minut\.$/.test(rc.text) && rc.tinta.tab === 'cereri', rc && rc.text);
     const ra = (r.j.randuri || []).find((x) => x.fel === 'aparate');
-    T('aparatele care transmit fără firmă: câte, spre „Neasignate", cu IMEI-urile', ra && ra.text === '**2 aparate** transmit și n-au firmă.' && ra.tinta.fel === 'neasignate' &&
+    T('aparatele care transmit fără firmă: câte, spre „Neasignate”, cu IMEI-urile', ra && ra.text === '**2 aparate** transmit și n-au firmă.' && ra.tinta.fel === 'neasignate' &&
       ra.tinta.imeis.indexOf('TEST111') >= 0 && ra.tinta.imeis.indexOf('TEST222') >= 0 && ra.tinta.firma === null, JSON.stringify(ra));
-    T('„6 de văzut" (cele 5 rânduri + banda roșie a cheii Anthropic)', r.j.deVazut === 6 && r.j.deVazutText === '6 de văzut', r.j.deVazutText);
-    // Cifrele de sub „Companii" (30.10, Alin: „da acum"): regulile filtrelor din Companii. Trans Expres (factura întârziată) e
-    // restanță; o firmă suspendată de NOI, fără nicio factură, e „suspendată" — nu și restanță; o firmă fără contract e „fără contract".
+    T('„6 de văzut” (cele 5 rânduri + banda roșie a cheii Anthropic)', r.j.deVazut === 6 && r.j.deVazutText === '6 de văzut', r.j.deVazutText);
+    // Cifrele de sub „Companii” (30.10, Alin: „da acum”): regulile filtrelor din Companii. Trans Expres (factura întârziată) e
+    // restanță; o firmă suspendată de NOI, fără nicio factură, e „suspendată” — nu și restanță; o firmă fără contract e „fără contract”.
     const c0 = (await cere('GET', '/api/admin/counts', S)).j || {};
     T('/api/admin/counts: factura întârziată = o restanță; nimic suspendat încă', Number(c0.companies_restante) === 1 && Number(c0.companies_suspendate) === 0 &&
       Number(c0.companies_fara_contract) >= 2, JSON.stringify(c0));
     const sus = await cere('PUT', '/api/companies/' + co.j.id + '/suspend', S, { suspend: true, reason: 'Probă: suspendată de noi' });
     T('fondatorul suspendă de mână firma clientului (fără nicio factură)', sus.s === 200, JSON.stringify(sus.j).slice(0, 200));
     const c1 = (await cere('GET', '/api/admin/counts', S)).j || {};
-    T('… ea apare la „suspendate", NU la „restanțe" (până pe 30.10 restanțele le numărau și pe ele)', Number(c1.companies_suspendate) === 1 &&
+    T('… ea apare la „suspendate”, NU la „restanțe” (până pe 30.10 restanțele le numărau și pe ele)', Number(c1.companies_suspendate) === 1 &&
       Number(c1.companies_restante) === Number(c0.companies_restante) && Number(c1.companies_fara_contract) === Number(c0.companies_fara_contract), JSON.stringify(c1));
     // Ce am scos în funcții comune merge ca înainte.
     const h = await cere('GET', '/api/admin/health', S);
-    T('„Stare producție" merge (verdictul emailului e acum `_emailVerdict`)', h.s === 200 && JSON.stringify(h.j).indexOf('"smtp"') >= 0, JSON.stringify(h.j).slice(0, 200));
+    T('„Stare producție” merge (verdictul emailului e acum `_emailVerdict`)', h.s === 200 && JSON.stringify(h.j).indexOf('"smtp"') >= 0, JSON.stringify(h.j).slice(0, 200));
     const ce = await cere('POST', '/api/admin/contracts/check-expiry', S, {});
     T('anunțul zilnic al contractelor merge (termenele de montaj sunt acum `_termeneMontaj`)', ce.s === 200, JSON.stringify(ce.j).slice(0, 200));
-    // Bulina „Cereri demo" (30.10): o cerere nouă de pe site se numără oricare ar fi fila deschisă; după respingere, dispare.
+    // Bulina „Cereri demo” (30.10): o cerere nouă de pe site se numără oricare ar fi fila deschisă; după respingere, dispare.
     let nd = await cere('GET', '/api/admin/demo-requests/numar', S);
-    T('bulina „Cereri demo": zero cereri noi la început', nd.s === 200 && nd.j.noi === 0, JSON.stringify(nd.j));
+    T('bulina „Cereri demo”: zero cereri noi la început', nd.s === 200 && nd.j.noi === 0, JSON.stringify(nd.j));
     const dr = await cere('POST', '/api/public/demo-request', null, { name: 'Maria Pop', company: 'Logistic Sud SRL', email: 'maria.pop@proba.ro', wants_demo: true, consent: true, ts: Date.now() - 20000 });
     T('o cerere de cont demo vine de pe site', dr.s === 200 && dr.j.ok === true, JSON.stringify(dr.j));
     nd = await cere('GET', '/api/admin/demo-requests/numar', S);
     const aprobate = await cere('GET', '/api/admin/demo-requests?status=approved', S);
-    T('… bulina o numără (1), chiar dacă pagina stă pe fila „Aprobate", unde lista e goală', nd.j.noi === 1 && Array.isArray(aprobate.j) && aprobate.j.length === 0, JSON.stringify([nd.j, aprobate.j && aprobate.j.length]));
+    T('… bulina o numără (1), chiar dacă pagina stă pe fila „Aprobate”, unde lista e goală', nd.j.noi === 1 && Array.isArray(aprobate.j) && aprobate.j.length === 0, JSON.stringify([nd.j, aprobate.j && aprobate.j.length]));
     const noua = ((await cere('GET', '/api/admin/demo-requests?status=new', S)).j || [])[0];
     const rj = noua ? await cere('POST', '/api/admin/demo-requests/' + noua.id + '/reject', S, {}) : { s: 0 };
     nd = await cere('GET', '/api/admin/demo-requests/numar', S);
-    T('… iar după „Respinge", bulina se stinge (0)', rj.s === 200 && nd.j.noi === 0, JSON.stringify([rj.s, nd.j]));
+    T('… iar după „Respinge”, bulina se stinge (0)', rj.s === 200 && nd.j.noi === 0, JSON.stringify([rj.s, nd.j]));
     const ndC = await cere('GET', '/api/admin/demo-requests/numar', C);
     T('numărul cererilor demo e doar pentru fondatori (clientul, aici cu firma suspendată de noi, nu-l primește)', ndC.s >= 400 && ndC.j.noi === undefined, ndC.s + ' ' + JSON.stringify(ndC.j));
   } finally {

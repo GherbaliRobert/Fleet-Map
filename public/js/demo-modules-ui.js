@@ -108,7 +108,7 @@
   // pentru o mașină care nu e a ta, și nu mai tastezi de fiecare dată masa, axele și norma Euro.
   var _tr = { cfg: null, imei: '', profil: null, rezultat: null, manual: {},
               flota: null, costuri: {}, lucreaza: false, opreste: false,
-              // ── fila „Cursă" ──
+              // ── fila „Cursă” ──
               fila: 'cursa', rutare: null, cImei: '', cProfil: null, cStart: null, cEnd: null,
               cRez: null, cHarta: null, cLinii: [] };
 
@@ -117,9 +117,9 @@
     _tr.cfg = await api('/api/tollro/config').catch(function () { return null; });
     _tr.flota = await api('/api/tollro/flota').catch(function () { return null; });
     _tr.rutare = await api('/api/tollro/rutare').catch(function () { return { pornit: false }; });
-    // Fara eticheta „DEMO": calculul e REAL — tarifele sunt cele publicate, vehiculul e din flota,
+    // Fara eticheta „DEMO”: calculul e REAL — tarifele sunt cele publicate, vehiculul e din flota,
     // kilometrii vin din traseul lui. Provizorii sunt doar cateva valori din grila, iar alea sunt
-    // marcate acolo unde sunt. O eticheta „DEMO" peste tot i-ar face pe oameni sa nu creada nici
+    // marcate acolo unde sunt. O eticheta „DEMO” peste tot i-ar face pe oameni sa nu creada nici
     // cifrele adevarate.
     var _d = _tr.cfg && _tr.cfg.grila ? _tr.cfg.grila.aplicabilDin : null;
     el('etoll-view-mode').innerHTML = _d
@@ -132,14 +132,14 @@
   function trKm(v) { return Number(v || 0).toLocaleString('ro-RO', { maximumFractionDigits: 1 }); }
 
   // ── Ecranul: TOATĂ flota deodată, ordonată după cât costă ─────────────────────────────────────
-  // Înainte se calcula o mașină pe rând, iar „care camion mă costă cel mai mult" nu se putea afla
+  // Înainte se calcula o mașină pe rând, iar „care camion mă costă cel mai mult” nu se putea afla
   // decât făcând socoteala pe hârtie. Acum lista pleacă de la flotă.
   //
   // Costurile NU vin într-un singur răspuns: clasificarea drumurilor se ia de la OpenStreetMap, care
   // acceptă o cerere pe secundă. Pe zece camioane, un răspuns unic ar dura minute și ar cădea în
   // timeout. Cerem pe rând și umplem lista pe măsură ce vin — se vede că se lucrează.
-  // Două întrebări diferite, două file. „Cursă" = cât mă costă drumul pe care îl PREGĂTESC (întrebarea
-  // dispecerului care dă un preț). „Flota" = cât m-a costat ce am făcut deja. Prima e cea de zi cu zi,
+  // Două întrebări diferite, două file. „Cursă” = cât mă costă drumul pe care îl PREGĂTESC (întrebarea
+  // dispecerului care dă un preț). „Flota” = cât m-a costat ce am făcut deja. Prima e cea de zi cu zi,
   // deci e implicită.
   window.trFila = function (f) { _tr.fila = f; trRender(); };
 
@@ -187,11 +187,11 @@
         trGrilaHtml(g, _tr.cfg.editabil) + '</div>' : '');
   }
 
-  // Suma de sus se adună DOAR din vehiculele calculate. Cât timp mai sunt în lucru, scrie „până acum",
-  // nu „total" — altfel omul citește un total care încă se mișcă și îl pune într-o ofertă.
+  // Suma de sus se adună DOAR din vehiculele calculate. Cât timp mai sunt în lucru, scrie „până acum”,
+  // nu „total” — altfel omul citește un total care încă se mișcă și îl pune într-o ofertă.
   // ── începe lista flotei (REPER pentru probe: verify_tollro_flota.js decupează exact bucata
   // dintre reperul ăsta și cel de la sfârșit. Nu insera funcții noi între ele — s-a întâmplat
-  // o dată, iar proba a picat cu „window is not defined", ceea ce e mai bine decât să treacă.) ──
+  // o dată, iar proba a picat cu „window is not defined”, ceea ce e mai bine decât să treacă.) ──
   function trFlotaHtml() {
     var f = _tr.flota;
     if (!f) return '<h3>Flota</h3><div class="tr-nota rosu"><i class="fas fa-circle-exclamation"></i> Nu s-a putut citi lista vehiculelor.</div>';
@@ -314,7 +314,7 @@
           brut: r,
         };
       } else {
-        // „Nu s-a mișcat" nu e o eroare — e un cost de zero, și trebuie să se vadă ca atare.
+        // „Nu s-a mișcat” nu e o eroare — e un cost de zero, și trebuie să se vadă ca atare.
         var msg = (r && r.error) || (r && r.rezultat && r.rezultat.motiv) || 'nu s-a putut calcula';
         if (/nu există traseu|aproape nu s-a deplasat/i.test(msg)) {
           _tr.costuri[v.imei] = { stare: 'gata', total: 0, linii: [], kmTaxati: 0, nuSaMiscat: true };
@@ -349,13 +349,13 @@
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
-  // ═══ Fila „O cursă nouă" ═══════════════════════════════════════════════════════════════════════
+  // ═══ Fila „O cursă nouă” ═══════════════════════════════════════════════════════════════════════
   // Regula ecranului: OMUL alege trei lucruri — mașina, de unde, până unde. Restul (serie de șasiu,
   // masă, axe, normă, treaptă) se completează SINGUR din fișa vehiculului și nu se poate atinge.
   //
   // De ce nu se poate atinge: pe ecranul concurenței, categoria era un selector liber. Alin a lăsat
-  // „3,5–7,5 t" pe un camion de 41 t declarat în ACELAȘI formular, iar costul a ieșit de trei ori mai
-  // mic. Un câmp care poate contrazice alt câmp e o capcană, oricât ar părea de „flexibil".
+  // „3,5–7,5 t” pe un camion de 41 t declarat în ACELAȘI formular, iar costul a ieșit de trei ori mai
+  // mic. Un câmp care poate contrazice alt câmp e o capcană, oricât ar părea de „flexibil”.
   function trRenderCursa() {
     var r = _tr.rutare || {};
     el('etoll-view-body').innerHTML =
@@ -575,11 +575,11 @@
     _tr.cHarta = m;
     setTimeout(function () { try { m.invalidateSize(); } catch (e) {} }, 60);
   }
-  // ── sfârșit fila „O cursă nouă" ──
+  // ── sfârșit fila „O cursă nouă” ──
 
 
   // Tabelul de tarife, pe înțelesul cuiva care nu l-a mai văzut. Înainte arăta două cifre lipite
-  // într-o celulă („0.17  0.08") și o notă de subsol care explica ce e prima și ce e a doua — adică
+  // într-o celulă („0.17  0.08”) și o notă de subsol care explica ce e prima și ce e a doua — adică
   // omul trebuia să țină minte o convenție ca să citească niște bani. Acum fiecare cifră stă sub
   // capul ei de coloană și are unitatea scrisă.
   // ── începe grila de tarife (REPER pentru probe: verify_tollro_flota.js decupează exact bucata
@@ -588,7 +588,7 @@
     var cat = _tr.cfg.categorii, euro = _tr.cfg.euro;
     var lei = function (v) { return Number(v).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
     // Unitatea stă lângă FIECARE cifră, nu doar în textul de sus. Alin a întrebat, uitându-se la
-    // tabel: „0,17 e în lei?" — dacă întrebarea apare, tabelul nu răspunde singur, iar un om care
+    // tabel: „0,17 e în lei?” — dacă întrebarea apare, tabelul nu răspunde singur, iar un om care
     // se uită la un tabel nu citește introducerea.
     var um = '<span class="tz-g-um">lei/km</span>';
 
@@ -612,8 +612,8 @@
         ['autostrada', 'national'].forEach(function (k) {
           h += '<td' + cls + titlu + '><span class="tz-g-cel">' +
             (editabil
-              // Două zecimale mereu: căsuța de tip „number" ar arăta „0.1" acolo unde tabelul de
-              // alături scrie „0,10", iar două scrieri diferite ale aceluiași ban dau de bănuit.
+              // Două zecimale mereu: căsuța de tip „number” ar arăta „0.1” acolo unde tabelul de
+              // alături scrie „0,10”, iar două scrieri diferite ale aceluiași ban dau de bănuit.
               ? '<input type="number" step="0.01" min="0" max="10" value="' + Number(t[k]).toFixed(2) + '" data-c="' + c.key + '" data-e="' + e.key + '" data-k="' + k + '" class="tr-cel">'
               : '<span class="tz-g-val">' + lei(t[k]) + '</span>') + um + '</span>' +
             (t.presupus && k === 'national' ? '<i class="fas fa-triangle-exclamation"></i>' : '') + '</td>';
@@ -626,7 +626,7 @@
       'tarife care <b>nu au fost publicate încă</b> — le-am estimat noi. Restul sunt cele oficiale.</div>';
 
     // Data se scrie și în cuvinte: câmpul de calendar o arată în formatul browserului (adesea
-    // american — „10/01/2026" citit ca 10 ianuarie), iar aici e vorba de ziua din care se plătește.
+    // american — „10/01/2026” citit ca 10 ianuarie), iar aici e vorba de ziua din care se plătește.
     var _dRo = (function (x) {
       var L = ['ianuarie','februarie','martie','aprilie','mai','iunie','iulie','august','septembrie','octombrie','noiembrie','decembrie'];
       var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(x || ''));
@@ -802,7 +802,7 @@
     var btn = el('tdl-' + driverId), prog = el('tdlp-' + driverId), bar = prog.querySelector('.dm-dl-prog-bar'), txt = prog.querySelector('.dm-dl-txt');
     btn.disabled = true; prog.style.display = 'flex';
     // FĂRĂ pași falși de conectare: nu simulăm o descărcare reală prin K-Line care nu are loc.
-    // Arătăm doar starea reală a cererii; dacă modul e „real", serverul răspunde 501 și userul află imediat.
+    // Arătăm doar starea reală a cererii; dacă modul e „real”, serverul răspunde 501 și userul află imediat.
     bar.style.width = '60%'; txt.textContent = 'Se generează analiza demonstrativă…';
     var res = await postJSON('/api/tacho-download/' + driverId, {});
     btn.disabled = false; prog.style.display = 'none'; bar.style.width = '0';

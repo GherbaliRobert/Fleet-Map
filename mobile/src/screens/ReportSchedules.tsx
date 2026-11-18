@@ -35,7 +35,7 @@ export function ReportSchedules() {
   const [confirmDel, setConfirmDel] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<any>({ name: '', report_type: '', imei: '', period: 'yesterday', frequency: 'daily', hour: '6', format: 'pdf', recipients: '' });
-  // „CAN detaliat" e singurul raport programabil cu o listă de semnale. Serverul le păstrează în
+  // „CAN detaliat” e singurul raport programabil cu o listă de semnale. Serverul le păstrează în
   // programare (`opts`) și le folosește la rulare — până acum niciun client nu le trimitea.
   const [schedSignals, setSchedSignals] = useState<{ key: string; label: string; unit: string }[]>([]);
   const [schedSel, setSchedSel] = useState<string[]>([]);

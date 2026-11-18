@@ -1,4 +1,4 @@
-// verify_utilizatori.js — ecranul „Utilizatori", văzut de amândoi.
+// verify_utilizatori.js — ecranul „Utilizatori”, văzut de amândoi.
 //
 //   node verify_utilizatori.js
 //
@@ -15,7 +15,7 @@
 //   • ULTIMUL ADMIN al unei firme. Clientul nu-și poate face rău singur (serverul îl oprește să se
 //     șteargă sau să se dezactiveze pe el însuși), dar fondatorul putea goli o firmă de administratori
 //     ștergând, dezactivând, retrogradând sau mutând singurul om care mai putea administra acolo.
-//   • GOSPODĂRIA CLIENTULUI. Semnul „fără acces" (om fără nicio mașină atribuită) e treaba adminului
+//   • GOSPODĂRIA CLIENTULUI. Semnul „fără acces” (om fără nicio mașină atribuită) e treaba adminului
 //     de firmă, nu a fondatorului. Se aprinde DOAR în privirea clientului.
 //
 // Codul nu se copiază aici: se decupează din public/index.html, între sentinele, și se execută.
@@ -37,9 +37,9 @@ function bloc(numeStart, numeSfarsit) {
   if (a < 0 || b < 0 || b <= a) throw new Error('nu găsesc blocul ' + numeStart);
   return html.slice(a, b);
 }
-const blocLista = bloc('// ── începe „lista de utilizatori" ──', '// ── sfârșit „lista de utilizatori" ──');
-const blocPastile = bloc('// ── începe „pastilele de utilizatori" ──', '// ── sfârșit „pastilele de utilizatori" ──');
-const blocAdmini = bloc('// ── începe „administratorii firmei" ──', '// ── sfârșit „administratorii firmei" ──');
+const blocLista = bloc('// ── începe „lista de utilizatori” ──', '// ── sfârșit „lista de utilizatori” ──');
+const blocPastile = bloc('// ── începe „pastilele de utilizatori” ──', '// ── sfârșit „pastilele de utilizatori” ──');
+const blocAdmini = bloc('// ── începe „administratorii firmei” ──', '// ── sfârșit „administratorii firmei” ──');
 
 const mediu = `
   var window = {};
@@ -74,7 +74,7 @@ const iesire = `
 `;
 const U = new Function(mediu + blocLista + blocPastile + blocAdmini + iesire)();
 
-// Oameni de probă. Ziua de azi e mereu „azi", deci datele se fac relativ la ea.
+// Oameni de probă. Ziua de azi e mereu „azi”, deci datele se fac relativ la ea.
 const acum = Date.now();
 const zile = (n) => new Date(acum - n * 86400000).toISOString();
 const om = (x) => Object.assign({
@@ -85,7 +85,7 @@ const om = (x) => Object.assign({
 
 sect('1. Parola nu mai există nicăieri');
 T('caseta de parolă a plecat din formularul de cont nou', !/id="new-password"/.test(html));
-T('și „Parolă nouă" a plecat din fișa omului', !/id="ue-password"/.test(html));
+T('și „Parolă nouă” a plecat din fișa omului', !/id="ue-password"/.test(html));
 T('formularul spune că linkul pleacă pe email', /Îi trimitem un link pe email și își pune singur parola/.test(html));
 T('pagina nu mai cheamă ruta de setat parola altcuiva', !/users\/' \+ id \+ '\/password/.test(html));
 T('ruta veche a fost SCOASĂ din server, nu doar ascunsă', !/'\/api\/users\/:id\/password'/.test(server));
@@ -112,27 +112,27 @@ T('nici în compania demo nu se mai cere o parolă scrisă de mână',
   !/În contul demo, scrie o parolă/.test(server));
 T('contul de admin al unei firme urmează aceeași regulă',
   !/setează-i una manual/.test(server) && /companies\/:id\/admin[\s\S]{0,3000}trimiteLinkParola/.test(server));
-// „Client nou" (Companii), găsit pe 29.09: fără email pe server, linkul întors de server era ARUNCAT, iar
-// panoul scria „Fără administrator încă" — deși contul exista și nimeni nu mai avea cum să-i pună parola.
+// „Client nou” (Companii), găsit pe 29.09: fără email pe server, linkul întors de server era ARUNCAT, iar
+// panoul scria „Fără administrator încă” — deși contul exista și nimeni nu mai avea cum să-i pună parola.
 const _coCre = (html.match(/window\.coNouCreeaza = async function \(\) \{[\s\S]*?\n    \};\n/) || [''])[0];
-T('„Client nou": când invitația nu pleacă, linkul se ține și se arată pe loc',
+T('„Client nou”: când invitația nu pleacă, linkul se ține și se arată pe loc',
   /adminLink = a\.link;/.test(_coCre) && /if \(adminLink\) window\.coNouArataLinkul\(\);/.test(_coCre), _coCre.length);
-T('„Client nou": contul există și fără email — panoul nu mai spune „Fără administrator"',
+T('„Client nou”: contul există și fără email — panoul nu mai spune „Fără administrator”',
   /adminOk = s\.admin\.username;/.test(_coCre) && !/else if \(a && a\.warning\) \{ _coMsg\(a\.warning, true\); \}/.test(_coCre));
-T('„Client nou": linkul se arată cu fereastra comună, nu cu una nouă',
+T('„Client nou”: linkul se arată cu fereastra comună, nu cu una nouă',
   /window\.coNouArataLinkul = function \(\) \{[\s\S]{0,200}window\._usrAratLinkul\(g\.admin, g\.adminLink, g\.adminMotiv\)/.test(html));
-// „Cereri demo" (web), găsit pe 02.10: la aprobare fără email, serverul întorcea linkul, dar ecranul îl arunca și
+// „Cereri demo” (web), găsit pe 02.10: la aprobare fără email, serverul întorcea linkul, dar ecranul îl arunca și
 // trimitea fondatorul în Utilizatori după el — doi pași în plus la fiecare cerere. Telefonul îl arăta din 23.09.
 const _dqAp = (html.match(/window\.raxDemoReqApprove = async function \(id\) \{[\s\S]*?\n    \};\n/) || [''])[0];
-T('„Cereri demo": când invitația nu pleacă, linkul se arată pe loc, cu fereastra comună',
+T('„Cereri demo”: când invitația nu pleacă, linkul se arată pe loc, cu fereastra comună',
   /if \(j\.link && window\._usrAratLinkul\)/.test(_dqAp) && /await window\._usrAratLinkul\(j\.email \|\| j\.username \|\| '', j\.link, j\.motiv\)/.test(_dqAp), _dqAp.length);
-T('„Cereri demo": întrebarea dinainte nu mai promite emailul ca singura cale',
+T('„Cereri demo”: întrebarea dinainte nu mai promite emailul ca singura cale',
   /ți-l arăt aici, să i-l dai tu/.test(_dqAp) && !/și primește pe email link de setare a parolei/.test(_dqAp));
 T('fereastra comună rupe linkul lung înăuntru (ieșea în dreapta din chenar)',
   /function raConfirm\(message, opts\) \{[\s\S]{0,4000}line-height:1\.5;margin-bottom:20px;overflow-wrap:anywhere;">' \+ msgHtml/.test(html));
-T('„Cereri demo": pe telefon, la fel (aceeași foaie cu linkul)',
+T('„Cereri demo”: pe telefon, la fel (aceeași foaie cu linkul)',
   /if \(r\?\.link\) \{[\s\S]{0,300}pregatesteLinkul\(/.test(fs.readFileSync(P('mobile/src/screens/DemoRequests.tsx'), 'utf8')));
-// Pagina pe care omul își pune parola cere ce cere serverul (scria „min 6", serverul cere 10).
+// Pagina pe care omul își pune parola cere ce cere serverul (scria „min 6”, serverul cere 10).
 {
   const setp = fs.readFileSync(P('public/set-password.html'), 'utf8');
   const pmin = Number((server.match(/const PAROLA_MIN = (\d+);/) || [])[1]);
@@ -159,7 +159,7 @@ T('mesajul spune ce are de făcut omul, nu doar că nu se poate',
 T('plasa e a fondatorului: clientul oricum nu se poate șterge pe el însuși',
   /Nu te poți șterge pe tine/.test(server) && /Nu te poți dezactiva sau retrograda pe tine/.test(server));
 
-sect('4. „Văzut" pe înțeles, nu „15.09.2026, 14:32:10"');
+sect('4. „Văzut” pe înțeles, nu „15.09.2026, 14:32:10”');
 T('cine a intrat azi', U._usrCandVazut(om({ last_login: zile(0) })).text === 'azi');
 T('cine a intrat ieri', U._usrCandVazut(om({ last_login: zile(1) })).text === 'ieri');
 T('cine a intrat acum 9 zile', U._usrCandVazut(om({ last_login: zile(9) })).text === 'acum 9 zile',
@@ -169,11 +169,11 @@ T('cine n-a intrat niciodată e strigat ca atare',
   U._usrCandVazut(om({ last_login: null })).text === 'n-a intrat niciodată');
 T('sub pragul de liniște, contul e liniștit', U._usrCandVazut(om({ last_login: zile(U.USR_LINISTE - 1) })).vechi === false);
 T('peste prag, se aprinde', U._usrCandVazut(om({ last_login: zile(U.USR_LINISTE + 1) })).vechi === true);
-T('o dată stricată nu scrie „Invalid Date"', U._usrCandVazut(om({ last_login: 'aiurea' })).niciodata === true);
+T('o dată stricată nu scrie „Invalid Date”', U._usrCandVazut(om({ last_login: 'aiurea' })).niciodata === true);
 
 sect('5. Accesul temporar se vede în rând');
 T('fără dată, niciun semn', U._usrExpira(om({})) === null);
-T('accesul care se termină diseară „expiră azi", nu „într-o zi"',
+T('accesul care se termină diseară „expiră azi”, nu „într-o zi”',
   U._usrExpira(om({ access_until: acum + 3600 * 1000 })).text === 'expiră azi',
   U._usrExpira(om({ access_until: acum + 3600 * 1000 })).text);
 T('expiră în 3 zile, cu avertisment', (function () {
@@ -185,7 +185,7 @@ T('trecut de termen, scrie că a expirat', U._usrExpira(om({ access_until: acum 
 T('data vine din bază, nu din fișa deschisă', /u\.access_until,/.test(db));
 
 sect('6. Cine nu vede nicio mașină');
-T('un dispecer fără vehicule și fără grupe e „fără acces"',
+T('un dispecer fără vehicule și fără grupe e „fără acces”',
   U._usrFaraAcces(om({ device_count: 0, group_count: 0 })) === true);
 T('unul cu o grupă NU e fără acces', U._usrFaraAcces(om({ device_count: 0, group_count: 1 })) === false);
 T('adminul vede toată flota, deci nu intră în socoteală',
@@ -193,18 +193,18 @@ T('adminul vede toată flota, deci nu intră în socoteală',
 // Aici e regula pe care a cerut-o Alin: gospodăria clientului nu e grija fondatorului.
 U.cine({ username: 'eu@ratracks.ro', role: 'superadmin' }); U.caFirma(false);
 const randFondator = U._userRowHtml(om({ device_count: 0, group_count: 0 }));
-T('la FONDATOR semnul „fără acces" NU apare', !/fără acces/.test(randFondator));
+T('la FONDATOR semnul „fără acces” NU apare', !/fără acces/.test(randFondator));
 T('și nici îndemnul de atribuire', !/atribuie-i din/.test(randFondator));
 U.caFirma(true);
 const randClient = U._userRowHtml(om({ device_count: 0, group_count: 0 }));
 T('la CLIENT semnul apare', /rau-semn rau-cald">fără acces</.test(randClient));
 T('și scrie ce are de făcut', /atribuie-i din <b>Editează<\/b>/.test(randClient));
-T('îndemnul vorbește despre ecranul gol, nu despre „ACL"', /ecran gol/.test(randClient) && !/ACL|scoped/i.test(randClient));
+T('îndemnul vorbește despre ecranul gol, nu despre „ACL”', /ecran gol/.test(randClient) && !/ACL|scoped/i.test(randClient));
 
 sect('7. Rândul omului');
 U.caFirma(false);
 const randNou = U._userRowHtml(om({ last_login: null }));
-T('„n-a intrat niciodată" e semn, nu text pierdut la coadă', /rau-semn rau-cald">n-a intrat niciodată</.test(randNou));
+T('„n-a intrat niciodată” e semn, nu text pierdut la coadă', /rau-semn rau-cald">n-a intrat niciodată</.test(randNou));
 T('și butonul de link e scos în evidență', /color:var\(--orange\)[^"]*"[^>]*>\s*<i class="fas fa-paper-plane/.test(randNou) || /fa-paper-plane/.test(randNou));
 T('butonul de link există pe fiecare rând', /_usrLinkParola\(1\)/.test(U._userRowHtml(om({}))));
 T('un singur buton acoperă și invitația, și parola uitată',
@@ -228,7 +228,7 @@ T('după email', q('ion@firma'));
 T('după telefon', q('0722111'));
 T('după rol, cu numele lui românesc', q('dispecer'));
 T('după numele firmei (fondatorul are toate firmele într-o listă)', q('transport'));
-T('fără diacritice scrise corect — „stefan" găsește „Ștefan"',
+T('fără diacritice scrise corect — „stefan” găsește „Ștefan”',
   q('stefan', om({ full_name: 'Ștefan Marin' })));
 T('ce nu se potrivește, nu se potrivește', !q('nicaieri'));
 T('caseta goală nu ascunde pe nimeni', q(''));
@@ -242,19 +242,19 @@ const lot = [
 ];
 const pastileClient = U._usrPastileHtml(lot, true);
 const pastileFondator = U._usrPastileHtml(lot, false);
-T('„N-au intrat niciodată" se numără corect', /N-au intrat niciodată <b>1<\/b>/.test(pastileClient));
-T('„Dezactivate" la fel', /Dezactivate <b>1<\/b>/.test(pastileClient));
-T('„Cu RA Insight" la fel', /Cu RA Insight <b>1<\/b>/.test(pastileClient));
-T('„Admini" la fel', /Admini <b>1<\/b>/.test(pastileClient));
-T('„Fără acces" apare doar la client', /Fără acces <b>1<\/b>/.test(pastileClient) && !/Fără acces/.test(pastileFondator));
+T('„N-au intrat niciodată” se numără corect', /N-au intrat niciodată <b>1<\/b>/.test(pastileClient));
+T('„Dezactivate” la fel', /Dezactivate <b>1<\/b>/.test(pastileClient));
+T('„Cu RA Insight” la fel', /Cu RA Insight <b>1<\/b>/.test(pastileClient));
+T('„Admini” la fel', /Admini <b>1<\/b>/.test(pastileClient));
+T('„Fără acces” apare doar la client', /Fără acces <b>1<\/b>/.test(pastileClient) && !/Fără acces/.test(pastileFondator));
 T('ce nu există nu ocupă loc pe ecran',
   !/Dezactivate/.test(U._usrPastileHtml([om({ last_login: zile(1) })], true)));
-T('„Toți" rămâne mereu, chiar și pe zero', /Toți <b>0<\/b>/.test(U._usrPastileHtml([], true)));
+T('„Toți” rămâne mereu, chiar și pe zero', /Toți <b>0<\/b>/.test(U._usrPastileHtml([], true)));
 T('pastila e cea a casei, nu una nouă', /class="rax-dev-chip/.test(pastileClient) && !/rau-pastila/.test(pastileClient));
 T('pastila caldă se vede caldă', /rax-dev-chip atentie/.test(pastileClient));
 // Filtrele chiar filtrează
 U.pastila('niciodata');
-T('pastila „n-au intrat niciodată" lasă doar omul potrivit',
+T('pastila „n-au intrat niciodată” lasă doar omul potrivit',
   lot.filter(U._usrTrece).length === 1 && lot.filter(U._usrTrece)[0].full_name === 'Ana');
 U.pastila('niciodata'); // a doua apăsare o stinge
 T('a doua apăsare pe aceeași pastilă o stinge', lot.filter(U._usrTrece).length === 4);
@@ -266,7 +266,7 @@ const dupaNume = lot.slice().sort(U._usrOrdoneaza).map(function (u) { return u.f
 T('implicit, alfabetic după nume', dupaNume.join(',') === 'Ana,Barbu,Cezar,Dan', dupaNume.join(','));
 U.fereastra._usrSort('logare');
 const dupaLogare = lot.slice().sort(U._usrOrdoneaza).map(function (u) { return u.full_name; });
-T('pe „ultima logare", cine n-a intrat niciodată stă primul', dupaLogare[0] === 'Ana', dupaLogare.join(','));
+T('pe „ultima logare”, cine n-a intrat niciodată stă primul', dupaLogare[0] === 'Ana', dupaLogare.join(','));
 T('apoi cel mai demult văzut', dupaLogare[1] === 'Cezar', dupaLogare.join(','));
 U.fereastra._usrSort('nume');
 
@@ -281,7 +281,7 @@ T('și nu mai vorbește de factură (regula pe cont a ieșit pe 11.11; pe un pac
 T('acordul e corect la mai multe conturi',
   /<b>2<\/b> conturi cu RA Insight/.test(U._usrSeatsHtml([om({ ai_seat: true }), om({ ai_seat: true })])));
 
-sect('11. Cartonașul „Utilizatori" de pe Acasă spune starea');
+sect('11. Cartonașul „Utilizatori” de pe Acasă spune starea');
 T('cartonașul are loc pentru stare', /id="adash-s-users"/.test(html));
 U._usrCardAcasa(lot, true);
 T('la client: câți n-au intrat și câți sunt fără acces',
@@ -293,8 +293,8 @@ T('când e totul în regulă, o spune', /toți au intrat/.test(U._nodAcasa.inner
 U._usrCardAcasa([], true);
 T('fără niciun om, nu scrie nimic', U._nodAcasa.innerHTML === '');
 
-sect('11b. „Scoate din firmă" — omul pleacă, nu se șterge un rând din tabel');
-T('butonul de pe rând se numește „Scoate din firmă"', /title="Scoate din firmă"/.test(html));
+sect('11b. „Scoate din firmă” — omul pleacă, nu se șterge un rând din tabel');
+T('butonul de pe rând se numește „Scoate din firmă”', /title="Scoate din firmă"/.test(html));
 T('și nu mai e coș de gunoi', /_usrScoate\(' \+ u\.id \+ '\)/.test(html) && !/onclick="deleteUser\(/.test(html));
 T('nu mai există o a doua cale de ștergere', !/async function deleteUser/.test(html));
 T('fereastra spune limpede că nu se mai poate întoarce contul',
@@ -303,7 +303,7 @@ T('și îi spune adminului CE AVEA omul, înainte să-l scoată', /'\\n\\nAvea: 
 T('cu îndemnul de a le nota, fiindcă se șterg odată cu contul',
   /Notează-le acum, dacă le dai altcuiva — se șterg odată cu contul/.test(html));
 
-// Ce avea omul, scris ca să se poată pune înapoi de MÂNĂ: nu „4 vehicule", ci CARE patru.
+// Ce avea omul, scris ca să se poată pune înapoi de MÂNĂ: nu „4 vehicule”, ci CARE patru.
 const cea = U._usrCeAveaText;
 T('un vehicul, cu numărul lui',
   cea({ devices: ['i1'], numeDev: ['B-99-XYZ'], groups: [] }) === '1 vehicul: B-99-XYZ',
@@ -334,7 +334,7 @@ T('și nici trecerea automată a drepturilor', !/_usrDuceMaiDeparte/.test(html))
 T('stilul benzii a plecat și el', css.indexOf('.rau-inlocuire') < 0);
 
 sect('11d. Două avertismente care lipseau');
-T('la darea unui cont RA Insight (din „Pachet și conturi") se spune că prețul pachetului nu se schimbă; avertismentul vechi, „pe cont", a ieșit',
+T('la darea unui cont RA Insight (din „Pachet și conturi”) se spune că prețul pachetului nu se schimbă; avertismentul vechi, „pe cont”, a ieșit',
   /Prețul pachetului rămâne același, oricâte conturi dai\./.test(html) && !/scoate-l întâi pe cel care pleacă/.test(html));
 T('schimbarea adresei unui cont FOLOSIT e oprită cu explicație',
   /Schimbi adresa unui cont folosit\?/.test(html));
@@ -344,7 +344,7 @@ T('avertismentul apare doar la conturi care au fost folosite',
   /_ueVechi\.last_login && email && email !== \(_ueVechi\.email \|\| ''\)/.test(html));
 
 sect('11e. Administratorul firmei are UN singur nume');
-// Purta două, după calea pe care fusese făcut: „company_admin" (Companii → Client nou) și „admin"
+// Purta două, după calea pe care fusese făcut: „company_admin” (Companii → Client nou) și „admin”
 // (formularul din Utilizatori). Drepturi identice, două etichete în aceeași listă, la aceeași firmă.
 T('serverul are un singur nume bun', /const ROL_ADMIN_FIRMA = 'company_admin';/.test(server));
 T('și preface vechiul nume înainte să ajungă în bază',
@@ -373,7 +373,7 @@ T('și nu mai oferă două opțiuni pentru același rol', !/\{ v: 'admin', baza:
 T('și vede amândouă numele ca administrator', /ADMIN_ROLES = \['company_admin', 'admin', 'superadmin'\]/.test(tel));
 
 sect('11f. Fiecare ecran, un singur rost');
-// La NOI, „Adaugă utilizator" e doar pentru un coleg nou la RA Track. Administratorul unei firme
+// La NOI, „Adaugă utilizator” e doar pentru un coleg nou la RA Track. Administratorul unei firme
 // client se dă din fișa firmei (Companii → firma → Utilizatori), iar restul oamenilor și-i face
 // adminul ei. Înainte, formularul de la noi le putea face pe toate și nu se mai știa ușa din față.
 T('la fondator, formularul oferă DOAR cont de platformă',
@@ -396,7 +396,7 @@ T('la client, formularul îi dă rolurile firmei lui',
 
 sect('11f-bis. Firma își face singură administratorii (decizie Alin, 16.09)');
 // Delegare, nu escaladare: un admin are deja tot ce se poate avea într-o firmă; diferența față de un
-// manager e doar „gestionează oamenii" + „vede jurnalul firmei". Înainte, pentru al doilea
+// manager e doar „gestionează oamenii” + „vede jurnalul firmei”. Înainte, pentru al doilea
 // administrator firma trebuia să ne sune — ceea ce nu apăra nimic, doar ne băga în gospodăria ei.
 T('adminul firmei poate atribui rolul de administrator',
   /const COMPANY_ASSIGNABLE_ROLES = \['company_admin', 'manager', 'dispatcher', 'viewer'\];/.test(server));
@@ -405,7 +405,7 @@ T('DAR nu-și poate face cont de PLATFORMĂ — linia care contează rămâne î
 T('rolul de administrator NU poate fi ajustat de firmă (și-ar tăia singură dreptul)',
   /const ROLURI_AJUSTABILE = \['manager', 'dispatcher', 'viewer'\];/.test(server) &&
   !/ROLURI_AJUSTABILE = \[[^\]]*company_admin/.test(server));
-T('„Client" a ieșit din formulare — avea exact drepturile unui Viewer',
+T('„Client” a ieșit din formulare — avea exact drepturile unui Viewer',
   !/\['client', 'Client \(vede doar vehiculele atribuite\)'\]/.test(html) &&
   !/\['client', 'Client'\]/.test(html));
 T('și în fișa omului adminul firmei poate PROMOVA la administrator',
@@ -415,7 +415,7 @@ T('plasa de la ultimul administrator rămâne — acum apără firma și de ea �
 
 sect('11g. Administratorul firmei se dă din fișa firmei');
 T('secțiunea există în fișa companiei', /function _raxCodAdminiHtml\(d\)/.test(html));
-T('și stă pe fila „Utilizatori" a firmei', /var cap = _raxCodAdminiHtml\(d\);/.test(html));
+T('și stă pe fila „Utilizatori” a firmei', /var cap = _raxCodAdminiHtml\(d\);/.test(html));
 T('numără doar administratorii ACTIVI',
   /admini\.filter\(function \(u\) \{ return u\.active !== false; \}\)/.test(html));
 T('și îi și arată pe nume', /raco-admini-om/.test(html));
@@ -451,7 +451,7 @@ T('căutarea stă în HTML, ca să nu-și piardă cursorul la fiecare literă', 
 T('ordinea are cele trei feluri', /value="nume"/.test(html) && /value="rol"/.test(html) && /value="logare"/.test(html));
 T('pastilele au locul lor', /id="users-pastile"/.test(html));
 T('lista goală din cauza căutării spune de ce e goală',
-  /Niciun cont nu se potrivește\. Șterge din căutare sau apasă „Toți"\./.test(html));
+  /Niciun cont nu se potrivește\. Șterge din căutare sau apasă „Toți”\./.test(html));
 
 sect('13. Cum arată — stilurile există');
 ['.rau-bara', '.rau-cauta', '.rau-pastile', '.rau-seats', '.rau-semn', '.rau-sfat', '.rau-meta', '.rau-butoane']
@@ -460,7 +460,7 @@ T('semnul cald e portocaliu', /\.rau-semn\.rau-cald\{[^}]*var\(--orange\)/.test(
 T('pe telefon rândul devine cartonaș', /@media \(max-width: 720px\)\{[\s\S]{0,400}\.user-row\{ flex-direction:column/.test(css));
 // Cele două câmpuri stau pe același rând, deci trebuie spus explicit cine crește și cine nu —
 // altfel selectorul de ordine ia toată bara și caseta de căutare iese de 0 px (s-a văzut în browser).
-T('caseta de căutare are bază definită, nu „auto"', /\.rau-cauta\{[^}]*flex:1 1 220px/.test(css));
+T('caseta de căutare are bază definită, nu „auto”', /\.rau-cauta\{[^}]*flex:1 1 220px/.test(css));
 T('și câmpul dinăuntru umple caseta', /\.ra-camp \.rau-cauta \.rax-field\{[^}]*width:100%/.test(css));
 T('iar selectorul de ordine nu poate lua toată bara', /\.ra-camp \.rau-bara > select\{[^}]*max-width:210px/.test(css));
 T('niciun font scris de mână în stilurile noi', !/\.rau-[a-z-]+\{[^}]*font-family/.test(css));
@@ -523,7 +523,7 @@ function gata(cod) {
   T('contul se creează fără să-i scriem parola', rSef.status === 200, rSef.status);
   const sef = await rSef.json();
   T('și primește un link de setare a parolei', /set-password\.html\?token=/.test(sef.link || ''), sef.link);
-  // Am cerut rolul VECHI („admin"); serverul trebuie să-l fi prefăcut în cel bun, singurul.
+  // Am cerut rolul VECHI („admin”); serverul trebuie să-l fi prefăcut în cel bun, singurul.
   T('rolul vechi cerut ajunge în bază sub numele cel bun', sef.role === 'company_admin', sef.role);
   T('serverul spune că emailul nu a plecat (n-avem SMTP în probă)', sef.invitat === false);
   // O parolă trimisă în cerere se ignoră: nu există a doua cale.

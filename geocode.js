@@ -32,7 +32,7 @@ const IS_PUBLIC = /nominatim\.openstreetmap\.org/i.test(PROVIDER);
 // CAPCANĂ: până acum, setarea `GEOCODE_URL` pe ORICE host care nu se potrivea regexului dezactiva automat
 // throttle-ul și trecea `warm()` pe 4 fire. Cine punea un proxy care tot lovea Nominatim public ajungea la
 // 4 cereri/s pe serviciul gratuit — exact invers față de intenție. Acum implicitul pentru un furnizor propriu
-// e 50 ms (20 req/s, prudent), nu „fără limită", iar valoarea se poate ridica explicit.
+// e 50 ms (20 req/s, prudent), nu „fără limită”, iar valoarea se poate ridica explicit.
 const MIN_INTERVAL_MS = (() => {
   const v = parseInt(process.env.GEOCODE_MIN_INTERVAL_MS);
   if (Number.isFinite(v) && v >= 0) return v;
@@ -52,9 +52,9 @@ function throttleSlot() {
   return p;
 }
 
-// Adresă DETALIATĂ: „Stradă nr, cartier, localitate, comună, județ".
+// Adresă DETALIATĂ: „Stradă nr, cartier, localitate, comună, județ”.
 // Forma scurtă de mai jos e potrivită într-un tabel, dar în fișa vehiculului devine inutilă: un vehicul
-// parcat în afara unui drum cartografiat rămânea cu „Olteni" — o localitate, nu o adresă. Aici păstrăm tot
+// parcat în afara unui drum cartografiat rămânea cu „Olteni” — o localitate, nu o adresă. Aici păstrăm tot
 // lanțul administrativ, care în România chiar contează (zeci de sate omonime).
 function detailed(j) {
   const a = (j && j.address) || {};
@@ -69,9 +69,9 @@ function detailed(j) {
   push(a.city || a.town || a.village || a.municipality || '');
 
   // COMUNA lipsește cu totul din `address` pentru satele din România — apare DOAR în `display_name`, exact
-  // înaintea județului (ex. „Olteni, **Clinceni**, Ilfov"). O luăm de acolo, țintit: o completare mai
+  // înaintea județului (ex. „Olteni, **Clinceni**, Ilfov”). O luăm de acolo, țintit: o completare mai
   // generoasă ar lipi resturi, pentru că `display_name` desparte numărul de stradă ca element separat
-  // („3, Strada Emanuil Ungureanu, …").
+  // („3, Strada Emanuil Ungureanu, …”).
   if (a.county && j && j.display_name) {
     const dn = j.display_name.split(',').map(s => s.trim());
     const iJud = dn.indexOf(a.county);
@@ -89,7 +89,7 @@ function detailed(j) {
   return null;
 }
 
-// Adresă scurtă, prietenoasă: „Stradă nr, Oraș" din câmpurile Nominatim.
+// Adresă scurtă, prietenoasă: „Stradă nr, Oraș” din câmpurile Nominatim.
 function shorten(j) {
   const a = (j && j.address) || {};
   const road = a.road || a.pedestrian || a.footway || a.cycleway || a.neighbourhood || a.suburb || '';
@@ -103,7 +103,7 @@ function shorten(j) {
   return null;
 }
 
-// „Nu există adresă la coordonatele astea" și „apelul a eșuat" sunt lucruri DIFERITE. Până acum ambele se
+// „Nu există adresă la coordonatele astea” și „apelul a eșuat” sunt lucruri DIFERITE. Până acum ambele se
 // scriau în cache ca `null`, permanent: un singur 429 sau un timeout de rețea otrăvea celula pentru totdeauna
 // (până la repornirea procesului), iar utilizatorul rămânea cu coordonate în loc de adresă fără nicio
 // explicație. Acum eșecul NU se memorează — se reîncearcă la următoarea cerere.
@@ -122,11 +122,11 @@ async function reverseGeocode(lat, lng, detail) {
     if (cache.has(k)) { stats.cached++; return _lab(cache.get(k), detail); } // alt apel a populat cache-ul cât așteptam
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    // Semnul de legătură se alege după cum arată adresa furnizorului, nu se pune orbește „?".
+    // Semnul de legătură se alege după cum arată adresa furnizorului, nu se pune orbește „?”.
     // Furnizorii cu cheia în adresă o trec chiar acolo — exact cazul documentat în .env.example:
-    // `https://eu1.locationiq.com/v1/reverse?key=<cheia>`. Cu „?" lipit necondiționat ieșea
-    // `...?key=CHEIA?format=jsonv2...`, deci cheia devenea „CHEIA?format=jsonv2" și furnizorul
-    // răspundea 401. Adică promisiunea „schimbi doar variabila" nu era adevărată pentru niciun
+    // `https://eu1.locationiq.com/v1/reverse?key=<cheia>`. Cu „?” lipit necondiționat ieșea
+    // `...?key=CHEIA?format=jsonv2...`, deci cheia devenea „CHEIA?format=jsonv2” și furnizorul
+    // răspundea 401. Adică promisiunea „schimbi doar variabila” nu era adevărată pentru niciun
     // furnizor cu cheie în adresă — se descoperea abia după ce plăteai abonamentul.
     const leg = PROVIDER.includes('?') ? '&' : '?';
     const url = PROVIDER + leg + 'format=jsonv2&zoom=18&addressdetails=1&accept-language=ro&lat=' + lat + '&lon=' + lng;
@@ -148,7 +148,7 @@ async function reverseGeocode(lat, lng, detail) {
 function peek(lat, lng, detail) {
   if (!ok(lat) || !ok(lng)) return undefined;
   const k = key(lat, lng);
-  if (!cache.has(k)) return undefined;        // „necunoscut" trebuie să rămână distinct de „fără adresă"
+  if (!cache.has(k)) return undefined;        // „necunoscut” trebuie să rămână distinct de „fără adresă”
   return _lab(cache.get(k), detail);
 }
 
@@ -187,7 +187,7 @@ const _cautari = new Map();               // interogare normalizată -> [{ label
 const MAX_CAUTARI = 500;
 const _normQ = (q) => String(q || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-// Eticheta unei sugestii: „Stradă nr, localitate, județ" — destul cât să deosebești două sate
+// Eticheta unei sugestii: „Stradă nr, localitate, județ” — destul cât să deosebești două sate
 // omonime, fără să torni tot lanțul administrativ într-o listă de sugestii.
 function _etichetaSugestie(j) {
   const a = (j && j.address) || {};

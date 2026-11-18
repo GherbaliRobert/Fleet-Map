@@ -2,17 +2,17 @@
 //
 //   node verify_insight.js
 //
-// De ce (Alin, 02.10, cu două capturi): „Câți km a făcut B 154 UIP săptămâna trecută?" → „B 154 UIP nu apare
-// în flotă"; apoi „Dacia Logan 3" → „ce vrei să afli?". Modelul primea mașinile doar cu numele și fiecare mesaj
+// De ce (Alin, 02.10, cu două capturi): „Câți km a făcut B 154 UIP săptămâna trecută?” → „B 154 UIP nu apare
+// în flotă"; apoi „Dacia Logan 3” → „ce vrei să afli?”. Modelul primea mașinile doar cu numele și fiecare mesaj
 // pleca singur. Proba păzește cele două reparații și regulile din jurul lor:
 //   1. fișa flotei (insight.js): număr cu/fără spații, pe jumătate, nume cu terminații, șofer, grupă, ambiguități;
-//   2. perioadele pe ora României și cum se scriu („21–27 septembrie", „septembrie 2026");
-//   3. răspunsul rapid gratuit DOAR la întrebări despre acum (nu la „câți kilometri … săptămâna trecută");
+//   2. perioadele pe ora României și cum se scriu („21–27 septembrie”, „septembrie 2026”);
+//   3. răspunsul rapid gratuit DOAR la întrebări despre acum (nu la „câți kilometri … săptămâna trecută”);
 //   4. forma memoriei trimise modelului;
 //   5. hârtia și copiile: 12 luni pe pagina de confidențialitate, conversațiile în afara copiilor;
 //   6. pe server pornit, cu un model SIMULAT (nu cheltuim nimic): numărul ajunge la unealtă, a doua întrebare
 //      vede prima, continuarea fără id, conversația nouă, nimeni altcineva nu vede conversația (nici noi),
-//      butoanele de ales, „celălalt", răspunsul rapid pe o mașină, ușa veche a telefonului, fondul, ștergerea la 12 luni;
+//      butoanele de ales, „celălalt”, răspunsul rapid pe o mașină, ușa veche a telefonului, fondul, ștergerea la 12 luni;
 //   7. pasul 2 (secțiunea proprie): rândul din meniu și secțiunea, notițele firmei (le scrie doar adminul, ajung în
 //      contextul întrebării, nu în partea fixă), ghidul (unealta `cauta_in_ghid`), un raport tăiat din rol nu se scoate
 //      nici prin RA Insight, statisticile pentru noi numără fără să citească textul conversațiilor.
@@ -45,90 +45,90 @@ const nr = (lista) => lista.map((v) => v.nr).join(',');
 const amb = (g) => g.ambigue.map((a) => nr(a.variante)).join(' | ');
 const ALIN = 'CATI KILOMETIR MI A FACUT MASINA B 154 UIP, SAPTAMANA TRECUTA SI CE CONSUM A AVUT?';
 T('întrebarea lui Alin (tastată în grabă, cu majuscule) găsește B 154 UIP', nr(gas(ALIN).masini) === 'B 154 UIP', nr(gas(ALIN).masini));
-T('numărul lipit („b154uip") e același număr', nr(gas('cat a consumat b154uip luna asta').masini) === 'B 154 UIP');
-T('numărul fără județ („155 UIP") ajunge la mașina lui', nr(gas('si 155 UIP?').masini) === 'B 155 UIP');
-T('numele întreg („Dacia Logan 3") — exact mașina aceea, nu celelalte Logan', nr(gas('Dacia Logan 3').masini) === 'B 154 UIP');
-T('numele cu terminație („loganul 2") + cifra aleg mașina', nr(gas('loganul 2 cat a mers ieri').masini) === 'B 155 UIP');
-T('„caddy-ul" și „passatului" — terminațiile nu încurcă', nr(gas('unde e caddy-ul?').masini) === 'IF 01 ABC' && nr(gas('passatului ce i s-a intamplat').masini) === 'B 77 RAT');
-T('„camionul 1": un nume făcut din cuvinte obișnuite se găsește după cifră', nr(gas('camionul 1 unde e').masini) === 'B 999 TIR');
-T('„Logan" singur, cu trei Logan în flotă → îndoială, NU o alegere', amb(gas('Dar celălalt Logan?')) === 'B 154 UIP,B 155 UIP,CJ 12 RAT' && !gas('Dar celălalt Logan?').masini.length, amb(gas('Dar celălalt Logan?')));
-T('„mașina lui Ion", cu doi Ion în firmă → îndoială', amb(gas('masina lui Ion')) === 'B 154 UIP,IF 01 ABC', amb(gas('masina lui Ion')));
-T('„Loganul lui Ion": cele două îndoieli se taie într-o singură mașină', nr(gas('Loganul lui Ion').masini) === 'B 154 UIP' && !gas('Loganul lui Ion').ambigue.length);
-T('numele întreg al șoferului („Ion Popescu") → mașina lui', nr(gas('Ion Popescu cat a condus').masini) === 'B 154 UIP');
-T('un cuvânt obișnuit egal cu un nume de familie („consum mare") NU găsește un șofer', !gas('consum mare la flota').masini.length && !gas('consum mare la flota').ambigue.length);
-T('„grupa Cluj" / „Distribuție" → grupa, cu mașinile ei', gas('km pe grupa Cluj').grupe.map((g) => g.nume).join() === 'Cluj' && nr(gas('consumul pe Distribuție în septembrie').grupe[0].masini) === 'B 154 UIP,B 155 UIP');
-T('o sumă de bani („120 lei") nu e luată drept număr de mașină', !gas('cât costă 120 lei motorina').masini.length);
+T('numărul lipit („b154uip”) e același număr', nr(gas('cat a consumat b154uip luna asta').masini) === 'B 154 UIP');
+T('numărul fără județ („155 UIP”) ajunge la mașina lui', nr(gas('si 155 UIP?').masini) === 'B 155 UIP');
+T('numele întreg („Dacia Logan 3”) — exact mașina aceea, nu celelalte Logan', nr(gas('Dacia Logan 3').masini) === 'B 154 UIP');
+T('numele cu terminație („loganul 2”) + cifra aleg mașina', nr(gas('loganul 2 cat a mers ieri').masini) === 'B 155 UIP');
+T('„caddy-ul” și „passatului” — terminațiile nu încurcă', nr(gas('unde e caddy-ul?').masini) === 'IF 01 ABC' && nr(gas('passatului ce i s-a intamplat').masini) === 'B 77 RAT');
+T('„camionul 1”: un nume făcut din cuvinte obișnuite se găsește după cifră', nr(gas('camionul 1 unde e').masini) === 'B 999 TIR');
+T('„Logan” singur, cu trei Logan în flotă → îndoială, NU o alegere', amb(gas('Dar celălalt Logan?')) === 'B 154 UIP,B 155 UIP,CJ 12 RAT' && !gas('Dar celălalt Logan?').masini.length, amb(gas('Dar celălalt Logan?')));
+T('„mașina lui Ion”, cu doi Ion în firmă → îndoială', amb(gas('masina lui Ion')) === 'B 154 UIP,IF 01 ABC', amb(gas('masina lui Ion')));
+T('„Loganul lui Ion”: cele două îndoieli se taie într-o singură mașină', nr(gas('Loganul lui Ion').masini) === 'B 154 UIP' && !gas('Loganul lui Ion').ambigue.length);
+T('numele întreg al șoferului („Ion Popescu”) → mașina lui', nr(gas('Ion Popescu cat a condus').masini) === 'B 154 UIP');
+T('un cuvânt obișnuit egal cu un nume de familie („consum mare”) NU găsește un șofer', !gas('consum mare la flota').masini.length && !gas('consum mare la flota').ambigue.length);
+T('„grupa Cluj” / „Distribuție” → grupa, cu mașinile ei', gas('km pe grupa Cluj').grupe.map((g) => g.nume).join() === 'Cluj' && nr(gas('consumul pe Distribuție în septembrie').grupe[0].masini) === 'B 154 UIP,B 155 UIP');
+T('o sumă de bani („120 lei”) nu e luată drept număr de mașină', !gas('cât costă 120 lei motorina').masini.length);
 const DOAR_LOGAN = I.fisaFlotei(DEV.slice(0, 3), SOF);
-T('o flotă numai de Logan: „loganul" e îndoială între toate, nu „nimic" (prins pe server)', I.gasesteInText('cat a mers loganul azi', DOAR_LOGAN).ambigue.map((a) => a.variante.length).join() === '3' && I.rezolva('Logan', DOAR_LOGAN).tip === 'ambiguu');
-T('…iar „loganul 3" alege tot mașina aceea', I.gasesteInText('cat a mers loganul 3', DOAR_LOGAN).masini.map((v) => v.nr).join() === 'B 154 UIP');
+T('o flotă numai de Logan: „loganul” e îndoială între toate, nu „nimic” (prins pe server)', I.gasesteInText('cat a mers loganul azi', DOAR_LOGAN).ambigue.map((a) => a.variante.length).join() === '3' && I.rezolva('Logan', DOAR_LOGAN).tip === 'ambiguu');
+T('…iar „loganul 3” alege tot mașina aceea', I.gasesteInText('cat a mers loganul 3', DOAR_LOGAN).masini.map((v) => v.nr).join() === 'B 154 UIP');
 const rz = (q) => I.rezolva(q, F);
-T('unealta: „B 154 UIP" → o mașină sigură', rz('B 154 UIP').tip === 'unic' && rz('B 154 UIP').v.nr === 'B 154 UIP');
-T('unealta: „Ion" (scris de model) → doi Ion, de întrebat', rz('Ion').tip === 'ambiguu' && rz('Ion').variante.length === 2);
-T('unealta: „Ion Mare" → doar mașina lui, nu și a lui Ion Popescu', rz('Ion Mare').tip === 'unic' && rz('Ion Mare').v.nr === 'IF 01 ABC', JSON.stringify(rz('Ion Mare').tip));
-T('unealta: „Distribuție" → grupa', rz('Distribuție').tip === 'grupa' && rz('Distribuție').vs.length === 2);
+T('unealta: „B 154 UIP” → o mașină sigură', rz('B 154 UIP').tip === 'unic' && rz('B 154 UIP').v.nr === 'B 154 UIP');
+T('unealta: „Ion” (scris de model) → doi Ion, de întrebat', rz('Ion').tip === 'ambiguu' && rz('Ion').variante.length === 2);
+T('unealta: „Ion Mare” → doar mașina lui, nu și a lui Ion Popescu', rz('Ion Mare').tip === 'unic' && rz('Ion Mare').v.nr === 'IF 01 ABC', JSON.stringify(rz('Ion Mare').tip));
+T('unealta: „Distribuție” → grupa', rz('Distribuție').tip === 'grupa' && rz('Distribuție').vs.length === 2);
 T('unealta: ce nu există → nimic (nu o mașină oarecare)', rz('XYZ 99').tip === 'nimic');
 T('eticheta: numărul întâi, apoi numele', I.eticheta(F[0]) === 'B 154 UIP · Dacia Logan 3');
 T('titlul conversației: numărul scris ca în aplicație, oricum l-a tastat omul', /B 154 UIP/.test(I.titluDin('cat a consumat b154uip luna asta', gas('cat a consumat b154uip luna asta').masini)) && /^Cati kilometir/.test(I.titluDin(ALIN, gas(ALIN).masini)));
 
 // ─── 2. Perioadele, pe ora României ─────────────────────────────────────────────────────────────────
-console.log('\n2. „Azi", „săptămâna trecută", „septembrie" — pe ora României');
+console.log('\n2. „Azi”, „săptămâna trecută”, „septembrie” — pe ora României');
 const ACUM = Date.parse('2026-10-02T09:56:00Z');   // vineri, 12:56 la București
 const P = (p) => I.perioada(p, ACUM);
 const E = (p) => { const r = P(p); return I.etichetaPerioadei(r.from, r.to, ACUM); };
-T('„azi" începe la miezul nopții ROMÂNIEI (21:00 UTC vara), nu la al serverului', P({ period: 'today' }).from === '2026-10-01T21:00:00.000Z' && E({ period: 'today' }) === 'azi');
-T('„ieri" = ziua întreagă de ieri', E({ period: 'yesterday' }) === 'ieri' && P({ period: 'yesterday' }).to === '2026-10-01T21:00:00.000Z');
-T('„săptămâna trecută" = luni–duminică: 21–27 septembrie', E({ period: 'last_week' }) === '21–27 septembrie' && P({ period: 'last_week' }).from === '2026-09-20T21:00:00.000Z', E({ period: 'last_week' }));
-T('„luna trecută" = septembrie 2026, întreagă', E({ period: 'last_month' }) === 'septembrie 2026');
-T('„luna asta" = octombrie, până azi', E({ period: 'this_month' }) === 'octombrie 2026 (până azi)');
-T('o lună anume („2026-09") = aceeași lună întreagă', E({ month: '2026-09' }) === 'septembrie 2026' && P({ month: '2026-09' }).to === P({ period: 'last_month' }).to);
+T('„azi” începe la miezul nopții ROMÂNIEI (21:00 UTC vara), nu la al serverului', P({ period: 'today' }).from === '2026-10-01T21:00:00.000Z' && E({ period: 'today' }) === 'azi');
+T('„ieri” = ziua întreagă de ieri', E({ period: 'yesterday' }) === 'ieri' && P({ period: 'yesterday' }).to === '2026-10-01T21:00:00.000Z');
+T('„săptămâna trecută” = luni–duminică: 21–27 septembrie', E({ period: 'last_week' }) === '21–27 septembrie' && P({ period: 'last_week' }).from === '2026-09-20T21:00:00.000Z', E({ period: 'last_week' }));
+T('„luna trecută” = septembrie 2026, întreagă', E({ period: 'last_month' }) === 'septembrie 2026');
+T('„luna asta” = octombrie, până azi', E({ period: 'this_month' }) === 'octombrie 2026 (până azi)');
+T('o lună anume („2026-09”) = aceeași lună întreagă', E({ month: '2026-09' }) === 'septembrie 2026' && P({ month: '2026-09' }).to === P({ period: 'last_month' }).to);
 T('fără perioadă → ultimele 7 zile', E({}) === '25 septembrie – azi', E({}));
 // trecerea la ora de iarnă (25.10.2026): ziua are 25 de ore, iar miezul nopții se mută de la 21:00 la 22:00 UTC
 const IARNA = Date.parse('2026-10-26T10:00:00Z');
-T('după trecerea la ora de iarnă, „azi" începe la 22:00 UTC', I.perioada({ period: 'today' }, IARNA).from === '2026-10-25T22:00:00.000Z');
-T('„săptămâna trecută" peste schimbarea orei: 19–25 octombrie', I.etichetaPerioadei(I.perioada({ period: 'last_week' }, IARNA).from, I.perioada({ period: 'last_week' }, IARNA).to, IARNA) === '19–25 octombrie');
+T('după trecerea la ora de iarnă, „azi” începe la 22:00 UTC', I.perioada({ period: 'today' }, IARNA).from === '2026-10-25T22:00:00.000Z');
+T('„săptămâna trecută” peste schimbarea orei: 19–25 octombrie', I.etichetaPerioadei(I.perioada({ period: 'last_week' }, IARNA).from, I.perioada({ period: 'last_week' }, IARNA).to, IARNA) === '19–25 octombrie');
 const VARA = Date.parse('2026-03-30T10:00:00Z');   // luni, după trecerea la ora de vară (29.03)
-T('după trecerea la ora de vară, „ieri" (29 martie, 23 de ore) se scrie „ieri"', I.etichetaPerioadei(I.perioada({ period: 'yesterday' }, VARA).from, I.perioada({ period: 'yesterday' }, VARA).to, VARA) === 'ieri');
+T('după trecerea la ora de vară, „ieri” (29 martie, 23 de ore) se scrie „ieri”', I.etichetaPerioadei(I.perioada({ period: 'yesterday' }, VARA).from, I.perioada({ period: 'yesterday' }, VARA).to, VARA) === 'ieri');
 
 // ─── 3. Răspunsul rapid gratuit: doar despre ACUM ───────────────────────────────────────────────────
 console.log('\n3. Răspunsul rapid (gratuit) doar la întrebări despre acum');
 const rapid = (t, ctx) => I.potrivitPentruRapid(t, gas(t), !!ctx);
-T('„Unde sunt vehiculele?" → rapid', rapid('Unde sunt vehiculele?'));
-T('„Câți km azi?" → rapid', rapid('Câți km azi?'));
-T('„cum stă flota" / „status flotă" → rapid', rapid('cum sta flota') && rapid('status flota'));
-T('întrebarea lui Alin scrisă CORECT („kilometri … săptămâna trecută") → NU rapid (altfel primea km-ii de azi)', !rapid('Câți kilometri a făcut B 154 UIP săptămâna trecută și ce consum a avut?'));
-T('„km și consum azi" → NU rapid (răspunsul rapid știe doar km)', !rapid('km si consum azi'));
-T('o continuare („și ieri?") într-o discuție → NU rapid', !rapid('si ieri?', true));
-T('„unde e Loganul?" cu trei Logan → NU rapid (întâi se lămurește care)', !rapid('unde e loganul?'));
-// Alin, 10.11 (o discuție cu poze): trei întrebări deodată, despre ce a făcut mașina azi, primeau pe „Instant" doar km-ii flotei.
-T('întrebarea lui Alin, pe trei rânduri („Pe unde a umblat azi? / Câți km a făcut azi? / Care sunt cele mai frecvente locații?") → NU rapid',
+T('„Unde sunt vehiculele?” → rapid', rapid('Unde sunt vehiculele?'));
+T('„Câți km azi?” → rapid', rapid('Câți km azi?'));
+T('„cum stă flota” / „status flotă” → rapid', rapid('cum sta flota') && rapid('status flota'));
+T('întrebarea lui Alin scrisă CORECT („kilometri … săptămâna trecută”) → NU rapid (altfel primea km-ii de azi)', !rapid('Câți kilometri a făcut B 154 UIP săptămâna trecută și ce consum a avut?'));
+T('„km și consum azi” → NU rapid (răspunsul rapid știe doar km)', !rapid('km si consum azi'));
+T('o continuare („și ieri?”) într-o discuție → NU rapid', !rapid('si ieri?', true));
+T('„unde e Loganul?” cu trei Logan → NU rapid (întâi se lămurește care)', !rapid('unde e loganul?'));
+// Alin, 10.11 (o discuție cu poze): trei întrebări deodată, despre ce a făcut mașina azi, primeau pe „Instant” doar km-ii flotei.
+T('întrebarea lui Alin, pe trei rânduri („Pe unde a umblat azi? / Câți km a făcut azi? / Care sunt cele mai frecvente locații?”) → NU rapid',
   !rapid('Pe unde a umblat azi?\n\nCâți km a făcut azi?\n\nCare sunt cele mai frecvente locații?', true));
-T('mai multe întrebări într-un rând („Câți km a făcut azi? Și unde e acum?") → NU rapid (răspunsul rapid știe una)', !rapid('Câți km a făcut azi? Și unde e acum?') && I.maiMulteIntrebari('Câți km a făcut azi? Și unde e acum?'));
+T('mai multe întrebări într-un rând („Câți km a făcut azi? Și unde e acum?”) → NU rapid (răspunsul rapid știe una)', !rapid('Câți km a făcut azi? Și unde e acum?') && I.maiMulteIntrebari('Câți km a făcut azi? Și unde e acum?'));
 T('ce s-a întâmplat azi (pe unde a umblat, unde a fost / a stat, opririle, cursele, traseul, drumul) → NU rapid',
   ['Pe unde a umblat azi?', 'Unde a fost Loganul azi?', 'unde a stat azi', 'Care au fost opririle de azi?', 'Ce curse a făcut azi?', 'Arată-mi traseul de azi', 'drumul de azi al lui B 154 UIP', 'cele mai frecvente locații'].every((q) => !rapid(q)));
-// Două feluri de întrebare într-o propoziție (10.11): „Cât a mers azi și unde e?" — km-ii nu spun locul → RA Insight. Listele cu
-// mașini (oprite, în mers, cea mai rapidă) arată deja locul, deci „Unde sunt mașinile oprite?" rămâne rapid.
+// Două feluri de întrebare într-o propoziție (10.11): „Cât a mers azi și unde e?” — km-ii nu spun locul → RA Insight. Listele cu
+// mașini (oprite, în mers, cea mai rapidă) arată deja locul, deci „Unde sunt mașinile oprite?” rămâne rapid.
 const FQ = require('./fleet_quick');
-T('„Cât a mers azi și unde e?", „Care sunt oprite și care merg?", „Status flotă și unde sunt?" → răspunsul rapid NU le acoperă',
+T('„Cât a mers azi și unde e?”, „Care sunt oprite și care merg?”, „Status flotă și unde sunt?” → răspunsul rapid NU le acoperă',
   ['Cât a mers azi și unde e?', 'Care sunt oprite și care merg?', 'Status flotă și unde sunt?'].every((q) => !FQ.acoperaTot(q)), JSON.stringify(['Cât a mers azi și unde e?', 'Care sunt oprite și care merg?'].map(FQ.detectIntents)));
-T('…dar „Unde sunt mașinile oprite?", „Care e cel mai rapid și unde e?", „Câți km a făcut azi?" — da (o listă cu locul, ori o singură întrebare)',
+T('…dar „Unde sunt mașinile oprite?”, „Care e cel mai rapid și unde e?”, „Câți km a făcut azi?” — da (o listă cu locul, ori o singură întrebare)',
   ['Unde sunt mașinile oprite?', 'Care e cel mai rapid și unde e?', 'Câți km a făcut azi?', 'Unde e acum?'].every((q) => FQ.acoperaTot(q)));
-// Mașina din discuție, doar la „unde e" / „câți km a făcut", la singular: „Care sunt oprite?" rămâne despre toată flota.
-T('mașina din discuție: „Unde e?", „Câți km a făcut azi?", „Locația lui" — da; „Unde sunt?", „Câți km au făcut azi?", „Care sunt oprite?" — nu',
+// Mașina din discuție, doar la „unde e” / „câți km a făcut”, la singular: „Care sunt oprite?” rămâne despre toată flota.
+T('mașina din discuție: „Unde e?”, „Câți km a făcut azi?”, „Locația lui” — da; „Unde sunt?”, „Câți km au făcut azi?”, „Care sunt oprite?” — nu',
   I.peMasinaDinDiscutie('Unde e?', 'where') && I.peMasinaDinDiscutie('Câți km a făcut azi?', 'distance') && I.peMasinaDinDiscutie('Locația lui', 'where')
   && !I.peMasinaDinDiscutie('Unde sunt?', 'where') && !I.peMasinaDinDiscutie('Câți km au făcut azi?', 'distance') && !I.peMasinaDinDiscutie('Care sunt oprite?', 'stopped'));
-T('…dar „acum" rămâne rapid: „Unde e acum?", „Care sunt oprite?", „care sunt pe drum acum", „Câți km a făcut azi?", un salut pe rândul de sus',
+T('…dar „acum” rămâne rapid: „Unde e acum?”, „Care sunt oprite?”, „care sunt pe drum acum”, „Câți km a făcut azi?”, un salut pe rândul de sus',
   ['Unde e acum?', 'Care sunt oprite?', 'care sunt pe drum acum', 'Câți km a făcut azi?', 'Salut\nunde e B 154 UIP?'].every((q) => rapid(q)));
-// Zilele săptămânii (Alin, 14.10): „Unde a fost Loganul duminică?" primea unde e ACUM, „în weekend" — „Distanță azi: 0 km".
-T('„duminică", „în weekend", „de luni până acum", „marțea trecută" → NU rapid (altă zi decât acum)',
+// Zilele săptămânii (Alin, 14.10): „Unde a fost Loganul duminică?” primea unde e ACUM, „în weekend” — „Distanță azi: 0 km”.
+T('„duminică”, „în weekend”, „de luni până acum”, „marțea trecută” → NU rapid (altă zi decât acum)',
   !rapid('Unde a fost B 154 UIP duminică?') && !rapid('Câți kilometri a făcut B 154 UIP în weekend?') && !rapid('Câți km de luni până acum?') && !rapid('ce a făcut flota marțea trecută'));
-T('„ultimele 3 luni" nu e ziua de luni (și tot nu e rapid, fiindcă e altă perioadă)', I.ziuaSaptamanii('consumul în ultimele 3 luni') === null && I.ziuaSaptamanii('acum două luni') === null);
+T('„ultimele 3 luni” nu e ziua de luni (și tot nu e rapid, fiindcă e altă perioadă)', I.ziuaSaptamanii('consumul în ultimele 3 luni') === null && I.ziuaSaptamanii('acum două luni') === null);
 const MIE = Date.parse('2026-10-14T09:00:00Z'), SAM = Date.parse('2026-10-17T09:00:00Z');   // miercuri / sâmbătă
 const zs = (t, a) => { const r = I.ziuaSaptamanii(t, a); return r ? I.etichetaPerioadei(r.from, r.to, a) : null; };
-T('miercuri 14.10: „duminică" = 11 octombrie, „în weekend" = 10–11 octombrie, „marți" = ieri, „miercuri" = azi',
+T('miercuri 14.10: „duminică” = 11 octombrie, „în weekend” = 10–11 octombrie, „marți” = ieri, „miercuri” = azi',
   zs('duminică', MIE) === '11 octombrie' && zs('în weekend', MIE) === '10–11 octombrie' && zs('marți', MIE) === 'ieri' && zs('miercuri', MIE) === 'azi',
   [zs('duminică', MIE), zs('în weekend', MIE), zs('marți', MIE), zs('miercuri', MIE)].join(' | '));
-T('„miercurea trecută" = 7 octombrie; „de luni până miercuri" = 12 octombrie – azi', zs('miercurea trecută', MIE) === '7 octombrie' && zs('de luni până miercuri', MIE) === '12 octombrie – azi', zs('miercurea trecută', MIE) + ' | ' + zs('de luni până miercuri', MIE));
-T('sâmbătă 17.10: „în weekend" = weekendul de acum (de azi), „weekendul trecut" = 10–11 octombrie', zs('în weekend', SAM) === 'azi' && zs('weekendul trecut', SAM) === '10–11 octombrie', zs('în weekend', SAM) + ' | ' + zs('weekendul trecut', SAM));
+T('„miercurea trecută” = 7 octombrie; „de luni până miercuri” = 12 octombrie – azi', zs('miercurea trecută', MIE) === '7 octombrie' && zs('de luni până miercuri', MIE) === '12 octombrie – azi', zs('miercurea trecută', MIE) + ' | ' + zs('de luni până miercuri', MIE));
+T('sâmbătă 17.10: „în weekend” = weekendul de acum (de azi), „weekendul trecut” = 10–11 octombrie', zs('în weekend', SAM) === 'azi' && zs('weekendul trecut', SAM) === '10–11 octombrie', zs('în weekend', SAM) + ' | ' + zs('weekendul trecut', SAM));
 const TRECERE = I.ziuaSaptamanii('duminică', Date.parse('2026-10-26T09:00:00Z'));
 T('duminica trecerii la ora de iarnă (25.10) are 25 de ore, ca ziua României', Date.parse(TRECERE.to) - Date.parse(TRECERE.from) === 25 * 3600000, JSON.stringify(TRECERE));
 
@@ -151,12 +151,12 @@ const BK = fs.readFileSync(path.join(__dirname, 'backup.js'), 'utf8');
 T('conversațiile NU intră în copiile de siguranță (ar trăi mai mult decât promitem)', /ai_conversatii:\s*'/.test(BK) && /ai_mesaje:\s*'/.test(BK));
 const HTML = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
 const ACT = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'lib', 'activitate.ts'), 'utf8');
-T('„Istoric activitate" scrie românește descărcarea istoricului complet (web și telefon, la fel)', /device_history: 'istoricul complet al mașinii'/.test(HTML) && /device_history: 'istoricul complet al mașinii'/.test(ACT));
+T('„Istoric activitate” scrie românește descărcarea istoricului complet (web și telefon, la fel)', /device_history: 'istoricul complet al mașinii'/.test(HTML) && /device_history: 'istoricul complet al mașinii'/.test(ACT));
 const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
 T('uneltele de rapoarte se dau doar cui are dreptul la rapoarte', /if \(cuRapoarte\) tools\.push\(\{\s*name: 'run_report'/.test(SRV));
 // Din 01.11 plafonul cuprinde și caseta asistentului fondatorilor (pasul 2), care poate chema modelul.
 T('ușa nouă a secțiunii stă sub plafonul de întrebări AI pe minut (și caseta asistentului fondatorilor)', /const isAi = p\.indexOf\('\/api\/ai\/'\) === 0 \|\| p === '\/api\/insight\/intreaba' \|\| p === '\/api\/admin\/asistent\/intreaba';/.test(SRV));
-T('„Asistent AI" de pe telefonul vechi trece prin ACELAȘI RA Insight', /app\.post\('\/api\/ai\/chat',[^\n]*_raInsight\(req, res/.test(SRV));
+T('„Asistent AI” de pe telefonul vechi trece prin ACELAȘI RA Insight', /app\.post\('\/api\/ai\/chat',[^\n]*_raInsight\(req, res/.test(SRV));
 T('o singură funcție răspunde (trei uși, un asistent)', (SRV.match(/_raInsight\(req, res, \{/g) || []).length === 3, (SRV.match(/_raInsight\(req, res, \{/g) || []).length);
 
 // ─── 6. Pe server pornit ────────────────────────────────────────────────────────────────────────────
@@ -251,11 +251,11 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const ckSef = await login('sef@insight.ro', PAROLA), ckColeg = await login('coleg@insight.ro', PAROLA), ckAlt = await login('sef@alta-insight.ro', PAROLA);
   const telSef = await loginTelefon('sef@insight.ro', PAROLA);
   T('pregătire: șeful, un coleg (amândoi cu RA Insight) și șeful altei firme intră', !!(sef.id && coleg.id && ckSef && ckColeg && ckAlt && telSef));
-  // 16.11 (Alin: „nu există fără limită"): un coleg are întrebări libere doar câte îi dă administratorul.
+  // 16.11 (Alin: „nu există fără limită”): un coleg are întrebări libere doar câte îi dă administratorul.
   const limColeg = await json('PUT', '/api/users/' + coleg.id + '/ai-limita', ckSef, { limita: 100 });
   T('pregătire: administratorul îi dă colegului 100 de întrebări pe lună', limColeg.status === 200, limColeg.text.slice(0, 120));
   // Mașinile le înregistrăm NOI (super-admin) și le dăm pe firmă; șoferii și grupele sunt ale firmei.
-  // Importul citește coloanele pe românește (ca fișierul CSV): „nume", „nr_inmatriculare".
+  // Importul citește coloanele pe românește (ca fișierul CSV): „nume”, „nr_inmatriculare”.
   await json('POST', '/api/devices/import', S, { rows: DEV.slice(0, 3).map((d) => ({ imei: d.imei, nume: d.name, nr_inmatriculare: d.plate })) });
   for (const d of DEV.slice(0, 3)) await json('PUT', '/api/devices/' + d.imei + '/company', S, { company_id: co.id });
   const sof1 = (await json('POST', '/api/drivers', ckSef, { name: 'Ion Popescu' })).j;
@@ -269,7 +269,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const folosite = async () => (await json('GET', '/api/ai/quota', ckSef)).j.used;
 
   // a) prima întrebare: numărul ajunge la unealtă
-  // Răspunsurile simulate poartă cifre-semn FĂRĂ unitate („538 de vizite"): o cifră cu unitate (km, lei…) care nu se găsește în
+  // Răspunsurile simulate poartă cifre-semn FĂRĂ unitate („538 de vizite”): o cifră cu unitate (km, lei…) care nu se găsește în
   // date face, din 15.10, ca RA Insight să-și rescrie o dată răspunsul — verificat separat, în verify_cifre.js.
   coada([unealta('run_report', { type: 'utilization', vehicle: 'B154UIP', period: 'last_week' }), text('**B 154 UIP (Dacia Logan 3)** — 538 de vizite săptămâna trecută.')]);
   const q1 = await json('POST', '/api/ai/reports-agent', ckSef, { message: ALIN });
@@ -277,19 +277,19 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('prima întrebare primește răspunsul modelului', q1.status === 200 && /538 de vizite/.test(q1.j.reply || ''), q1.status + ' ' + q1.text.slice(0, 120));
   T('modelul a fost chemat de două ori (unealta, apoi răspunsul)', c1.length === 2, c1.length);
   T('instrucțiunile vin în două bucăți: partea fixă (în cache) + contextul întrebării', Array.isArray(c1[0].system) && c1[0].system.length === 2 && !!c1[0].system[0].cache_control && !c1[0].system[1].cache_control);
-  T('contextul îi spune modelului ce mașină a pomenit omul, cu număr, nume, șofer și grupă', /B 154 UIP = „Dacia Logan 3" \(șofer Ion Popescu, grupa Distribuție\)/.test(contextul(c1[0])), contextul(c1[0]).slice(0, 300));
-  T('unealta de rapoarte primește numărul cum l-a scris omul și știe și „month"', (c1[0].tools || []).some((t) => t.name === 'run_report' && t.input_schema.properties.month && t.input_schema.properties.group));
+  T('contextul îi spune modelului ce mașină a pomenit omul, cu număr, nume, șofer și grupă', /B 154 UIP = „Dacia Logan 3” \(șofer Ion Popescu, grupa Distribuție\)/.test(contextul(c1[0])), contextul(c1[0]).slice(0, 300));
+  T('unealta de rapoarte primește numărul cum l-a scris omul și știe și „month”', (c1[0].tools || []).some((t) => t.name === 'run_report' && t.input_schema.properties.month && t.input_schema.properties.group));
   const rez = (c1[1].messages || []).slice(-1)[0];
-  T('raportul a rulat pe B 154 UIP („B154UIP" a fost recunoscut), nu „nu apare"', JSON.stringify(rez).indexOf('B 154 UIP · Dacia Logan 3') >= 0 && JSON.stringify(rez).indexOf('Nicio mașină') < 0, JSON.stringify(rez).slice(0, 200));
+  T('raportul a rulat pe B 154 UIP („B154UIP” a fost recunoscut), nu „nu apare”', JSON.stringify(rez).indexOf('B 154 UIP · Dacia Logan 3') >= 0 && JSON.stringify(rez).indexOf('Nicio mașină') < 0, JSON.stringify(rez).slice(0, 200));
   // Săptămâna trecută se socotește față de AZI (ceasul adevărat): scrisă de mână „septembrie|octombrie", proba pica de pe 09.11.
   const _sapT = I.perioada({ period: 'last_week' }, Date.now()), sapTrecuta = I.etichetaPerioadei(_sapT.from, _sapT.to, Date.now());
   T('sursa: Index km / ore, pe B 154 UIP, săptămâna trecută (' + sapTrecuta + ')', (q1.j.sources || []).length === 1 && q1.j.sources[0].imei === DEV[0].imei && q1.j.sources[0].label === 'Index km / ore' && q1.j.sources[0].perioada === sapTrecuta, JSON.stringify(q1.j.sources));
   const inteles1 = (q1.j.inteles || []).map((x) => x.tip + ':' + x.text);
-  T('„Am înțeles": mașina, perioada și raportul', inteles1.includes('masina:B 154 UIP · Dacia Logan 3') && inteles1.some((x) => /^perioada:\d/.test(x)) && inteles1.includes('subiect:Index km / ore'), inteles1.join(' | '));
+  T('„Am înțeles”: mașina, perioada și raportul', inteles1.includes('masina:B 154 UIP · Dacia Logan 3') && inteles1.some((x) => /^perioada:\d/.test(x)) && inteles1.includes('subiect:Index km / ore'), inteles1.join(' | '));
   T('conversația s-a păstrat (are id)', Number(q1.j.conversatieId) > 0 && Number(q1.j.mesajId) > 0);
   T('întrebarea se numără o singură dată din fond, deși modelul a lucrat în doi pași', (await folosite()) === 1);
   // Chatul modern (08.10): sub răspunsul cu un raport, întrebările de continuare — ACEEAȘI regulă ca AI Raport (aiRaport.urmari).
-  T('sub răspuns, întrebările de continuare din raportul citit: „Și săptămâna dinainte?", „Și consumul?", „Și pe toată flota?"', (q1.j.urmari || []).map((x) => x.text).join(' | ') === 'Și săptămâna dinainte? | Și consumul? | Și pe toată flota?', JSON.stringify(q1.j.urmari));
+  T('sub răspuns, întrebările de continuare din raportul citit: „Și săptămâna dinainte?”, „Și consumul?”, „Și pe toată flota?”', (q1.j.urmari || []).map((x) => x.text).join(' | ') === 'Și săptămâna dinainte? | Și consumul? | Și pe toată flota?', JSON.stringify(q1.j.urmari));
 
   // b) continuarea, cu id: modelul vede discuția
   coada([text('Față de 14–20 septembrie: +66 de vizite.')]);
@@ -303,20 +303,20 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   coada([text('Dacia Logan 3 a avut 36,6 puncte.')]);
   const q3 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Dacia Logan 3' });
   const c3 = cereri().slice(-1)[0];
-  T('„Dacia Logan 3" trimis singur continuă discuția (nu mai întreabă „ce vrei să afli")', q3.j.conversatieId === q1.j.conversatieId && (c3.messages || []).length === 5, q3.j.conversatieId + ' / ' + (c3.messages || []).length);
+  T('„Dacia Logan 3” trimis singur continuă discuția (nu mai întreabă „ce vrei să afli”)', q3.j.conversatieId === q1.j.conversatieId && (c3.messages || []).length === 5, q3.j.conversatieId + ' / ' + (c3.messages || []).length);
 
   // d) conversație nouă la cerere
   coada([text('Bună!')]);
   const q4 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Ce probleme are flota?', nou: true });
   const c4 = cereri().slice(-1)[0];
-  T('„Conversație nouă" pornește de la zero', q4.j.conversatieId && q4.j.conversatieId !== q1.j.conversatieId && (c4.messages || []).length === 1);
+  T('„Conversație nouă” pornește de la zero', q4.j.conversatieId && q4.j.conversatieId !== q1.j.conversatieId && (c4.messages || []).length === 1);
 
   // e) lista și citirea
   const l1 = await json('GET', '/api/insight/conversatii', ckSef);
   T('lista: două conversații, cea mai nouă întâi; titlul cu numărul scris ca în aplicație', l1.status === 200 && l1.j.conversatii.length === 2 && l1.j.conversatii[0].id === q4.j.conversatieId && /B 154 UIP/.test(l1.j.conversatii[1].titlu || ''), JSON.stringify(l1.j.conversatii.map((c) => c.titlu)));
   T('lista spune și cât se păstrează (12 luni)', l1.j.pastrareLuni === 12);
   const cit = await json('GET', '/api/insight/conversatii/' + q1.j.conversatieId, ckSef);
-  T('conversația se redeschide: 3 întrebări + 3 răspunsuri, cu „Am înțeles" la răspuns', cit.status === 200 && cit.j.mesaje.length === 6 && cit.j.mesaje[1].rol === 'assistant' && (cit.j.mesaje[1].extra.inteles || []).length >= 3, cit.status + ' ' + (cit.j.mesaje || []).length);
+  T('conversația se redeschide: 3 întrebări + 3 răspunsuri, cu „Am înțeles” la răspuns', cit.status === 200 && cit.j.mesaje.length === 6 && cit.j.mesaje[1].rol === 'assistant' && (cit.j.mesaje[1].extra.inteles || []).length >= 3, cit.status + ' ' + (cit.j.mesaje || []).length);
   T('…și cu întrebările de continuare păstrate (se arată sub ultimul răspuns când o redeschizi)', (cit.j.mesaje[1].extra.urmari || []).length === 3);
   const cauta = await json('GET', '/api/insight/conversatii?q=36,6', ckSef);
   T('căutarea găsește și în textul răspunsurilor', cauta.j.conversatii.length === 1 && cauta.j.conversatii[0].id === q1.j.conversatieId);
@@ -351,40 +351,40 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('unealta nu alege la întâmplare: îi spune modelului că sunt mai multe', JSON.stringify(c5.messages.slice(-1)[0]).indexOf('ambiguu') >= 0);
   T('răspunsul are butoane cu cele trei Logan (de apăsat în loc de scris)', (q5.j.alege || []).map((a) => a.trimite).sort().join(',') === 'B 154 UIP,B 155 UIP,CJ 12 RAT', JSON.stringify(q5.j.alege));
   T('și nu s-a rulat niciun raport (nici continuări: întâi alege mașina)', !(q5.j.sources || []).length && !(q5.j.urmari || []).length);
-  // „celălalt": se scoate mașina despre care tocmai s-a vorbit
+  // „celălalt”: se scoate mașina despre care tocmai s-a vorbit
   coada([text('Care dintre B 155 UIP și CJ 12 RAT?')]);
   const q6 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Dar celălalt Logan?', conversatieId: q1.j.conversatieId });
-  T('„celălalt Logan": butoanele lasă deoparte B 154 UIP, despre care tocmai era vorba', (q6.j.alege || []).map((a) => a.trimite).sort().join(',') === 'B 155 UIP,CJ 12 RAT', JSON.stringify(q6.j.alege));
+  T('„celălalt Logan”: butoanele lasă deoparte B 154 UIP, despre care tocmai era vorba', (q6.j.alege || []).map((a) => a.trimite).sort().join(',') === 'B 155 UIP,CJ 12 RAT', JSON.stringify(q6.j.alege));
 
   // i) răspuns rapid pe o mașină: gratuit, fără model
   const inainte = cereri().length, fondInainte = await folosite();
   const q7 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Unde e B 154 UIP?', nou: true });
-  T('„Unde e B 154 UIP?" → răspuns rapid, doar despre ea, fără model și fără să se numere', q7.j.source === 'local' && /Dacia Logan 3/.test(q7.j.reply || '') && cereri().length === inainte && (await folosite()) === fondInainte, q7.text.slice(0, 160));
-  T('și „Am înțeles" spune mașina și „acum"', (q7.j.inteles || []).map((x) => x.text).join('|') === 'B 154 UIP · Dacia Logan 3|acum', JSON.stringify(q7.j.inteles));
-  T('…fără continuări (apăsate, ar porni întrebări care se numără) și fără nota „nu s-a numărat din fond" pe ecran (Alin, 08.10)', !(q7.j.urmari || []).length && fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').indexOf('nu s-a numărat din fond') < 0);
+  T('„Unde e B 154 UIP?” → răspuns rapid, doar despre ea, fără model și fără să se numere', q7.j.source === 'local' && /Dacia Logan 3/.test(q7.j.reply || '') && cereri().length === inainte && (await folosite()) === fondInainte, q7.text.slice(0, 160));
+  T('și „Am înțeles” spune mașina și „acum”', (q7.j.inteles || []).map((x) => x.text).join('|') === 'B 154 UIP · Dacia Logan 3|acum', JSON.stringify(q7.j.inteles));
+  T('…fără continuări (apăsate, ar porni întrebări care se numără) și fără nota „nu s-a numărat din fond” pe ecran (Alin, 08.10)', !(q7.j.urmari || []).length && fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').indexOf('nu s-a numărat din fond') < 0);
   coada([text('Săptămâna trecută: 538 de vizite.')]);
   const q8 = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Câți kilometri a făcut B 154 UIP săptămâna trecută?', nou: true });
   T('cu altă perioadă, aceeași întrebare merge la RA Insight (nu primește km-ii de azi)', q8.j.source === 'ai' && cereri().length === inainte + 1, q8.j.source);
-  // Mașina din discuție rămâne (Alin, 10.11): după „Unde e B 154 UIP?", „Câți km a făcut azi?" e despre ea, nu despre toată flota.
+  // Mașina din discuție rămâne (Alin, 10.11): după „Unde e B 154 UIP?”, „Câți km a făcut azi?” e despre ea, nu despre toată flota.
   const nCereri = cereri().length;
   const q7b = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Câți km a făcut azi?', conversatieId: q7.j.conversatieId });
-  T('„Câți km a făcut azi?" după „Unde e B 154 UIP?" → rapid, despre B 154 UIP (mașina din discuție), fără model', q7b.j.source === 'local' && (q7b.j.inteles || []).map((x) => x.text).join('|') === 'B 154 UIP · Dacia Logan 3|azi' && cereri().length === nCereri, JSON.stringify([q7b.j.source, q7b.j.inteles]));
+  T('„Câți km a făcut azi?” după „Unde e B 154 UIP?” → rapid, despre B 154 UIP (mașina din discuție), fără model', q7b.j.source === 'local' && (q7b.j.inteles || []).map((x) => x.text).join('|') === 'B 154 UIP · Dacia Logan 3|azi' && cereri().length === nCereri, JSON.stringify([q7b.j.source, q7b.j.inteles]));
   const q7c = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Câți km au făcut toate mașinile azi?', conversatieId: q7.j.conversatieId });
-  T('…„toate mașinile" → iar toată flota', q7c.j.source === 'local' && (q7c.j.inteles || [])[0] && q7c.j.inteles[0].text === 'toată flota', JSON.stringify(q7c.j.inteles));
+  T('…„toate mașinile” → iar toată flota', q7c.j.source === 'local' && (q7c.j.inteles || [])[0] && q7c.j.inteles[0].text === 'toată flota', JSON.stringify(q7c.j.inteles));
   coada([text('Azi, B 154 UIP a mers prin Cluj-Napoca: 12 km, două opriri.')]);
   const q7d = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Pe unde a umblat azi?\n\nCâți km a făcut azi?\n\nCare sunt cele mai frecvente locații?', conversatieId: q7.j.conversatieId });
   T('întrebarea lui Alin, cu trei părți → RA Insight (analiza), nu răspunsul rapid', q7d.j.source === 'ai' && cereri().length === nCereri + 1, q7d.j.source);
   const q7e = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Care sunt oprite?', conversatieId: q7.j.conversatieId });
-  T('„Care sunt oprite?" după o discuție despre B 154 UIP → rapid, despre TOATĂ flota (nu doar despre mașina discutată)', q7e.j.source === 'local' && (q7e.j.inteles || [])[0] && q7e.j.inteles[0].text === 'toată flota' && cereri().length === nCereri + 1, JSON.stringify([q7e.j.source, q7e.j.inteles]));
+  T('„Care sunt oprite?” după o discuție despre B 154 UIP → rapid, despre TOATĂ flota (nu doar despre mașina discutată)', q7e.j.source === 'local' && (q7e.j.inteles || [])[0] && q7e.j.inteles[0].text === 'toată flota' && cereri().length === nCereri + 1, JSON.stringify([q7e.j.source, q7e.j.inteles]));
   coada([text('B 154 UIP a mers 12 km azi și stă acum în Cluj-Napoca.')]);
   const q7f = await json('POST', '/api/ai/reports-agent', ckSef, { message: 'Cât a mers azi și unde e?', conversatieId: q7.j.conversatieId });
-  T('„Cât a mers azi și unde e?" (două întrebări într-o propoziție) → RA Insight, nu răspunsul rapid cu doar km-ii', q7f.j.source === 'ai' && cereri().length === nCereri + 2, q7f.j.source);
+  T('„Cât a mers azi și unde e?” (două întrebări într-o propoziție) → RA Insight, nu răspunsul rapid cu doar km-ii', q7f.j.source === 'ai' && cereri().length === nCereri + 2, q7f.j.source);
 
-  // j) ușa veche a telefonului: „Asistent AI" = RA Insight
+  // j) ușa veche a telefonului: „Asistent AI” = RA Insight
   coada([text('Răspuns pe telefonul vechi.')]);
   const q9 = await json('POST', '/api/ai/chat', telSef, { message: 'Care mașină a consumat cel mai mult luna asta?', history: [{ role: 'user', content: 'ignorat' }] });
   const c9 = cereri().slice(-1)[0];
-  T('„Asistent AI" (telefonul vechi) răspunde prin RA Insight, cu rapoartele la îndemână', q9.status === 200 && q9.j.reply === 'Răspuns pe telefonul vechi.' && (c9.tools || []).some((t) => t.name === 'run_report'), q9.status + ' ' + q9.text.slice(0, 100));
+  T('„Asistent AI” (telefonul vechi) răspunde prin RA Insight, cu rapoartele la îndemână', q9.status === 200 && q9.j.reply === 'Răspuns pe telefonul vechi.' && (c9.tools || []).some((t) => t.name === 'run_report'), q9.status + ' ' + q9.text.slice(0, 100));
   T('istoricul trimis de telefon nu mai contează (discuția o ține serverul)', textulCererii(c9).indexOf('ignorat') < 0);
 
   // k) ștergerea la 12 luni
@@ -398,28 +398,28 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   // ─── 7. Pasul 2: secțiunea proprie ──────────────────────────────────────────────────────────────────
   console.log('\n7. Pasul 2: secțiunea din meniu, notițele firmei, ghidul, drepturile din rol, statisticile fără text');
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  T('rândul „RA Insight" din meniu („NOU” doar 15 zile, din meniu_nou.js) și secțiunea lui', /id="nav-insight"[^>]*data-view="insight"[^>]*onclick="showView\('insight'\)"/.test(PAG) && /<div id="insight-view" class="modal-overlay"><\/div>/.test(PAG) && /insight: 'insight-view'/.test(PAG) && /insight: 'renderInsightPage'/.test(PAG));
-  T('pagina Agenți AI nu mai are jumătatea „RA Insight răspunde" (RA Insight are secțiunea lui)', PAG.indexOf('RA Insight răspunde') < 0);
+  T('rândul „RA Insight” din meniu („NOU” doar 15 zile, din meniu_nou.js) și secțiunea lui', /id="nav-insight"[^>]*data-view="insight"[^>]*onclick="showView\('insight'\)"/.test(PAG) && /<div id="insight-view" class="modal-overlay"><\/div>/.test(PAG) && /insight: 'insight-view'/.test(PAG) && /insight: 'renderInsightPage'/.test(PAG));
+  T('pagina Agenți AI nu mai are jumătatea „RA Insight răspunde” (RA Insight are secțiunea lui)', PAG.indexOf('RA Insight răspunde') < 0);
   // Ramurile livrate (pasul 3: Safe Drive; pasul 4: Combustibil, Mentenanță & acte…) se arată și au pagina lor;
   // cele încă nelivrate (gata: false) rămân ascunse.
   // `pachet: true` (14.10) = ramura e de la pachetul Basic în sus (pe Start apare încuiată) — tot livrată.
-  // `sub` (15.10) = subtitlul unei ramuri (RA Drive · „condus & costuri").
-  // `meniu: true` (15.10, macheta „mai simplu") = stă în „⋯" (ghidul), nu sub „Domenii" (până pe 05.11 „Pagini").
+  // `sub` (15.10) = subtitlul unei ramuri (RA Drive · „condus & costuri”).
+  // `meniu: true` (15.10, macheta „mai simplu”) = stă în „⋯” (ghidul), nu sub „Domenii” (până pe 05.11 „Pagini”).
   const RAM = [...PAG.matchAll(/\{ k: '(\w+)', et: '[^']+',(?: sub: '[^']+',)? ic: 'fa-[\w-]+', gata: (true|false)(?:, pachet: true)?(?:, meniu: true)? \}/g)].map((m) => ({ k: m[1], gata: m[2] === 'true' }));
-  // Chatul modern (08.10): discuția („general") se deschide din „Conversație nouă" și din listă — nu mai stă printre ramuri.
-  // Pasul 2, partea 1 (22.10): „Șoferi pe mașini" e o pagină livrată, de la pachetul Basic (`pachet: true`), cu pagina ei.
+  // Chatul modern (08.10): discuția („general”) se deschide din „Conversație nouă” și din listă — nu mai stă printre ramuri.
+  // Pasul 2, partea 1 (22.10): „Șoferi pe mașini” e o pagină livrată, de la pachetul Basic (`pachet: true`), cu pagina ei.
   T('ramurile livrate se arată și au pagina lor (RA Drive, Combustibil, Mentenanță & acte, Șoferi pe mașini); cele nelivrate nu; discuția nu e printre ele (Scrisoarea de luni a ieșit pe 04.11)', RAM.length === 7 && !RAM.some((r) => r.k === 'scrisoare') &&
     ['safedrive', 'combustibil', 'mentenanta', 'soferi'].every((k) => RAM.some((r) => r.k === k && r.gata)) &&
     /\{ k: 'soferi', et: 'Șoferi pe mașini', ic: 'fa-people-arrows', gata: true, pachet: true \}/.test(PAG) &&
     RAM.filter((r) => r.gata && r.k !== 'general').every((r) => new RegExp("if \\(S\\.ramura === '" + r.k + "'\\) return deseneaza").test(PAG)) &&
     (PAG.match(/function pagini\(\) \{ return RAMURI\.filter\(function \(r\) \{ return r\.gata && r\.k !== 'general' && !r\.meniu; \}\); \}/g) || []).length === 1 && (PAG.match(/pagini\(\)\.forEach\(/g) || []).length === 2 && PAG.indexOf('return r.gata; })') < 0, JSON.stringify(RAM));
-  // Macheta „mai simplu" (15.10): Mașina / Perioada / Raport stau sub „+"; ramurile sub „Domenii ▸"; conversație nouă din stânga
-  // (și din „⋯" pe telefon); ☰ pentru telefon.
-  T('chatul: caseta cu „+" (Mașina / Perioada / Raport) și butonul rotund; „Conversație nouă" și ☰ pentru telefon', /onclick="insightPlus\(this\)"/.test(PAG) && /window\.insightAlegeMasina\(btn\)/.test(PAG) && /window\.insightAlegePerioada\(btn\)/.test(PAG) &&
+  // Macheta „mai simplu” (15.10): Mașina / Perioada / Raport stau sub „+”; ramurile sub „Domenii ▸”; conversație nouă din stânga
+  // (și din „⋯” pe telefon); ☰ pentru telefon.
+  T('chatul: caseta cu „+” (Mașina / Perioada / Raport) și butonul rotund; „Conversație nouă” și ☰ pentru telefon', /onclick="insightPlus\(this\)"/.test(PAG) && /window\.insightAlegeMasina\(btn\)/.test(PAG) && /window\.insightAlegePerioada\(btn\)/.test(PAG) &&
     /id="insp-trimite" class="chat-trimite gol"/.test(PAG) && /class="insp-nou" onclick="insightNou\(\)"/.test(PAG) && /chat-ib insp-meniu/.test(PAG) && /if \(eTelefon\(\) && \(S\.conv \|\| S\.ramura !== 'general'\)\) l\.push\(\{ text: 'Conversație nouă'/.test(PAG));
-  // Capitolul 2, pasul 1 (15.10): secțiunea e SINGURUL chat din pagină — bula din colț duce în ea, iar fila „AI Raport" a
+  // Capitolul 2, pasul 1 (15.10): secțiunea e SINGURUL chat din pagină — bula din colț duce în ea, iar fila „AI Raport” a
   // ieșit din Rapoarte. Piesele chatului rămân scrise o dată; nu mai există a doua casetă (a bulei sau a filei).
-  const SECT_INS = (PAG.split('// ── începe „secțiunea RA Insight" ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight" ──')[0];
+  const SECT_INS = (PAG.split('// ── începe „secțiunea RA Insight” ──')[1] || '').split('// ── sfârșit „secțiunea RA Insight” ──')[0];
   T('piesele chatului sunt scrise O DATĂ și le folosește secțiunea — singurul chat din pagină (fără caseta bulei, fără fila AI Raport)', (PAG.match(/window\._chatUrmari = function/g) || []).length === 1 && (SECT_INS.match(/window\._chatUrmari\(/g) || []).length >= 2 &&
     (PAG.match(/window\._chatActiuni = function/g) || []).length === 1 && (SECT_INS.match(/window\._chatActiuni\(/g) || []).length >= 1 && (PAG.match(/window\._CHAT_PERIOADE = \[/g) || []).length === 1 && (SECT_INS.match(/window\._CHAT_PERIOADE,/g) || []).length >= 1 &&
     PAG.indexOf('id="rax-ai-input"') < 0 && PAG.indexOf('id="rin-input"') < 0 && PAG.indexOf('id="rep-tab-insight"') < 0 && PAG.indexOf("fetch('/api/reports/ai-raport'") < 0);
@@ -443,23 +443,23 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   // ghidul aplicației
   const gh = await json('GET', '/api/insight/ghid', ckSef);
   T('ghidul aplicației: peste 20 de capitole, fiecare cu pași', gh.status === 200 && gh.j.sectiuni.length >= 20 && gh.j.sectiuni.every((x) => x.titlu && Array.isArray(x.pasi) && x.pasi.length), (gh.j.sectiuni || []).length);
-  coada([unealta('cauta_in_ghid', { intrebare: 'cum adaug un șofer nou' }), text('Management → Șoferi → „Adaugă șofer".')]);
+  coada([unealta('cauta_in_ghid', { intrebare: 'cum adaug un șofer nou' }), text('Management → Șoferi → „Adaugă șofer”.')]);
   const qg = await json('POST', '/api/insight/intreaba', ckSef, { message: 'cum adaug un șofer nou?', nou: true });
   const cg = cereri().slice(-1)[0];
   const rezG = JSON.stringify((cg.messages || []).slice(-1)[0]);
-  T('„cum fac…?" → unealta ghidului; modelul primește pașii capitolului despre șoferi', qg.status === 200 && rezG.indexOf('Un șofer nou și mașina lui') >= 0 && rezG.indexOf('Adaugă șofer') >= 0, rezG.slice(0, 200));
-  T('…iar „Am înțeles" spune că a citit ghidul', (qg.j.inteles || []).some((x) => x.text === 'ghidul aplicației'), JSON.stringify(qg.j.inteles));
-  T('instrucțiunile îi cer să răspundă la „cum fac" DOAR din ghid (nu din memorie)', /GHIDUL: la întrebări despre CUM se folosește aplicația, cheamă cauta_in_ghid și răspunde DOAR cu pașii de acolo/.test(String(cg.system[0].text)));
+  T('„cum fac…?” → unealta ghidului; modelul primește pașii capitolului despre șoferi', qg.status === 200 && rezG.indexOf('Un șofer nou și mașina lui') >= 0 && rezG.indexOf('Adaugă șofer') >= 0, rezG.slice(0, 200));
+  T('…iar „Am înțeles” spune că a citit ghidul', (qg.j.inteles || []).some((x) => x.text === 'ghidul aplicației'), JSON.stringify(qg.j.inteles));
+  T('instrucțiunile îi cer să răspundă la „cum fac” DOAR din ghid (nu din memorie)', /GHIDUL: la întrebări despre CUM se folosește aplicația, cheamă cauta_in_ghid și răspunde DOAR cu pașii de acolo/.test(String(cg.system[0].text)));
   // Safe Drive (pasul 3, 06.10): RA Insight primește ACEEAȘI lună ca pagina (aceeași funcție pe server), fără coordonate
   coada([unealta('safe_drive', {}), text('**Safe Drive** — luna asta, costul condusului.')]);
   const qs = await json('POST', '/api/insight/intreaba', ckSef, { message: 'cât ne-a costat condusul luna asta?', nou: true });
   const cs = cereri().slice(-1)[0];
   const rezS = JSON.stringify((cs.messages || []).slice(-1)[0]);
   const pagS = await json('GET', '/api/insight/safe-drive', ckSef);
-  T('„cât ne-a costat condusul" → unealta safe_drive; modelul primește costul pe feluri, mașinile și spusa „estimate"', qs.status === 200 && /cost_lei/.test(rezS) && /combustibil_accelerari/.test(rezS) && /ESTIMATE/.test(rezS) && !/latitude|"lat"|"lng"/.test(rezS), rezS.slice(0, 240));
+  T('„cât ne-a costat condusul” → unealta safe_drive; modelul primește costul pe feluri, mașinile și spusa „estimate”', qs.status === 200 && /cost_lei/.test(rezS) && /combustibil_accelerari/.test(rezS) && /ESTIMATE/.test(rezS) && !/latitude|"lat"|"lng"/.test(rezS), rezS.slice(0, 240));
   T('…cu aceeași lună și aceleași mașini ca pagina RA Drive', pagS.status === 200 && rezS.indexOf(pagS.j.eticheta) >= 0 && (pagS.j.masini || []).every((m) => rezS.indexOf(m.eticheta) >= 0), pagS.status + ' ' + (pagS.j.eticheta || pagS.text.slice(0, 120)));
-  T('…iar „Am înțeles" spune RA Drive și luna', (qs.j.inteles || []).some((x) => x.text === 'RA Drive') && (qs.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagS.j.eticheta), JSON.stringify(qs.j.inteles));
-  T('pagina și RA Insight cer luna prin ACEEAȘI funcție (_sdLuna: pagina, unealta, numărul ramurii, cartonașul „Am vorbit cu el" — 23.10)', (SRV.match(/await _sdLuna\(req, /g) || []).length === 4 && /UNELTE:[\s\S]*safe_drive — RA Drive \(condus & costuri/.test(String(cs.system[0].text)));
+  T('…iar „Am înțeles” spune RA Drive și luna', (qs.j.inteles || []).some((x) => x.text === 'RA Drive') && (qs.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagS.j.eticheta), JSON.stringify(qs.j.inteles));
+  T('pagina și RA Insight cer luna prin ACEEAȘI funcție (_sdLuna: pagina, unealta, numărul ramurii, cartonașul „Am vorbit cu el” — 23.10)', (SRV.match(/await _sdLuna\(req, /g) || []).length === 4 && /UNELTE:[\s\S]*safe_drive — RA Drive \(condus & costuri/.test(String(cs.system[0].text)));
   // Combustibil (pasul 4): ACEEAȘI funcție ca pagina (_ramCombustibil), fără coordonate. Întâi un drum scurt pentru
   // B 154 UIP (8 km, în ultimele minute); luna se ia din ceasul ADEVĂRAT, pe ora României — luna drumului.
   const t0 = Date.now() - 9 * 60000;
@@ -470,35 +470,35 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   const cc = cereri().slice(-1)[0];
   const rezC = JSON.stringify((cc.messages || []).slice(-1)[0]);
   const pagC = await json('GET', '/api/insight/combustibil?luna=' + lunaDrum, ckSef);
-  T('„cât am dat pe motorină" → unealta combustibil; modelul primește litrii, costul, sursa și spusa „estimați"', qc.status === 200 && /cost_lei/.test(rezC) && /l_la_100_km/.test(rezC) && /sursa/.test(rezC) && /estima/i.test(rezC) && !/latitude|"lat"|"lng"|\\"lat\\"|\\"lng\\"/.test(rezC), rezC.slice(0, 240));
+  T('„cât am dat pe motorină” → unealta combustibil; modelul primește litrii, costul, sursa și spusa „estimați”', qc.status === 200 && /cost_lei/.test(rezC) && /l_la_100_km/.test(rezC) && /sursa/.test(rezC) && /estima/i.test(rezC) && !/latitude|"lat"|"lng"|\\"lat\\"|\\"lng\\"/.test(rezC), rezC.slice(0, 240));
   T('…cu aceeași lună și aceleași mașini ca pagina Combustibil', pagC.status === 200 && !pagC.j.pregatire && rezC.indexOf(pagC.j.eticheta) >= 0 && (pagC.j.masini || []).length > 0 && (pagC.j.masini || []).every((m) => rezC.indexOf(m.eticheta) >= 0), pagC.status + ' ' + (pagC.j.eticheta || pagC.text.slice(0, 120)));
-  T('…iar „Am înțeles" spune Combustibil și luna', (qc.j.inteles || []).some((x) => x.text === 'Combustibil') && (qc.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagC.j.eticheta), JSON.stringify(qc.j.inteles));
+  T('…iar „Am înțeles” spune Combustibil și luna', (qc.j.inteles || []).some((x) => x.text === 'Combustibil') && (qc.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagC.j.eticheta), JSON.stringify(qc.j.inteles));
   T('pagina și RA Insight cer cifrele prin ACEEAȘI funcție (_ramCombustibil: pagina, unealta, numărul ramurii)', (SRV.match(/await _ramCombustibil\(req, /g) || []).length === 3 && /UNELTE:[\s\S]*combustibil — /.test(String(cc.system[0].text)));
-  // Ore de condus (pasul 4): ACEEAȘI funcție ca pagina (_ramOreCondus), din raportul „Condus & repaus"
+  // Ore de condus (pasul 4): ACEEAȘI funcție ca pagina (_ramOreCondus), din raportul „Condus & repaus”
   coada([unealta('ore_condus', {}), text('**Ore de condus** — săptămâna asta.')]);
   const qh = await json('POST', '/api/insight/intreaba', ckSef, { message: 'câte ore a condus Ion săptămâna asta?', nou: true });
   const ch = cereri().slice(-1)[0];
   const rezH = JSON.stringify((ch.messages || []).slice(-1)[0]);
   const pagH = await json('GET', '/api/insight/ore-condus', ckSef);
-  T('„câte ore a condus" → unealta ore_condus; modelul primește perioada, orele pe șofer, încălcările și spusa „estimat din GPS"', qh.status === 200 && /perioada/.test(rezH) && /reg561_se_aplica|soferi/.test(rezH) && /incalcari/.test(rezH) && /estimat din GPS/.test(rezH) && !/latitude|"lat"|"lng"|\\"lat\\"|\\"lng\\"/.test(rezH), rezH.slice(0, 240));
+  T('„câte ore a condus” → unealta ore_condus; modelul primește perioada, orele pe șofer, încălcările și spusa „estimat din GPS”', qh.status === 200 && /perioada/.test(rezH) && /reg561_se_aplica|soferi/.test(rezH) && /incalcari/.test(rezH) && /estimat din GPS/.test(rezH) && !/latitude|"lat"|"lng"|\\"lat\\"|\\"lng\\"/.test(rezH), rezH.slice(0, 240));
   T('…cu aceeași săptămână și aceiași șoferi ca pagina Ore de condus', pagH.status === 200 && !pagH.j.pregatire && rezH.indexOf(pagH.j.eticheta) >= 0 && (pagH.j.soferi || []).every((x) => rezH.indexOf(x.nume) >= 0), pagH.status + ' ' + (pagH.j.eticheta || pagH.text.slice(0, 120)));
-  T('…iar „Am înțeles" spune Ore de condus și săptămâna', (qh.j.inteles || []).some((x) => x.text === 'Ore de condus') && (qh.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagH.j.eticheta), JSON.stringify(qh.j.inteles));
-  T('instrucțiunile numesc unealta și când se alege (ore de condus / Reg. 561 / tahograf)', /UNELTE:[\s\S]*ore_condus — /.test(String(ch.system[0].text)) && /Reg\. 561 \/ tahograf" → ore_condus/.test(String(ch.system[0].text)));
+  T('…iar „Am înțeles” spune Ore de condus și săptămâna', (qh.j.inteles || []).some((x) => x.text === 'Ore de condus') && (qh.j.inteles || []).some((x) => x.tip === 'perioada' && x.text === pagH.j.eticheta), JSON.stringify(qh.j.inteles));
+  T('instrucțiunile numesc unealta și când se alege (ore de condus / Reg. 561 / tahograf)', /UNELTE:[\s\S]*ore_condus — /.test(String(ch.system[0].text)) && /Reg\. 561 \/ tahograf” → ore_condus/.test(String(ch.system[0].text)));
   // Mentenanță & acte (pasul 4): ACEEAȘI listă ca pagina (_ramMentenanta)
   coada([unealta('mentenanta_acte', {}), text('**Mentenanță & acte** — ce urmează.')]);
   const qm = await json('POST', '/api/insight/intreaba', ckSef, { message: 'ce acte expiră curând?', nou: true });
   const cm = cereri().slice(-1)[0];
   const rezM = JSON.stringify((cm.messages || []).slice(-1)[0]);
-  T('„ce acte expiră" → unealta mentenanta_acte; modelul primește ce a trecut de termen, ce urmează și preavizul', qm.status === 200 && /trecute_de_termen/.test(rezM) && /urmeaza/.test(rezM) && /preaviz/.test(rezM), rezM.slice(0, 240));
-  T('…iar „Am înțeles" spune Mentenanță & acte', (qm.j.inteles || []).some((x) => x.text === 'Mentenanță & acte'), JSON.stringify(qm.j.inteles));
-  T('pagina și RA Insight citesc lista prin ACEEAȘI funcție (_ramMentenanta: pagina, unealta, numărul ramurii, „Azi la tine")', (SRV.match(/await _ramMentenanta\(req\)/g) || []).length === 4);
+  T('„ce acte expiră” → unealta mentenanta_acte; modelul primește ce a trecut de termen, ce urmează și preavizul', qm.status === 200 && /trecute_de_termen/.test(rezM) && /urmeaza/.test(rezM) && /preaviz/.test(rezM), rezM.slice(0, 240));
+  T('…iar „Am înțeles” spune Mentenanță & acte', (qm.j.inteles || []).some((x) => x.text === 'Mentenanță & acte'), JSON.stringify(qm.j.inteles));
+  T('pagina și RA Insight citesc lista prin ACEEAȘI funcție (_ramMentenanta: pagina, unealta, numărul ramurii, „Azi la tine”)', (SRV.match(/await _ramMentenanta\(req\)/g) || []).length === 4);
   // un raport tăiat din rol nu se scoate nici prin RA Insight
   await json('PUT', '/api/company-roles/manager', ckSef, { nume: 'Manager', taiate: [], rapoarte: ['consumption'] });
   coada([unealta('run_report', { type: 'consumption', vehicle: 'B 154 UIP', period: 'last_week' }), text('Nu ai acces la raportul de consum.')]);
   const qr = await json('POST', '/api/insight/intreaba', ckColeg, { message: 'cât a consumat B 154 UIP săptămâna trecută?', nou: true });
   const cr = cereri().slice(-1)[0];
   const rezR = JSON.stringify((cr.messages || []).slice(-1)[0]);
-  T('managerul cu „Consum carburant" tăiat din rol: RA Insight nu-l rulează (unealta refuză)', qr.status === 200 && /l-a tăiat firma din rolul lui/.test(rezR) && !(qr.j.sources || []).length, rezR.slice(0, 200));
+  T('managerul cu „Consum carburant” tăiat din rol: RA Insight nu-l rulează (unealta refuză)', qr.status === 200 && /l-a tăiat firma din rolul lui/.test(rezR) && !(qr.j.sources || []).length, rezR.slice(0, 200));
   await json('PUT', '/api/company-roles/manager', ckSef, { nume: 'Manager', taiate: [], rapoarte: [] });
   // statisticile pentru noi: numere, fără textul conversațiilor
   const stt = await json('GET', '/api/admin/insight/statistici?zile=30', S);
@@ -506,7 +506,7 @@ const contextul = (c) => (Array.isArray(c.system) ? c.system.map((b) => b.text).
   T('…fără niciun text din conversații', ['KILOMETIR', '538 de vizite', 'Ce probleme', 'Motorina', 'șofer nou'].every((w) => stt.text.indexOf(w) < 0), stt.text.slice(0, 300));
   T('clientul nu are acces la statistici', (await json('GET', '/api/admin/insight/statistici', ckSef)).status === 403);
 
-  // ─── 8. Scrisoarea de luni: scoasă pe 04.11 (Alin: „o scoatem de tot") — lunea la 8 nu mai pleacă nimic spre model ───
+  // ─── 8. Scrisoarea de luni: scoasă pe 04.11 (Alin: „o scoatem de tot”) — lunea la 8 nu mai pleacă nimic spre model ───
   console.log('\n8. Scrisoarea de luni: scoasă — nicio cerere către model lunea, nicio scrisoare');
   const SDj = require('./safe_drive'), Cj = require('./condus');
   const ziP = (z, n) => { const d = new Date(z + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };

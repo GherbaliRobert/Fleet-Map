@@ -12,14 +12,14 @@ export interface Me {
   features?: Record<string, boolean>; sys?: { announcement?: string; offline_minutes?: number }; offline_minutes?: number;
   ecraneAscunse?: string[]; // ecranele tăiate de firmă din rolul omului (chei din ECRANE, server.js)
   editariTaiate?: string[]; // ce NU are voie să modifice rolul (chei din EDITARI, server.js; ex. 'vehicule')
-  // „Contul meu": numele afișat (în locul emailului) și telefonul omului; roleLabel = numele rolului dat
-  // de firmă („Operator depou", roluri proprii) — null când firma n-a redenumit nimic.
+  // „Contul meu”: numele afișat (în locul emailului) și telefonul omului; roleLabel = numele rolului dat
+  // de firmă („Operator depou”, roluri proprii) — null când firma n-a redenumit nimic.
   full_name?: string | null; phone?: string | null; roleLabel?: string | null;
-  prenume?: string; // 05.11: prenumele din „Salut, Alin!" (regula serverului, prenume.js: „Tilvar Alin" → „Alin", fără nume din email)
-  meniuNou?: string[]; // 05.11: rândurile din meniu care poartă „NOU" (regula serverului, meniu_nou.js: 15 zile de la publicare)
+  prenume?: string; // 05.11: prenumele din „Salut, Alin!” (regula serverului, prenume.js: „Tilvar Alin” → „Alin”, fără nume din email)
+  meniuNou?: string[]; // 05.11: rândurile din meniu care poartă „NOU” (regula serverului, meniu_nou.js: 15 zile de la publicare)
   functie?: string | null; // 13.10: funcția omului (apare în semnătura emailurilor din panoul Mail)
   poateDistribuiLocatia?: boolean; // 21.10: butonul „Distribuie” din fișa mașinii (aceeași regulă ca pe server)
-  aiCont?: boolean; // 15.10: are cont RA Insight — agenții îi apar în „Azi la tine", „Agenți AI" iese din meniu
+  aiCont?: boolean; // 15.10: are cont RA Insight — agenții îi apar în „Azi la tine”, „Agenți AI” iese din meniu
 }
 // „Distribuie locația” (21.10): ce dă serverul — duratele și linkurile active (fără link: se vede doar la facere).
 export interface LocatieDurata { minute: number; text: string; }
@@ -81,21 +81,21 @@ export const Api = {
   ioMappings: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/io-mappings`),
   // Catalogul steagurilor CAN (nume + iconiță). Public, aceleași date pe care le folosește web-ul.
   canFlags: () => api<any>('/api/can-flags', { auth: false }),
-  // Categoriile de pe permis + care dintre ele înseamnă „profesionist" și „card de tahograf".
+  // Categoriile de pe permis + care dintre ele înseamnă „profesionist” și „card de tahograf”.
   // Sursa e license_cats.js, aceeași pentru web, telefon, rapoarte și scadențarul de tahograf.
   licenseCats: () => api<any>('/api/license-cats', { auth: false }),
-  // „Ce trimite mașina asta și ce înseamnă" — potrivirea cu catalogul și formatarea se fac pe server,
+  // „Ce trimite mașina asta și ce înseamnă” — potrivirea cu catalogul și formatarea se fac pe server,
   // ca telefonul să nu-și țină o a doua copie a regulilor.
   ioExplained: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/io-explained`),
   fuelSensors: (imei: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}/fuel-sensors`),
   history: (imei: string, from: string, to: string) => api<any[]>(`/api/history/${encodeURIComponent(imei)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&ext=1`),
   report: (imei: string, from: string, to: string) => api<any>(`/api/report/${encodeURIComponent(imei)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   roadLimits: (points: [number, number][]) => api<{ limits: (number | null)[]; attribution: string; ways: number }>('/api/road-limits', { method: 'POST', body: { points } }),
-  // „Aliniază pe drumuri", LA CERERE (butonul din Traseu). Fără `auto:true`: acela e doar pentru OSRM, iar
+  // „Aliniază pe drumuri”, LA CERERE (butonul din Traseu). Fără `auto:true`: acela e doar pentru OSRM, iar
   // metoda gratuită (OpenStreetMap) are voie să ruleze numai când o cere omul. reason: zona_prea_mare /
   // osm_indisponibil / fara_drumuri.
   matchRoads: (points: [number, number][]) => api<{ matched: [number, number][] | null; source?: string; attribution?: string; reason?: string }>('/api/match', { method: 'POST', body: { points } }),
-  // Fișa mașinii — filele „Config Camion", „Sonda combustibil" și „Sonde (avansat)", pe aceleași rute ca web-ul.
+  // Fișa mașinii — filele „Config Camion”, „Sonda combustibil” și „Sonde (avansat)”, pe aceleași rute ca web-ul.
   // ATENȚIE: /truck-config SUPRASCRIE toate cele șase coloane deodată (ce lipsește devine gol) — trimite
   // mereu obiectul întreg, citit din /full. /tank-calibration și /fuel-sensors înlocuiesc lista întreagă.
   saveTruckConfig: (imei: string, b: { tareWeight: number | null; maxWeightLegal: number | null; maxWeightConstruct: number | null; maxAxleLoads: Record<string, number | null>; fuelPrice: number | null; costPerTonKm: number | null }) =>
@@ -121,7 +121,7 @@ export const Api = {
   documentsOf: (imei: string) => api<any[]>('/api/documents?imei=' + encodeURIComponent(imei)),
   // Actele ÎNLOCUITE la reînnoire (istoricul), cu data înlocuirii și costul de atunci.
   documentsHistory: (imei?: string) => api<any[]>('/api/documents/history' + (imei ? '?imei=' + encodeURIComponent(imei) : '')),
-  // „Acte cerute": ce trebuie să aibă fiecare fel de mașină (req/opt/null pe clasă) + tipurile de acte, gata îmbinate pe server.
+  // „Acte cerute”: ce trebuie să aibă fiecare fel de mașină (req/opt/null pe clasă) + tipurile de acte, gata îmbinate pe server.
   docRequirements: () => api<{ classes: any[]; rows: any[] }>('/api/doc-requirements'),
   // Citirea actului (poză/PDF) → PROPUNERI de câmpuri. Nu scrie nimic; salvarea merge pe rutele obișnuite.
   scanDocument: (b: { b64: string; mime: string; tip?: string }) => api<any>('/api/documents/scan', { method: 'POST', body: b }),
@@ -133,11 +133,11 @@ export const Api = {
     if (imeis && imeis.length) q += `&imei=${imeis.map(e).join(',')}`;
     return api<any>(`/api/fuel-stats${q}`);
   },
-  // „Anunță echipa RA Track" (o singură fereastră, ca pe web). Ruta veche /api/support rămâne pe server pentru telefoanele de dinainte.
+  // „Anunță echipa RA Track” (o singură fereastră, ca pe web). Ruta veche /api/support rămâne pe server pentru telefoanele de dinainte.
   cereriEchipa: () => api<any>('/api/cereri-echipa'),
   trimiteCerere: (b: any) => api<any>('/api/cereri-echipa', { method: 'POST', body: b }),
   cereriDeschise: (imeis: string) => api<any>('/api/cereri-echipa/deschise?imeis=' + encodeURIComponent(imeis)),
-  // „Cereri de la clienți" (fondatorii).
+  // „Cereri de la clienți” (fondatorii).
   cereriClienti: (fel: string) => api<any>('/api/admin/cereri-echipa?fel=' + encodeURIComponent(fel)),
   cereriNumar: () => api<{ noi: number; deschise: number }>('/api/admin/cereri-echipa/numar'),
   cererePreiau: (id: number) => api<any>(`/api/admin/cereri-echipa/${id}/preiau`, { method: 'POST', body: {} }),
@@ -148,14 +148,14 @@ export const Api = {
   drivers: () => api<any[]>('/api/drivers'),
   driversLite: () => api<any[]>('/api/drivers/lite'),
   companies: () => api<any[]>('/api/companies'), // super-admin: pentru etichete + filtru pe companie
-  // ── Super-admin: Companii (CRUD + abonament/features/plăți = și „Conturi & Abonamente" + „config Agenți AI") ──
-  // Firma nouă se face DOAR din traseul „Client nou" (ClientNou.tsx: firmă + contract + administrator), ca pe
+  // ── Super-admin: Companii (CRUD + abonament/features/plăți = și „Conturi & Abonamente” + „config Agenți AI”) ──
+  // Firma nouă se face DOAR din traseul „Client nou” (ClientNou.tsx: firmă + contract + administrator), ca pe
   // web. Chemată singură, ar lăsa o firmă doar cu numele, fără niciun administrator.
   createCompany: (b: any) => api<any>('/api/companies', { method: 'POST', body: b }),
   // Setările unei firme anume (agenții aprinși, cota RA Insight). PUT-ul schimbă doar cheile trimise.
   companySettingsOf: (id: number) => api<any>(`/api/companies/${id}/settings`),
   saveCompanySettingsOf: (id: number, b: any) => api<any>(`/api/companies/${id}/settings`, { method: 'PUT', body: b }),
-  // Fereastra din „Acces" (13.11): textul schimbării de pachet, scris de server (web: raxCfgPachet).
+  // Fereastra din „Acces” (13.11): textul schimbării de pachet, scris de server (web: raxCfgPachet).
   pachetSchimbare: (id: number, cod: string) => api<{ titlu: string; text: string; ok: string; sens: string }>(`/api/companies/${id}/pachet-schimbare?cod=${encodeURIComponent(cod)}`),
   // Oferta firmei: serverul o ÎNLOCUIEȘTE întreagă — trimite și câmpurile pe care ecranul nu le arată.
   setCompanyOferta: (id: number, oferta: any) => api<any>(`/api/companies/${id}/oferta`, { method: 'PUT', body: { oferta } }),
@@ -166,7 +166,7 @@ export const Api = {
     api<any>(`/api/companies/${id}/admin`, { method: 'POST', body: b }),
   // Datele firmei de la ANAF, după CUI (Client nou). 404 = firma nu s-a găsit.
   anafFirma: (cui: string) => api<any>('/api/anaf/firma?cui=' + encodeURIComponent(cui)),
-  // „Mută între companii": listele slabe + mutarea unuia sau în lot (aceleași rute ca web-ul).
+  // „Mută între companii”: listele slabe + mutarea unuia sau în lot (aceleași rute ca web-ul).
   devicesLite: (includeArchived = false) => api<any[]>('/api/devices/lite' + (includeArchived ? '?includeArchived=1' : '')),
   usersLite: () => api<any[]>('/api/users/lite'),
   moveUser: (id: number, company_id: number) => api<any>(`/api/users/${id}/company`, { method: 'PUT', body: { company_id } }),
@@ -181,17 +181,17 @@ export const Api = {
   // Regulile (ce se poate schimba după semnare, textul prelungirii, anexa, marja) stau pe SERVER.
   // Telefonul trimite ce s-a scris și arată răspunsul — inclusiv refuzurile, cu vorbele serverului.
   contracts: () => api<{ contracte: any[]; fara_contract: any[]; incheiate_cu_acces: any[]; trimite_pe_email?: boolean }>('/api/contracts'),
-  // „Trimite la semnat": emailul cu PDF-ul (același contractPdf ca „Descarcă") îl trimite SERVERUL; tot el scrie
-  // „trimis", ziua și adresa. Refuză ciorna, golurile de pe hârtie, adresa stricată și lipsa SMTP (503).
+  // „Trimite la semnat”: emailul cu PDF-ul (același contractPdf ca „Descarcă”) îl trimite SERVERUL; tot el scrie
+  // „trimis”, ziua și adresa. Refuză ciorna, golurile de pe hârtie, adresa stricată și lipsa SMTP (503).
   trimiteContract: (id: number, catre: string) =>
     api<{ ok: boolean; trimis_la: string; sent_at: number; status: string }>(`/api/contracts/${id}/trimite`, { method: 'POST', body: { catre } }),
-  // „Completează": datele firmei din dosar. Scrie DOAR cheile trimise (NU PUT /api/companies/:id, care golește ce vine gol).
+  // „Completează”: datele firmei din dosar. Scrie DOAR cheile trimise (NU PUT /api/companies/:id, care golește ce vine gol).
   completeazaDosar: (companyId: number, b: { name?: string; cui?: string; reg_com?: string; address?: string; contact_email?: string; legal_rep?: { name: string; role: string } | null; vat_payer?: boolean }) =>
     api<{ ok: boolean; company: any }>(`/api/companies/${companyId}/dosar`, { method: 'PUT', body: b }),
   createContract: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/contract`, { method: 'POST', body: b }),
   updateContract: (id: number, b: any) => api<any>(`/api/contracts/${id}`, { method: 'PUT', body: b }),
   deleteContract: (id: number) => api<any>(`/api/contracts/${id}`, { method: 'DELETE' }),
-  // „Reînnoiește": serverul scrie actul de prelungire (text + date); 409 dacă există deja unul în lucru.
+  // „Reînnoiește”: serverul scrie actul de prelungire (text + date); 409 dacă există deja unul în lucru.
   renewContract: (id: number, luni: number) => api<{ act: any; de_la: number; pana_la: number }>(`/api/contracts/${id}/reinnoire`, { method: 'POST', body: { luni } }),
   // Scanul semnat: `care` = 'contract' sau 'gdpr'. Limita de 4 MB e a serverului.
   uploadContractFile: (id: number, b: { care: string; name: string; b64: string }) => api<any>(`/api/contracts/${id}/file`, { method: 'POST', body: b }),
@@ -208,7 +208,7 @@ export const Api = {
   companyMontaje: (companyId: number) => api<any[]>(`/api/companies/${companyId}/montaje`),
   saveMontaj: (companyId: number, b: any) => api<any>(`/api/companies/${companyId}/montaje`, { method: 'POST', body: b }),
   deleteMontaj: (id: number) => api<any>(`/api/montaje/${id}`, { method: 'DELETE' }),
-  // Secțiunea „Montaj" (Business): contractele de colaborare cu partenerii + toate lucrările, de la toți clienții.
+  // Secțiunea „Montaj” (Business): contractele de colaborare cu partenerii + toate lucrările, de la toți clienții.
   // Trecerile, ce lipsește și marja stau pe server; PDF-ul și actul semnat merg prin salveazaDeLaServer (HartieBtns).
   montajContracte: () => api<{ contracte: any[]; fara_contract: { id: number; name: string }[]; trimite_pe_email: boolean }>('/api/montaj/contracte'),
   createMontajContract: (b: any) => api<any>('/api/montaj/contracte', { method: 'POST', body: b }),
@@ -218,12 +218,12 @@ export const Api = {
   sendMontajContract: (id: number, b: { catre: string }) =>
     api<{ ok: boolean; trimis_la: string; sent_at: number; status: string }>(`/api/montaj/contracte/${id}/trimite`, { method: 'POST', body: b }),
   montajLucrari: () => api<{ stari: Record<string, string>; lucrari: any[] }>('/api/montaj/lucrari'),
-  // `null` pe o cheie = „înapoi la automat" (simulatorul de încărcare merge atunci după flotă).
+  // `null` pe o cheie = „înapoi la automat” (simulatorul de încărcare merge atunci după flotă).
   setCompanyFeatures: (id: number, features: Record<string, boolean | null>) => api<any>(`/api/companies/${id}/features`, { method: 'PUT', body: { features } }),
   // Venitul lunar pe firmă + total, socotit pe server cu motorul facturii (același ca registrul de clienți).
   companiesMrr: () => api<{ firme: Record<string, number>; totalLei: number }>('/api/companies/mrr'),
   companyPayments: (id: number) => api<any[]>(`/api/companies/${id}/payments`),
-  // (Apelul care punea de mână „acces până la" a plecat: ruta lui a fost ștearsă pe server odată cu ceasul vechi,
+  // (Apelul care punea de mână „acces până la” a plecat: ruta lui a fost ștearsă pe server odată cu ceasul vechi,
   // 29.09. Accesul se oprește doar pentru neplată sau de mână.)
   // ── Super-admin: Dashboard platformă ──
   adminOverview: (days = 30) => api<any>(`/api/admin/overview?days=${days}`),
@@ -270,9 +270,9 @@ export const Api = {
   tollroSalveazaProfil: (imei: string, body: any) => api<any>('/api/tollro/profil/' + encodeURIComponent(imei), { method: 'PUT', body }),
   tollroEstimate: (imei: string, km: any, manual?: any) => api<any>('/api/tollro/estimate', { method: 'POST', body: { imei, km, manual } }),
   tollroDinIstoric: (imei: string, from: string, to: string, manual?: any) => api<any>('/api/tollro/din-istoric', { method: 'POST', body: { imei, from, to, manual } }),
-  // Toată flota, încadrată (aplicabil + motiv): regula „cine plătește" stă O DATĂ, în tollro.js, pe server.
+  // Toată flota, încadrată (aplicabil + motiv): regula „cine plătește” stă O DATĂ, în tollro.js, pe server.
   tollroFlota: () => api<any>('/api/tollro/flota'),
-  // „O cursă nouă": dacă rutarea e pornită, sugestii de adrese (cheia furnizorului stă la server) și costul cursei.
+  // „O cursă nouă”: dacă rutarea e pornită, sugestii de adrese (cheia furnizorului stă la server) și costul cursei.
   tollroRutare: () => api<{ pornit: boolean; motiv?: string | null; deProba?: boolean }>('/api/tollro/rutare'),
   tollroAdrese: (q: string) => api<{ sugestii: { label: string; lat: number; lng: number }[] }>('/api/tollro/adrese?q=' + encodeURIComponent(q)),
   tollroCursa: (imei: string, start: { lat: number; lng: number }, end: { lat: number; lng: number }) =>
@@ -293,16 +293,16 @@ export const Api = {
     + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '') + (q.stea ? '&stea=1' : '')),
   mailTrimis: (id: number) => api<any>(`/api/mail/trimise/${id}`),
   mailTrimite: (b: any) => api<any>('/api/mail/trimite', { method: 'POST', body: b }),
-  // Etapa 2: „Primite" (deschis = citit; răspunsul pleacă tot prin mailTrimite, cu `raspunsLa`).
+  // Etapa 2: „Primite” (deschis = citit; răspunsul pleacă tot prin mailTrimite, cu `raspunsLa`).
   mailPrimite: (q: { adresa?: string; cauta?: string; pagina?: number; stea?: boolean; dosar?: 'spam' }) => api<any>('/api/mail/primite?pagina=' + (q.pagina || 0)
     + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '') + (q.cauta ? '&cauta=' + encodeURIComponent(q.cauta) : '') + (q.stea ? '&stea=1' : '')
     + (q.dosar ? '&dosar=' + q.dosar : '')),
   mailPrimit: (id: number) => api<any>(`/api/mail/primite/${id}`),
   mailNecitit: (id: number) => api<any>(`/api/mail/primite/${id}/necitit`, { method: 'POST', body: {} }),
   mailNecitite: () => api<{ total: number; peAdresa: Record<string, number> }>('/api/mail/necitite'),
-  // 13.10: „Răspunde tuturor" și „Redirecționează" pleacă tot prin mailTrimite (cu `cc`, `redirectioneazaPrimit` /
-  // `redirectioneazaTrimis`). „Șterge" (primite și trimise) = mailActiune('sterge') — în Coș; serverul păzește ce se poate șterge.
-  // Etapa 3 (13.10): dosarele Spam și Coș, steaua, citit / necitit, „Nu e spam", „Recuperează", „Șterge definitiv" — toate pe
+  // 13.10: „Răspunde tuturor” și „Redirecționează” pleacă tot prin mailTrimite (cu `cc`, `redirectioneazaPrimit` /
+  // `redirectioneazaTrimis`). „Șterge” (primite și trimise) = mailActiune('sterge') — în Coș; serverul păzește ce se poate șterge.
+  // Etapa 3 (13.10): dosarele Spam și Coș, steaua, citit / necitit, „Nu e spam”, „Recuperează”, „Șterge definitiv” — toate pe
   // O rută (`elemente` = [{ sursa: 'primit' | 'trimis', id }]); textul de după îl scrie serverul. Ciornele sunt ale omului.
   mailActiune: (actiune: string, elemente: { sursa: string; id: number }[]) => api<{ facute: number; negasite: number; text: string; dovada?: boolean }>('/api/mail/actiune', { method: 'POST', body: { actiune, elemente } }),
   mailCos: (q: { adresa?: string; pagina?: number }) => api<any>('/api/mail/cos?pagina=' + (q.pagina || 0) + (q.adresa ? '&adresa=' + encodeURIComponent(q.adresa) : '')),
@@ -322,7 +322,7 @@ export const Api = {
   offers: () => api<any[]>('/api/admin/offers'),
   // Calculatorul de ofertă, socotit PE SERVER cu codul paginii web (telefonul nu are socoteala lui).
   // Moduri: { nou } · { offer_id, incarca } · { campuri, atinse, schimbate, offer_id? } · { offer_id, hartie }
-  // · { offer_id, contract } · { preturi }. Vezi „Ofertare pe server" în server.js.
+  // · { offer_id, contract } · { preturi }. Vezi „Ofertare pe server” în server.js.
   offerCalc: (b: any) => api<any>('/api/admin/offers/calc', { method: 'POST', body: b, timeoutMs: 30000 }),
   offerMeta: () => api<{ stari: string[]; valabilZile: number; motivePierdut: { cod: string; et: string }[] }>('/api/admin/offers/meta'),
   offerSetStare: (id: number, b: { status: string; valid_until?: number; lost_reason?: string }) => api<any>(`/api/admin/offers/${id}/stare`, { method: 'PUT', body: b }),
@@ -331,7 +331,7 @@ export const Api = {
   createOffer: (b: any) => api<any>('/api/admin/offers', { method: 'POST', body: b }),
   updateOffer: (id: number, b: any) => api<any>(`/api/admin/offers/${id}`, { method: 'PUT', body: b }),
   deleteOffer: (id: number) => api<any>(`/api/admin/offers/${id}`, { method: 'DELETE' }),
-  // „Mașinile clientului" (Ofertare Live, doar noi): mărcile / modelele pentru completare, listele Teltonika și
+  // „Mașinile clientului” (Ofertare Live, doar noi): mărcile / modelele pentru completare, listele Teltonika și
   // șablonul. Potrivirea NU se cere de aici: calculatorul o face pe server, cu lista trimisă la fiecare socoteală.
   masiniMarci: () => api<{ marci: string[] }>('/api/admin/masini/marci'),
   masiniModele: (marca: string) => api<{ modele: string[] }>('/api/admin/masini/modele?marca=' + encodeURIComponent(marca)),
@@ -352,9 +352,9 @@ export const Api = {
   deleteDevice: (imei: string, confirmare?: string) => api<any>(`/api/devices/${encodeURIComponent(imei)}`, { method: 'DELETE', body: confirmare ? { confirmare } : undefined }),
   // ── Operațiunile fondatorului (lotul 2b, F4). Toate rutele sunt requireSuperadmin pe server (Chei API: requireAdmin,
   // dar ecranul de pe telefon e doar al nostru). Telefonul nu socotește nimic din ce hotărăște serverul. ──
-  // „Arhivează" / „Respinge": serverul copiază ÎNTÂI istoricul, abia apoi taie conexiunea și scoate IMEI-ul din lista celor acceptate.
+  // „Arhivează” / „Respinge”: serverul copiază ÎNTÂI istoricul, abia apoi taie conexiunea și scoate IMEI-ul din lista celor acceptate.
   archiveDevice: (imei: string) => api<{ ok: boolean; status: string; archived_positions?: number }>(`/api/devices/${encodeURIComponent(imei)}/status`, { method: 'PUT', body: { status: 'archived' } }),
-  // Mod strict: IMEI-urile NEÎNREGISTRATE care încearcă să se conecteze. „Aprobă" = createDevice({ imei }).
+  // Mod strict: IMEI-urile NEÎNREGISTRATE care încearcă să se conecteze. „Aprobă” = createDevice({ imei }).
   deviceAttempts: () => api<{ strict: boolean; registered?: number; attempts: { imei: string; first: string; last: string; count: number; address?: string }[] }>('/api/admin/device-attempts'),
   dismissDeviceAttempt: (imei: string) => api<{ ok: boolean }>(`/api/admin/device-attempts/${encodeURIComponent(imei)}`, { method: 'DELETE' }),
   // Inventarul aparatelor, din TOATE firmele (la super-admin). Modelul și cartela se scriu pe /details (updateDeviceDetails),
@@ -373,7 +373,7 @@ export const Api = {
   // Tahograf și e-Transport, privirea noastră: o firmă pe rând. Doar citire — noi nu încărcăm și nu ștergem nimic.
   tachoOverview: () => api<{ praguriLegale: { card: number; vu: number }; firme: any[] }>('/api/admin/tacho-overview'),
   etransportOverview: () => api<{ anaf: { pornit: boolean; test?: boolean }; praguri: { tacereMinute: number; curandOre: number; zileNational: number; zileIntracomunitar: number }; firme: any[] }>('/api/admin/etransport-overview'),
-  // „RA Insight · control": aceleași cifre după care se face factura (conturi, fond, venit, cost, istoric din facturi).
+  // „RA Insight · control”: aceleași cifre după care se face factura (conturi, fond, venit, cost, istoric din facturi).
   aiUsage: () => api<{ rows: any[]; summary: Record<string, any>; istoric: any[]; fxEur: number; pachete: any; sursa: any }>('/api/admin/ai-usage'),
   insightSold: (usd: string) => api<any>('/api/admin/insight/sold', { method: 'PUT', body: { usd } }),
   adminSursaExterna: (stare: string) => api<{ ok: boolean; stare: string; model?: string; modelOk?: boolean | null }>('/api/admin/insight/sursa-externa', { method: 'PUT', body: { stare } }),
@@ -403,11 +403,11 @@ export const Api = {
   // (Previzualizarea, POST /api/invoices/previzualizare cu ACELAȘI corp, întoarce un PDF, nu JSON: merge prin
   // lib/descarcaPost.ts, cu adresa din lib/factura.ts — RUTA_PREVIZUALIZARE.)
   issueInvoice: (b: any) => api<{ ok: boolean; invoice: any; montajeFacturate?: number; trimisa?: any }>('/api/invoices', { method: 'POST', body: b }),
-  // „Montaj de facturat" (Facturare, 30.09): lucrările montate și nefacturate, pe firme, în ritmul instalatorului —
+  // „Montaj de facturat” (Facturare, 30.09): lucrările montate și nefacturate, pe firme, în ritmul instalatorului —
   // `gata` (perioada lui s-a încheiat) și `inCurs`, cu textul, suma fără TVA și lucrările. Le socotește serverul
   // (montaj.deFacturatMontaj); telefonul doar le arată.
   montajDeFacturat: () => api<{ gata: any[]; inCurs: any[] }>('/api/montaj/de-facturat'),
-  // 'paid' | 'canceled'. „Încasată" pe o proformă emite factura fiscală: `invoice` e factura născută.
+  // 'paid' | 'canceled'. „Încasată” pe o proformă emite factura fiscală: `invoice` e factura născută.
   invoiceSetStatus: (id: number, status: string) => api<{ ok: boolean; invoice?: any; already?: boolean; trimisa?: any }>(`/api/invoices/${id}/status`, { method: 'PUT', body: { status } }),
   invoiceEfacturaSend: (id: number) => api<any>(`/api/invoices/${id}/efactura`, { method: 'POST', body: {} }),
   // Ce spune ANAF de o factură trimisă: `stare` = răspunsul lor, `status` = uploaded / validated / error.
@@ -450,7 +450,7 @@ export const Api = {
 
   alerts: () => api<any[]>('/api/alerts'),
   alerteViteza: (prag: string) => api<any>('/api/alerts/viteza?prag=' + encodeURIComponent(prag)),   // fraza de sub prag (26.10)
-  alerteCumSuna: () => api<{ deStare: string[]; text: string }>('/api/alerts/cum-suna'),            // alertele „de stare" (27.10)
+  alerteCumSuna: () => api<{ deStare: string[]; text: string }>('/api/alerts/cum-suna'),            // alertele „de stare” (27.10)
   createAlert: (b: any) => api('/api/alerts', { method: 'POST', body: b }),
   // Modificare PARȚIALĂ (ca pe web): comutatorul trimite doar { enabled }; formularul trimite regula întreagă.
   updateAlert: (id: number, b: any) => api<any>(`/api/alerts/${id}`, { method: 'PUT', body: b }),
@@ -466,7 +466,7 @@ export const Api = {
   etransportScadentar: () => api<{ anaf?: { pornit: boolean; test?: boolean } } & Record<string, any>>('/api/etransport/scadentar'),
   // Tipurile de operațiune + câte zile ține codul UIT (din etransport.js — nicio listă scrisă pe telefon).
   etransportTipuri: () => api<{ tipuri: { cod: string; label: string; zile: number }[] }>('/api/etransport/tipuri'),
-  // Adăugare / ștergere: serverul cere dreptul „modifică flota" (requireFleet); firma se ia de pe vehicul.
+  // Adăugare / ștergere: serverul cere dreptul „modifică flota” (requireFleet); firma se ia de pe vehicul.
   createEtransport: (b: any) => api<any>('/api/etransport', { method: 'POST', body: b }),
   // ── Simulatorul de încărcare (12.10): cifrele obișnuite + semiremorcile și remorcile firmei ──
   incarcareMeta: () => api<IncMeta>('/api/incarcare/meta'),
@@ -501,15 +501,15 @@ export const Api = {
   deleteEtransport: (id: number) => api<any>(`/api/etransport/${id}`, { method: 'DELETE' }),
   tachoFiles: () => api<any[]>('/api/tacho'),
   tachoFile: (id: number) => api<any>(`/api/tacho/${id}`),
-  // Scoate un fișier legat greșit. Serverul cere „modifică flota" și verifică firma fișierului.
+  // Scoate un fișier legat greșit. Serverul cere „modifică flota” și verifică firma fișierului.
   deleteTacho: (id: number) => api<any>(`/api/tacho/${id}`, { method: 'DELETE' }),
-  // „Cine trebuie descărcat următorul" — aceeași rută pe care o folosește web-ul, cu aceleași filtre
+  // „Cine trebuie descărcat următorul” — aceeași rută pe care o folosește web-ul, cu aceleași filtre
   // (fără flota demo, doar șoferii cu card de tahograf, doar vehiculele care au tahograf). Telefonul
   // NU rejudecă cine intră în listă: ar fi a doua regulă, care s-ar contrazice cu prima.
   tachoScadentar: () => api<any>('/api/tacho/scadentar'),
   tachoIstoric: (driverId?: number | null, imei?: string | null) =>
     api<any>('/api/tacho/istoric?' + (driverId ? 'driverId=' + driverId : 'imei=' + encodeURIComponent(String(imei)))),
-  // Încărcarea unui .DDD. Regula „trebuie legat de un șofer SAU de un vehicul" e a SERVERULUI —
+  // Încărcarea unui .DDD. Regula „trebuie legat de un șofer SAU de un vehicul” e a SERVERULUI —
   // acolo se hotărăște dacă fișierul intră. Ecranul o mai spune o dată înainte de trimitere, doar ca
   // omul să nu urce degeaba câțiva MB pe date mobile; dacă regula se schimbă, cea de pe server
   // câștigă oricum, iar mesajul ei ajunge pe ecran neschimbat.
@@ -523,11 +523,11 @@ export const Api = {
   // Dacă emailul nu poate pleca, serverul întoarce chiar linkul, ca adminul să-l ducă mai departe. Parola n-o mai
   // scrie nimeni în locul omului — ruta veche (/password) a fost scoasă de pe server. 429 după 5 linkuri pe oră.
   linkParola: (id: number) => api<{ ok: boolean; trimis: boolean; email?: string; link?: string; motiv?: string }>(`/api/users/${id}/link-parola`, { method: 'POST', body: {} }),
-  // Vehiculele și grupele atribuite unui cont (dispecer, viewer, rol fără „Vede toată flota").
+  // Vehiculele și grupele atribuite unui cont (dispecer, viewer, rol fără „Vede toată flota”).
   // ATENȚIE: /access = vehicule; termenul unui cont demo e pe /access-until (altă rută, doar super-admin).
   userAccess: (id: number) => api<{ devices: string[]; groups: number[] }>(`/api/users/${id}/access`),
   setUserAccess: (id: number, devices: string[], groups: number[]) => api(`/api/users/${id}/access`, { method: 'PUT', body: { devices, groups } }),
-  // Contul RA Insight al omului („Pachet și conturi"; prețul pachetului e fix pe firmă, oricâte conturi).
+  // Contul RA Insight al omului („Pachet și conturi”; prețul pachetului e fix pe firmă, oricâte conturi).
   setUserAiSeat: (id: number, on: boolean) => api<{ ok: boolean; ai_seat: boolean; seats: number }>(`/api/users/${id}/ai-seat`, { method: 'PUT', body: { on } }),
   // Cifra unui om pe lună (null = fără cifră), pe Basic, Pro și Business. La 400 serverul spune `maxim` (cât mai încape) și `recomandat`.
   setUserAiLimita: (id: number, limita: number | null) => api<any>(`/api/users/${id}/ai-limita`, { method: 'PUT', body: { limita } }),
@@ -550,9 +550,9 @@ export const Api = {
   activity: (q: { zile: number; offset: number; familie?: string; user?: string }) =>
     api<{ total: number; randuri: any[] }>(`/api/activity?zile=${q.zile}&limit=50&offset=${q.offset}`
       + (q.familie ? '&familie=' + encodeURIComponent(q.familie) : '') + (q.user ? '&user=' + encodeURIComponent(q.user) : '')),
-  // Timpul în aplicație: îl trimite DOAR web-ul (telefonul nu trimite semnalul „sunt în aplicație" — decizie).
+  // Timpul în aplicație: îl trimite DOAR web-ul (telefonul nu trimite semnalul „sunt în aplicație” — decizie).
   presence: (zile: number) => api<{ minuteTotal: number; pasMinute: number; oameni: any[] }>(`/api/presence?zile=${zile}`),
-  // „Aparate GPS" își face rândurile din devices(); exportul trimite IMEI-urile pe nume. (Pe 24.09
+  // „Aparate GPS” își face rândurile din devices(); exportul trimite IMEI-urile pe nume. (Pe 24.09
   // GET /api/device-inventory nu filtra pe firmă; de pe 29.09 filtrează, dar ecranul a rămas pe devices().)
   webhooks: () => api<any[]>('/api/webhooks'),
   createWebhook: (b: any) => api<any>('/api/webhooks', { method: 'POST', body: b }),
@@ -581,8 +581,8 @@ export const Api = {
   insightRapoarte: () => api<any>('/api/insight/rapoarte'),
   insightNotite: () => api<any>('/api/insight/notite'),
   saveInsightNotite: (text: string) => api<any>('/api/insight/notite', { method: 'PUT', body: { text } }),
-  // Paginile din „Pagini" și ghidul: cifrele și textele le scrie serverul. `q`: luna / saptamana, grupa.
-  // Pachetele RA Insight: „Vezi pachetele", trecerea (textul de la server, bifa, 409 cu textul nou), „Pachet și conturi", „Sursă externă" pe firmă.
+  // Paginile din „Pagini” și ghidul: cifrele și textele le scrie serverul. `q`: luna / saptamana, grupa.
+  // Pachetele RA Insight: „Vezi pachetele”, trecerea (textul de la server, bifa, 409 cu textul nou), „Pachet și conturi”, „Sursă externă” pe firmă.
   insightPachete: () => api<any>('/api/insight/pachete'),
   insightPachetTrecere: (cod: string) => api<any>('/api/insight/pachet-trecere?cod=' + encodeURIComponent(cod)),
   insightPachetTrecereConfirma: (b: { cod: string; text: string; acord: boolean }) => api<any>('/api/insight/pachet-trecere', { method: 'POST', body: b }),
@@ -599,9 +599,9 @@ export const Api = {
   insightSafeDrivePreturi: (preturi: any) => api<any>('/api/insight/safe-drive/preturi', { method: 'PUT', body: { preturi } }),
   insightDiscutie: (driverId: any, nota: string) => api<any>('/api/insight/safe-drive/discutie', { method: 'POST', body: { driverId, nota } }),
   insightScoateDiscutie: (id: any) => api<any>('/api/insight/safe-drive/discutie/' + encodeURIComponent(String(id)), { method: 'DELETE' }),
-  // „Rezumă cu RA Insight" de sub un raport (ca pe web: tabelul de pe ecran; de la Basic îl scrie RA Insight, pe Start se face din cifre).
+  // „Rezumă cu RA Insight” de sub un raport (ca pe web: tabelul de pe ecran; de la Basic îl scrie RA Insight, pe Start se face din cifre).
   rezumatRaport: (report: { columns: any[]; rows: any[][] }) => api<any>('/api/ai/report-summary', { method: 'POST', body: { type: 'tabel', report }, timeoutMs: 180000 }),
-  // Cartonașul „RA Insight face, cu Da-ul tău": aplica (cu `la` sau `campuri`), refuza, anuleaza, dovezi (pragul și mașina din „Schimbă").
+  // Cartonașul „RA Insight face, cu Da-ul tău”: aplica (cu `la` sau `campuri`), refuza, anuleaza, dovezi (pragul și mașina din „Schimbă”).
   insightActiune: (id: any, fel: 'aplica' | 'refuza' | 'anuleaza' | 'dovezi', corp?: Record<string, any>) => api<any>('/api/insight/actiuni/' + encodeURIComponent(String(id)) + '/' + fel, { method: 'POST', body: corp || {} }),
   // Contorul RA Insight (aceeași sursă ca pe web): pachetul firmei, cât a folosit omul, reîncărcarea, contul omului.
   aiQuota: () => api<{ ok?: boolean; error?: string; seat?: boolean; questions: number; seats?: number; used: number; usedByMe?: number; remaining: number | null; unlimited: boolean; blocked?: boolean; periodEnd?: string; pachet?: any; sursa?: any }>('/api/ai/quota', { timeoutMs: 20000 }),
@@ -611,14 +611,14 @@ export const Api = {
   // `companyId` (opțional) contează DOAR la super-admin (applyCompanyFilter pe server): firma aleasă în Agenți AI.
   runAgents: (agent: string, imeis?: string[], companyId?: number | null) => api<{ findings: AgentFinding[]; aiSummary: string | null; stored: number; message?: string }>('/api/agents/run', { method: 'POST', body: { agent, imei: imeis && imeis.length ? imeis.join(',') : undefined, companyId: companyId != null ? companyId : undefined } }),
   agentFindings: (companyId?: number | null) => api<AgentFinding[]>('/api/agents/findings' + (companyId != null ? '?companyId=' + encodeURIComponent(String(companyId)) : '')),
-  // „Statistici flotă" — aceeași sursă ca ecranul de pe web: cifrele zilei pe vehicul (km, consum, viteză
+  // „Statistici flotă” — aceeași sursă ca ecranul de pe web: cifrele zilei pe vehicul (km, consum, viteză
   // maximă, motor, combustibil) + stările de acum. Serverul scoate singur vehiculele demo din flota reală.
   dashboard: () => api<any>('/api/dashboard'),
-  // Agenți „live" (dispatch/care/optimize): starea de MOMENT, care NU se persistă în agent_findings.
-  // Fără asta, pe telefon apărea „N constatări" peste o listă goală (findings-urile lor nu se salvează).
+  // Agenți „live” (dispatch/care/optimize): starea de MOMENT, care NU se persistă în agent_findings.
+  // Fără asta, pe telefon apărea „N constatări” peste o listă goală (findings-urile lor nu se salvează).
   agentLive: (key: string, companyId?: number | null) => api<{ agent: string; findings: AgentFinding[] }>(`/api/agents/${encodeURIComponent(key)}/live` + (companyId != null ? '?companyId=' + encodeURIComponent(String(companyId)) : '')),
   agentFindingAction: (id: number, action: 'dismiss' | 'ack') => api(`/api/agents/findings/${id}/${action}`, { method: 'POST' }),
-  // Semnalele CAN care se pot bifa in raportul „CAN detaliat", pentru vehiculele si perioada alese.
+  // Semnalele CAN care se pot bifa in raportul „CAN detaliat”, pentru vehiculele si perioada alese.
   // Aceeasi ruta o foloseste si web-ul — o singura lista, doua ecrane.
   canSignals: (imeis: string, from: string, to: string) =>
     api<any>('/api/can-signals?' + (imeis ? 'imei=' + encodeURIComponent(imeis) + '&' : '') + 'from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to)),

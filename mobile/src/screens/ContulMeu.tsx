@@ -10,7 +10,7 @@ import { Icon } from '../components/Icon';
 import './admin.css';
 import './contulmeu.css';
 
-// „Contul meu" — același capitol ca pe web (Setări → Preferințe → Contul meu), pentru ORICINE: dispecer,
+// „Contul meu” — același capitol ca pe web (Setări → Preferințe → Contul meu), pentru ORICINE: dispecer,
 // viewer, admin de firmă, fondator. Trei lucruri:
 //  1. numele afișat și telefonul (emailul e și numele de utilizator — îl schimbă doar administratorul firmei);
 //  2. schimbarea propriei parole, NUMAI cu parola de acum (o sesiune uitată deschisă nu devine preluarea contului);
@@ -39,7 +39,7 @@ export function ContulMeu() {
   // ── 1. Datele mele ──
   // Câmpurile URMEAZĂ profilul (me) până când omul începe să scrie în ele: profilul se reîmprospătează la
   // deschidere (mai jos) și la revenirea în aplicație. Altfel un nume vechi sau lipsă din copia de pe telefon
-  // (ex. /api/me picat la autentificare) ar fi trimis la „Salvează" și ar fi călcat numele de pe cont.
+  // (ex. /api/me picat la autentificare) ar fi trimis la „Salvează” și ar fi călcat numele de pe cont.
   const numeCont = u?.full_name || '';
   const telCont = u?.phone || '';
   const functieCont = u?.functie || '';
@@ -211,7 +211,7 @@ export function ContulMeu() {
             </div>
             <div class="fld">
               <label for="cm-p1">Parola nouă</label>
-              {/* Regula e a serverului (PAROLA_MIN = 10 + cel puțin două feluri de caractere). NU „minim 8". */}
+              {/* Regula e a serverului (PAROLA_MIN = 10 + cel puțin două feluri de caractere). NU „minim 8”. */}
               <input id="cm-p1" type="password" autocomplete="new-password" placeholder="minim 10 caractere"
                 value={p1} onInput={(e) => setP1((e.target as HTMLInputElement).value)} />
             </div>
@@ -235,13 +235,13 @@ export function ContulMeu() {
           {!eff && !incarc && <div class="cm-load">Nu s-au putut citi preferințele. Verifică legătura la internet și redeschide ecranul.</div>}
           {eff && (
             <>
-              {pref('tema', 'Tema aplicației', 'Se schimbă și din rândul „Temă" din meniu.', TEME, true)}
-              {pref('harta', 'Harta cu care pornești', '„Automat" o alege aplicația — acum e harta cu străzi. O poți schimba oricând și din butonul de pe hartă.', HARTI)}
-              {/* Pe web, contul de platformă deschide mereu „Acasă" și preferința nu se aplică; pe telefon pornește
+              {pref('tema', 'Tema aplicației', 'Se schimbă și din rândul „Temă” din meniu.', TEME, true)}
+              {pref('harta', 'Harta cu care pornești', '„Automat” o alege aplicația — acum e harta cu străzi. O poți schimba oricând și din butonul de pe hartă.', HARTI)}
+              {/* Pe web, contul de platformă deschide mereu „Acasă” și preferința nu se aplică; pe telefon pornește
                   pe Vehicule, tot fără ea (rutaEcranPornire din store). Un rând care nu face nimic ar fi o minciună. */}
               {!u?.isSuper && pref('ecran_pornire', 'Ecranul cu care se deschide aplicația',
                 'Dacă rolul tău nu ajunge la ecranul ales, se deschide tot pe Localizare.', ECRANE, false,
-                'Pe telefon, Localizare e ecranul Vehicule. Traseul se deschide din fișa mașinii — la „Traseu", aplicația pornește pe Vehicule.')}
+                'Pe telefon, Localizare e ecranul Vehicule. Traseul se deschide din fișa mașinii — la „Traseu”, aplicația pornește pe Vehicule.')}
             </>
           )}
         </div>

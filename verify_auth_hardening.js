@@ -4,8 +4,8 @@
 //    documentația de deploy, iar contul vede TOATE companiile. Acum: fără implicit — dacă
 //    ADMIN_PASSWORD lipsește, se generează una aleatoare, tipărită o singură dată la pornire.
 // 2. Patru praguri diferite de parolă (4, 4, 4 și 6 caractere), fără nicio verificare de conținut:
-//    un client își putea face cont cu „1234". Acum: o singură regulă, în toate cele patru locuri.
-// 3. Antetul CF-Connecting-IP era crezut pe cuvânt. Oricine îl trimite își alege singur „IP-ul" și
+//    un client își putea face cont cu „1234”. Acum: o singură regulă, în toate cele patru locuri.
+// 3. Antetul CF-Connecting-IP era crezut pe cuvânt. Oricine îl trimite își alege singur „IP-ul” și
 //    scapă de limitarea la forța brută. Acum se acceptă doar cu TRUST_CF_IP=true.
 const { spawn } = require('child_process');
 const os = require('os'), path = require('path'), fs = require('fs');
@@ -52,7 +52,7 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
 
     // ── 1. Parola implicită a dispărut ──
     const vechi = await req(jar(), 'POST', '/api/login', { username: 'admin', password: 'admin123' });
-    t('parola publică „admin123" NU mai merge', vechi.status !== 200, 'status ' + vechi.status);
+    t('parola publică „admin123” NU mai merge', vechi.status !== 200, 'status ' + vechi.status);
 
     const log = boota.log();
     const m = /PAROLA CONTULUI[\s\S]*?\n\s{2}([A-Za-z0-9_-]{20,})\s*\n/.exec(log);
@@ -72,7 +72,7 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
       ['abcdefghijkl', 'doar litere mici'],
       ['0123456789', 'secvență de tastatură'],
     ];
-    // Parolele nu se mai nasc la crearea contului (CLAUDE.md, „Parola nu există") — se nasc o
+    // Parolele nu se mai nasc la crearea contului (CLAUDE.md, „Parola nu există”) — se nasc o
     // singură dată, când omul și-o pune din link. Acolo se apasă politica, pe toate căile.
     let respinse = 0;
     for (const [p, de_ce] of slabe) {
@@ -80,11 +80,11 @@ const kill = (p) => new Promise((r) => { if (!p) return r(); p.once('exit', () =
       const jet = String((nou.body && nou.body.link) || '').split('token=')[1] || '';
       const r = await req(jar(), 'POST', '/api/auth/set-password', { token: jet, password: p });
       if (r.status === 400) respinse++;
-      else console.log('      ⚠ acceptată: „' + p + '" (' + de_ce + ')');
+      else console.log('      ⚠ acceptată: „' + p + '” (' + de_ce + ')');
     }
     t('toate parolele slabe sunt respinse când omul și-o pune', respinse === slabe.length, respinse + '/' + slabe.length);
 
-    // Regula „parola nu poate conține numele de utilizator" se apasă tot acolo: ruta de
+    // Regula „parola nu poate conține numele de utilizator” se apasă tot acolo: ruta de
     // set-password știe cine e omul (îl află din jeton), deci o poate verifica.
     const nouIon = await req(S, 'POST', '/api/users', { username: 'ionpopescu@t.ro', role: 'viewer', company_id: co.id, full_name: 'Ion Popescu' });
     const jetIon = String((nouIon.body && nouIon.body.link) || '').split('token=')[1] || '';

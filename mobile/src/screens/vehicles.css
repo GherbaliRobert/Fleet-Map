@@ -3,7 +3,7 @@
 .vsearch input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 15px; }
 .vsearch svg { color: var(--text-muted); flex: 0 0 auto; }
 
-/* Cadranele de stare: „Total vehicule" lat deasupra (grid-column: 1 / -1), patru dedesubt.
+/* Cadranele de stare: „Total vehicule” lat deasupra (grid-column: 1 / -1), patru dedesubt.
    Aceeași formă ca în aplicația web — cele două trebuie să arate ca un singur produs.
    Muchia colorată din stânga spune care e care fără să adauge un rând de legendă. */
 .vstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 4px 14px 10px; }
@@ -47,24 +47,24 @@
 .vmpop-bang { display: inline-flex; width: 16px; height: 16px; border-radius: 50%; background: #f59e0b; color: #06210f; font-weight: 800; font-size: 11px; align-items: center; justify-content: center; margin-right: 6px; flex: 0 0 auto; }
 .vmpop-btn { margin-top: 9px; width: 100%; background: var(--accent); color: #06210f; border: none; border-radius: 8px; padding: 7px; font-weight: 700; font-size: 13px; font-family: inherit; }
 
-/* Buton „Urmărire" pe hartă (follow / unfollow) */
+/* Buton „Urmărire” pe hartă (follow / unfollow) */
 .vmap-follow { position: absolute; top: 10px; right: 10px; z-index: 1000; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 700; font-family: inherit; box-shadow: 0 2px 10px rgba(0,0,0,.35); cursor: pointer; }
 .vmap-follow.on { background: var(--accent); color: #06210f; border-color: var(--accent); }
 
 /* Controlul MapLibre (zoom + busolă/reset înclinare) jos-STÂNGA, ridicat deasupra barei de tab-uri
-   (colțul jos-dreapta e ocupat de FAB-ul „+"; marginea de jos e acoperită de tab-bar) */
+   (colțul jos-dreapta e ocupat de FAB-ul „+”; marginea de jos e acoperită de tab-bar) */
 .maplibregl-ctrl-bottom-left { margin-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); margin-left: 10px; }
 
 /* Eticheta cu numărul, ridicată deasupra modelului 3D (mașina e randată de stratul Three.js) */
 .vmk-inner.vmk-3d { transform: translateY(-30px); }
 
-/* „Poziția mea" — punct albastru cu halou pulsatoriu (dispozitivul de pe care urmărești) */
+/* „Poziția mea” — punct albastru cu halou pulsatoriu (dispozitivul de pe care urmărești) */
 .vmk-me { position: relative; width: 18px; height: 18px; }
 .vmk-me-dot { position: absolute; inset: 3px; border-radius: 50%; background: #2f7cf6; border: 2px solid #fff; box-shadow: 0 0 4px rgba(0,0,0,.4); }
 .vmk-me-pulse { position: absolute; inset: 0; border-radius: 50%; background: rgba(47,124,246,.35); animation: vmk-me-pulse 2s ease-out infinite; }
 @keyframes vmk-me-pulse { 0% { transform: scale(.6); opacity: .8; } 100% { transform: scale(2.6); opacity: 0; } }
 
-/* Instructaj „prima dată pe harta 3D" — carusel 3 pași, o singură dată */
+/* Instructaj „prima dată pe harta 3D” — carusel 3 pași, o singură dată */
 .tour3d { position: absolute; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px;
   background: rgba(6,10,14,.62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: tour3d-fade .2s ease; }
 @keyframes tour3d-fade { from { opacity: 0; } to { opacity: 1; } }

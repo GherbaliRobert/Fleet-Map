@@ -4,13 +4,13 @@
 // DE CE E SCRIS AȘA (citește înainte să modifici)
 //
 // N-avem încă un fișier real pe care să probăm citirea — firma n-are șoferi profesioniști, aplicația
-// n-a fost lansată. Varianta veche era „best-effort": ghicea identificatorii de fișier interni, lua
+// n-a fost lansată. Varianta veche era „best-effort”: ghicea identificatorii de fișier interni, lua
 // numele șoferului ca fiind cel mai lung șir de litere din bloc, și scotea ORE chiar și când nu
 // înțelesese nimic. Pe hârtie mergea; în realitate ar fi putut arăta 47 de ore de condus care nu
 // există, iar orele astea înseamnă amenzi și controale ITM.
 //
 // Regula după care e scris acum: **nu inventăm cifre.** Fiecare pas se verifică singur, iar dacă
-// verificarea nu trece, fișierul e marcat „necitit" și se spune de ce. Mai bine un ecran care
+// verificarea nu trece, fișierul e marcat „necitit” și se spune de ce. Mai bine un ecran care
 // recunoaște că nu poate, decât unul care minte cu convingere.
 //
 // Ce verificăm structural (nu ghicim):
@@ -56,15 +56,15 @@ const TERMEN_VU_ZILE = 90;
 
 // ─── Care vehicule au tahograf de descărcat ──────────────────────────────────────────────────────
 // Reg. (UE) 165/2014: tahograful e obligatoriu la marfă peste 3,5 t și la persoane cu peste 9 locuri.
-// În aplicație asta se citește din câmpul „Categorie" al vehiculului (`devices.vehicle_type`).
+// În aplicație asta se citește din câmpul „Categorie” al vehiculului (`devices.vehicle_type`).
 //
-// ⚠ CAPCANĂ, prinsă în producție: „Tractor" din lista de categorii e tractorul AGRICOL (permis Tr),
-// care n-are tahograf; „Autotractor" e capul de TIR, care are. O potrivire liberă pe text (/tractor/i)
+// ⚠ CAPCANĂ, prinsă în producție: „Tractor” din lista de categorii e tractorul AGRICOL (permis Tr),
+// care n-are tahograf; „Autotractor” e capul de TIR, care are. O potrivire liberă pe text (/tractor/i)
 // le prinde pe amândouă și umple scadențarul cu utilaje agricole care n-au ce descărca. De-aia lista
 // e EXPLICITĂ și potrivirea e pe egalitate, nu pe conținut. Nu o transforma înapoi într-un tipar.
 //
 // Un vehicul special de peste 3,5 t care chiar transportă marfă pe drum public (o betonieră, de ex.)
-// se pune pe categoria „Camion" din fișa vehiculului — atunci intră în scadențar. Lista de aici
+// se pune pe categoria „Camion” din fișa vehiculului — atunci intră în scadențar. Lista de aici
 // rămâne pe cazurile fără dubiu, ca să nu sune alarme false pe utilaje.
 const TIPURI_CU_TAHOGRAF = [
   'autotractor', 'camion', 'tir', 'autobuz', 'autocar',
@@ -77,7 +77,7 @@ function vehiculAreTahograf(tip) {
 }
 // Reg. 561 (orele de condus) se aplică: tipul din fișă e camion / autobuz (vehiculAreTahograf — primit ca rezultat, sau ca
 // tipul însuși) SAU mașina trimite date de tahograf. O SINGURĂ regulă pentru agentul RA Compliance, raportul Condus &
-// repaus și ramura Ore de condus (07.10: erau trei; raportul punea autoturismele „Auto" sub Reg. 561 și scutea autocarele).
+// repaus și ramura Ore de condus (07.10: erau trei; raportul punea autoturismele „Auto” sub Reg. 561 și scutea autocarele).
 function supusReg561(tipSauCamion, areDateTahograf) {
   if (areDateTahograf) return true;
   return typeof tipSauCamion === 'boolean' ? tipSauCamion : vehiculAreTahograf(tipSauCamion);
@@ -407,9 +407,9 @@ function parse(buf) {
   }
 }
 
-// Orice fel de dată → „AAAA-LL-ZZ". Nu e cochetărie: PostgreSQL întoarce coloanele DATE ca obiecte
-// `Date`, nu ca text. Codul care făcea `String(data).slice(0,10)` primea „Tue Aug 25", încerca să-l
-// citească, ieșea o dată invalidă, iar scadențarul răspundea „null zile rămase" — adică exact
+// Orice fel de dată → „AAAA-LL-ZZ”. Nu e cochetărie: PostgreSQL întoarce coloanele DATE ca obiecte
+// `Date`, nu ca text. Codul care făcea `String(data).slice(0,10)` primea „Tue Aug 25”, încerca să-l
+// citească, ieșea o dată invalidă, iar scadențarul răspundea „null zile rămase” — adică exact
 // întrebarea la care exista secțiunea rămânea fără răspuns, tăcut. Prins de probă.
 // Pentru obiectele `Date` se iau componentele LOCALE: driverul de Postgres construiește un `Date` la
 // miezul nopții local, iar `toISOString()` l-ar putea muta cu o zi înapoi într-un fus în urma UTC.
@@ -433,7 +433,7 @@ function scadenta(ultima, termenZile, acum) {
   const prag = termenZile || TERMEN_CARD_ZILE;
   const ultimaZi = ziISO(ultima);
   if (!ultimaZi) {
-    // Fără dată (sau cu una pe care n-o pot citi) NU spunem „e în regulă" — spunem că n-avem nimic.
+    // Fără dată (sau cu una pe care n-o pot citi) NU spunem „e în regulă” — spunem că n-avem nimic.
     return { stare: 'niciodata', zileDeLaUltima: null, zileRamase: null, prag,
       text: 'niciodată descărcat' };
   }
@@ -451,7 +451,7 @@ function scadenta(ultima, termenZile, acum) {
   };
 }
 
-// Golurile dintre perioadele descărcate — „ce-mi lipsește din arhivă".
+// Golurile dintre perioadele descărcate — „ce-mi lipsește din arhivă”.
 // Legea cere să poți arăta activitatea continuu; o zi lipsă e o zi pe care n-o poți dovedi.
 function goluri(perioade) {
   const p = (perioade || [])

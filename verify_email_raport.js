@@ -1,7 +1,7 @@
-// verify_email_raport.js — emailul cu raportul programat (29.10; Alin: „da, e o idee bună").
+// verify_email_raport.js — emailul cu raportul programat (29.10; Alin: „da, e o idee bună”).
 // Până atunci emailul avea două rânduri și un Excel atașat — forma pe care filtrele de spam o bănuiesc la un expeditor nou
 // (raportul lui Alin ajungea în Spam la Yahoo). Acum: ce raport, perioada, mașinile, cifrele de sus (aceeași socoteală ca pe
-// cartonașul din RA Insight), linkul „Deschide raportul în aplicație" (spre Istoric) și de ce primește omul emailul.
+// cartonașul din RA Insight), linkul „Deschide raportul în aplicație” (spre Istoric) și de ce primește omul emailul.
 // Aici: textele (email_raport.js), cifrele de sus (reports.kpiRaport, una pentru email și RA Insight), linkul din pagină
 // (/app?raport=<id>, rulat în vm) și emailul adevărat, pe server pornit, cu Brevo fals.
 //   node verify_email_raport.js
@@ -18,7 +18,7 @@ console.log('\n1. Textele emailului');
 const ER = require('./email_raport.js');
 T('linkul: raportul din Istoric (doar un număr), altfel aplicația', ER.linkRaport('https://ratrack.ro/', 123) === 'https://ratrack.ro/app?raport=123' &&
   ER.linkRaport('https://ratrack.ro', null) === 'https://ratrack.ro/app' && ER.linkRaport('https://ratrack.ro', 'x<y') === 'https://ratrack.ro/app' && ER.linkRaport(undefined, 7) === 'https://ratrack.ro/app?raport=7');
-T('mașinile: una anume cu numele ei, altfel „Toată flota · N mașini" (cu „de" de la 20)', ER.textMasini({ vehicul: 'Dacia Logan 3 · B 154 UIP' }) === 'Dacia Logan 3 · B 154 UIP' &&
+T('mașinile: una anume cu numele ei, altfel „Toată flota · N mașini” (cu „de” de la 20)', ER.textMasini({ vehicul: 'Dacia Logan 3 · B 154 UIP' }) === 'Dacia Logan 3 · B 154 UIP' &&
   ER.textMasini({ nrMasini: 1 }) === 'Toată flota · 1 mașină' && ER.textMasini({ nrMasini: 5 }) === 'Toată flota · 5 mașini' && ER.textMasini({ nrMasini: 24 }) === 'Toată flota · 24 de mașini' && ER.textMasini({}) === 'Toată flota');
 T('de ce primește emailul: programarea, cât de des, ora — și de unde se oprește', ER.textDeCe({ numeProgramare: 'Foaia de dimineață', frecventa: 'daily', ora: 7 }) ===
   'Primești emailul pentru că raportul e programat în RA Track (Rapoarte › Programări: „Foaia de dimineață”, zilnic, la 07:00). Îl poți schimba sau opri de acolo.' &&
@@ -26,26 +26,26 @@ T('de ce primește emailul: programarea, cât de des, ora — și de unde se opr
 const c1 = ER.continut({ label: 'Foaie de parcurs', perioada: '28.10.2026', nrMasini: 5, kpi: [{ et: 'Curse', val: '12' }, { et: 'Distanță totală (km)', val: '845' }],
   randuri: 12, link: 'https://ratrack.ro/app?raport=9', format: 'xlsx', numeProgramare: 'Foaia de dimineață', frecventa: 'daily', ora: 7 });
 T('subiectul rămâne cel de până acum', c1.subiect === '[RA Track] Foaie de parcurs — 28.10.2026');
-T('textul: raportul și perioada, mașinile, „Pe scurt" cu cifrele de sus, fișierul atașat, linkul, de ce', c1.text.split('\n')[0] === 'Raport „Foaie de parcurs” · 28.10.2026' &&
+T('textul: raportul și perioada, mașinile, „Pe scurt” cu cifrele de sus, fișierul atașat, linkul, de ce', c1.text.split('\n')[0] === 'Raport „Foaie de parcurs” · 28.10.2026' &&
   c1.text.split('\n')[1] === 'Toată flota · 5 mașini' && /Pe scurt:\n• Curse: 12\n• Distanță totală \(km\): 845/.test(c1.text) && /fișierul atașat \(Excel\)/.test(c1.text) &&
   /\nhttps:\/\/ratrack\.ro\/app\?raport=9\n/.test(c1.text) && /Rapoarte › Programări: „Foaia de dimineață”, zilnic, la 07:00/.test(c1.text), c1.text);
-T('HTML-ul: butonul „Deschide raportul în aplicație" spre același link, cifrele în tabel, fără scripturi',
+T('HTML-ul: butonul „Deschide raportul în aplicație” spre același link, cifrele în tabel, fără scripturi',
   /<a href="https:\/\/ratrack\.ro\/app\?raport=9"[^>]*>Deschide raportul în aplicație<\/a>/.test(c1.html) && /<td[^>]*>Curse<\/td><td[^>]*>12<\/td>/.test(c1.html) && !/<script/i.test(c1.html));
 const c2 = ER.continut({ label: 'Opriri <b>', perioada: '28.10.2026', vehicul: 'Duba <img src=x> & Co', kpi: [{ et: 'Opriri "lungi"', val: '<3>' }], randuri: 1, format: 'pdf' });
 T('HTML-ul nu lasă să treacă nimic din date ca cod (numele mașinii, al raportului, cifrele)', !/<img src=x>/.test(c2.html) && /Duba &lt;img src=x&gt; &amp; Co/.test(c2.html) &&
   /Opriri &lt;b&gt;/.test(c2.html) && /&lt;3&gt;/.test(c2.html) && /Opriri &quot;lungi&quot;/.test(c2.html) && /fișierul atașat \(PDF\)/.test(c2.html));
 const c3 = ER.continut({ label: 'Foaie de parcurs', perioada: '28.10.2026', nrMasini: 2, kpi: [], randuri: 0, format: 'xlsx' });
-T('fără nimic în perioadă: „Nicio înregistrare în perioada asta." (text și HTML), linkul spre aplicație', /• Nicio înregistrare în perioada asta\./.test(c3.text) && /Nicio înregistrare în perioada asta\./.test(c3.html) &&
+T('fără nimic în perioadă: „Nicio înregistrare în perioada asta.” (text și HTML), linkul spre aplicație', /• Nicio înregistrare în perioada asta\./.test(c3.text) && /Nicio înregistrare în perioada asta\./.test(c3.html) &&
   /\nhttps:\/\/ratrack\.ro\/app\n/.test(c3.text));
 const c4 = ER.continut({ label: 'Traseu', perioada: 'x', kpi: [], randuri: 1, format: 'xlsx' });
-T('…iar fără sumar, dar cu rânduri: câte rânduri are raportul („1 rând" / „25 de rânduri")', /• 1 rând în raport\./.test(c4.text) && /• 25 de rânduri în raport\./.test(ER.continut({ kpi: [], randuri: 25 }).text));
+T('…iar fără sumar, dar cu rânduri: câte rânduri are raportul („1 rând” / „25 de rânduri”)', /• 1 rând în raport\./.test(c4.text) && /• 25 de rânduri în raport\./.test(ER.continut({ kpi: [], randuri: 25 }).text));
 T('cel mult 4 cifre de sus (ca pe cartonașul din RA Insight)', (ER.continut({ kpi: [1, 2, 3, 4, 5, 6].map((i) => ({ et: 'K' + i, val: String(i) })), randuri: 3 }).text.match(/^• K/gm) || []).length === 4);
 
 // ─── 2. Cifrele de sus: O socoteală ─────────────────────────────────────────────────────────────
 console.log('\n2. Cifrele de sus: aceeași socoteală pentru email și pentru RA Insight');
 const reports = require('./reports.js');
 const k1 = reports.kpiRaport({ summary: [['Curse', 12], ['Distanță totală (km)', 845.25], ['Atenție', 'x'], ['Gol', ''], ['Timp de mers', '14 h 20 min'], ['A', 1], ['B', 2]] });
-T('reports.kpiRaport: fără „Atenție" și fără goluri, cel mult 4, numerele pe românește', JSON.stringify(k1) === JSON.stringify([{ et: 'Curse', val: '12' }, { et: 'Distanță totală (km)', val: '845,3' }, { et: 'Timp de mers', val: '14 h 20 min' }, { et: 'A', val: '1' }]), JSON.stringify(k1));
+T('reports.kpiRaport: fără „Atenție” și fără goluri, cel mult 4, numerele pe românește', JSON.stringify(k1) === JSON.stringify([{ et: 'Curse', val: '12' }, { et: 'Distanță totală (km)', val: '845,3' }, { et: 'Timp de mers', val: '14 h 20 min' }, { et: 'A', val: '1' }]), JSON.stringify(k1));
 T('…și sumarul scris ca obiect', JSON.stringify(reports.kpiRaport({ summary: { Curse: 3, Opriri: 0 } })) === JSON.stringify([{ et: 'Curse', val: '3' }, { et: 'Opriri', val: '0' }]) && reports.kpiRaport(null).length === 0);
 const SRV = citeste('server.js'), RS = citeste('report_schedules.js');
 T('serverul (cartonașul din RA Insight) cheamă aceeași funcție — nu mai are o copie a ei', /function _kpiRaport\(report\) \{ return reports\.kpiRaport\(report\); \}/.test(SRV) && !/const perechi = Array\.isArray\(s\)/.test(SRV));
@@ -79,7 +79,7 @@ T('/app?raport=123 → deschide raportul 123 din Istoric și scoate numărul din
 r = ruleaza('');
 T('fără link: aterizarea obișnuită', r._rez === false && r._deschis.length === 0 && r._adresa === null);
 r = ruleaza('?raport=12abc');
-T('…și fără nimic altceva decât un număr (nici „12abc")', r._rez === false && r._deschis.length === 0);
+T('…și fără nimic altceva decât un număr (nici „12abc”)', r._rez === false && r._deschis.length === 0);
 r = ruleaza('?raport=55', { rapoarte: false });
 T('omul fără rapoarte în rol: aterizarea obișnuită (adresa tot se curăță)', r._rez === false && r._deschis.length === 0 && r._adresa === '/app');
 r = ruleaza('?x=1&raport=77', { super: true, vert: 'fondator' });
@@ -147,9 +147,9 @@ const fals = http.createServer((req, res) => {
     T('a) emailul pleacă, cu Foaia de parcurs atașată (numele casei) și subiectul de până acum', !!em.subject && /^\[RA Track\] Foaie de parcurs — \d{2}\.\d{2}\.\d{4}$/.test(em.subject) &&
       /^RA-Track - Raport Foaie de parcurs/.test(((em.attachment || [])[0] || {}).name || ''), JSON.stringify({ s: em.subject, a: (em.attachment || []).map((x) => x.name) }));
     const txt = String(em.textContent || ''), htm = String(em.htmlContent || '');
-    // „Toată flota" a fondatorului = toate mașinile platformei, fără arhivate (cum citește programarea).
+    // „Toată flota” a fondatorului = toate mașinile platformei, fără arhivate (cum citește programarea).
     const nrFlota = ((await json('GET', '/api/devices', S)).j || []).filter((d) => d && d.status !== 'archived').length;
-    T('…textul: raportul, „' + ER.textMasini({ nrMasini: nrFlota }) + '", „Pe scurt", linkul spre raportul din Istoric', nrFlota >= 2 && hid &&
+    T('…textul: raportul, „' + ER.textMasini({ nrMasini: nrFlota }) + '”, „Pe scurt”, linkul spre raportul din Istoric', nrFlota >= 2 && hid &&
       txt.indexOf('Raport „Foaie de parcurs” · ') === 0 && txt.split('\n')[1] === ER.textMasini({ nrMasini: nrFlota }) && /\n\nPe scurt:\n/.test(txt) &&
       txt.indexOf('https://ratrack.ro/app?raport=' + hid + '\n') > 0, txt.slice(0, 400));
     // Raportul salvat stă ca JSONB, care își așază cheile altfel: cifrele se compară una câte una, nu în ordine.
@@ -160,7 +160,7 @@ const fals = http.createServer((req, res) => {
       dinEmail.every((x) => salvate.indexOf(x) >= 0), JSON.stringify({ salvate, dinEmail }));
     T('…HTML-ul: chenarul casei (sigla de pe site), butonul spre același raport, de ce primește emailul', /logo\.png/.test(htm) && htm.indexOf('href="https://ratrack.ro/app?raport=' + hid + '"') > 0 &&
       /Deschide raportul în aplicație/.test(htm) && /Rapoarte › Programări: „Foaia de dimineață”, zilnic, la 07:00/.test(htm), htm.slice(0, 300));
-    T('…rândul programării: „a plecat pe email" (ca înainte)', /a plecat pe email/.test((await randul(s1.id)).stare_text || ''));
+    T('…rândul programării: „a plecat pe email” (ca înainte)', /a plecat pe email/.test((await randul(s1.id)).stare_text || ''));
 
     // b) O mașină anume, cu un nume care ar putea fi cod
     const s2 = await programeaza({ name: 'Duba', imei: IMEI2, recipients: 'dispecer@firma-email.ro', format: 'pdf' });

@@ -4,7 +4,7 @@
 //
 // CONFIG (env):
 //   ANAF_EFACTURA_TOKEN — token OAuth (Bearer). FĂRĂ el → transport dormant (XML-ul se poate totuși genera/vedea).
-//   ANAF_CIF            — CIF-ul firmei tale (emitent), fără „RO".
+//   ANAF_CIF            — CIF-ul firmei tale (emitent), fără „RO”.
 //   ANAF_EFACTURA_TEST  — 'true' (implicit) = mediul de TEST ANAF; 'false' = producție (după validare).
 
 function base(test) { return test ? 'https://api.anaf.ro/test/FCTEL/rest' : 'https://api.anaf.ro/prod/FCTEL/rest'; }
@@ -27,20 +27,20 @@ function _date(ms) { return _FMT_ZI.format(new Date(Number(ms) || Date.now())); 
 
 // ─── Vânzătorul NEPLĂTITOR de TVA (regim special de scutire, art. 310 Cod fiscal) ───
 // Regulile EN 16931 BR-O-* (verificate la validatorul ANAF pe 25.10, ca în programul de facturare al DUO):
-//   • categoria „O" (în afara TVA) pe TOATE rândurile și în total, FĂRĂ cotă (BR-O-05) — cu motivul VATEX-EU-O (BR-O-10);
+//   • categoria „O” (în afara TVA) pe TOATE rândurile și în total, FĂRĂ cotă (BR-O-05) — cu motivul VATEX-EU-O (BR-O-10);
 //   • FĂRĂ niciun cod de TVA pe factură, nici al nostru, nici al clientului (BR-O-02): vânzătorul și clientul se
-//     recunosc după CUI, scris fără „RO", la „înregistrarea legală";
+//     recunosc după CUI, scris fără „RO”, la „înregistrarea legală”;
 //   • TVA 0 și mențiunea de scutire, ca notă pe factură.
-// Plătitorul de TVA rămâne cum era: „S" cu cota (21 / 11), „Z" la cota 0.
+// Plătitorul de TVA rămâne cum era: „S” cu cota (21 / 11), „Z” la cota 0.
 const MENTIUNE_NEPLATITOR = 'Furnizorul nu este înregistrat în scopuri de TVA (regim special de scutire conform art. 310 din Codul fiscal).';
 const CNP_NECUNOSCUT = '0000000000000';   // persoana fizică fără CNP (regula ANAF)
 
 // ─── Locul unei părți: județul și localitatea ───
-// CIUS-RO cere, pentru o adresă din România, județul ca cod ISO 3166-2 („RO-CJ") și, la București, localitatea ca
-// „SECTOR1"…„SECTOR6". Emitentul are oraș și județ în „Date emitent"; clientul are doar ADRESA, într-un singur text — cum
-// vine de la ANAF („MUNICIPIUL BUCUREŞTI, SECTOR 3, STR. …", „JUD. ILFOV, ORŞ. PANTELIMON, STR. …") sau scrisă de mână
-// („Str. …, Cluj-Napoca, jud. Cluj"). Se iau întâi câmpurile, apoi adresa. Ce nu se poate afla NU se ghicește (până pe
-// 25.10 orice client fără județ pleca „RO-B, SECTOR1"): factura nu pleacă, iar eroarea spune ce lipsește și unde se scrie.
+// CIUS-RO cere, pentru o adresă din România, județul ca cod ISO 3166-2 („RO-CJ”) și, la București, localitatea ca
+// „SECTOR1”…„SECTOR6”. Emitentul are oraș și județ în „Date emitent”; clientul are doar ADRESA, într-un singur text — cum
+// vine de la ANAF („MUNICIPIUL BUCUREŞTI, SECTOR 3, STR. …”, „JUD. ILFOV, ORŞ. PANTELIMON, STR. …”) sau scrisă de mână
+// („Str. …, Cluj-Napoca, jud. Cluj”). Se iau întâi câmpurile, apoi adresa. Ce nu se poate afla NU se ghicește (până pe
+// 25.10 orice client fără județ pleca „RO-B, SECTOR1”): factura nu pleacă, iar eroarea spune ce lipsește și unde se scrie.
 const JUDETE = {
   'ALBA': 'AB', 'ARAD': 'AR', 'ARGES': 'AG', 'BACAU': 'BC', 'BIHOR': 'BH', 'BISTRITA NASAUD': 'BN', 'BOTOSANI': 'BT',
   'BRAILA': 'BR', 'BRASOV': 'BV', 'BUCURESTI': 'B', 'BUZAU': 'BZ', 'CALARASI': 'CL', 'CARAS SEVERIN': 'CS', 'CLUJ': 'CJ',
@@ -50,9 +50,9 @@ const JUDETE = {
   'SUCEAVA': 'SV', 'TELEORMAN': 'TR', 'TIMIS': 'TM', 'TULCEA': 'TL', 'VALCEA': 'VL', 'VASLUI': 'VS', 'VRANCEA': 'VN',
 };
 const CODURI_JUDET = new Set(Object.keys(JUDETE).map(function (k) { return JUDETE[k]; }));
-// Fără diacritice (și cu sedilă: „Ş"), cu majuscule, spațiile strânse — doar pentru COMPARAT, nu pentru scris în XML.
+// Fără diacritice (și cu sedilă: „Ş”), cu majuscule, spațiile strânse — doar pentru COMPARAT, nu pentru scris în XML.
 function _fara(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); }
-// „RO-CJ", „CJ", „Cluj", „jud. Cluj", „Județul Cluj", „Municipiul București" → „CJ" / „B"; altceva → null.
+// „RO-CJ”, „CJ”, „Cluj”, „jud. Cluj”, „Județul Cluj”, „Municipiul București” → „CJ” / „B”; altceva → null.
 function _codJudet(v) {
   const t = _fara(v); if (!t) return null;
   const m = /^(?:RO-?)?([A-Z]{1,2})$/.exec(t);
@@ -70,7 +70,7 @@ function _dinAdresa(text) {
   const ms = /\bSECT(?:OR(?:UL)?)?\.?\s*([1-6])\b/.exec(parti.join(', '));
   if (ms) out.sector = ms[1];
   let iJud = -1, peFata = false;
-  // 1) „jud. X" / „județul X", oriunde într-o bucată (și cu ce urmează lipit: „jud. Ilfov 077145").
+  // 1) „jud. X” / „județul X”, oriunde într-o bucată (și cu ce urmează lipit: „jud. Ilfov 077145”).
   for (let i = 0; i < parti.length && iJud < 0; i++) {
     const m = /\bJUD(?:ETUL|\.)?\s*([A-Z][A-Z\- ]*[A-Z])/.exec(parti[i]);
     if (!m) continue;
@@ -79,20 +79,20 @@ function _dinAdresa(text) {
       const cod = JUDETE[cuv.slice(0, n).join(' ')];
       if (cod) { out.judet = cod; iJud = i; peFata = true; }
     }
-    // „Pantelimon, jud. Ilfov" are localitatea în bucata de dinainte; „Pantelimon jud. Ilfov", în aceeași bucată.
+    // „Pantelimon, jud. Ilfov” are localitatea în bucata de dinainte; „Pantelimon jud. Ilfov”, în aceeași bucată.
     const inainte = brut[i].slice(0, brut[i].search(/\bjud/i)).trim();
     if (iJud === i && inainte && !_STRADA.test(_fara(inainte)) && !/\d/.test(inainte)) out.localitate = inainte.replace(_PREFIX_LOC, '');
   }
-  // 2) O bucată care E un județ („…, Cluj" / „MUNICIPIUL BUCUREŞTI" / „București 030167").
+  // 2) O bucată care E un județ („…, Cluj” / „MUNICIPIUL BUCUREŞTI” / „București 030167”).
   for (let i = 0; i < parti.length && iJud < 0; i++) {
     const cod = _codJudet(parti[i].replace(/\b\d+\b/g, ' '));
     if (cod) { out.judet = cod; iJud = i; }
   }
-  // 3) Codul scris („RO-CJ"), apoi sectorul singur (e doar la București).
+  // 3) Codul scris („RO-CJ”), apoi sectorul singur (e doar la București).
   if (!out.judet) { const mc = /\bRO-([A-Z]{1,2})\b/.exec(parti.join(', ')); if (mc && CODURI_JUDET.has(mc[1])) out.judet = mc[1]; }
   if (!out.judet && out.sector) out.judet = 'B';
-  // Localitatea: o bucată cu „Mun." / „Orș." / „Com." / „Sat"; altfel bucata dinaintea județului, dacă nu e o stradă sau un
-  // număr; altfel numele scris ca județ („Str. Lungă 5, Iași" — orașul și județul au același nume).
+  // Localitatea: o bucată cu „Mun.” / „Orș.” / „Com.” / „Sat”; altfel bucata dinaintea județului, dacă nu e o stradă sau un
+  // număr; altfel numele scris ca județ („Str. Lungă 5, Iași” — orașul și județul au același nume).
   if (!out.localitate) {
     for (let i = 0; i < brut.length && !out.localitate; i++) {
       if (i !== iJud && _PREFIX_LOC.test(brut[i]) && !/^\d/.test(brut[i].replace(_PREFIX_LOC, ''))) out.localitate = brut[i].replace(_PREFIX_LOC, '').trim();
@@ -108,7 +108,7 @@ function _locul(p, cine) {
   const oras = String(p.city || '').replace(/\s+/g, ' ').trim();
   const dinAdresa = _dinAdresa(p.address), dinOras = _dinAdresa(oras);
   if (tara !== 'RO') return { tara: tara, judet: null, oras: oras || dinAdresa.localitate || '-' };
-  const unde = cine === 'emitent' ? '„Date emitent" (Facturare)' : 'fișa firmei (Companii → firma → Detalii)';
+  const unde = cine === 'emitent' ? '„Date emitent” (Facturare)' : 'fișa firmei (Companii → firma → Detalii)';
   const al = cine === 'emitent' ? 'emitentului' : 'clientului';
   const adr = String(p.address || '').trim();
   const judet = _codJudet(p.county) || dinAdresa.judet || dinOras.judet;
@@ -139,7 +139,7 @@ function _partea(p, loc, tvaId, idLegal) {
       (idLegal ? '<cbc:CompanyID>' + _esc(idLegal) + '</cbc:CompanyID>' : '') +
     '</cac:PartyLegalEntity>';
 }
-// Categoria de TVA a unui rând (`ClassifiedTaxCategory`) sau a unui total pe categorie (`TaxCategory`, cu motivul la „O").
+// Categoria de TVA a unui rând (`ClassifiedTaxCategory`) sau a unui total pe categorie (`TaxCategory`, cu motivul la „O”).
 function _categoria(tag, cat, cota) {
   return '<cac:' + tag + '><cbc:ID>' + cat + '</cbc:ID>' +
     (cat === 'O' ? (tag === 'TaxCategory' ? '<cbc:TaxExemptionReasonCode>VATEX-EU-O</cbc:TaxExemptionReasonCode>' : '') : '<cbc:Percent>' + _num(cota) + '</cbc:Percent>') +
@@ -160,12 +160,12 @@ function buildUBL(inv) {
     throw new Error('Emitentul nu e plătitor de TVA, dar factura ' + nr + ' are TVA pe rânduri (' + _num(inv.vat_amount) + ' ' + cur +
       '). O factură fără TVA se emite cu „Cotă TVA” 0 în „Date emitent”.');
   }
-  // Rândurile, cu categoria lor: la neplătitor „O" fără cotă; la plătitor „S" cu cota, „Z" la 0%.
+  // Rândurile, cu categoria lor: la neplătitor „O” fără cotă; la plătitor „S” cu cota, „Z” la 0%.
   const linii = lines.map(function (l) {
     const cota = neplatitor ? 0 : (Number(l.vatRate) || 0);
     return { l: l, net: _r2(l.net), tva: neplatitor ? 0 : _r2(l.vat), cota: cota, cat: neplatitor ? 'O' : (cota > 0 ? 'S' : 'Z') };
   });
-  // Totalul pe categorie și cotă (21% înaintea lui 11%, „Z" la urmă). TVA-ul categoriei = suma TVA-ului de pe rânduri, ca
+  // Totalul pe categorie și cotă (21% înaintea lui 11%, „Z” la urmă). TVA-ul categoriei = suma TVA-ului de pe rânduri, ca
   // pe hârtie; regula EN 16931 (BR-S-09) primește diferența de rotunjire.
   const grupe = [];
   linii.forEach(function (x) {
@@ -182,15 +182,15 @@ function buildUBL(inv) {
       '): e-Factura ar spune altă sumă decât hârtia.');
   }
 
-  // Vânzătorul: plătitorul cu codul de TVA („RO…") și Reg. Com.; neplătitorul doar cu CUI-ul, fără „RO".
+  // Vânzătorul: plătitorul cu codul de TVA („RO…”) și Reg. Com.; neplătitorul doar cu CUI-ul, fără „RO”.
   const cuiEm = _cif(iss.cui);
-  if (!cuiEm) throw new Error('Emitentul n-are CUI în „Date emitent" (Facturare) — e-Factura nu se poate face fără el.');
+  if (!cuiEm) throw new Error('Emitentul n-are CUI în „Date emitent” (Facturare) — e-Factura nu se poate face fără el.');
   const locEm = _locul(iss, 'emitent');
   const vanzator = neplatitor
     ? _partea(iss, locEm, null, cuiEm)
     : _partea(iss, locEm, (locEm.tara === 'RO' && /^\d+$/.test(cuiEm) ? 'RO' : '') + cuiEm, String(iss.reg_com || '').trim() || cuiEm);
   // Cumpărătorul: persoana fizică cu CNP-ul (sau 13 zerouri); firma cu codul de TVA doar dacă AMÂNDOI sunt plătitori
-  // (BR-O-02), altfel cu CUI-ul, fără „RO". O firmă fără CUI nu se poate recunoaște la ANAF: factura nu pleacă.
+  // (BR-O-02), altfel cu CUI-ul, fără „RO”. O firmă fără CUI nu se poate recunoaște la ANAF: factura nu pleacă.
   const cuiCl = _cif(cl.cui);
   const persoana = cl.is_person === true || /^\d{13}$/.test(cuiCl);
   const locCl = _locul(cl, 'client');

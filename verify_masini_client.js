@@ -1,13 +1,13 @@
-// verify_masini_client.js — „Mașinile clientului" din Ofertare Live: ce aparat merge pe ce mașină (28.09).
+// verify_masini_client.js — „Mașinile clientului” din Ofertare Live: ce aparat merge pe ce mașină (28.09).
 //
 //   node verify_masini_client.js
 //
 // Alin: „să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact — Dacia,
 // Logan 2, 2024, benzină + GPL — și calculatorul să-mi recomande ce echipament i se potrivește." Sursa sunt
 // listele Excel ale Teltonika (LV-CAN200, FMX150, ALL-CAN300). Proba ține:
-//   1. citirea listelor — pe foi făcute AICI, cu forma lor adevărată (antetul, anii, „+" colorat, legenda);
+//   1. citirea listelor — pe foi făcute AICI, cu forma lor adevărată (antetul, anii, „+” colorat, legenda);
 //   2. potrivirea — anul, modelul mai precis, generația, combustibilul, piețele străine, mărcile scrise altfel;
-//   3. recomandarea — camion → FMC650, utilaj, „doar poziție", mașina pe amândouă listele, GPL;
+//   3. recomandarea — camion → FMC650, utilaj, „doar poziție”, mașina pe amândouă listele, GPL;
 //   4. șablonul pe care îl trimitem clientului (Alin, 28.09: „buton de export a unui șablon fix... și de
 //      încărcare") — citirea lui, cu rândurile greșite spuse pe nume; lipirea din Excel a fost SCOASĂ;
 //   5. listele adevărate (copia de pornire din depozit): Logan 2024 cu GPL, Golf, Volvo FH;
@@ -64,7 +64,7 @@ const foiLv = [
     lv(1, 'MERCEDES', 'ACTROS MP5 (EURO 6) (FMS)', '2019>', '14000', ICE),
     lv(2, 'VOLVO', 'FH (EURO 6)', '2018>', '13234', ICE)] },
 ];
-// FMX150: grupul deasupra antetului (Standard / Extended), antet pe rândul 3, anii „2016-2020" / „2019+".
+// FMX150: grupul deasupra antetului (Standard / Extended), antet pe rândul 3, anii „2016-2020” / „2019+”.
 const GRUP = ['Supported CAN vehicles 12/02/2025', '', '', '', '', '', '', '', 'Standard parameters', 'Standard parameters', 'Standard parameters', 'Standard parameters', 'Standard parameters', 'Extended parameters'];
 const ANTET_F = ['No', 'Category', 'Manufacturer', 'Model', 'Model year', 'Fuel type', 'Region', 'CAN Lines',
   'Fuel level (%)', 'Fuel Consumption', 'Total Mileage (km)', 'Fuel Consumed (Counted)', 'HVBattery charge level', 'Exhaust Fluid Tank level'];
@@ -92,18 +92,18 @@ const L1 = C.citesteFoi(foiLv, 'LV-CAN200_list_2025_07_23_en.xlsx');
 T('recunoaște lista LV-CAN200 după nume', L1.tip === 'lvcan');
 T('citește toate mașinile, fără legenda de la coada foii', L1.randuri.length === 21 && !L1.randuri.some((e) => /this parameter/i.test(e.marca)), L1.randuri.length);
 const logan3 = L1.randuri.find((e) => e.model === 'LOGAN (III) (LPG)');
-T('„2021>" = de la 2021, fără capăt', logan3.de === 2021 && logan3.pana === null);
+T('„2021>” = de la 2021, fără capăt', logan3.de === 2021 && logan3.pana === null);
 T('programul și liniile CAN, pentru instalator', logan3.program === '13732' && logan3.can === 1);
 T('varianta cu GPL e recunoscută, cu nivelul și consumul de GPL', logan3.comb === 'gpl' && logan3.date.gplNivel === 'b' && logan3.date.gplConsum === 'b');
-T('„+" albastru = „depinde de dotare"', L1.randuri.find((e) => e.model === 'DUSTER (Regular-key)').date.rezervor === 'bq');
+T('„+” albastru = „depinde de dotare”', L1.randuri.find((e) => e.model === 'DUSTER (Regular-key)').date.rezervor === 'bq');
 T('felul vine din foaie: Trucks → camion, Electric cars → electric', L1.randuri.find((e) => /ACTROS/.test(e.model)).fel === 'camion' && L1.randuri.find((e) => /SPRING/.test(e.model)).comb === 'electric');
 T('hibridul se recunoaște din etichetă', L1.randuri.find((e) => /COROLLA \(Hybrid/.test(e.model)).comb === 'hibrid');
 const F1 = C.citesteFoi(foiF, 'FMX150_Supported_Vehicles_12_02_2025.xlsx');
 T('recunoaște lista FMC150 (antet pe rândul 3)', F1.tip === 'fmc150' && F1.randuri.length === 21, F1.tip + ' ' + F1.randuri.length);
 const ceed = F1.randuri.find((e) => /Ceed/.test(e.model));
-T('„+*" = experimental; „+" pe galben = lipsește cu ECAN02', ceed.date.rezervor === 'bx' && ceed.date.km === 'bc', JSON.stringify(ceed.date));
-T('parametrii „Extended" (se cer separat de la Teltonika) nu se numără', !F1.randuri.some((e) => e.date && e.date.adblue));
-T('„2016-2020" = între ani; categoria Agricultural → utilaj', F1.randuri.find((e) => e.model === 'Logan mk2 facelift').pana === 2020 && F1.randuri.find((e) => e.model === '6155R').fel === 'utilaj');
+T('„+*” = experimental; „+” pe galben = lipsește cu ECAN02', ceed.date.rezervor === 'bx' && ceed.date.km === 'bc', JSON.stringify(ceed.date));
+T('parametrii „Extended” (se cer separat de la Teltonika) nu se numără', !F1.randuri.some((e) => e.date && e.date.adblue));
+T('„2016-2020” = între ani; categoria Agricultural → utilaj', F1.randuri.find((e) => e.model === 'Logan mk2 facelift').pana === 2020 && F1.randuri.find((e) => e.model === '6155R').fel === 'utilaj');
 T('ALL-CAN300 recunoscut după nume', C.citesteFoi(foiLv, 'ALLCAN300_list_2025_03_10_en.xlsx').tip === 'allcan');
 const foiAll = foiLv.map((f) => ({ nume: f.nume, randuri: f.randuri.map((r, i) => i === 1 ? r.concat([cel('Key inserted')]) : r) }));
 T('...și fără nume grăitor, după ce citește în plus (cheia din contact)', C.citesteFoi(foiAll, 'lista.xlsx').tip === 'allcan');
@@ -112,52 +112,52 @@ try { C.citesteFoi([{ nume: 'Foaie', randuri: [rand(['Nume', 'Prenume'])] }], 'x
 T('alt Excel → refuzat, pe înțeles', /nu e o listă de mașini Teltonika/.test(err), err);
 err = ''; try { C.citesteFoi([{ nume: 'Cars', randuri: [[], rand(ANTET_LV), lv(1, 'DACIA', 'LOGAN', '2013>', '1', ICE)] }], 'LV-CAN200.xlsx'); } catch (e) { err = e.message; }
 T('o listă cu câteva rânduri → refuzată (nu e lista întreagă)', /nu pare lista întreagă/.test(err), err);
-T('ziua listei din nume: „2025_07_23" și „12_02_2025" (lună, zi, an)', C.dataDinNume('LV-CAN200_list_2025_07_23_en.xlsx') === '2025-07-23' && C.dataDinNume('FMX150_Supported_Vehicles_12_02_2025.xlsx') === '2025-12-02');
+T('ziua listei din nume: „2025_07_23” și „12_02_2025” (lună, zi, an)', C.dataDinNume('LV-CAN200_list_2025_07_23_en.xlsx') === '2025-07-23' && C.dataDinNume('FMX150_Supported_Vehicles_12_02_2025.xlsx') === '2025-12-02');
 T('fără dată limpede în nume → nu inventăm una', C.dataDinNume('lista.xlsx') === null);
-T('anii: „2017+", „<=2010", gol', JSON.stringify(C.ani('2017+')) === '{"de":2017,"pana":null}' && JSON.stringify(C.ani('<=2010')) === '{"de":null,"pana":2010}' && JSON.stringify(C.ani('')) === '{"de":null,"pana":null}');
+T('anii: „2017+”, „<=2010”, gol', JSON.stringify(C.ani('2017+')) === '{"de":2017,"pana":null}' && JSON.stringify(C.ani('<=2010')) === '{"de":null,"pana":2010}' && JSON.stringify(C.ani('')) === '{"de":null,"pana":null}');
 
 sect('2. Potrivirea');
 const LV = C.pregateste(L1.randuri), FM = C.pregateste(F1.randuri);
 const pot = (L, marca, model, an, comb) => C.potriveste(L, { marca, model, an, combustibil: comb || '' });
 let p = pot(LV, 'Dacia', 'Logan 2', 2024, 'gpl');
-T('Logan 2024 cu GPL → „LOGAN (III) (LPG)", din 2021 (nu LOGAN II, care e „din 2013")', p.ales && p.ales.model === 'LOGAN (III) (LPG)', p.ales && p.ales.model);
-T('...și spune că „2" nu e generația unei mașini din 2024', p.stare === 'nesigur' && p.note.some((x) => /generația 2/.test(x)), JSON.stringify(p.note));
-T('...iar „Logan Van" apare doar ca sugestie, nu ca potrivire', p.alteModele.includes('Logan VAN'));
+T('Logan 2024 cu GPL → „LOGAN (III) (LPG)”, din 2021 (nu LOGAN II, care e „din 2013”)', p.ales && p.ales.model === 'LOGAN (III) (LPG)', p.ales && p.ales.model);
+T('...și spune că „2” nu e generația unei mașini din 2024', p.stare === 'nesigur' && p.note.some((x) => /generația 2/.test(x)), JSON.stringify(p.note));
+T('...iar „Logan Van” apare doar ca sugestie, nu ca potrivire', p.alteModele.includes('Logan VAN'));
 p = pot(LV, 'Dacia', 'Logan', 2019, 'benzina');
 T('Logan 2019 pe benzină → LOGAN II, sigur', p.ales.model === 'LOGAN II' && p.stare === 'da');
 T('FMC150: Logan 2024 nu e pe listă (doar până în 2020) — spune anii pe care îi are', pot(FM, 'Dacia', 'Logan', 2024).stare === 'nu' && pot(FM, 'Dacia', 'Logan', 2024).aniPeLista.join() === '2012–2016,2016–2020');
-T('„Sandero Stepway" → rândul STEPWAY, nu cel simplu (modelul mai precis întâi)', pot(LV, 'Dacia', 'Sandero Stepway', 2022).ales.model === 'SANDERO STEPWAY');
-T('Transit 2021 → rândul „din 2020", nu cel „din 2016"', pot(LV, 'Ford', 'Transit', 2021).ales.program === '12847');
+T('„Sandero Stepway” → rândul STEPWAY, nu cel simplu (modelul mai precis întâi)', pot(LV, 'Dacia', 'Sandero Stepway', 2022).ales.model === 'SANDERO STEPWAY');
+T('Transit 2021 → rândul „din 2020”, nu cel „din 2016”', pot(LV, 'Ford', 'Transit', 2021).ales.program === '12847');
 T('volan pe dreapta și altă piață nu se aleg niciodată', !/RHD|Russian/.test(pot(LV, 'Ford', 'Transit', 2022).ales.model));
-T('„Transit" nu se face singur „Transit Custom" (alt model, fără cifre)', pot(LV, 'Ford', 'Transit', 2017).ales.model === 'TRANSIT');
+T('„Transit” nu se face singur „Transit Custom” (alt model, fără cifre)', pot(LV, 'Ford', 'Transit', 2017).ales.model === 'TRANSIT');
 p = pot(LV, 'Mercedes', 'Actros', 2020);
-T('„Actros" găsește „ACTROS MP5" (cuvântul în plus e generația), dar „de verificat"', p.ales && /ACTROS MP5/.test(p.ales.model) && p.stare === 'nesigur');
+T('„Actros” găsește „ACTROS MP5” (cuvântul în plus e generația), dar „de verificat”', p.ales && /ACTROS MP5/.test(p.ales.model) && p.stare === 'nesigur');
 T('mărcile scrise altfel: Mercedes ↔ Mercedes-Benz, VW ↔ Volkswagen', pot(FM, 'Mercedes', 'Sprinter', 2020).ales.model === 'Sprinter mk3 (W907)' && pot(LV, 'Volkswagen', 'Golf 7', 2015).ales.model === 'GOLF 7 (AU)');
 T('FMC150: rândul din America Latină nu se alege', pot(FM, 'Mercedes-Benz', 'Sprinter', 2015).stare === 'nu');
 T('electric: doar un program de electrică', pot(LV, 'Dacia', 'Spring', 2023, 'electric').ales.model === 'SPRING (Electric)' && pot(LV, 'Dacia', 'Spring', 2023, 'benzina').stare === 'nu');
 T('pe benzină nu se alege programul de hibrid', pot(LV, 'Toyota', 'Corolla', 2021, 'benzina').ales.model === 'COROLLA');
 T('hibrid → programul de hibrid', pot(LV, 'Toyota', 'Corolla', 2021, 'hibrid').ales.model === 'COROLLA (Hybrid) (Keyless)');
 p = pot(LV, 'Dacia', 'Duster', 2019, 'benzina');
-T('Duster: două programe din același an (keyless / cheie normală) → „variante"', p.stare === 'variante' && p.variante.length === 1, p.stare + ' ' + p.variante.length);
-T('fără an → „de verificat"', pot(LV, 'Ford', 'Transit').stare === 'nesigur');
-T('„Seria 3" găsește modelul „3" la BMW', pot(LV, 'BMW', 'Seria 3', 2020).ales.model === '3 (G20 / G21)');
-T('marcă necunoscută → „nu", spus pe nume', pot(LV, 'Aro', '10', 1990).stare === 'nu' && /marca/.test(pot(LV, 'Aro', '10', 1990).note[0]));
+T('Duster: două programe din același an (keyless / cheie normală) → „variante”', p.stare === 'variante' && p.variante.length === 1, p.stare + ' ' + p.variante.length);
+T('fără an → „de verificat”', pot(LV, 'Ford', 'Transit').stare === 'nesigur');
+T('„Seria 3” găsește modelul „3” la BMW', pot(LV, 'BMW', 'Seria 3', 2020).ales.model === '3 (G20 / G21)');
+T('marcă necunoscută → „nu”, spus pe nume', pot(LV, 'Aro', '10', 1990).stare === 'nu' && /marca/.test(pot(LV, 'Aro', '10', 1990).note[0]));
 
 sect('3. Recomandarea');
 const toate = (marca, model, an, comb) => ({ lvcan: pot(LV, marca, model, an, comb), fmc150: pot(FM, marca, model, an, comb), allcan: { stare: 'nu', ales: null, variante: [], alteModele: [], note: [], info: [] } });
 const rec = (marca, model, an, comb, opt) => C.recomanda(toate(marca, model, an, comb), Object.assign({ pref: 'lvcan', vreaMotor: true, combustibil: comb || '', an }, opt || {}));
 let r = rec('Dacia', 'Logan 2', 2024, 'gpl');
-T('Logan 2024 GPL → FMC130 + LV-CAN200, „de verificat" (generația)', r.aparat === 'fmc130_lvcan' && r.sigur === 'nesigur', JSON.stringify(r));
+T('Logan 2024 GPL → FMC130 + LV-CAN200, „de verificat” (generația)', r.aparat === 'fmc130_lvcan' && r.sigur === 'nesigur', JSON.stringify(r));
 T('camion → FMC650, cu verificarea prizei FMS și a tahografului', rec('Volvo', 'FH', 2020, 'motorina').aparat === 'fmc650' && /FMS/.test(rec('Volvo', 'FH', 2020).note.join()));
 T('utilaj pe lista FMC150 → FMC150', rec('John Deere', '6155R', 2019).aparat === 'fmc150');
 T('clientul vrea doar poziția → FMC130', rec('Ford', 'Transit', 2021, 'motorina', { vreaMotor: false }).aparat === 'fmc130');
 T('pe amândouă listele, citesc la fel → decide comutatorul de la pasul 4', rec('Ford', 'Transit', 2021).aparat === 'fmc130_lvcan' && rec('Ford', 'Transit', 2021, '', { pref: 'fmc150' }).aparat === 'fmc150');
-T('...și „merge și cu celălalt" e informație (gri), nu avertisment', rec('Ford', 'Transit', 2021).info.some((x) => /merge și cu FMC150/.test(x)) && !rec('Ford', 'Transit', 2021).note.some((x) => /merge și cu/.test(x)));
-T('potrivirea SIGURĂ bate alegerea ta: Golf 2019 → FMC150 (LV-CAN200 are doar „GOLF 7", de verificat)', rec('VW', 'Golf', 2019, 'benzina').aparat === 'fmc150' && rec('VW', 'Golf', 2019, 'benzina').info.some((x) => /poate merge și cu FMC130 \+ LV-CAN200 \(de verificat\)/.test(x)), JSON.stringify(rec('VW', 'Golf', 2019, 'benzina').info));
+T('...și „merge și cu celălalt” e informație (gri), nu avertisment', rec('Ford', 'Transit', 2021).info.some((x) => /merge și cu FMC150/.test(x)) && !rec('Ford', 'Transit', 2021).note.some((x) => /merge și cu/.test(x)));
+T('potrivirea SIGURĂ bate alegerea ta: Golf 2019 → FMC150 (LV-CAN200 are doar „GOLF 7”, de verificat)', rec('VW', 'Golf', 2019, 'benzina').aparat === 'fmc150' && rec('VW', 'Golf', 2019, 'benzina').info.some((x) => /poate merge și cu FMC130 \+ LV-CAN200 \(de verificat\)/.test(x)), JSON.stringify(rec('VW', 'Golf', 2019, 'benzina').info));
 T('lista care citește mai mult câștigă: Logan 2016 → LV-CAN200 (FMC150 nu dă rezervorul)', rec('Dacia', 'Logan', 2016, 'benzina', { pref: 'fmc150' }).aparat === 'fmc130_lvcan');
 r = rec('Dacia', 'Sandero', 2021, 'gpl', { pref: 'fmc150' });
 T('GPL pe FMC150 (ales din comutator) → spune că vezi doar benzina', r.aparat === 'fmc150' && r.note.some((x) => /nu citește GPL/.test(x)), JSON.stringify(r));
-T('nu e pe liste → FMC130 (doar poziție), „nu"', rec('Aro', '10', 1990).aparat === 'fmc130' && rec('Aro', '10', 1990).sigur === 'nu');
+T('nu e pe liste → FMC130 (doar poziție), „nu”', rec('Aro', '10', 1990).aparat === 'fmc130' && rec('Aro', '10', 1990).sigur === 'nu');
 const dLogan = C.dateCitite(logan3, 'gpl');
 T('ce se citește, pe românește: rezervor, consum, kilometri, GPL', dLogan.map((x) => x.et).join() === 'rezervor,consum,kilometri,GPL (nivel),GPL (consum)' && dLogan.every((x) => x.da));
 T('la electrică: kilometri și baterie, fără rezervor', C.dateCitite(L1.randuri.find((e) => /SPRING/.test(e.model)), 'electric').map((x) => x.k).join() === 'km,baterie');
@@ -209,7 +209,7 @@ T('VW Golf 2019 → FMC150 (Golf mk8)', adev('VW', 'Golf', 2019, 'benzina').r.ap
 T('Ford Transit 2021 → FMC130 + LV-CAN200 (merge și cu FMC150)', adev('Ford', 'Transit', 2021, 'motorina').r.aparat === 'fmc130_lvcan');
 
 sect('6. Pagina');
-const bloc = html.slice(html.indexOf('// ── începe „mașinile clientului"'), html.indexOf('// ── sfârșit „mașinile clientului" ──'));
+const bloc = html.slice(html.indexOf('// ── începe „mașinile clientului”'), html.indexOf('// ── sfârșit „mașinile clientului” ──'));
 T('blocul există', bloc.length > 3000);
 T('regula NU e scrisă în pagină: potrivirea și șablonul le face serverul (o cerere de fiecare fel)',
   (html.match(/'\/api\/admin\/masini\/potrivire'/g) || []).length === 1 && (html.match(/'\/api\/admin\/masini\/sablon'/g) || []).length === 2
@@ -217,18 +217,18 @@ T('regula NU e scrisă în pagină: potrivirea și șablonul le face serverul (o
 T('șablonul: numele din antet, încărcarea CRUDĂ, și întreabă înainte să înlocuiască lista',
   /_numeDinAntet\(r, 'RA-Track - Șablon mașini client\.xlsx'\)/.test(bloc) && /fetch\('\/api\/admin\/masini\/sablon', \{ method: 'POST'[\s\S]{0,120}'application\/octet-stream'/.test(bloc)
   && /raConfirm\('Lista are deja/.test(bloc));
-T('butoanele „Descarcă șablonul" și „Încarcă șablonul" stau în secțiune', /raxOfMsSablonDescarca\(\)"><i class="fas fa-file-arrow-down"><\/i> Descarcă șablonul/.test(html) && /raxOfMsSablonAlege\(\)"><i class="fas fa-file-arrow-up"><\/i> Încarcă șablonul/.test(html));
-T('secțiunea stă între „1. Clientul" și „2. Flota clientului"', /clientCard \+ masiniCard \+ vehCard/.test(html));
+T('butoanele „Descarcă șablonul” și „Încarcă șablonul” stau în secțiune', /raxOfMsSablonDescarca\(\)"><i class="fas fa-file-arrow-down"><\/i> Descarcă șablonul/.test(html) && /raxOfMsSablonAlege\(\)"><i class="fas fa-file-arrow-up"><\/i> Încarcă șablonul/.test(html));
+T('secțiunea stă între „1. Clientul” și „2. Flota clientului”', /clientCard \+ masiniCard \+ vehCard/.test(html));
 T('scrie pe ea că e doar pentru noi', /Mașinile clientului <span class="raof-ms-tag">doar pentru tine<\/span>/.test(html));
 const payload = html.slice(html.indexOf('function _ofPayload(r) {'), html.indexOf('async function _ofHartie('));
 T('lista NU pleacă spre hârtia clientului', payload.length > 200 && !/masini|_ofMasini/i.test(payload));
 // Șablonul stă în report_export.js dinadins (lângă logo și celelalte Excel-uri); hârtia OFERTEI e restul fișierului.
 const rexTot = fs.readFileSync('./report_export.js', 'utf8');
-const rexHartie = rexTot.slice(0, rexTot.indexOf('// ─── Șablonul „Mașinile clientului"'));
+const rexHartie = rexTot.slice(0, rexTot.indexOf('// ─── Șablonul „Mașinile clientului”'));
 T('hârtia ofertei nu cunoaște lista', rexHartie.length > 10000 && !/masini|Mașinile clientului/i.test(rexHartie));
-T('se salvează cu oferta și revine la redeschidere; „Ofertă nouă" o golește', /masini: _ofMsPentruCfg\(\), masiniMotor: _ofMsMotor/.test(html) && /_ofMsDinCfg\(cfg\.masini\)/.test(html) && /raxOfReset = function \(\) \{[^}]*_ofMsDinCfg\(\[\]\)/.test(html));
+T('se salvează cu oferta și revine la redeschidere; „Ofertă nouă” o golește', /masini: _ofMsPentruCfg\(\), masiniMotor: _ofMsMotor/.test(html) && /_ofMsDinCfg\(cfg\.masini\)/.test(html) && /raxOfReset = function \(\) \{[^}]*_ofMsDinCfg\(\[\]\)/.test(html));
 T('pașii 2 și 4 citesc din listă când există', /function _ofRecAcum\(\) \{\s*var M = _ofRecDinMasini\(\); if \(M\) return M;/.test(html));
-T('„Trece în ofertă" e butonul „Aplică recomandarea" (o singură cale), care pune și pasul 2', /onclick="raxOfAplicaRecomandarea\(\)"[^>]*><i class="fas fa-arrow-down"><\/i> Trece în ofertă/.test(html) && /if \(R\.dinMasini\) \{[\s\S]{0,200}n\('of-nveh'/.test(html));
+T('„Trece în ofertă” e butonul „Aplică recomandarea” (o singură cale), care pune și pasul 2', /onclick="raxOfAplicaRecomandarea\(\)"[^>]*><i class="fas fa-arrow-down"><\/i> Trece în ofertă/.test(html) && /if \(R\.dinMasini\) \{[\s\S]{0,200}n\('of-nveh'/.test(html));
 T('un răspuns de la server nu redesenează casetele (cursorul nu se pierde)', !/_ofMsDeseneaza\(\)/.test(bloc.slice(bloc.indexOf('function _ofMsRedeseneazaRezultate'), bloc.indexOf('function _ofMsPotriveste'))));
 T('o cerere veche nu calcă una nouă', /if \(nr !== _ofMsCerere\) return;/.test(bloc));
 T('lista nouă pleacă CRUDĂ (fișier), nu base64 în JSON', /'Content-Type': 'application\/octet-stream', 'X-Fisier': encodeURIComponent\(f\.name\)/.test(bloc));
@@ -321,7 +321,7 @@ function gata() {
   T('...anul: număr întreg între 1950 și 2100', !!vAn && vAn.type === 'whole' && String(vAn.formulae) === '1950,2100', JSON.stringify(vAn));
   const wm = wbS.getWorksheet('Marci'), wmo = wbS.getWorksheet('Modele'), vModel = wsS && wsS.getCell(rAntet + 1, 2).dataValidation;
   const r1 = rAntet + 1, fMarca = String((vMarca && vMarca.formulae && vMarca.formulae[0]) || ''), fModel = String((vModel && vModel.formulae && vModel.formulae[0]) || '');
-  // Alin, 28.09: „când scrii litera a, nu-ți dă mărcile cu a — pe măsură ce scrii ar trebui să-ți sugereze".
+  // Alin, 28.09: „când scrii litera a, nu-ți dă mărcile cu a — pe măsură ce scrii ar trebui să-ți sugereze”.
   // O listă simplă nu se strânge în Excel; asta e o FORMULĂ pornită de la ce e scris în celulă.
   T('...marca: lista se strânge după ce e scris în celulă (formulă pe foaia ascunsă, cu rândul relativ)',
     !!vMarca && vMarca.type === 'list' && /^OFFSET\(Marci!\$A\$1,/.test(fMarca) && fMarca.indexOf('MATCH(A' + r1 + '&"*"') > 0 && !!wm && wm.state === 'hidden', fMarca);
@@ -334,14 +334,14 @@ function gata() {
   const incepe = (v, x) => String(v).toUpperCase().startsWith(String(x).toUpperCase());
   const marciS = (wm ? wm.getColumn(1).values : []).filter((v) => v != null).map(String);
   const sageataMarca = (x) => { const i = marciS.findIndex((v) => incepe(v, x)), c = marciS.filter((v) => incepe(v, x)).length; const s0 = i >= 0 ? i : 0; return marciS.slice(s0, s0 + (c === 0 ? marciS.length : c)); };
-  T('„da" + săgeata → doar mărcile care încep cu „da"', sageataMarca('da').length >= 2 && sageataMarca('da').every((v) => incepe(v, 'da')) && sageataMarca('da').includes('Dacia'), sageataMarca('da').join(', '));
+  T('„da” + săgeata → doar mărcile care încep cu „da”', sageataMarca('da').length >= 2 && sageataMarca('da').every((v) => incepe(v, 'da')) && sageataMarca('da').includes('Dacia'), sageataMarca('da').join(', '));
   T('...la fiecare literă, exact mărcile cu litera aceea (lista e ordonată cum cere formula)',
     'abcdefghijklmnopqrstuvwxyz'.split('').every((l) => { const s = sageataMarca(l), toate = marciS.filter((v) => incepe(v, l)); return !toate.length || (s.length === toate.length && s.every((v) => incepe(v, l))); }));
   T('...fără nimic scris, sau ceva ce nu e pe listă → toată lista', sageataMarca('').length === marciS.length && sageataMarca('Aro-X').length === marciS.length && marciS.length > 300);
   const chei = [], modeleS = [];
   if (wmo) for (let i = 2; i <= wmo.rowCount; i++) { chei.push(String(wmo.getCell(i, 3).value || '')); modeleS.push(String(wmo.getCell(i, 2).value || '')); }
   const sageataModel = (marca, x) => { const k = marca + '|' + x, i = chei.findIndex((v) => incepe(v, k)), c = chei.filter((v) => incepe(v, k)).length; return i >= 0 ? modeleS.slice(i, i + Math.max(1, c)) : [String(wmo.getCell(1, 2).value)]; };
-  T('Dacia + „lo" → Lodgy, Lodgy Stepway, Logan, Logan MCV, Logan VAN', sageataModel('Dacia', 'lo').join(', ') === 'Lodgy, Lodgy Stepway, Logan, Logan MCV, Logan VAN', sageataModel('Dacia', 'lo').join(', '));
+  T('Dacia + „lo” → Lodgy, Lodgy Stepway, Logan, Logan MCV, Logan VAN', sageataModel('Dacia', 'lo').join(', ') === 'Lodgy, Lodgy Stepway, Logan, Logan MCV, Logan VAN', sageataModel('Dacia', 'lo').join(', '));
   T('...Dacia fără nimic scris la model → toate modelele Daciei', sageataModel('Dacia', '').length === 12 && sageataModel('Dacia', '').includes('Duster'));
   T('...pe FIECARE marcă, exact modelele ei (lista e ordonată cum cere formula)',
     marciS.every((m) => { const s = sageataModel(m, ''); const ale = chei.filter((k) => incepe(k, m + '|')).length; return ale === 0 || s.length === ale; }));

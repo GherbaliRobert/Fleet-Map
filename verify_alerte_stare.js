@@ -1,12 +1,12 @@
-// verify_alerte_stare.js — Alertele „de stare" sună la apariție, nu la fiecare 5 minute (27.10; Alin: „da" la punctele 1, 3, 4).
+// verify_alerte_stare.js — Alertele „de stare” sună la apariție, nu la fiecare 5 minute (27.10; Alin: „da” la punctele 1, 3, 4).
 // Ce apără:
 //   1. regula (alerte_stare.js), rulată pe zile întregi de poziții: plăcuțele sub prag 8 ore = UN anunț (înainte ~96); cât ține,
-//      o amintire la 24 de ore; „pâlpâitul" sub 30 de minute nu sună din nou; revenirea după 30 de minute de normal sună; o poziție
+//      o amintire la 24 de ore; „pâlpâitul” sub 30 de minute nu sună din nou; revenirea după 30 de minute de normal sună; o poziție
 //      fără datele motorului nu schimbă nimic; după o repornire, ultima sonerie din istoric oprește un anunț dublu;
 //   2. ce citește regula din datele aparatului — aceleași câmpuri în anunț ca înainte de 27.10;
 //   3. serverul (cod): cele 8 tipuri trec prin regula asta, se citesc la fiecare poziție, ultima sonerie din istoric doar la nevoie;
-//      ecranul Alerte primește „cum sună" de la server;
-//   4. pagina: rândul regulii și fraza din fereastră (de la server), câmpul „Vehicul" corect la „Modifică", pastila pragului lizibilă
+//      ecranul Alerte primește „cum sună” de la server;
+//   4. pagina: rândul regulii și fraza din fereastră (de la server), câmpul „Vehicul” corect la „Modifică”, pastila pragului lizibilă
 //      pe tema deschisă (contrastul socotit din culorile din CSS);
 //   5. pe server pornit, cu poziții pe TCP ca de la un aparat (codec 8, datele motorului): erorile de motor și plăcuțele sună O DATĂ,
 //      chiar după mai multe răciri; o poziție fără datele motorului nu schimbă nimic; după o REPORNIRE a serverului nu sună din nou.
@@ -37,18 +37,18 @@ T('plăcuțele sub prag 8 ore de mers (o poziție la 30 s) → UN anunț, la în
 const doua = zi(25 * 60, () => true);
 T('starea ține 25 de ore → al doilea anunț abia după 24 de ore (amintirea zilnică)', doua.length === 2 && doua[1] === 24 * 60, JSON.stringify(doua));
 const palp = zi(3 * 60, (t) => Math.floor(t / 10) % 2 === 0);
-T('„pâlpâie" (10 minute da, 10 minute nu, 3 ore) → tot UN anunț: o revenire sub 30 de minute e aceeași stare', palp.length === 1, JSON.stringify(palp));
+T('„pâlpâie” (10 minute da, 10 minute nu, 3 ore) → tot UN anunț: o revenire sub 30 de minute e aceeași stare', palp.length === 1, JSON.stringify(palp));
 const rev = zi(3 * 60, (t) => t < 20 || t >= 60);
 T('trece și revine după 40 de minute de normal → sună din nou (o stare nouă)', JSON.stringify(rev) === '[0,60]', JSON.stringify(rev));
 const goale = zi(3 * 60, (t) => (t < 10 ? true : (t < 100 ? null : true)));
-T('poziții fără datele motorului (90 de minute, motorul oprit) nu „termină" starea → la revenire nu sună iar', goale.length === 1, JSON.stringify(goale));
+T('poziții fără datele motorului (90 de minute, motorul oprit) nu „termină” starea → la revenire nu sună iar', goale.length === 1, JSON.stringify(goale));
 const nimic = zi(60, () => false).concat(zi(60, () => null));
 T('normal sau fără date → niciun anunț', nimic.length === 0);
 T('după o REPORNIRE: ultima sonerie din istoric acum 2 ore → nu sună; acum 25 de ore → sună',
   zi(30, () => true, A.stareNoua(-2 * ORA)).length === 0 && zi(30, () => true, A.stareNoua(-25 * ORA)).length === 1);
 T('după o repornire, o stare care TRECE și revine după 30 de minute sună (chiar dacă a sunat de curând)',
   JSON.stringify(zi(80, (t) => !(t >= 5 && t < 45), A.stareNoua(-ORA))) === '[45]');
-T('cifrele: o amintire la 24 de ore, revenirea după 30 de minute; tipurile „de stare" sunt cele 8', A.AMINTIRE_MS === 24 * ORA && A.REARMARE_MS === 30 * MIN &&
+T('cifrele: o amintire la 24 de ore, revenirea după 30 de minute; tipurile „de stare” sunt cele 8', A.AMINTIRE_MS === 24 * ORA && A.REARMARE_MS === 30 * MIN &&
   A.DE_STARE.join() === 'dtc_error,engine_temp,overload_legal,overload_construct,axle_overload,pto_active,brake_pad_wear,service_due' &&
   !A.eDeStare('overspeed') && !A.eDeStare('ignition_on') && !A.eDeStare('geofence_enter') && !A.eDeStare('idle_engine') && !A.eDeStare('fuel_drop'));
 
@@ -57,7 +57,7 @@ console.log('\n2. Ce citește regula din datele aparatului');
 const sd = (tip, io, cond) => JSON.stringify(A.stareDin(tip, io, cond));
 T('erori de motor: 2 → în stare (dtcCount 2, ca în anunțul vechi); 0 → normal; lipsă → nu știm',
   sd('dtc_error', { can_dtc_errors: 2 }) === '{"stare":true,"date":{"dtcCount":2}}' && sd('dtc_error', { can_dtc_errors: 0 }) === '{"stare":false}' && sd('dtc_error', {}) === '{"stare":null}');
-T('temperatura: 110 peste 105 → în stare; 90 → normal; fără prag („gol = dezactivat") sau fără valoare → nu știm',
+T('temperatura: 110 peste 105 → în stare; 90 → normal; fără prag („gol = dezactivat”) sau fără valoare → nu știm',
   sd('engine_temp', { can_engine_temp: 110 }, { maxTemp: 105 }) === '{"stare":true,"date":{"temp":110,"limit":105}}' && sd('engine_temp', { can_engine_temp: 90 }, { maxTemp: 105 }) === '{"stare":false}' &&
   sd('engine_temp', { can_engine_temp: 110 }, { maxTemp: null }) === '{"stare":null}' && sd('engine_temp', {}, { maxTemp: 105 }) === '{"stare":null}');
 T('suprasarcina: suma axelor peste limită → în stare, cu axele; fără greutăți → nu știm',
@@ -69,7 +69,7 @@ T('o axă peste limita ei → în stare (axa, sarcina, limita); axele cunoscute 
 T('priza de putere: 1 / true → în stare; 0 → normal; lipsă → nu știm',
   sd('pto_active', { can_pto_active: 1 }) === '{"stare":true,"date":{"event":"PTO activat"}}' && sd('pto_active', { can_pto_active: true }).indexOf('"stare":true') > 0 &&
   sd('pto_active', { can_pto_active: 0 }) === '{"stare":false}' && sd('pto_active', {}) === '{"stare":null}');
-T('plăcuțele: 15% sub pragul de 20 → în stare (axa, uzura, pragul); 50% → normal; null nu mai înseamnă „sub prag" (pe regula veche suna)',
+T('plăcuțele: 15% sub pragul de 20 → în stare (axa, uzura, pragul); 50% → normal; null nu mai înseamnă „sub prag” (pe regula veche suna)',
   sd('brake_pad_wear', { can_brake_pad_axle1: 15 }, { minPercent: 20 }) === '{"stare":true,"date":{"axle":1,"wear":15,"threshold":20}}' &&
   sd('brake_pad_wear', { can_brake_pad_axle1: 50 }, {}) === '{"stare":false}' && sd('brake_pad_wear', { can_brake_pad_axle1: null }, {}) === '{"stare":null}');
 T('revizia: 600 km sub 1.000 → în stare; 5.000 → normal; null / lipsă → nu știm',
@@ -80,7 +80,7 @@ T('revizia: 600 km sub 1.000 → în stare; 5.000 → normal; null / lipsă → 
 console.log('\n3. Serverul (cod)');
 const EVAL = SRV.slice(SRV.indexOf('async function evaluateAlerts('), SRV.indexOf('function haversineDistance('));
 const CAZ = EVAL.slice(EVAL.indexOf("case 'dtc_error':"), EVAL.indexOf("case 'geofence_exit':"));
-T('cele 8 tipuri „de stare" sunt UN singur caz, care cheamă regula (alerteStare.stareDin + _stareSuna)',
+T('cele 8 tipuri „de stare” sunt UN singur caz, care cheamă regula (alerteStare.stareDin + _stareSuna)',
   ['dtc_error', 'engine_temp', 'overload_legal', 'overload_construct', 'axle_overload', 'pto_active', 'brake_pad_wear', 'service_due'].every((t) => (EVAL.match(new RegExp("case '" + t + "':", 'g')) || []).length === 1 && CAZ.indexOf("case '" + t + "':") >= 0) &&
   /const r = alerteStare\.stareDin\(alert\.type, io, cond\);\s+if \(await _stareSuna\(cooldownKey, alert\.id, imei, r\.stare\)\)/.test(CAZ));
 T('se citesc la FIECARE poziție (răcirea de 5 minute de la intrare nu le sare), ca sfârșitul stării să fie văzut',
@@ -90,19 +90,19 @@ T('după o repornire, ultima sonerie se citește din istoric O DATĂ pe regulă 
   /if \(stare === true\) \{ try \{ sunatLa = await db\.ultimaAlertaSunata\(alertId, imei\); \}/.test(SS) && /_stariAlerte\.set\(cheie, s\);/.test(SS) &&
   /return alerteStare\.suna\(s, stare, Date\.now\(\)\);/.test(SS) && /async function ultimaAlertaSunata\(alertId, imei\)/.test(citeste('db.js')));
 T('starea neatinsă de o săptămână iese din memorie (curățenia de la ceas)', /for \(const \[k, s\] of _stariAlerte\) if \(now - \(s\.atins \|\| 0\) > 7 \* 24 \* 3600000\) _stariAlerte\.delete\(k\);/.test(SRV));
-T('ecranul Alerte: „cum sună" pe fiecare regulă „de stare" și fraza pentru fereastră — de la server',
+T('ecranul Alerte: „cum sună” pe fiecare regulă „de stare” și fraza pentru fereastră — de la server',
   /if \(alerteStare\.eDeStare\(a\.type\)\) return Object\.assign\(\{\}, a, \{ cum_suna: alerteStare\.RAND \}\);/.test(SRV) &&
   /app\.get\('\/api\/alerts\/cum-suna', requireAuth, \(req, res\) => \{\s+res\.json\(\{ deStare: alerteStare\.DE_STARE, text: alerteStare\.TEXT \}\);/.test(SRV));
 
 // ─── 4. Pagina ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n4. Pagina (ecranul Alerte)');
-T('rândul regulii: „sună la apariție, apoi o dată pe zi" (textul serverului, cu esc)', /\(a\.cum_suna \? '<span class="alr-suna">' \+ esc\(a\.cum_suna\) \+ '<\/span>' : ''\)/.test(PAG));
-T('fereastra regulii: fraza de la server sub câmpuri, doar la tipurile „de stare" (cerută o dată; o eroare nu rămâne ținută minte)',
+T('rândul regulii: „sună la apariție, apoi o dată pe zi” (textul serverului, cu esc)', /\(a\.cum_suna \? '<span class="alr-suna">' \+ esc\(a\.cum_suna\) \+ '<\/span>' : ''\)/.test(PAG));
+T('fereastra regulii: fraza de la server sub câmpuri, doar la tipurile „de stare” (cerută o dată; o eroare nu rămâne ținută minte)',
   /const cs = await _alertCumSunaIa\(\);/.test(PAG) && /cs\.deStare\.indexOf\(type\) >= 0/.test(PAG) && /n\.id = 'alert-cf-stare'; n\.className = 'alr-cf-nota'; n\.textContent = cs\.text \|\| '';/.test(PAG) &&
   /fetch\('\/api\/alerts\/cum-suna'\)/.test(PAG) && /if \(!j\) _alertCumSuna = null;/.test(PAG) && !/Sună când apare/.test(PAG));
 const EDIT = PAG.slice(PAG.indexOf('async function editAlert(a)'), PAG.indexOf('async function saveAlert()'));
 const RESET = PAG.slice(PAG.indexOf('function resetAlertForm(close)'), PAG.indexOf('async function editAlert(a)'));
-T('„Modifică": după ce pune mașina regulii, câmpul vizibil se sincronizează (arăta „Toate vehiculele"); la „Regulă nouă" la fel',
+T('„Modifică”: după ce pune mașina regulii, câmpul vizibil se sincronizează (arăta „Toate vehiculele”); la „Regulă nouă” la fel',
   /g\('alert-imei'\)\.value = a\.imei \|\| '';[\s\S]{0,400}if \(g\('alert-imei'\)\._ssSync\) g\('alert-imei'\)\._ssSync\(\);/.test(EDIT) &&
   /g\('alert-imei'\)\.value = ''; if \(g\('alert-imei'\)\._ssSync\) g\('alert-imei'\)\._ssSync\(\);/.test(RESET));
 // Pastila pragului: contrastul pe tema deschisă, socotit din culorile scrise în pagină și fundalul rândului (--bg-dark, tema deschisă).
@@ -194,10 +194,10 @@ function trimite(dtc, pad) {
   await json('POST', '/api/devices', S, { imei: IMEI, name: 'MAN TGX', plate: 'B 77 TIR', company_id: co.id });
   const regula = async (name, type, condition) => (await json('POST', '/api/alerts', S, { name, type, imei: IMEI, enabled: true, condition: condition || {}, company_id: co.id })).j;
   const rDtc = await regula('Erori motor TIR', 'dtc_error'), rPad = await regula('Plăcuțe TIR', 'brake_pad_wear', { minPercent: 20 });
-  T('două reguli „de stare" puse (erori de motor, plăcuțe)', rDtc && rDtc.id && rPad && rPad.id);
+  T('două reguli „de stare” puse (erori de motor, plăcuțe)', rDtc && rDtc.id && rPad && rPad.id);
   const lst = (await json('GET', '/api/alerts', S)).j;
   const cs = (id) => ((Array.isArray(lst) ? lst : []).find((a) => a.id === id) || {}).cum_suna;
-  T('lista regulilor: „sună la apariție, apoi o dată pe zi" pe amândouă', cs(rDtc.id) === A.RAND && cs(rPad.id) === A.RAND, JSON.stringify([cs(rDtc.id), cs(rPad.id)]));
+  T('lista regulilor: „sună la apariție, apoi o dată pe zi” pe amândouă', cs(rDtc.id) === A.RAND && cs(rPad.id) === A.RAND, JSON.stringify([cs(rDtc.id), cs(rPad.id)]));
   const cum = await json('GET', '/api/alerts/cum-suna', S);
   T('fraza pentru fereastra regulii, de la server (și fără cont: 401)', cum.status === 200 && cum.j.text === A.TEXT && Array.isArray(cum.j.deStare) && cum.j.deStare.length === 8 &&
     (await json('GET', '/api/alerts/cum-suna', null)).status === 401, cum.text.slice(0, 200));

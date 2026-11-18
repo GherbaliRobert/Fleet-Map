@@ -1,9 +1,9 @@
-// verify_simulator.js — simulatorul de încărcare pe web (pasul 3, 12.10: „cu 3D și greutatea pe osii").
+// verify_simulator.js — simulatorul de încărcare pe web (pasul 3, 12.10: „cu 3D și greutatea pe osii”).
 //
 //   node verify_simulator.js
 //
-// Robert (12.10): „vreau să facem un simulator de încărcare marfă pentru transportatori" + „vreau să existe și un buton
-// pentru 3D"; ordinea aprobată: „(3) simulatorul pe web, cu 3D și greutatea pe osii".
+// Robert (12.10): „vreau să facem un simulator de încărcare marfă pentru transportatori” + „vreau să existe și un buton
+// pentru 3D"; ordinea aprobată: „(3) simulatorul pe web, cu 3D și greutatea pe osii”.
 //
 // Ce apără proba:
 //   1. regulile (incarcare.js): cum se așază marfa (paleți, straturi, opriri, remorca), greutatea pe osii (fizica e
@@ -46,15 +46,15 @@ T('al 34-lea nu mai încape — și se spune, cu numele mărfii', r.incarcate ==
 r = sim([EUR(26, { nume: 'Industriali', latime: 100, inaltime: 120 })]);
 T('26 de paleți industriali (2 pe lat, cu latura de 120 de-a curmezișul)', r.incarcate === 26, r.incarcate);
 r = sim([EUR(10, { inaltime: 110, suprapus: true })]);
-T('„unul peste altul": câte două straturi când încap în înălțime', r.cutii.filter((c) => c.z0 > 0).length === 5 && Math.max(...r.cutii.map((c) => c.x1)) === 240, J(r.cutii.map((c) => [c.x0, c.z0])));
+T('„unul peste altul”: câte două straturi când încap în înălțime', r.cutii.filter((c) => c.z0 > 0).length === 5 && Math.max(...r.cutii.map((c) => c.x1)) === 240, J(r.cutii.map((c) => [c.x0, c.z0])));
 r = sim([EUR(2, { inaltime: 300 })]);
 T('un colet mai înalt decât spațiul nu se pune deloc', r.incarcate === 0 && /Nu încap 2 colete/.test(r.mesaje[0].text), r.mesaje[0] && r.mesaje[0].text);
 r = sim([EUR(3, { oprire: 1 }), EUR(3, { oprire: 3, nume: 'Cluj' }), EUR(3, { oprire: 2, nume: 'Sibiu' })]);
 const xDe = (op) => Math.min(...r.cutii.filter((c) => c.oprire === op).map((c) => c.x0));
-T('„după opriri": ultima oprire lângă peretele din față, prima lângă uși', xDe(3) < xDe(2) && xDe(2) < xDe(1), [xDe(3), xDe(2), xDe(1)]);
+T('„după opriri”: ultima oprire lângă peretele din față, prima lângă uși', xDe(3) < xDe(2) && xDe(2) < xDe(1), [xDe(3), xDe(2), xDe(1)]);
 T('…și ordinea de încărcare e scrisă cu numele opririlor', r.ordineText === 'Se încarcă în ordinea: Cluj-Napoca → Sibiu → Pitești (prima lângă peretele din față).', r.ordineText);
 r = sim([EUR(3, { kg: 900, nume: 'Grea' }), EUR(3, { kg: 50, nume: 'Ușoară' })], { mod: 'echilibrat' });
-T('„greutate echilibrată": marfa ușoară în față', Math.min(...r.cutii.filter((c) => c.i === 1).map((c) => c.x0)) < Math.min(...r.cutii.filter((c) => c.i === 0).map((c) => c.x0)));
+T('„greutate echilibrată”: marfa ușoară în față', Math.min(...r.cutii.filter((c) => c.i === 1).map((c) => c.x0)) < Math.min(...r.cutii.filter((c) => c.i === 0).map((c) => c.x0)));
 
 // Fizica: suma pe axe = tara + marfa (echilibru), pe toate felurile de vehicule.
 const suma = (rr) => rr.osii.reduce((a, x) => a + x.kg, 0);
@@ -72,19 +72,19 @@ r = sim([EUR(12, { kg: 650 }), EUR(10, { kg: 180, inaltime: 110, suprapus: true,
 T('exemplul din machetă: axa față 6,4 t · axa motoare 9,3 t · semiremorca 11,9 t · total 27,5 t',
   J(r.osii.map((a) => a.text)) === J(['6,4 t din 8,0 t', '9,3 t din 11,5 t', '11,9 t din 24,0 t']) && r.masa.text === '27,5 t din 40,0 t', J(r.osii.map((a) => a.text)) + ' ' + r.masa.text);
 T('cifrele de sus, scrise românește', J(r.indicatori.map((x) => x.val)) === J(['10,2 m', '12.720 kg', '36,5 m³', '28 din 28']), J(r.indicatori.map((x) => x.val)));
-T('vehiculul fără fila „Încărcare": cifrele obișnuite, spuse ca atare', r.mesaje.some((m) => m.fel === 'galben' && /^Cifre obișnuite, nu ale mașinii: .*ampatamentul/.test(m.text)));
+T('vehiculul fără fila „Încărcare”: cifrele obișnuite, spuse ca atare', r.mesaje.some((m) => m.fel === 'galben' && /^Cifre obișnuite, nu ale mașinii: .*ampatamentul/.test(m.text)));
 const plin = I.vehiculDin({ imei: '3', plate: 'B 102 RAT', inc_fel: 'autotractor', inc_ampatament: 3.6, inc_sa_axa: 0.6, inc_tara_fata: 5100, inc_tara_spate: 2700, max_axle_loads: JSON.stringify({ axle1: 7500, axle2: 11500 }), max_weight_legal: 40000 });
-T('vehiculul cu fișa completă: nicio cifră presupusă; limitele din „Config Camion"', plin.presupuse.length === 0 && plin.lim[0] === 7500 && plin.lim[1] === 11500, J(plin.presupuse));
+T('vehiculul cu fișa completă: nicio cifră presupusă; limitele din „Config Camion”', plin.presupuse.length === 0 && plin.lim[0] === 7500 && plin.lim[1] === 11500, J(plin.presupuse));
 const tandem = I.vehiculDin({ imei: '4', inc_fel: 'camion18', max_axle_loads: { axle1: 7100, axle2: 9500, axle3: 9500 } });
 T('axele din spate se adună (tandem: 9.500 + 9.500)', tandem.lim[1] === 19000, tandem.lim[1]);
 const greu = I.simuleaza({ vehicul: plin, semi: SEMI, marfa: [EUR(24, { kg: 1000 })], opriri: ['A'] });
 T('peste limită: roșu, cu cât și încotro se mută marfa', greu.mesaje.some((m) => m.fel === 'rosu' && /trece cu \d+,\d t peste limită — mută marfa grea spre (spate|față)\./.test(m.text)) && /^De corectat: \d+$/.test(greu.stare.text), J(greu.mesaje));
 const spate = I.simuleaza({ vehicul: CAMION, marfa: [EUR(3, { kg: 1800 }), EUR(3, { kg: 1, oprire: 2 })], opriri: ['A', 'B'], mod: 'echilibrat' });
 T('axa din față prea descărcată: galben, cu procentul', spate.mesaje.some((m) => m.fel === 'galben' && /^Axa față duce doar \d+% din masa totală/.test(m.text)) || spate.osii[0].kg / spate.masa.kg >= I.AXA_FATA_MIN, J(spate.mesaje));
-T('„Altul" fără caroserie în fișă: nu se ghicește, se cere', /^Completează în fișa vehiculului \(fila „Încărcare”\): /.test(I.simuleaza({ vehicul: I.vehiculDin({ imei: '5', inc_fel: 'altul' }), marfa: [] }).eroare || ''));
-T('autotractor fără semiremorcă: „Alege semiremorca."', I.simuleaza({ vehicul: TRAC, marfa: [] }).eroare === 'Alege semiremorca.');
+T('„Altul” fără caroserie în fișă: nu se ghicește, se cere', /^Completează în fișa vehiculului \(fila „Încărcare”\): /.test(I.simuleaza({ vehicul: I.vehiculDin({ imei: '5', inc_fel: 'altul' }), marfa: [] }).eroare || ''));
+T('autotractor fără semiremorcă: „Alege semiremorca.”', I.simuleaza({ vehicul: TRAC, marfa: [] }).eroare === 'Alege semiremorca.');
 const sfat = (v, rr) => (I.simuleaza({ vehicul: v, remorca: rr, marfa: [EUR(60, { kg: 100 })] }).mesaje[0] || {}).text || '';
-T('sfatul „adaugă o remorcă" doar când chiar se poate (camion fără remorcă), nu la dubă, la autotractor sau cu remorca pusă',
+T('sfatul „adaugă o remorcă” doar când chiar se poate (camion fără remorcă), nu la dubă, la autotractor sau cu remorca pusă',
   /adaugă o remorcă/.test(sfat(CAMION)) && !/remorc/.test(sfat(CAMION, REM)) && !/remorc/.test(sfat(I.vehiculDin({ imei: '7', inc_fel: 'duba35' }))) &&
   !/remorc/.test(sim([EUR(60)]).mesaje[0].text), [sfat(CAMION), sfat(CAMION, REM)].join(' / '));
 T('dubele nu trag remorcă cu proțap (o remorcă trimisă e ignorată)', I.simuleaza({ vehicul: I.vehiculDin({ imei: '6', inc_fel: 'duba35' }), remorca: REM, marfa: [EUR(2)] }).cuRemorca === false);
@@ -92,13 +92,13 @@ T('felul după tipul din fișă (Autotractor / TIR / Dubă / Camion); un autotur
   I.felDinTip('TIR') === 'autotractor' && I.felDinTip('Dubă') === 'duba35' && I.felDinTip('Camion') === 'camion12' && I.vehiculDin({ vehicle_type: 'Auto' }) === null);
 T('marfa: dimensiuni fără sens se refuză pe rând', /^Rândul 1 \(X\): lungimea: între 1 și 1500$/.test(I.curataMarfa([{ nume: 'X', lungime: 0, latime: 80, inaltime: 100 }]).eroare || ''), I.curataMarfa([{ nume: 'X', lungime: 0, latime: 80, inaltime: 100 }]).eroare);
 T('marfa: cel mult ' + I.MAX_RANDURI_MARFA + ' de rânduri', /^Cel mult 40 de rânduri/.test(I.curataMarfa(Array.from({ length: 41 }, () => EUR(1))).eroare || ''));
-T('opririle: nume curățate, cel mult ' + I.MAX_OPRIRI + ', goale → „Oprirea N"', J(I.curataOpriri(['', ' Sibiu ', 'a', 'b', 'c', 'd'])) === J(['Oprirea 1', 'Sibiu', 'a', 'b', 'c']));
-T('fără marfă: starea „Adaugă marfa"', sim([]).stare.text === 'Adaugă marfa');
+T('opririle: nume curățate, cel mult ' + I.MAX_OPRIRI + ', goale → „Oprirea N”', J(I.curataOpriri(['', ' Sibiu ', 'a', 'b', 'c', 'd'])) === J(['Oprirea 1', 'Sibiu', 'a', 'b', 'c']));
+T('fără marfă: starea „Adaugă marfa”', sim([]).stare.text === 'Adaugă marfa');
 T('ecranele primesc tot din meta (presetări, moduri, culorile opririlor)', I.meta().presetari.length === 3 && I.meta().moduri.length === 2 && I.meta().culoriOpriri.length === I.MAX_OPRIRI);
 
 // ─── 2. Pagina ───────────────────────────────────────────────────────────────────────────────────────────────────
 sect('2. Pagina: desenează ce primește, nu socotește');
-const a = html.indexOf('// ── începe „simulatorul de încărcare" ──'), b = html.indexOf('// ── sfârșit „simulatorul de încărcare" ──');
+const a = html.indexOf('// ── începe „simulatorul de încărcare” ──'), b = html.indexOf('// ── sfârșit „simulatorul de încărcare” ──');
 const BS = a > 0 && b > a ? html.slice(a, b) : '';
 T('blocul paginii e între repere', !!BS);
 T('o singură cerere de simulare și una de hârtie', (BS.match(/fetch\('\/api\/incarcare\/simuleaza'/g) || []).length === 1 && (BS.match(/fetch\('\/api\/incarcare\/pdf'/g) || []).length === 1);
@@ -122,7 +122,7 @@ T('fără grile scrise în atribut (pe telefon le-ar strica regula globală)', !
 // ─── 3. Serverul ─────────────────────────────────────────────────────────────────────────────────────────────────
 sect('3. Serverul: modulul, drepturile, firma');
 const rute = server.match(/app\.(get|post)\('\/api\/incarcare\/(flota|simuleaza|pdf)'[^\n]*/g) || [];
-T('trei rute ale simulatorului, toate cu drepturile pe vehicule (withScope) și modulul „incarcare"', rute.length === 3 && rute.every((x) => /withScope, requireFeature\('incarcare'\)/.test(x)), rute.length);
+T('trei rute ale simulatorului, toate cu drepturile pe vehicule (withScope) și modulul „incarcare”', rute.length === 3 && rute.every((x) => /withScope, requireFeature\('incarcare'\)/.test(x)), rute.length);
 T('vehiculul: drepturile pe el (canAccessImei), nu arhivat, care cară marfă',
   /if \(!imei \|\| !canAccessImei\(req, imei\)\) return \{ status: 403/.test(server) && /if \(!dev \|\| dev\.status === 'archived'\) return \{ status: 404/.test(server) && /Vehiculul ăsta nu cară marfă/.test(server));
 T('semiremorca / remorca: a firmei vehiculului, de felul potrivit', /Semiremorca aleasă nu e a firmei vehiculului\./.test(server) && /La autotractor se cuplează o semiremorcă/.test(server));
@@ -156,11 +156,11 @@ T('osiile, masa totală și mesajele = ale simulării', r.osii.every((x) => scri
 T('marfa: fiecare rând, cu dimensiunile și oprirea', r.marfa.every((m) => scris.indexOf(m.nume) >= 0 && scris.indexOf(m.dims) >= 0));
 T('ordinea de încărcare și starea', tot.indexOf(r.ordineText) >= 0 && scris.indexOf(r.stare.text) >= 0);
 T('cazul obișnuit încape pe o pagină', pagini === 1, pagini);
-T('numele fișierului: „RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.pdf"', P.numeFisier(r, Date.UTC(2026, 9, 12, 9, 0)) === 'RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.pdf', P.numeFisier(r, Date.UTC(2026, 9, 12, 9, 0)));
+T('numele fișierului: „RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.pdf”', P.numeFisier(r, Date.UTC(2026, 9, 12, 9, 0)) === 'RA-Track - Plan de încărcare B 101 RAT - 12.10.2026.pdf', P.numeFisier(r, Date.UTC(2026, 9, 12, 9, 0)));
 const PS = citeste('incarcare_pdf.js');
 T('hârtia nu socotește (nicio regulă de-a lui incarcare.js) și folosește logo-ul pentru fundal alb', !/aranjeaza|osii\(|simuleaza\(/.test(PS) && /logo-light\.png/.test(PS));
 
-// ─── 4b. Ce se cuplează la un vehicul (13.10, Robert: „am adăugat o remorcă dar tot nu-mi apare în simulator") ───
+// ─── 4b. Ce se cuplează la un vehicul (13.10, Robert: „am adăugat o remorcă dar tot nu-mi apare în simulator”) ───
 // O remorcă trecută dispărea pe tăcute când era de alt fel sau din altă firmă. Acum: o regulă (remorciPentru), lista și
 // motivul vin de la server, iar ecranele doar le arată.
 sect('4b. Ce se cuplează la un vehicul');
@@ -176,21 +176,21 @@ sect('4b. Ce se cuplează la un vehicul');
   T('autotractor + doar o remorcă cu proțap: se spune de ce lipsește',
     p.ids.length === 0 && p.mesaj === 'B 1 REM e trecută ca remorcă cu proțap — la autotractor se cuplează doar o semiremorcă. Dacă e de fapt semiremorcă, schimbă-i felul din fișa ei.', J(p));
   p = I.remorciPentru(cam, [S1, Object.assign({}, S1, { id: 9, plate: 'B 9 SEM' })]);
-  T('camion + doar semiremorci (cazul lui Robert, un TIR trecut „Camion"): se spune de ce, la plural',
+  T('camion + doar semiremorci (cazul lui Robert, un TIR trecut „Camion”): se spune de ce, la plural',
     p.ids.length === 0 && /^B 2 SEM, B 9 SEM sunt trecute ca semiremorci — ele se cuplează doar la un autotractor\. Dacă vehiculul ăsta e de fapt autotractor, schimbă-i felul în fișa lui/.test(p.mesaj || ''), J(p));
   p = I.remorciPentru(trac, [S2]);
   T('semiremorca altei firme (doar la noi se vede): se spune firma ei și firma vehiculului',
     p.ids.length === 0 && p.mesaj === 'B 3 SEM e trecută la firma „Beta”, nu la firma acestui vehicul („Alfa”). O remorcă se cuplează doar în firma ei.', J(p));
   p = I.remorciPentru(duba, [R1]);
   T('duba: nu cuplează nimic, iar o remorcă trecută primește motivul', p.ids.length === 0 && /^La o dubă de 3,5 t nu se cuplează remorci \(B 1 REM\)/.test(p.mesaj || ''), J(p));
-  T('fără nicio remorcă de felul potrivit, nicăieri: „gol" (fiecare ecran spune unde se adaugă); duba fără remorci: nimic',
+  T('fără nicio remorcă de felul potrivit, nicăieri: „gol” (fiecare ecran spune unde se adaugă); duba fără remorci: nimic',
     J(I.remorciPentru(trac, [])) === J({ ids: [], mesaj: null, gol: true }) && J(I.remorciPentru(cam, [])) === J({ ids: [], mesaj: null, gol: true }) &&
     J(I.remorciPentru(duba, [])) === J({ ids: [], gol: false, mesaj: null }));
   T('firma se compară ca număr (din bază poate veni și ca text)', I.remorcaPotrivita(trac, Object.assign({}, S1, { company_id: '1' })) && !I.remorcaPotrivita(trac, Object.assign({}, S1, { company_id: null })));
   T('serverul: flota pune pe fiecare vehicul lista și motivul (remorciPentru), iar simularea verifică cu ACEEAȘI regulă',
     /const p = incarcare\.remorciPentru\(v, brute\);\s*v\.remorci_ids = p\.ids; v\.remorci_mesaj = p\.mesaj; v\.remorci_gol = p\.gol;/.test(server) &&
     /if \(!incarcare\.remorcaPotrivita\(vf, r\)\)/.test(server));
-  // Invers, din fișa remorcii (13.10, Robert: „buton … de atașare la un vehicul"): la ce vehicule se poate atașa.
+  // Invers, din fișa remorcii (13.10, Robert: „buton … de atașare la un vehicul”): la ce vehicule se poate atașa.
   const VEH = [{ imei: 'L', plate: 'B 154 UIP', tip: null, company_id: 1 }, { imei: 'T', plate: 'B 01 TIR', tip: 'trac', company_id: 1 },
     { imei: 'C', plate: 'B 03 CAM', tip: 'rigid', carlig: true, company_id: 1 }, { imei: 'X', plate: 'B 09 ALT', tip: 'trac', company_id: 2 }];
   p = I.vehiculePentruRemorca(S1, VEH);
@@ -204,12 +204,12 @@ sect('4b. Ce se cuplează la un vehicul');
   T('semiremorca la o firmă cu doar camioane: motivul numește camioanele', /^Semiremorca se atașează doar la un autotractor, iar firma are doar camioane \(B 03 CAM\)\./.test(p.mesaj || ''), J(p));
   T('atașarea și lista simulatorului folosesc ACEEAȘI regulă (remorcaPotrivita)', /function vehiculePentruRemorca[\s\S]{0,400}remorcaPotrivita\(v, r\)/.test(citeste('incarcare.js')) &&
     /if \(!incarcare\.remorcaPotrivita\(v, r\)\)/.test(server));
-  const BR = (html.match(/── începe „semiremorcile din flotă"[\s\S]*?── sfârșit „semiremorcile din flotă" ──/) || [''])[0];
-  T('pagina: rândul remorcii are „Șterge" și spune la ce vehicul e atașată; fereastra cere lista de la server și atașează',
+  const BR = (html.match(/── începe „semiremorcile din flotă”[\s\S]*?── sfârșit „semiremorcile din flotă” ──/) || [''])[0];
+  T('pagina: rândul remorcii are „Șterge” și spune la ce vehicul e atașată; fereastra cere lista de la server și atașează',
     /onclick="remSterge\(\$\{Number\(r\.id\)\}\)"/.test(BR) && /atașată la \$\{esc\(r\.atasata_plate\)\}/.test(BR) && /fetch\('\/api\/remorci\/cuplare\?' \+ q\)/.test(BR) &&
     /'\/atasare', \{ method: 'PUT'/.test(BR) && /<select id="rem-atasare"><\/select>/.test(html) && /window\.simDeschideVehicul\(imei, id\)/.test(BR) && /window\.simDeschideVehicul = async function/.test(html));
   const telRem = citeste('mobile/src/screens/Remorci.tsx');
-  T('telefonul: aceeași listă și aceeași atașare, plus „Deschide în simulator" pe vehiculul ei',
+  T('telefonul: aceeași listă și aceeași atașare, plus „Deschide în simulator” pe vehiculul ei',
     /Api\.remorciCuplare\(/.test(telRem) && /Api\.atasezaRemorca\(rid, atas \|\| null\)/.test(telRem) && /loc\.route\('\/incarcare\?vehicul=' \+ encodeURIComponent\(atasInit\) \+ '&remorca='/.test(telRem) &&
     /atașată la \{r\.atasata_plate\}/.test(telRem) && /\.vehicul \|\| ''\), remDinAdresa = String\(\(\(loc\.query \|\| \{\}\) as any\)\.remorca/.test(citeste('mobile/src/screens/Simulator.tsx')));
   const tel = citeste('mobile/src/screens/Simulator.tsx');
@@ -285,7 +285,7 @@ async function intra(user, parola) {
   T('altă firmă nu simulează pe vehiculul primei (403)', x.s === 403, x.s);
   x = await A1.POST('/api/incarcare/simuleaza', Object.assign({}, cerere, { remorca_id: altaSemi.id }));
   T('semiremorca altei firme: refuz pe față', x.s === 400 && x.j.error === 'Semiremorca aleasă nu e a firmei vehiculului.', J(x));
-  // Cazul lui Robert (13.10): un TIR trecut „Camion" + o semiremorcă. Înainte, simulatorul nu arăta nimic și nu spunea nimic.
+  // Cazul lui Robert (13.10): un TIR trecut „Camion” + o semiremorcă. Înainte, simulatorul nu arăta nimic și nu spunea nimic.
   await S.POST('/api/devices', { imei: '861000000350004', name: 'MAN TGX', plate: 'B 04 CAM', company_id: T2, vehicle_type: 'Camion' });
   x = await A2.GET('/api/incarcare/flota');
   const cam2 = (x.j.vehicule || []).filter((v) => v.imei === '861000000350004')[0] || {};
@@ -296,12 +296,12 @@ async function intra(user, parola) {
   await A2.PUT('/api/devices/861000000350004/details', { inc_fel: 'autotractor', inc_ampatament: 3.7, inc_sa_axa: 0.6 });
   x = await A2.GET('/api/incarcare/flota');
   const trac2 = (x.j.vehicule || []).filter((v) => v.imei === '861000000350004')[0] || {};
-  T('trecut pe „Autotractor" în fila Încărcare: semiremorca apare în simulator', J(trac2.remorci_ids) === J([altaSemi.id]) && trac2.remorci_mesaj === null, J(trac2));
+  T('trecut pe „Autotractor” în fila Încărcare: semiremorca apare în simulator', J(trac2.remorci_ids) === J([altaSemi.id]) && trac2.remorci_mesaj === null, J(trac2));
   x = await S.GET('/api/incarcare/flota');
   const trac1 = (x.j.vehicule || []).filter((v) => v.imei === '861000000350001')[0] || {};
   T('la noi (toate firmele): fiecare vehicul primește doar remorcile firmei lui', J(trac1.remorci_ids) === J([semi.id]), J(trac1));
   x = await A1.POST('/api/incarcare/simuleaza', Object.assign({}, cerere, { imei: '861000000350002' }));
-  T('un autoturism: „nu cară marfă"', x.s === 400 && /nu cară marfă/.test(x.j.error || ''), J(x));
+  T('un autoturism: „nu cară marfă”', x.s === 400 && /nu cară marfă/.test(x.j.error || ''), J(x));
   x = await A1.POST('/api/incarcare/simuleaza', Object.assign({}, cerere, { marfa: [{ nume: 'X', lungime: 0, latime: 80, inaltime: 100 }] }));
   T('marfă fără sens: refuz pe față, pe rând', x.s === 400 && /^Rândul 1 \(X\)/.test(x.j.error || ''), J(x));
   const pr = await A1.RAW('POST', '/api/incarcare/pdf', cerere);
@@ -310,7 +310,7 @@ async function intra(user, parola) {
     /filename\*=UTF-8''RA-Track%20-%20Plan%20de%20%C3%AEnc%C4%83rcare%20B%2001%20TIR%20-%20/.test(pr.headers.get('content-disposition') || ''), pr.headers.get('content-disposition'));
   // Atașarea din fișa remorcii (13.10)
   let rr = (await A1.GET('/api/remorci')).j;
-  T('lista remorcilor spune la ce vehicul e atașată (cea pusă din fila „Încărcare" a vehiculului)',
+  T('lista remorcilor spune la ce vehicul e atașată (cea pusă din fila „Încărcare” a vehiculului)',
     ((rr || []).find((r) => r.id === semi.id) || {}).atasata_imei === '861000000350001' && ((rr || []).find((r) => r.id === semi.id) || {}).atasata_plate === 'B 01 TIR', J(rr));
   x = await A1.GET('/api/remorci/cuplare?id=' + semi.id);
   T('cuplarea unei semiremorci: autotractorul firmei (nu și autoturismul), cu atașarea de acum',
@@ -326,7 +326,7 @@ async function intra(user, parola) {
   x = await A2.PUT('/api/remorci/' + semi.id + '/atasare', { imei: null });
   T('altă firmă nu umblă la remorca primei (404)', x.s === 404, J(x));
   x = await V1.PUT('/api/remorci/' + semi.id + '/atasare', { imei: null });
-  T('vizualizatorul nu atașează (cere „editare vehicule")', x.s === 403, J(x));
+  T('vizualizatorul nu atașează (cere „editare vehicule”)', x.s === 403, J(x));
   x = await A1.PUT('/api/remorci/' + semi.id + '/atasare', { imei: null });
   let fl = (await A1.GET('/api/incarcare/flota')).j;
   T('desprinsă: vehiculul nu o mai are, lista o arată neatașată', x.s === 200 && x.j.atasata === null &&

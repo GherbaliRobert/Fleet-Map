@@ -2,10 +2,10 @@
 //
 // De ce există. `verify_fuel_parcare.js` verifică automatul de decizie (fueltheft.js) izolat, și e
 // verde de la 20.08. Cu toate astea, pe Dacia Logan B154UIP continua să vină, la FIECARE pornire de
-// motor, „Scădere 11.0 L (43 → 32 L)". Motivul: automatul ăla nu era singurul care decidea. Calea
+// motor, „Scădere 11.0 L (43 → 32 L)”. Motivul: automatul ăla nu era singurul care decidea. Calea
 // evenimentelor per-utilizator își făcea propria scădere — nivelul din poziția anterioară minus
 // nivelul de acum, pe un singur pachet — fără fereastră de așezare a sondei, fără confirmare, fără
-// să verifice că amândouă citirile vin din aceeași sursă, și fără să știe că valoarea „anterioară"
+// să verifice că amândouă citirile vin din aceeași sursă, și fără să știe că valoarea „anterioară”
 // era de fapt cea CĂRATĂ de dinainte de parcare.
 //
 // Testul ăsta pornește serverul adevărat și verifică pe rând:
@@ -76,7 +76,7 @@ function porneste() {
   check('autentificare admin', login.status === 200);
   const A = { cookie: login.cookie };
 
-  // Utilizatorul e abonat la „Scădere bruscă combustibil" cu prag mic — ca la client.
+  // Utilizatorul e abonat la „Scădere bruscă combustibil” cu prag mic — ca la client.
   await api('PUT', '/api/notification-prefs', {
     cookie: A.cookie, body: { types: { fuel_drop: { enabled: true, threshold: 5, email: false, push: false } } },
   });
@@ -156,7 +156,7 @@ function porneste() {
   await sim3({ ignition: 1, can_fuel_level_liters: 0 }, 0);
   await sleep(600);
   f = (await scaderi()).filter((x) => x.imei === IMEI3);
-  check('un 0 nu înseamnă „rezervorul e gol"', f.length === 0, f.map((x) => x.body));
+  check('un 0 nu înseamnă „rezervorul e gol”', f.length === 0, f.map((x) => x.body));
 
   console.log('\n──────────────────────────────');
   console.log(pass + ' verificări trecute, ' + fail + ' picate');

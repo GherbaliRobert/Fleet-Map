@@ -12,7 +12,7 @@ import './flota.css'; // --fl-ok: verdele care se citește și pe tema deschisă
 import { nrDe } from '../lib/numar';
 
 function fmtDate(s: string | null) { if (!s) return '—'; try { return new Date(s).toLocaleDateString('ro-RO'); } catch { return String(s).slice(0, 10); } }
-// Pe telefon rândul e îngust: „2026-07-31" tăia sfârșitul subtitlului. Data scurtă, românește.
+// Pe telefon rândul e îngust: „2026-07-31” tăia sfârșitul subtitlului. Data scurtă, românește.
 function ziScurta(s: string | null) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
   return m ? `${m[3]}.${m[2]}.${m[1].slice(2)}` : (s || '—');
@@ -23,19 +23,19 @@ function hm(min: number) { if (min == null) return '—'; const h = Math.floor(m
 function stareCls(s: string) { return (s === 'depasit' || s === 'niciodata') ? 'over' : s === 'curand' ? 'soon' : 'ok'; }
 function stareCol(s: string) { return (s === 'depasit' || s === 'niciodata') ? 'var(--red)' : s === 'curand' ? 'var(--orange)' : 'var(--fl-ok)'; }
 function starePill(s: string) { return (s === 'depasit' || s === 'niciodata') ? 'p-red' : s === 'curand' ? 'p-orange' : 'p-dim'; }
-// Data unei abateri: zi calendaristică („2026-07-31") sau o săptămână („săpt. 31") — a doua se scrie ca atare.
+// Data unei abateri: zi calendaristică („2026-07-31”) sau o săptămână („săpt. 31”) — a doua se scrie ca atare.
 function ziAbatere(s: any) { return /^\d{4}-\d{2}-\d{2}/.test(String(s || '')) ? ziScurta(String(s)) : String(s || ''); }
 const necititF = (f: any) => (f.incredere || (f.parsed && f.parsed.incredere)) === 'necitit';
 
 export function Tahograf() {
-  // Pe web Tahograful stă în „Management", pe care o vede doar cine poate modifica flota.
+  // Pe web Tahograful stă în „Management”, pe care o vede doar cine poate modifica flota.
   if (!areFlota()) return <FaraDreptFlota titlu="Tahograf" />;
   return <TahografEcran />;
 }
 
 function TahografEcran() {
   const loc = useLocation();
-  // Aceleași file ca pe web (De descărcat / Pe șofer / Abateri) + „Fișiere", lista completă de pe telefon.
+  // Aceleași file ca pe web (De descărcat / Pe șofer / Abateri) + „Fișiere”, lista completă de pe telefon.
   const [tab, setTab] = useState<'due' | 'drv' | 'inf' | 'files'>('due');
   const [due, setDue] = useState<any | null>(null);
   const [items, setItems] = useState<any[] | null>(null);
@@ -44,11 +44,11 @@ function TahografEcran() {
   const [ist, setIst] = useState<any | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   // Ecranul ăsta e al FIRMEI. Super-adminul primea aici datele tuturor firmelor, amestecate și fără
-  // coloană de firmă („Ion Popescu — termen depășit" și nu se vedea al cui e). Pe web, fondatorul are
+  // coloană de firmă („Ion Popescu — termen depășit” și nu se vedea al cui e). Pe web, fondatorul are
   // ecranul lui, pe firme (AI & Module → Tahograf); aici îi spunem unde e, în loc să-i arătăm amestecul.
   const isSuper = !!me.value?.isSuper;
   // ── încărcare .DDD ──
-  // Fondatorul NU încarcă fișierele clientului (decizia din 18.09: „e gospodăria clientului"). Pe lângă
+  // Fondatorul NU încarcă fișierele clientului (decizia din 18.09: „e gospodăria clientului”). Pe lângă
   // asta, un fișier urcat de super-admin se scria fără firmă: nu-l mai vedea nimeni în listă.
   const canWrite = !!me.value?.permissions?.manageFleet && !isSuper;
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -77,7 +77,7 @@ function TahografEcran() {
       const r = await Api.uploadTacho({ filename: file.name, b64, driverId: drv ? Number(drv) : null, imei: veh || null });
       const p = r.parsed || {};
       // Un fișier necitit NU se raportează ca reușită. Ar fi cel mai rău fel de mesaj aici:
-      // „încărcat ✓" pe ceva ce nu contează ca descărcare.
+      // „încărcat ✓” pe ceva ce nu contează ca descărcare.
       if (p.incredere === 'necitit') {
         setUpF({ busy: false, file: null, msg: { t: 'bad', s: 'S-a păstrat, dar NU l-am putut citi — nu contează ca descărcare. ' + (p.parseNote || '') } });
       } else if (p.incredere === 'partial') {
@@ -100,7 +100,7 @@ function TahografEcran() {
 
   useEffect(() => {
     if (isSuper) return; // fondatorul vede nota de mai jos, nu datele tuturor firmelor amestecate
-    // Planurile nu mai există (26.08) — modulele se pornesc din ofertă. Și nu orice 403 e „modul oprit":
+    // Planurile nu mai există (26.08) — modulele se pornesc din ofertă. Și nu orice 403 e „modul oprit”:
     // un rol fără dreptul de rapoarte primește tot 403, dar cu alt motiv.
     const motiv = (e: any) => e?.status !== 403 ? (e?.message || 'Eroare la încărcare')
       : e?.message === 'feature_disabled' ? 'Modulul Tahograf nu e pornit pentru firma ta.'
@@ -186,7 +186,7 @@ function TahografEcran() {
   // deschide selectorul Android din WebView. Zero dependințe native, zero risc la construirea APK-ului.
   // `accept` e larg dinadins: extensia .ddd n-are tip MIME înregistrat, iar un accept strict face ca
   // selectorul Android să afișeze fișierul gri, neselectabil. Verificarea reală o face serverul, care
-  // marchează „necitit" ce nu e tahograf — nu extensia din nume.
+  // marchează „necitit” ce nu e tahograf — nu extensia din nume.
   function randIncarcare() {
     const M = up.msg;
     const cul = M && (M.t === 'ok' ? 'var(--fl-ok)' : M.t === 'bad' ? 'var(--red)' : M.t === 'warn' ? 'var(--orange)' : 'var(--text-muted)');
@@ -245,9 +245,9 @@ function TahografEcran() {
   const depasite = soferi.concat(vehicule).filter((x: any) => x.stare === 'depasit');
   const niciodata = soferi.concat(vehicule).filter((x: any) => x.stare === 'niciodata');
 
-  // ── „Pe șofer": un cartonaș pe om — câte fișiere, câte zile s-au citit, abaterile, termenul ──
+  // ── „Pe șofer”: un cartonaș pe om — câte fișiere, câte zile s-au citit, abaterile, termenul ──
   // Se socotește din fișierele deja încărcate (driver_id + totals), fără nicio rută nouă. Fișierele necitite
-  // nu dau cifre: „N fișiere, niciunul citit" spune pe șleau că n-avem date, în loc să pară că avem.
+  // nu dau cifre: „N fișiere, niciunul citit” spune pe șleau că n-avem date, în loc să pară că avem.
   function randSoferi() {
     const fis = items || [];
     return (
@@ -287,7 +287,7 @@ function TahografEcran() {
     );
   }
 
-  // ── „Abateri": toate abaterile din fișierele CITITE, grave întâi. Un fișier necitit nu dă abateri. ──
+  // ── „Abateri”: toate abaterile din fișierele CITITE, grave întâi. Un fișier necitit nu dă abateri. ──
   function randAbateri() {
     const toate: { cine: string; data: any; regula: string; val: any; grav: string }[] = [];
     (items || []).forEach((f: any) => {
@@ -365,7 +365,7 @@ function TahografEcran() {
               {depasite.length > 0 && <div class="th-badge bad"><Icon name="alert" size={15} /> Termen depășit: {nume(depasite)}</div>}
               {niciodata.length > 0 && <div class="th-badge bad"><Icon name="ban" size={15} /> Niciodată descărcat: {nume(niciodata)}</div>}
               {sumar.curand > 0 && <div class="th-badge warn"><Icon name="clock" size={15} /> {sumar.curand} în următoarele 5 zile</div>}
-              {/* Pe o listă goală, „totul e la zi" e o minciună liniștitoare: nu e nimic la zi, nu e
+              {/* Pe o listă goală, „totul e la zi” e o minciună liniștitoare: nu e nimic la zi, nu e
                   nimic de descărcat. Aceeași distincție ca pe web. */}
               {!depasite.length && !niciodata.length && !sumar.curand && (
                 soferi.length + vehicule.length > 0
@@ -388,7 +388,7 @@ function TahografEcran() {
             <div class="th-gh"><Icon name="truck" size={14} /> Memoria vehiculelor <em>la {due.praguri?.vu} de zile</em></div>
             {vehicule.length
               ? vehicule.map((x: any) => randDue(x, x.imei, (x.model ? x.model + ' · ' : '') + (x.ultima ? 'ultima descărcare ' + ziScurta(x.ultima) : 'nicio descărcare'), 'truck'))
-              : <div class="th-note">Niciun vehicul cu tahograf în flotă. Se recunosc după „Categorie" din fișa vehiculului: Camion, TIR, Autotractor, Autobuz, Autocar.</div>}
+              : <div class="th-note">Niciun vehicul cu tahograf în flotă. Se recunosc după „Categorie” din fișa vehiculului: Camion, TIR, Autotractor, Autobuz, Autocar.</div>}
 
             {randExcluse(true, true)}
             {canWrite
@@ -404,9 +404,9 @@ function TahografEcran() {
             {items.map((f) => {
               const necitit = (f.incredere || (f.parsed && f.parsed.incredere)) === 'necitit';
               const tt = (f.parsed && f.parsed.totals) || {};
-              // „OK" și cifre DOAR din zile citite cu adevărat — aceeași regulă ca pe web. Fișierul din
-              // memoria vehiculului e doar înregistrat: zero abateri acolo nu înseamnă „în regulă", ci
-              // „nu știm încă". Un „OK" verde ar fi exact liniștirea falsă pe care secțiunea o evită.
+              // „OK” și cifre DOAR din zile citite cu adevărat — aceeași regulă ca pe web. Fișierul din
+              // memoria vehiculului e doar înregistrat: zero abateri acolo nu înseamnă „în regulă”, ci
+              // „nu știm încă”. Un „OK” verde ar fi exact liniștirea falsă pe care secțiunea o evită.
               const analizat = !necitit && !!tt.zile;
               const grave = tt.infractiuniGrave || 0;
               const total = tt.infractiuni || 0;
@@ -499,8 +499,8 @@ function TahografEcran() {
                   return <div class="th-note"><b style="color:var(--red)">Fișierul nu a putut fi citit.</b><br />{p.parseNote || 'Structura nu se potrivește cu un fișier de tahograf.'}<br /><br />Nu scoatem ore dintr-un fișier pe care nu-l înțelegem și nu îl socotim ca descărcare făcută.</div>;
                 }
                 // Fișierul din memoria vehiculului e doar ÎNREGISTRAT (contează pentru termenul de 90 de
-                // zile), dar activitatea din el nu se citește încă. Ca pe web: nota „De reținut", iar orele
-                // și „nicio abatere" apar DOAR dacă s-au citit zile. Altfel „0h 0m" și „Nicio abatere"
+                // zile), dar activitatea din el nu se citește încă. Ca pe web: nota „De reținut”, iar orele
+                // și „nicio abatere” apar DOAR dacă s-au citit zile. Altfel „0h 0m” și „Nicio abatere”
                 // ar spune că șoferul n-a condus și e în regulă, când de fapt nu știm nimic.
                 const citit = !!t.zile;
                 return (

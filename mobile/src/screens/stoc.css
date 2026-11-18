@@ -1,5 +1,5 @@
-/* „Stoc echipamente" (Gestiune, fondatori) — stocul NOSTRU de aparate, pe telefon. Ca pe web (_stocDeseneaza), pe o
-   singură coloană: sumarul pe modele, banda „De făcut", butoanele, căutarea, filele cu contor, apoi un cartonaș pe
+/* „Stoc echipamente” (Gestiune, fondatori) — stocul NOSTRU de aparate, pe telefon. Ca pe web (_stocDeseneaza), pe o
+   singură coloană: sumarul pe modele, banda „De făcut”, butoanele, căutarea, filele cu contor, apoi un cartonaș pe
    bucată. Culorile mici (verde / portocaliu / roșu) vin din --fd-ok / --fd-warn / --fd-bad (fondator.css), care se
    închid pe tema luminoasă: verdele aplicației, scris mic pe alb, nu se citește. Fontul se moștenește (Nunito). */
 
@@ -11,7 +11,7 @@
 .fd-kpi.st-kpi .cap { text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--text-primary); }
 .fd-kpi.st-kpi .comanda { color: var(--fd-warn); font-weight: 800; }
 
-/* Banda „De făcut": un rând pe fel de alertă. */
+/* Banda „De făcut”: un rând pe fel de alertă. */
 .st-dof b.t { display: block; margin-bottom: 2px; }
 .st-dof .r { margin-top: 3px; }
 

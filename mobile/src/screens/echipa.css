@@ -1,4 +1,4 @@
-/* „Anunță echipa RA Track" și „Cereri de la clienți" pe telefon (02.11), după public/css/app.css (.ce-*, .cer-*). Tema implicită e cea
+/* „Anunță echipa RA Track” și „Cereri de la clienți” pe telefon (02.11), după public/css/app.css (.ce-*, .cer-*). Tema implicită e cea
    ÎNCHISĂ; perechile pentru tema deschisă stau sub :root[data-theme="light"], cu aceleași culori ca pe web. Textul stă pe
    --text-secondary (--text-muted iese sub 4,5 pe tema deschisă). Fontul se moștenește (Nunito). */
 :root {
@@ -55,7 +55,7 @@
 .ce-tl-t { font-weight: 800; }
 .ce-tl-s { font-size: 13px; color: var(--text-secondary); }
 
-/* „Cererile tale" */
+/* „Cererile tale” */
 .ce-cr { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); padding: 11px 12px; display: flex; flex-direction: column; gap: 4px; line-height: 1.45; }
 .ce-cr-h { display: flex; align-items: center; gap: 8px; }
 .ce-st { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; margin-left: auto; white-space: nowrap; }
@@ -64,14 +64,14 @@
 .ce-st.programata { color: var(--ce-programata); }
 .ce-st.rezolvata { color: var(--ce-rezolvata); }
 
-/* Fișa mașinii: „Ceva nu merge la aparat?" */
+/* Fișa mașinii: „Ceva nu merge la aparat?” */
 .d-echipa { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-top: 10px; padding: 9px 12px; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-dark); color: var(--text-secondary); font-size: 13px; line-height: 1.35; }
 .d-echipa b { color: var(--text-primary); font-weight: 800; }
 .d-echipa > svg:first-child { flex: none; color: var(--ce-verde); }
 .d-echipa > span { flex: 1; min-width: 0; }
 .d-echipa > svg:last-child { flex: none; color: var(--text-secondary); }
 
-/* „Cereri de la clienți" (fondatorii) */
+/* „Cereri de la clienți” (fondatorii) */
 .cer-pag { padding: 12px 14px calc(28px + var(--sab)); display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.45; color: var(--text-primary); }
 .cer-head { display: flex; gap: 6px; flex-wrap: wrap; }
 .cer-cate { font-size: 12.5px; color: var(--text-secondary); }

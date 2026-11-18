@@ -10,7 +10,7 @@
 //   • super-adminul (contul de platformă) n-o vede niciodată; nici cine n-are firmă (`access` lipsă).
 // Contul suspendat, ca pe web (hotărât pe 30.09): la PORNIREA aplicației iese afară, cu mesajul serverului pe ecranul
 // de autentificare (store.ts, accesOprit); cu aplicația deja deschisă vede banda roșie până la următoarea pornire.
-// Pe banda de RESTANȚĂ, cine are „Facturile mele" în meniu (dreptul de administrare a utilizatorilor, aceeași condiție
+// Pe banda de RESTANȚĂ, cine are „Facturile mele” în meniu (dreptul de administrare a utilizatorilor, aceeași condiție
 // ca rândul din meniu) primește și butonul spre ele (App.tsx) — singurul lucru în plus față de web.
 // Ce NU se arată niciodată: `access.nota` (motivul scris de noi la o oprire de mână) — e o notă internă.
 //

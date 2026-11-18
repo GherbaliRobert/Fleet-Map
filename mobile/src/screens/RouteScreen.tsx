@@ -8,7 +8,7 @@ import { reverseGeocode } from '../api/geocode';
 import { numeKmlTraseu, salveazaDeLaServer } from '../lib/export';
 import { salveazaText } from '../components/salveazaText';
 import './route.css';
-import './detail.css'; // .sheet-ov / .sheet (foaia „Exportă traseul")
+import './detail.css'; // .sheet-ov / .sheet (foaia „Exportă traseul”)
 import '../components/locFlota.css'; // .loc-exp (butoanele mari din foaie)
 
 type Period = 'today' | 'yesterday' | 'week' | 'custom';
@@ -43,7 +43,7 @@ const OSM_TIERS = [
   { label: '> +50', color: '#ef4444' },
 ];
 const osmTier = (delta: number) => (delta <= 30 ? 0 : delta <= 50 ? 1 : 2);
-// Culoarea traseului după viteză față de limita MAȘINII (fișa → „Limită de viteză"). Aceleași praguri și
+// Culoarea traseului după viteză față de limita MAȘINII (fișa → „Limită de viteză”). Aceleași praguri și
 // culori ca pe web (_hpSegColor): până la limită verde, până la +15 portocaliu, peste roșu.
 const SPD = [
   { label: 'sub limită', color: '#3FE07D' },
@@ -126,8 +126,8 @@ interface Snap { sel: number | null; ll: LatLng[]; sp: number[]; source?: string
 export function RouteScreen() {
   const { params, query } = useRoute();
   const imei = decodeURIComponent((params as any).imei);
-  // `?pana=<ms>` — deschis din Dispozitive arhivate („Istoric"): un aparat arhivat n-are date azi, deci intervalul
-  // se termină la ULTIMA lui poziție (7 zile până atunci). `arhivat=1` + `nume` = eticheta „(arhivat)" din antet,
+  // `?pana=<ms>` — deschis din Dispozitive arhivate („Istoric”): un aparat arhivat n-are date azi, deci intervalul
+  // se termină la ULTIMA lui poziție (7 zile până atunci). `arhivat=1` + `nume` = eticheta „(arhivat)” din antet,
   // fiindcă aparatul nu mai e în lista de vehicule (ca pe web, archViewHistory).
   // `?de=<ms>&pana=<ms>&lat=&lng=&et=` — deschis dintr-o problemă găsită de RA Insight: mașina, intervalul exact și punctul marcat
   // pe hartă (viteza de 159 km/h, la 14:32), ca insightLaTraseu de pe web.
@@ -139,7 +139,7 @@ export function RouteScreen() {
   const punctCentrat = useRef(false);
   const [period, setPeriod] = useState<Period>(dinArhiva ? 'custom' : 'today');
   const [rng, setRng] = useState<Range>(() => dinArhiva || range('today'));
-  // „De la / Până la", ca pe web — scurtăturile Azi / Ieri / 7 zile rămân alături.
+  // „De la / Până la”, ca pe web — scurtăturile Azi / Ieri / 7 zile rămân alături.
   const [cFrom, setCFrom] = useState(dinArhiva ? localInput(new Date(dinArhiva.from)) : '');
   const [cTo, setCTo] = useState(dinArhiva ? localInput(new Date(dinArhiva.to)) : '');
   const [pts, setPts] = useState<any[] | null>(null);
@@ -151,7 +151,7 @@ export function RouteScreen() {
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
-  const osmLayer = useRef<L.LayerGroup | null>(null);   // overlay „limite reale" (OSM)
+  const osmLayer = useRef<L.LayerGroup | null>(null);   // overlay „limite reale” (OSM)
   const [osmOn, setOsmOn] = useState(false);
   const [osmBusy, setOsmBusy] = useState(false);
   const [osmInfo, setOsmInfo] = useState<string | null>(null);
@@ -186,7 +186,7 @@ export function RouteScreen() {
     if (p === 'custom') {
       // Pornește de la intervalul de acum, ca să nu scrii totul de la zero.
       setCFrom(localInput(new Date(rng.from))); setCTo(localInput(new Date(rng.to)));
-      return; // se încarcă abia la „Încarcă traseul"
+      return; // se încarcă abia la „Încarcă traseul”
     }
     setRng(range(p));
   }
@@ -194,7 +194,7 @@ export function RouteScreen() {
     if (!cFrom || !cTo) { showToast('Alege intervalul (De la / Până la), sau apasă Azi / Ieri / 7 zile.', true); return; }
     const a = new Date(cFrom), b = new Date(cTo);
     if (isNaN(a.getTime()) || isNaN(b.getTime())) { showToast('Data nu e validă.', true); return; }
-    if (a.getTime() >= b.getTime()) { showToast('„De la" trebuie să fie înainte de „Până la".', true); return; }
+    if (a.getTime() >= b.getTime()) { showToast('„De la” trebuie să fie înainte de „Până la”.', true); return; }
     if (b.getTime() - a.getTime() > MAX_ZILE * 86400000) { showToast('Intervalul poate avea cel mult ' + MAX_ZILE + ' de zile. Restrânge perioada.', true); return; }
     setRng({ from: a.toISOString(), to: b.toISOString() });
   }
@@ -212,7 +212,7 @@ export function RouteScreen() {
       Api.report(imei, from, to).catch(() => null),
     ]).then(([h, rep]: any) => {
       if (!alive) return;
-      if (h && h.__err) showToast(h.__err, true); // ex. „Interval prea mare (max 92 de zile…)" — nu „nicio rută"
+      if (h && h.__err) showToast(h.__err, true); // ex. „Interval prea mare (max 92 de zile…)” — nu „nicio rută”
       const points = Array.isArray(h) ? h : ((h && (h.points || h.rows)) || []);
       const dev = h && !Array.isArray(h) ? h.device : null;
       const sm = h && !Array.isArray(h) ? h.summary : null;
@@ -239,7 +239,7 @@ export function RouteScreen() {
     });
   }, [pts, routes]);
 
-  // Colorarea după viteză: pornită din „Afișaj" (overspeed_heatmap, implicit da) ȘI doar dacă mașina are o
+  // Colorarea după viteză: pornită din „Afișaj” (overspeed_heatmap, implicit da) ȘI doar dacă mașina are o
   // limită de viteză în fișă — fără limită n-ai față de ce colora.
   const heatPref = !(uiPrefs.value && uiPrefs.value.overspeed_heatmap === false);
   const limit = heatPref && ext && ext.limit ? ext.limit : null;
@@ -330,7 +330,7 @@ export function RouteScreen() {
     return data;
   }
 
-  // ── Overlay „limite reale" (OSM): roșu unde viteza a depășit limita REALĂ a drumului (la cerere) ──
+  // ── Overlay „limite reale” (OSM): roșu unde viteza a depășit limita REALĂ a drumului (la cerere) ──
   async function toggleOsm() {
     const og = osmLayer.current; if (!og) return;
     if (osmOn) { og.clearLayers(); setOsmOn(false); setOsmInfo(null); setOsmOver(false); return; }
@@ -387,7 +387,7 @@ export function RouteScreen() {
     } finally { setOsmBusy(false); }
   }
 
-  // ── „Aliniază pe drumuri", la cerere: mută punctele pe carosabil (OpenStreetMap, gratuit) ──
+  // ── „Aliniază pe drumuri”, la cerere: mută punctele pe carosabil (OpenStreetMap, gratuit) ──
   // Nu e map-matching adevărat: punctele se mută pe cel mai apropiat drum, drumul dintre ele nu se reconstruiește.
   // A doua apăsare revine la linia brută.
   async function toggleSnap() {
@@ -435,7 +435,7 @@ export function RouteScreen() {
 
   // ── Export: Excel (de la server, ca pe web: numele casei, logo-ul, sumarul și pozițiile pe românește — 01.10)
   //    și KML (Google Earth / Maps, făcut aici). CSV-ul brut a ieșit: avea codurile aparatului și se deschidea
-  //    într-o singură coloană în Excel (Alin, 01.10: „doar cifre, nimic de înțeles"). ──
+  //    într-o singură coloană în Excel (Alin, 01.10: „doar cifre, nimic de înțeles”). ──
   async function exportExcel() {
     if (exporting) return;
     setExporting('xlsx');
@@ -456,7 +456,7 @@ export function RouteScreen() {
       const x = (s: any) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const coords = p.map((q) => q.longitude + ',' + q.latitude + ',0').join(' ');
       const s = p[0], e = p[p.length - 1];
-      // Același fișier ca pe web (exportKML): linia traseului + „Start" și „Stop".
+      // Același fișier ca pe web (exportKML): linia traseului + „Start” și „Stop”.
       const kml = '<?xml version="1.0" encoding="UTF-8"?>\n'
         + '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>\n'
         + '<name>' + x('Traseu ' + vname) + '</name>\n'

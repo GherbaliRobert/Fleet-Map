@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <!-- „Distribuie locația" (Robert, 21.10): pagina pe care o deschide cine a primit linkul unei mașini, ca locația live
+  <!-- „Distribuie locația” (Robert, 21.10): pagina pe care o deschide cine a primit linkul unei mașini, ca locația live
        de pe WhatsApp. Fără cont, fără cookie-uri, fără analiză de trafic. Tokenul stă în adresă (/locatie/<token>); pagina
        cere la câteva secunde /api/public/locatie/<token>. Ce scrie aici vine gata scris de server (locatie_distribuita.js):
        pagina doar arată. Când linkul a expirat sau a fost oprit, serverul răspunde 404 și pagina nu mai arată mașina. -->
@@ -35,7 +35,7 @@
     .leaflet-container{font-family:inherit;background:#1a1f24}
     .leaflet-control-attribution{font-size:10px}
 
-    /* sus: sigla și „Locație live" */
+    /* sus: sigla și „Locație live” */
     .sus{position:fixed;left:0;right:0;top:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;
       gap:10px;padding:calc(10px + var(--sat)) 14px 10px;pointer-events:none}
     .sus > *{pointer-events:auto}
@@ -164,7 +164,7 @@
         harta = L.map('harta', { zoomControl: false, attributionControl: true, center: [45.94, 24.97], zoom: 6 });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc', attribution: '&copy; OpenStreetMap' }).addTo(harta);
         if (window.matchMedia('(min-width: 760px)').matches) L.control.zoom({ position: 'topright' }).addTo(harta);
-        // Omul a mișcat harta: nu-l mai trag înapoi la mașină până nu apasă „Centrează".
+        // Omul a mișcat harta: nu-l mai trag înapoi la mașină până nu apasă „Centrează”.
         harta.on('dragstart', function () { urmareste = false; stareCentreaza(); });
         $('centreaza').addEventListener('click', function () { urmareste = true; stareCentreaza(); centreaza(true); });
       } else {

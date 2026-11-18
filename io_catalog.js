@@ -85,7 +85,7 @@ const IO_CATALOG = [
   { id: 107, name: 'Fuel Consumed (counted)', name_ro: 'Combustibil contorizat', unit: 'l', multiplier: 0.5, category: 'CAN', desc_ro: 'Combustibil consumat de la pornire/contor' },
   { id: 108, name: 'Fuel Rate', name_ro: 'Consum instantaneu CAN', unit: 'l/h', multiplier: 0.05, category: 'CAN', desc_ro: 'Consum combustibil instantaneu din CAN' },
   { id: 256, name: 'VIN', name_ro: 'Cod VIN', unit: '-', multiplier: 1, category: 'CAN', desc_ro: 'Vehicle Identification Number citit din OBD/CAN' },
-  { id: 388, name: 'CAN module ID (HEX)', name_ro: 'ID modul CAN (HEX)', unit: '', multiplier: 1, category: 'CAN', desc_ro: 'Identificator modul CAN, șir hexazecimal (la Teltonika AVL ID 388 = „CAN module ID in HEX", NU AdBlue). AdBlue % real = ID 111/10455.' },
+  { id: 388, name: 'CAN module ID (HEX)', name_ro: 'ID modul CAN (HEX)', unit: '', multiplier: 1, category: 'CAN', desc_ro: 'Identificator modul CAN, șir hexazecimal (la Teltonika AVL ID 388 = „CAN module ID in HEX”, NU AdBlue). AdBlue % real = ID 111/10455.' },
   { id: 389, name: 'AdBlue Level (l)', name_ro: 'Nivel AdBlue litri', unit: 'l', multiplier: 1, category: 'CAN', desc_ro: 'Nivel rezervor AdBlue (uree) în litri' },
   { id: 390, name: 'Engine Coolant Temperature', name_ro: 'Temperatură lichid răcire', unit: '°C', multiplier: 1, category: 'Motor', desc_ro: 'Temperatură lichid răcire motor din CAN/OBD' },
   { id: 391, name: 'Engine Oil Pressure', name_ro: 'Presiune ulei motor', unit: 'kPa', multiplier: 1, category: 'Motor', desc_ro: 'Presiune ulei motor' },
@@ -331,7 +331,7 @@ const IO_CATALOG = [
 
 // Restul listei oficiale FMC130 (GENERAT — vezi tools/gen-io-catalog-extra.js): catalogul de mână
 // rămâne sursa pentru intrările lui, iar coada lungă (ALL-CAN300, OBD, BLE) vine de aici, ca
-// editorul „Mapează" și DevConsole să aibă etichete pentru toate ID-urile, nu doar primele ~140.
+// editorul „Mapează” și DevConsole să aibă etichete pentru toate ID-urile, nu doar primele ~140.
 try {
   const _ids = new Set(IO_CATALOG.map(function (e) { return e.id; }));
   require('./io_catalog_extra.js').forEach(function (e) { if (!_ids.has(e.id)) IO_CATALOG.push(e); });

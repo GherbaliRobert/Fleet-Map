@@ -6,7 +6,7 @@
 //   2. Un act expirat suna O DATĂ PE ZI, LA NESFÂRȘIT (dedup implicit 20h pe un bucket fără sfârșit).
 //      → acum: o alertă per prag + memento săptămânal după expirare. La fel permisele de șofer.
 //   3. Un act FĂRĂ dată de expirare era sărit tăcut — proprietarul credea că e acoperit.
-//      → acum compania primește UN rezumat pe săptămână: „N acte fără dată — nu ești alertat".
+//      → acum compania primește UN rezumat pe săptămână: „N acte fără dată — nu ești alertat”.
 //
 // Rulările repetate folosesc declanșatorul manual POST /api/notifications/check-expiries.
 const { spawn } = require('child_process');
@@ -124,7 +124,7 @@ const ziPeste = (n) => new Date(Date.now() + n * 24 * 3600 * 1000).toISOString()
     await req(S, 'POST', '/api/documents', { imei: IMEI, doc_type: 'CASCO' });   // fără expiry_date
     await ruleaza(); await sleep(1200);
     const faraData = await notificari('fără dată');
-    t('actul fără dată produce rezumatul „nu ești alertat"', faraData.length === 1, 'găsite: ' + faraData.length);
+    t('actul fără dată produce rezumatul „nu ești alertat”', faraData.length === 1, 'găsite: ' + faraData.length);
     t('rezumatul numește actul și vehiculul', faraData.length && /CASCO/.test(faraData[0].body) && /TM 55 EXP/.test(faraData[0].body),
       faraData.length ? faraData[0].body.slice(0, 120) : '(lipsă)');
     await ruleaza(); await sleep(1200);

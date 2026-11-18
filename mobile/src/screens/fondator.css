@@ -3,7 +3,7 @@
    pe o singură coloană, cu ținte de atingere mari.
    Verdele aplicației (#3FE07D) nu e redefinit pe tema luminoasă: pe alb, scrisul mic verde nu se citește. De aceea
    orice text verde de aici folosește --fd-ok (mai închis pe luminos), la fel portocaliul mic (--fd-warn). */
-/* Roșul SCRISULUI pe tema închisă e mai deschis decât --red: pastila mică („casat", „defect") avea 4,36:1 (29.09). */
+/* Roșul SCRISULUI pe tema închisă e mai deschis decât --red: pastila mică („casat”, „defect”) avea 4,36:1 (29.09). */
 :root { --fd-ok: var(--accent); --fd-warn: var(--orange); --fd-bad: #f87171; --fd-info: #60a5fa; }
 :root[data-theme="light"] { --fd-ok: #0E7A3C; --fd-warn: #b45309; --fd-bad: #b91c1c; --fd-info: #1d4ed8; }
 
@@ -119,7 +119,7 @@
 /* Codul unei chei API (se arată o singură dată) */
 .fd-cheie { font-size: 13px; word-break: break-all; color: var(--fd-ok); background: var(--bg-dark); border: 1px solid var(--border); border-radius: 9px; padding: 10px; margin: 8px 0; user-select: all; -webkit-user-select: all; }
 
-/* ── „RA Insight · control" (lotul 3): cele patru cifre, „Ce cere atenție", un rând pe firmă, „Sursă externă". ── */
+/* ── „RA Insight · control” (lotul 3): cele patru cifre, „Ce cere atenție”, un rând pe firmă, „Sursă externă”. ── */
 .aiu-tile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 4px; }
 .aiu-tila { min-width: 0; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
 .aiu-tila .k { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); }

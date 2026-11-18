@@ -1,4 +1,4 @@
-/* etoll.css — Taxa de drum pe telefon: cele două file („O cursă nouă" / „Ce a costat până acum"),
+/* etoll.css — Taxa de drum pe telefon: cele două file („O cursă nouă” / „Ce a costat până acum”),
    lista flotei și grila de tarife. Aceleași forme ca pe web (public/css/app.css, .tr-* / .tz-*),
    așezate pe o singură coloană. Formele comune (note, sumar, linii) stau în tollro.css. */
 
@@ -17,7 +17,7 @@
 .trf-explic { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0 0 10px; }
 .trf-explic b { color: var(--text-primary); }
 
-/* ── Totalul flotei: se adună DOAR din mașinile calculate („până acum" cât timp mai sunt în lucru) ── */
+/* ── Totalul flotei: se adună DOAR din mașinile calculate („până acum” cât timp mai sunt în lucru) ── */
 .tr-tot { text-align: center; padding: 12px 0 11px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
 .tr-tot-s { font-size: 32px; font-weight: 800; line-height: 1; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .tr-tot-s span { font-size: 15px; font-weight: 700; color: var(--text-muted); margin-left: 7px; }
@@ -50,7 +50,7 @@ button.tr-rand:active { border-color: var(--accent); }
 .tr-empty > b { display: block; font-size: 15px; color: var(--text-primary); margin: 10px 0 7px; }
 .tr-empty > span { display: block; font-size: 13px; color: var(--text-muted); line-height: 1.55; }
 
-/* ── „O cursă nouă": căutare, listă de mașini, fișa de citit ── */
+/* ── „O cursă nouă”: căutare, listă de mașini, fișa de citit ── */
 .tz-cauta { position: relative; display: flex; align-items: center; }
 .tz-cauta > .ic { position: absolute; left: 12px; color: var(--text-muted); pointer-events: none; }
 .tz-cauta-i { width: 100%; box-sizing: border-box; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary);
@@ -102,7 +102,7 @@ button.tr-rand:active { border-color: var(--accent); }
 .tz-l3 { text-align: right; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .tz-l2 { flex-basis: 100%; padding-left: 19px; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; margin-top: -2px; }
 
-/* ── „Cât costă un kilometru": fiecare cifră sub capul ei de coloană, cu unitatea lângă ea ── */
+/* ── „Cât costă un kilometru”: fiecare cifră sub capul ei de coloană, cu unitatea lângă ea ── */
 .trf-grila-wrap { overflow-x: auto; margin-top: 8px; -webkit-overflow-scrolling: touch; }
 .trf-grila th.trf-g-euro { background: var(--bg-dark); font-size: 11.5px; color: var(--text-primary); font-weight: 800; }
 .trf-grila th.trf-g-sub { background: var(--bg-dark); font-size: 10px; color: var(--text-muted); font-weight: 700; }

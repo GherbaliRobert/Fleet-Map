@@ -1,15 +1,15 @@
-// verify_email_brevo.js — emailul prin Brevo, pe HTTPS (Robert, 12.10: „am făcut contul, îl putem integra în ratrack?").
+// verify_email_brevo.js — emailul prin Brevo, pe HTTPS (Robert, 12.10: „am făcut contul, îl putem integra în ratrack?”).
 //
 //   node verify_email_brevo.js
 //
 // Railway Hobby blochează SMTP, iar aplicația trimitea DOAR prin SMTP — deci nu pleca nimic: nici facturile, nici
 // contractele, nici invitațiile. Ce păzește (cu un Brevo FALS, local — nu pleacă niciun email adevărat):
-//   1. mailer.js: cu BREVO_API_KEY, emailul pleacă prin API-ul Brevo (cheia în antetul „api-key"), cu expeditorul,
+//   1. mailer.js: cu BREVO_API_KEY, emailul pleacă prin API-ul Brevo (cheia în antetul „api-key”), cu expeditorul,
 //      destinatarii, adresa de răspuns, PDF-ul atașat în base64; textul simplu devine HTML cu linkurile apăsabile; sigla
-//      „în corp" (cid) se cere de pe site, nu se atașează; o eroare Brevo se spune, nu aruncă; Brevo câștigă la SMTP;
+//      „în corp” (cid) se cere de pe site, nu se atașează; o eroare Brevo se spune, nu aruncă; Brevo câștigă la SMTP;
 //   2. O SINGURĂ cale: channels.js (invitații, linkuri de parolă, rapoarte programate, notificări) trimite prin mailer.js,
 //      fără transport SMTP propriu; un email care n-a plecat aruncă (invitația arată atunci linkul pe ecran);
-//   3. pe server pornit: invitația unui om nou pleacă prin Brevo, cu linkul de parolă; „Stare producție" spune „Brevo".
+//   3. pe server pornit: invitația unui om nou pleacă prin Brevo, cu linkul de parolă; „Stare producție” spune „Brevo”.
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -20,7 +20,7 @@ const { spawn } = require('child_process');
 let ok = 0, rele = 0;
 const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele++; console.log('  ✗ ' + n + (d !== undefined ? '  → ' + d : '')); } };
 
-// Brevo fals: ține minte cererile; subiectul cu „EROARE" primește 400, ca de la Brevo.
+// Brevo fals: ține minte cererile; subiectul cu „EROARE” primește 400, ca de la Brevo.
 const primite = [];
 const fals = http.createServer((req, res) => {
   let b = ''; req.on('data', (c) => { b += c; });
@@ -44,14 +44,14 @@ const fals = http.createServer((req, res) => {
   process.env.BREVO_API_URL = URL_FALS;
   const mailer = require('./mailer');
   T('cu BREVO_API_KEY (fără SMTP), emailul e pornit, pe calea Brevo', mailer.enabled() === true && mailer.fel() === 'brevo');
-  T('expeditorul implicit: „RA Track <noreply@ratrack.ro>"', mailer.fromAddr() === 'RA Track <noreply@ratrack.ro>', mailer.fromAddr());
+  T('expeditorul implicit: „RA Track <noreply@ratrack.ro>”', mailer.fromAddr() === 'RA Track <noreply@ratrack.ro>', mailer.fromAddr());
 
   const PDF = Buffer.from('%PDF-1.4 proba');
   let r = await mailer.send({ to: 'ana@firma.ro, ion@firma.ro', replyTo: 'Office RA Track <office@ratrack.ro>', subject: 'Factura RAT-2026-0001',
     text: 'Bună ziua,\nLinkul: https://ratrack.ro/set-password.html?token=abc&x=1\n— RA Track', attachments: [{ filename: 'RA-Track - Factură RAT-2026-0001.pdf', content: PDF }] });
   let c = primite[primite.length - 1];
   T('pleacă: răspunsul Brevo (201) dă id-ul mesajului', r.ok === true && /^<m\d+@smtp-brevo\.com>$/.test(r.id), JSON.stringify(r));
-  T('cererea: POST pe /v3/smtp/email, cu cheia în antetul „api-key"', c.metoda === 'POST' && c.cale === '/v3/smtp/email' && c.cheie === 'xkeysib-proba-fara-retea');
+  T('cererea: POST pe /v3/smtp/email, cu cheia în antetul „api-key”', c.metoda === 'POST' && c.cale === '/v3/smtp/email' && c.cheie === 'xkeysib-proba-fara-retea');
   T('expeditor, destinatari (despărțiți la virgulă), adresa de răspuns',
     c.corp.sender && c.corp.sender.email === 'noreply@ratrack.ro' && c.corp.sender.name === 'RA Track' &&
     JSON.stringify(c.corp.to) === JSON.stringify([{ email: 'ana@firma.ro' }, { email: 'ion@firma.ro' }]) &&
@@ -65,7 +65,7 @@ const fals = http.createServer((req, res) => {
   const LOGO = { filename: 'logo.png', path: path.join(__dirname, 'public', 'logo.png'), cid: 'logo@ratrack.ro', contentType: 'image/png' };
   r = await mailer.send({ to: 'ana@firma.ro', subject: 'Cu sigla', html: '<div><img src="cid:logo@ratrack.ro" alt="RA Track"></div>', attachments: [{ filename: 'f.pdf', content: PDF }, LOGO] });
   c = primite[primite.length - 1];
-  T('sigla „în corp" (cid) se cere de pe site (Brevo nu primește cid) și NU apare ca atașament',
+  T('sigla „în corp” (cid) se cere de pe site (Brevo nu primește cid) și NU apare ca atașament',
     r.ok && /src="https:\/\/ratrack\.ro\/logo\.png"/.test(c.corp.htmlContent) && !/cid:/.test(c.corp.htmlContent) &&
     (c.corp.attachment || []).map((a) => a.name).join(',') === 'f.pdf', c.corp.htmlContent);
 
@@ -93,7 +93,7 @@ const fals = http.createServer((req, res) => {
   const CH = fs.readFileSync(path.join(__dirname, 'channels.js'), 'utf8');
   T('channels.js nu mai are transport SMTP propriu (nici nodemailer, nici createTransport)', !/nodemailer|createTransport|sendMail/.test(CH.replace(/\/\/.*$/gm, '')));
   const channels = require('./channels');
-  T('invitațiile și rapoartele văd același „e email pe server?" ca facturile', channels.emailConfigured() === true);
+  T('invitațiile și rapoartele văd același „e email pe server?” ca facturile', channels.emailConfigured() === true);
   const n0 = primite.length;
   const okCh = await channels.sendEmailTo('dispecer@firma.ro', 'Invitație RA Track', 'Setează-ți parola:\nhttps://ratrack.ro/set-password.html?token=t1', [{ filename: 'raport.xlsx', content: Buffer.from('xlsx') }]);
   c = primite[primite.length - 1];
@@ -139,7 +139,7 @@ const fals = http.createServer((req, res) => {
       /<a href="https:\/\/ratrack\.ro\/set-password\.html\?token=/.test(inv.corp.htmlContent), JSON.stringify({ st: u.status, r: u.j, n: primite.length - n1 }).slice(0, 300));
     T('…iar ecranul nu mai primește linkul de copiat (emailul a plecat)', !(u.j && u.j.link), JSON.stringify(u.j).slice(0, 200));
     const h = await json('GET', '/api/admin/health', S);
-    T('„Stare producție": emailul e activ, prin Brevo, cu expeditorul', h.status === 200 && /activ — Brevo, de la RA Track <noreply@ratrack\.ro>/.test(h.t), h.t.slice(0, 200));
+    T('„Stare producție”: emailul e activ, prin Brevo, cu expeditorul', h.status === 200 && /activ — Brevo, de la RA Track <noreply@ratrack\.ro>/.test(h.t), h.t.slice(0, 200));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
   gata(rele ? 1 : 0);

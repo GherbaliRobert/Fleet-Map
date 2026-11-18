@@ -1,7 +1,7 @@
 'use strict';
-// sursa_externa.js — „Sursă externă" în RA Insight (28.10; Alin, la propunerea „Internetul în RA Insight": „da — dar nu-l
+// sursa_externa.js — „Sursă externă” în RA Insight (28.10; Alin, la propunerea „Internetul în RA Insight”: „da — dar nu-l
 // numim internet, îl numim sursă externă, și explicăm că caută pe internet"). RA Insight răspunde din aplicație; cu butonul
-// „Sursă externă" pornit, caută și pe internet ce nu e în aplicație: prețuri, reguli, legi, informații generale.
+// „Sursă externă” pornit, caută și pe internet ce nu e în aplicație: prețuri, reguli, legi, informații generale.
 // Regulile și TEXTELE stau aici, curate (fără bază de date, fără rețea): cine vede butonul, ce n-are voie să plece în căutare,
 // câte întrebări cu sursă externă are fiecare pachet, ce scrie pe buton, sub casetă și sub răspuns. Serverul adună cifrele și
 // face apelul SEPARAT (ai.cautaExtern — primește doar textul căutării, nimic din flotă); ecranele doar arată.
@@ -28,7 +28,7 @@ const _fmtZi = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Bucharest', 
 const _fmtOra = new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' });
 function _zi(ms) { const p = {}; _fmtZi.formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = Number(x.value); }); return p; }
 function _ziText(ms) { const p = _zi(ms); return p.day + ' ' + LUNI[p.month - 1] + ' ' + p.year; }
-// „pe 1 noiembrie" — ziua în care se reîncarcă întrebările (prima a lunii următoare, pe ora României).
+// „pe 1 noiembrie” — ziua în care se reîncarcă întrebările (prima a lunii următoare, pe ora României).
 function reincarcare(acum) { const p = _zi(acum); return 'pe 1 ' + LUNI[p.month % 12]; }
 
 function starePlatforma(v) { return STARI.indexOf(v) >= 0 ? v : 'oprita'; }
@@ -57,7 +57,7 @@ function stare(o) {
   const ramase = Math.max(0, total - folosite);
   return { vede: true, poate: ramase > 0, fondator: false, motiv: ramase > 0 ? null : 'terminate', total: total, folosite: folosite, ramase: ramase };
 }
-// Ce scrie pe buton: „Sursă externă · 7 din 10" (rămase din pachet); la noi, doar numele.
+// Ce scrie pe buton: „Sursă externă · 7 din 10” (rămase din pachet); la noi, doar numele.
 function textButon(st) {
   if (!st || !st.vede) return '';
   return st.fondator || st.total == null ? NUME : NUME + ' · ' + st.ramase + ' din ' + st.total;
@@ -72,7 +72,7 @@ function textNota(st, acum) {
 function textTerminate(acum) {
   return 'S-au terminat întrebările cu sursă externă ale lunii. RA Insight răspunde mai departe din aplicație; se reîncarcă ' + reincarcare(acum) + '.';
 }
-// Pentru ecran: tot ce trebuie ca să deseneze butonul (fără bani, fără motivele noastre interne). `contor` = „7 din 10" (pe telefon
+// Pentru ecran: tot ce trebuie ca să deseneze butonul (fără bani, fără motivele noastre interne). `contor` = „7 din 10” (pe telefon
 // butonul se strânge la atât).
 function pentruPagina(st, acum) {
   const cuCota = !!(st && st.vede && !st.fondator && st.total != null);
@@ -88,14 +88,14 @@ function pentruPagina(st, acum) {
 function _fara(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 function _cuvinte(s) { return _fara(s).replace(/[^a-z0-9]+/g, ' ').trim(); }
 function _compact(s) { return _fara(s).replace(/[^a-z0-9]/g, ''); }
-// Numerele românești: județul, 2–3 cifre, 3 litere („B 154 UIP", „CJ-12-ABC").
+// Numerele românești: județul, 2–3 cifre, 3 litere („B 154 UIP”, „CJ-12-ABC”).
 const RE_NUMAR_RO = /(^|[^a-z0-9])(b|ab|ag|ar|bc|bh|bn|br|bt|bv|bz|cj|cl|cs|ct|cv|db|dj|gj|gl|gr|hd|hr|if|il|is|mh|mm|ms|nt|ot|ph|sb|sj|sm|sv|tl|tm|tr|vl|vn|vs)[ -]?\d{2,3}[ -]?[a-z]{3}([^a-z0-9]|$)/;
 const RE_EMAIL = /[^\s@]+@[^\s@]+\.[a-z]{2,}/;
-// Mobil (07xx…, +40 7xx…) sau fix (021…, 0264…), cu sau fără spații — „700 000 000 lei" nu e telefon (lipsește 0-ul din față).
+// Mobil (07xx…, +40 7xx…) sau fix (021…, 0264…), cu sau fără spații — „700 000 000 lei” nu e telefon (lipsește 0-ul din față).
 const RE_TELEFON = /(\+40|0040|(^|[^0-9])0)[ .\-]?7\d{2}[ .\-]?\d{3}[ .\-]?\d{3}([^0-9]|$)|(^|[^0-9])0[23]\d{1,2}[ .\-]?\d{3}[ .\-]?\d{3,4}([^0-9]|$)/;
 const RE_NUMAR_LUNG = /\d{9,}/;
 const RE_IBAN = /(^|[^a-z])ro\d{2}[ ]?[a-z]{4}/;
-// O stradă CU număr (o adresă anume); numele unei străzi singur („Calea Victoriei, restricții de tonaj") rămâne voie.
+// O stradă CU număr (o adresă anume); numele unei străzi singur („Calea Victoriei, restricții de tonaj”) rămâne voie.
 const RE_ADRESA = /(^|[^a-z])(strada|str\.|bulevardul|bd\.|b-dul|bdul|calea|soseaua|sos\.|aleea|splaiul)\s*[a-z][a-z\-]*( [a-z][a-z\-]*){0,2} (nr\.? ?)?\d{1,4}([^0-9]|$)|(^|[^a-z])(bl\.\s*[a-z0-9]|bloc(ul)?\s+[a-z]?\d|ap\.\s*\d|apartament(ul)?\s+\d|sc\.\s*[a-z0-9]\b)/;
 const RE_PERSOANA = /(^|[^a-z])(cnp|telefonul (lui|ei)|numarul de telefon al|adresa (lui|ei)|unde locuieste|profilul (lui|ei)|facebook|linkedin|instagram|tiktok|cazier)([^a-z]|$)/;
 function _vin(t) {
@@ -159,9 +159,9 @@ const INSTRUCTIUNI = 'SURSĂ EXTERNĂ PORNITĂ: omul a pornit „Sursă externă
   'spune întâi ce arată aplicația (doar dacă ai folosit uneltele ei), apoi ce a găsit căutarea, cu site-ul în paranteză lângă fiecare cifră ' +
   'de pe internet. Fără titluri deasupra părților: aplicația arată singură că s-a căutat pe internet. Cifrele de pe internet nu se amestecă ' +
   'cu cele ale flotei. Sursele întregi le arată aplicația sub răspuns.';
-// Titlurile de parte pe care RA Insight le scria până pe 29.10 (Alin: „scoate din text: Din sursă externă"). Un rând care e
-// doar titlul pleacă; un titlu urmat de text pe același rând („**Din sursă externă:** Vinieta…") lasă textul. O propoziție
-// care doar începe cu aceleași cuvinte („Din flota ta, trei mașini…") rămâne.
+// Titlurile de parte pe care RA Insight le scria până pe 29.10 (Alin: „scoate din text: Din sursă externă”). Un rând care e
+// doar titlul pleacă; un titlu urmat de text pe același rând („**Din sursă externă:** Vinieta…”) lasă textul. O propoziție
+// care doar începe cu aceleași cuvinte („Din flota ta, trei mașini…”) rămâne.
 const TITLURI_VECHI = ['din sursa externa', 'din flota ta', 'de pe internet'];
 function _titlu(s) {
   return TITLURI_VECHI.indexOf(String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -209,7 +209,7 @@ function citesteRaspuns(blocks) {
       if (Array.isArray(b.content)) b.content.forEach(function (r) { if (r && r.type === 'web_search_result' && r.url) rezultate.push({ url: r.url, titlu: r.title || '' }); });
       else if (b.content && b.content.type === 'web_search_tool_result_error') erori.push(String(b.content.error_code || 'eroare').slice(0, 40));
     } else if (b.type === 'text' && b.text && i > ultimRezultat) {
-      // Textul de dinaintea căutării („Caut…") nu e răspuns: se ia doar ce vine după ultimele rezultate.
+      // Textul de dinaintea căutării („Caut…”) nu e răspuns: se ia doar ce vine după ultimele rezultate.
       texte.push(b.text);
       (Array.isArray(b.citations) ? b.citations : []).forEach(function (c) {
         if (c && c.type === 'web_search_result_location' && c.url) citate.push({ url: c.url, titlu: c.title || '', citat: String(c.cited_text || '').slice(0, 200) });
@@ -241,7 +241,7 @@ function pentruModel(r) {
       'cifră, fără titlu deasupra, și nu o amesteca cu cifrele flotei. Dacă nu s-a găsit nimic util, spune asta pe scurt.',
   };
 }
-// Ce arată pagina sub răspuns (și se păstrează în conversație): „Surse de pe internet", sursele, când și ce s-a căutat.
+// Ce arată pagina sub răspuns (și se păstrează în conversație): „Surse de pe internet”, sursele, când și ce s-a căutat.
 function pentruEcran(r, la) {
   if (!r || !r.cautari || !r.cautari.length) return null;
   const q = r.cautari.slice(0, CAUTARI_MAX);
@@ -249,7 +249,7 @@ function pentruEcran(r, la) {
     text: 'Căutat pe internet la ' + _fmtOra.format(new Date(la || Date.now())) + ' · ' + cant(q.length, 'căutare', 'căutări'),
     ceAmCautat: 'Ce am căutat: ' + q.map(function (x) { return '„' + x + '”'; }).join(', ') };
 }
-// Rândul „✓" de sub un răspuns cu toate cifrele găsite (30.10; Alin: „da" — la vinieta din Ungaria scria „din aplicație", deși
+// Rândul „✓” de sub un răspuns cu toate cifrele găsite (30.10; Alin: „da” — la vinieta din Ungaria scria „din aplicație”, deși
 // nicio cifră nu venea de acolo): spune de unde au venit chiar cifrele. d = { aplicatie, sursa } = unde s-au găsit (serverul le
 // caută separat); fără căutare pe internet = din rapoarte, ca până acum.
 const TEXT_VERIFICAT = {
@@ -285,7 +285,7 @@ function textModel(m) {
     'din Railway: AI_MODEL_SURSA (de pildă claude-sonnet-5-5 — acolo o căutare costă 15–25 de bani).';
   return 'Nu s-a putut afla dacă ' + n + ' primește căutarea pe internet' + (m.eroare ? ' (' + String(m.eroare).slice(0, 160) + ')' : '') + '. Butonul merge; dacă o căutare dă eroare, se vede aici.';
 }
-// „Pachet și conturi": rândul firmei. st = stare(...) socotită fără comutatorul firmei; oprita = comutatorul firmei.
+// „Pachet și conturi”: rândul firmei. st = stare(...) socotită fără comutatorul firmei; oprita = comutatorul firmei.
 function textFirma(st, oprita, acum) {
   if (!st || !st.vede) return '';
   if (oprita) return 'Oprită pentru toată firma: butonul nu apare nimănui.';

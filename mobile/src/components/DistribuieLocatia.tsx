@@ -5,10 +5,10 @@ import { useInapoiInchide } from '../lib/inapoiFoaie';
 import { Icon } from './Icon';
 import './distribuieLocatia.css';
 
-// „Distribuie locația" (Robert, 21.10): foaia din fișa mașinii, ca pe web (fereastra „Distribuie locația live").
-// Aceleași rute, aceleași reguli — duratele, textul mesajului, orele și „cine poate" le dă serverul
+// „Distribuie locația” (Robert, 21.10): foaia din fișa mașinii, ca pe web (fereastra „Distribuie locația live”).
+// Aceleași rute, aceleași reguli — duratele, textul mesajului, orele și „cine poate” le dă serverul
 // (locatie_distribuita.js). Foaia doar le arată. Linkul se vede o singură dată, când e făcut: în bază stă doar
-// amprenta lui, deci nu se poate arăta din nou — se face altul. „Prelungește" (23.10) mută ora de final a aceluiași link.
+// amprenta lui, deci nu se poate arăta din nou — se face altul. „Prelungește” (23.10) mută ora de final a aceluiași link.
 const BTN_GHOST = 'background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary)';
 
 export function DistribuieLocatia({ imei, nume, onClose }: { imei: string; nume: string; onClose: () => void }) {
@@ -19,11 +19,11 @@ export function DistribuieLocatia({ imei, nume, onClose }: { imei: string; nume:
   const [busy, setBusy] = useState(false);
   const [facut, setFacut] = useState<{ id: number; link: string; mesaj: string; text: string } | null>(null);
   const [deOprit, setDeOprit] = useState<LocatieActiva | null>(null);
-  const [prel, setPrel] = useState<number | null>(null);      // linkul la care e deschisă alegerea „Cu cât?"
+  const [prel, setPrel] = useState<number | null>(null);      // linkul la care e deschisă alegerea „Cu cât?”
   const [notaPrel, setNotaPrel] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  // „Înapoi" pe Android: întâi întrebarea de oprire, apoi foaia.
+  // „Înapoi” pe Android: întâi întrebarea de oprire, apoi foaia.
   useInapoiInchide(true, () => { if (deOprit) { setDeOprit(null); return true; } onClose(); return true; });
 
   function incarca() {

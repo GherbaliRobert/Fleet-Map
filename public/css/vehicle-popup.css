@@ -1,8 +1,8 @@
-/* vehicle-popup.css — balon vehicul (popup Leaflet) + badge „Urmărești". Pe tema aplicației, font Nunito. */
+/* vehicle-popup.css — balon vehicul (popup Leaflet) + badge „Urmărești”. Pe tema aplicației, font Nunito. */
 .vp-popup .leaflet-popup-content-wrapper { border-radius: 12px; }
 .vp-popup .leaflet-popup-content { margin: 12px 14px; min-width: 270px; }
 
-/* Leaflet forțează „Helvetica Neue" pe .leaflet-container → setăm explicit Nunito (CLAUDE.md: Nunito peste tot). */
+/* Leaflet forțează „Helvetica Neue” pe .leaflet-container → setăm explicit Nunito (CLAUDE.md: Nunito peste tot). */
 .vp-popup .leaflet-popup-content, .vp-card { font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
 .vp-head { display: flex; align-items: center; gap: 9px; padding-bottom: 9px; margin-bottom: 9px; border-bottom: 1px solid var(--border); }
@@ -14,7 +14,7 @@
 .vp-table td { padding: 3px 0; vertical-align: top; }
 .vp-table td:first-child { color: var(--text-muted); padding-right: 14px; white-space: nowrap; }
 .vp-table td:last-child { font-weight: 600; text-align: right; color: var(--text-primary); }
-/* Indicator „limită de viteză" (semn rutier: cerc alb, contur roșu, cifră neagră) — din camera mașinii (IO 1116) */
+/* Indicator „limită de viteză” (semn rutier: cerc alb, contur roșu, cifră neagră) — din camera mașinii (IO 1116) */
 .vp-splimit { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2.5px solid #e11d2a; color: #0b0e11; font-weight: 800; font-size: 11.5px; line-height: 1; margin-left: 8px; vertical-align: middle; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .vp-splimit.over { border-color: #ef4444; box-shadow: 0 0 0 2.5px rgba(239,68,68,.35); }
 
@@ -41,7 +41,7 @@
 .vp-navmenu a:hover { border-color: var(--accent); }
 .vp-navmenu a i { color: var(--accent); width: 16px; text-align: center; }
 
-/* Badge fix „Urmărești: X" (jos-centru, deasupra atribuției) */
+/* Badge fix „Urmărești: X” (jos-centru, deasupra atribuției) */
 .vp-follow-badge {
   position: fixed; left: 50%; transform: translateX(-50%);
   bottom: calc(18px + var(--sab, 0px)); z-index: 650;

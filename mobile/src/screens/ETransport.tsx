@@ -14,9 +14,9 @@ import './flota.css'; // --fl-ok: verdele care se citește și pe tema deschisă
 // din termen) o calculează serverul, din etransport.js — telefonul doar desenează ce primește. Înainte, pe
 // telefon era o listă plată, cu termenul socotit local și fără motive.
 
-// „24 DE ore", dar „15 minute": în română, numeralul cere „de" de la 20 în sus (ultimele două cifre în afara 1–19).
+// „24 DE ore”, dar „15 minute”: în română, numeralul cere „de” de la 20 în sus (ultimele două cifre în afara 1–19).
 const de = (n: number) => { const r = Math.abs(n) % 100; return r >= 1 && r <= 19 ? '' : 'de '; };
-// „23 septembrie 2026" → ziua de azi pentru câmpul de calendar, în ora telefonului.
+// „23 septembrie 2026” → ziua de azi pentru câmpul de calendar, în ora telefonului.
 const aziISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 // Termenul PROPUS: data de start + zilele tipului ales (aceeași regulă ca serverul, etransport.js → valabilPana).
 // Socotit pe zile calendaristice, fără fus orar, ca să nu alunece cu o zi.
@@ -29,7 +29,7 @@ function propus(start: string, zile: number): string {
 }
 
 export function ETransport() {
-  // Pe web e-Transport stă în „Management", pe care o vede doar cine poate modifica flota.
+  // Pe web e-Transport stă în „Management”, pe care o vede doar cine poate modifica flota.
   if (!areFlota()) return <FaraDreptFlota titlu="e-Transport (ANAF)" />;
   return <ETransportEcran />;
 }
@@ -52,7 +52,7 @@ function ETransportEcran() {
     Api.etransportScadentar()
       .then((r) => { setD(r || {}); setErr(''); })
       .catch((e: any) => {
-        // Nu orice 403 e „modul oprit": un rol fără dreptul de rapoarte primește tot 403, dar cu alt motiv.
+        // Nu orice 403 e „modul oprit”: un rol fără dreptul de rapoarte primește tot 403, dar cu alt motiv.
         setErr(e?.status !== 403 ? (e?.message || 'Eroare la încărcare')
           : e?.message === 'feature_disabled' ? 'Modulul e-Transport nu e pornit pentru firma ta.'
             : 'Rolul tău nu are acces la acest ecran.');
@@ -93,7 +93,7 @@ function ETransportEcran() {
   // nu o problemă — altfel arhiva ar arăta ca un teanc de amenzi.
   function rand(x: any, incheiat = false) {
     const cls = incheiat ? 'neutral' : x.stare === 'problema' ? 'over' : (x.stare === 'curand' || x.stare === 'necunoscut') ? 'soon' : 'ok';
-    // „Expiră curând" = var(--orange), ca pe web (_etStare): tokenul are nuanță mai închisă pe tema luminoasă.
+    // „Expiră curând” = var(--orange), ca pe web (_etStare): tokenul are nuanță mai închisă pe tema luminoasă.
     // Un chihlimbar scris direct aici (#f5b43c) ieșea pe alb aproape invizibil, iar stilul inline nu-l poate
     // corecta nicio regulă de temă din tacho.css.
     const col = incheiat ? 'var(--text-muted)' : x.stare === 'problema' ? 'var(--red)' : x.stare === 'curand' ? 'var(--orange)' : x.stare === 'necunoscut' ? 'var(--text-muted)' : 'var(--fl-ok)';
@@ -196,7 +196,7 @@ function ETransportEcran() {
   );
 }
 
-// „Transport nou (cod UIT)" — aceleași câmpuri ca pe web. Vehiculul și șoferul se ALEG din flotă; tipurile de
+// „Transport nou (cod UIT)” — aceleași câmpuri ca pe web. Vehiculul și șoferul se ALEG din flotă; tipurile de
 // operațiune și câte zile ține codul vin de la server (etransport.js). Termenul se PROPUNE, dar rămâne de
 // corectat: felul exact în care ANAF numără zilele e încă de confirmat, iar un termen ghicit tăcut costă.
 function TransportNou({ onClose, onGata }: { onClose: () => void; onGata: () => void }) {

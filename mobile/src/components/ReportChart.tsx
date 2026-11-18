@@ -83,7 +83,7 @@ export function ReportChart({ def }: { def: ReportChartDef }) {
             titleColor: '#ffffff', bodyColor: '#cfd6dd', titleFont: { weight: 700, size: 12.5 }, bodyFont: { size: 12 }, displayColors: !single,
             callbacks: {
               // Pe o axă X liniară (ex. prețul carburantului, unde X = ziua ca număr), Chart.js
-              // scrie în tooltip valoarea BRUTĂ — „20.407" în loc de „27 nov. '25". `xTick` era
+              // scrie în tooltip valoarea BRUTĂ — „20.407” în loc de „27 nov. '25”. `xTick` era
               // aplicat doar etichetelor de sub grafic, nu și aici. Acum e același format în
               // ambele locuri, ca pe web.
               title: (items: any[]) => {
@@ -95,7 +95,7 @@ export function ReportChart({ def }: { def: ReportChartDef }) {
               },
               label: (c: any) => {
                 const v = (c.parsed && c.parsed.y != null) ? c.parsed.y : c.parsed;
-                // Cifra fără unitate nu spune nimic: „6,85" poate fi lei, litri sau km.
+                // Cifra fără unitate nu spune nimic: „6,85” poate fi lei, litri sau km.
                 const u = (def as any).unit ? ' ' + (def as any).unit : '';
                 const zec = (def as any).decimals;
                 const txt = Number.isFinite(Number(zec)) && Number.isFinite(Number(v))

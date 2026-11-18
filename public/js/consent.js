@@ -1,13 +1,13 @@
 // consent.js — poarta de consimțământ pentru cookie-uri NEESENȚIALE (azi: Google Analytics 4).
 //
 // DE CE: până acum gtag se încărca necondiționat în <head>-ul fiecărei pagini — inclusiv pe
-// confidentialitate.html, chiar pagina care declara „Nu folosim cookie-uri de publicitate/tracking".
-// Bannerul avea un singur buton („Am înțeles"), fără posibilitate de refuz, și se afișa DUPĂ ce gtag
+// confidentialitate.html, chiar pagina care declara „Nu folosim cookie-uri de publicitate/tracking”.
+// Bannerul avea un singur buton („Am înțeles”), fără posibilitate de refuz, și se afișa DUPĂ ce gtag
 // pornise deja. GDPR/ePrivacy cer consimțământ PREALABIL și la fel de ușor de retras ca de acordat.
 //
-// CUM: analytics-ul nu se încarcă deloc până când vizitatorul apasă „Accept". Refuzul se ține minte la fel
+// CUM: analytics-ul nu se încarcă deloc până când vizitatorul apasă „Accept”. Refuzul se ține minte la fel
 // ca acceptul (altfel bannerul ar reapărea la fiecare pagină și ar împinge omul spre accept).
-// Alegerea se poate schimba oricând: window.raConsentReset() sau linkul „Setări cookie-uri" din politică.
+// Alegerea se poate schimba oricând: window.raConsentReset() sau linkul „Setări cookie-uri” din politică.
 (function () {
   var GA_ID = 'G-CQCGC0C705';
   var KEY = 'ra_consent_v1'; // valori: 'granted' | 'denied'

@@ -53,7 +53,7 @@ export function AiAssistants() {
                   const u = byKind[a.kind] || {};
                   const calls = Number(u.calls) || 0, used = calls > 0;
                   const last = fmtWhen(u.last_used);
-                  // Etichete ca pe web („Cereri API"). Ecranul e doar pentru super-admin (păzit în App.tsx + pe server).
+                  // Etichete ca pe web („Cereri API”). Ecranul e doar pentru super-admin (păzit în App.tsx + pe server).
                   const stats = [{ v: fmtN(calls), k: 'Cereri API' }, { v: fmtTok(u.input_tokens), k: 'Tokeni in' }, { v: fmtTok(u.output_tokens), k: 'Tokeni out' }];
                   return (
                     <div style={`background:var(--bg-panel);border:1px solid var(--border);border-top:3px solid ${a.color};border-radius:12px;padding:13px 14px`}>

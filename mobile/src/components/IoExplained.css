@@ -1,4 +1,4 @@
-/* „Ce trimite mașina" — lista semnalelor, cu ce înseamnă fiecare.
+/* „Ce trimite mașina” — lista semnalelor, cu ce înseamnă fiecare.
    Aceleași reguli de culoare ca fereastra din web: verde = trimis și cunoscut, portocaliu = trimis
    dar necatalogat. Datele vin gata prelucrate de la server (/api/devices/:imei/io-explained). */
 .iox-intro {

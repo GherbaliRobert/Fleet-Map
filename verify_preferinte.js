@@ -1,4 +1,4 @@
-// verify_preferinte.js — „Setări → Preferințe": contul meu, cum arată aplicația, alertele.
+// verify_preferinte.js — „Setări → Preferințe”: contul meu, cum arată aplicația, alertele.
 //
 //   node verify_preferinte.js
 //
@@ -9,11 +9,11 @@
 //   • **Catalogul dublu.** Preferințele sunt scrise în DOUĂ locuri: în interfață (ce se vede) și în
 //     server (ce se acceptă). Dacă se despart, ori apare pe ecran un buton pe care serverul îl
 //     refuză în tăcere, ori invers. Proba compară cele două liste cheie cu cheie.
-//   • **Cine hotărăște.** „Filele pentru camioane" nu e gustul unui om, e „firma asta n-are
+//   • **Cine hotărăște.** „Filele pentru camioane” nu e gustul unui om, e „firma asta n-are
 //     camioane" — n-are ce căuta în contul cuiva. Iar tema sau sunetul sunt invers. Amestecul se
 //     vede greu cu ochiul, dar se probează ușor.
 // Plus regula din CLAUDE.md: în ecranele clientului nu scriem în limba noastră. Proba caută cuvintele
-// pe care le scăpăm cel mai des („heatmap", „reverse-geocode", „default", „marker").
+// pe care le scăpăm cel mai des („heatmap”, „reverse-geocode”, „default”, „marker”).
 
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -37,8 +37,8 @@ const srvSrc = fs.readFileSync('./server.js', 'utf8');
 
 // ─────────────────────────────────────────────────────────────────────────────
 sect('1. Catalogul din interfață se poate citi');
-const i1 = html.indexOf('    // ── începe „Preferințele mele"');
-const i2 = html.indexOf('    // ── sfârșit „Preferințele mele" ──', i1);
+const i1 = html.indexOf('    // ── începe „Preferințele mele”');
+const i2 = html.indexOf('    // ── sfârșit „Preferințele mele” ──', i1);
 T('găsesc catalogul între repere', i1 > 0 && i2 > i1, 'i1=' + i1 + ' i2=' + i2);
 if (i1 < 0 || i2 < i1) { console.log('\n' + ok + ' verificări trecute, ' + (rele + 1) + ' picate'); process.exit(1); }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,8 +47,8 @@ const C = new Function('_usEsc', html.slice(i1, i2) +
   ' ctrl: prefControl, rand: prefRand, randF: prefRandFirma, ecran: prefEcranHtml, cont: prefContHtml };')(esc);
 
 sect('2. Catalogul din server se poate citi');
-const j1 = srvSrc.indexOf('// ── începe „Catalogul de preferințe"');
-const j2 = srvSrc.indexOf('// ── sfârșit „Catalogul de preferințe" ──', j1);
+const j1 = srvSrc.indexOf('// ── începe „Catalogul de preferințe”');
+const j2 = srvSrc.indexOf('// ── sfârșit „Catalogul de preferințe” ──', j1);
 T('găsesc catalogul între repere', j1 > 0 && j2 > j1, 'j1=' + j1 + ' j2=' + j2);
 const S = new Function(srvSrc.slice(j1, j2) +
   '\n; return { P: UI_PREFS, KEYS: UI_PREF_KEYS, DEF: UI_PREF_DEFAULTS, filtru: _filterUiKeys, chei: _cheiPentru };')();
@@ -63,11 +63,11 @@ T('aceleași chei în interfață și în server', cheiUI.join(',') === cheiSrv.
 C.T.forEach(function (t) {
   const p = S.P.filter(x => x.k === t.k)[0];
   if (!p) return;
-  T('„' + t.k + '": același stăpân în ambele', p.unde === t.unde, 'server=' + p.unde + ' ui=' + t.unde);
-  T('„' + t.k + '": același fel', (p.tip === 'bifa') === (t.tip === 'bifa'), 'server=' + p.tip + ' ui=' + t.tip);
+  T('„' + t.k + '”: același stăpân în ambele', p.unde === t.unde, 'server=' + p.unde + ' ui=' + t.unde);
+  T('„' + t.k + '”: același fel', (p.tip === 'bifa') === (t.tip === 'bifa'), 'server=' + p.tip + ' ui=' + t.tip);
   if (t.tip === 'lista') {
     const aUI = t.valori.map(v => v[0]).sort().join(',');
-    T('„' + t.k + '": aceleași variante', aUI === (p.valori || []).slice().sort().join(','), 'ui=' + aUI + ' server=' + (p.valori || []).join(','));
+    T('„' + t.k + '”: aceleași variante', aUI === (p.valori || []).slice().sort().join(','), 'ui=' + aUI + ' server=' + (p.valori || []).join(','));
   }
 });
 
@@ -79,7 +79,7 @@ T('dar sunt la regulile firmei', fir.indexOf('tab_camion') >= 0 && fir.indexOf('
 T('tema e numai a omului', fir.indexOf('tema') < 0 && pers.indexOf('tema') >= 0);
 T('sunetul alertelor e numai al omului', fir.indexOf('sunet_alerte') < 0 && pers.indexOf('sunet_alerte') >= 0);
 ['overspeed_heatmap', 'replay_marker', 'geocoded_address', 'show_driver_names'].forEach(k =>
-  T('„' + k + '" se vede în ambele ecrane', pers.indexOf(k) >= 0 && fir.indexOf(k) >= 0));
+  T('„' + k + '” se vede în ambele ecrane', pers.indexOf(k) >= 0 && fir.indexOf(k) >= 0));
 
 sect('5. Fără limba noastră pe ecranul clientului');
 // Regula din CLAUDE.md. Cuvintele astea chiar erau pe ecran înainte de rescriere.
@@ -87,15 +87,15 @@ const JARGON = ['heatmap', 'reverse-geocode', 'nominatim', 'replay', 'marker', '
 C.T.forEach(function (t) {
   const text = (t.label + ' ' + t.desc + ' ' + (t.valori || []).map(v => v[1]).join(' ')).toLowerCase();
   const gasit = JARGON.filter(w => text.indexOf(w) >= 0);
-  T('„' + t.k + '" e scris pe românește', !gasit.length, gasit.join(', '));
+  T('„' + t.k + '” e scris pe românește', !gasit.length, gasit.join(', '));
 });
-C.T.forEach(t => T('„' + t.k + '" are și explicație, nu doar titlu', !!(t.desc && t.desc.length > 25), t.desc));
-C.T.forEach(t => T('„' + t.k + '" stă într-un grup care există', C.GR.some(g => g.g === t.g) || t.unde === 'firma', t.g));
+C.T.forEach(t => T('„' + t.k + '” are și explicație, nu doar titlu', !!(t.desc && t.desc.length > 25), t.desc));
+C.T.forEach(t => T('„' + t.k + '” stă într-un grup care există', C.GR.some(g => g.g === t.g) || t.unde === 'firma', t.g));
 
 sect('6. Sursa valorii, pe înțelesul omului');
-T('„setată de tine"', C.sursa('user')[0] === 'setată de tine', C.sursa('user')[0]);
-T('„hotărâtă de firmă"', C.sursa('company')[0] === 'hotărâtă de firmă', C.sursa('company')[0]);
-T('„așa e din fabrică" (nu „default aplicație")', C.sursa('app')[0] === 'așa e din fabrică', C.sursa('app')[0]);
+T('„setată de tine”', C.sursa('user')[0] === 'setată de tine', C.sursa('user')[0]);
+T('„hotărâtă de firmă”', C.sursa('company')[0] === 'hotărâtă de firmă', C.sursa('company')[0]);
+T('„așa e din fabrică” (nu „default aplicație”)', C.sursa('app')[0] === 'așa e din fabrică', C.sursa('app')[0]);
 
 sect('7. Comenzile de pe ecran arată valoarea curentă');
 const tTema = C.T.filter(t => t.k === 'tema')[0];
@@ -107,22 +107,22 @@ const bifa = C.ctrl(C.T.filter(t => t.k === 'sunet_alerte')[0], true, 'usSetPref
 T('bifa pornită se vede pornită', /<input[^>]* checked/.test(bifa));
 T('bifa oprită nu', !/<input[^>]* checked/.test(C.ctrl(C.T.filter(t => t.k === 'sunet_alerte')[0], false, 'usSetPref')));
 
-sect('8. Butonul „înapoi la regula firmei" apare doar unde are sens');
+sect('8. Butonul „înapoi la regula firmei” apare doar unde are sens');
 T('apare la o preferință pe care firma o poate hotărî, setată de om',
   /pref-reset/.test(C.rand(C.T.filter(t => t.k === 'overspeed_heatmap')[0], true, 'user')));
 T('NU apare când valoarea vine de la firmă',
   !/pref-reset/.test(C.rand(C.T.filter(t => t.k === 'overspeed_heatmap')[0], true, 'company')));
-// Tema e numai a omului: „înapoi la regula firmei" n-ar avea la ce să se întoarcă.
+// Tema e numai a omului: „înapoi la regula firmei” n-ar avea la ce să se întoarcă.
 T('NU apare la o preferință pur personală', !/pref-reset/.test(C.rand(tTema, 'inchisa', 'user')));
 
 sect('9. Ecranul întreg');
 const ecran = C.ecran({ tema: 'inchisa', sunet_alerte: true, overspeed_heatmap: true }, { tema: 'user' });
-C.GR.forEach(g => T('grupul „' + g.et + '" apare', ecran.indexOf(g.et) >= 0));
-T('filele pentru camioane NU ajung în ecranul personal', ecran.indexOf('Fila „Camion"') < 0);
+C.GR.forEach(g => T('grupul „' + g.et + '” apare', ecran.indexOf(g.et) >= 0));
+T('filele pentru camioane NU ajung în ecranul personal', ecran.indexOf('Fila „Camion”') < 0);
 T('niciun grup rămas gol', !/pref-gr"><div class="set-sec-h">[^<]*<\/div><p[^>]*><\/p><\/div>/.test(ecran));
 T('ecranul de pornire se poate scoate din listă', C.ecran({}, {}, false).indexOf('Ecranul cu care se deschide') < 0);
 
-sect('10. „Contul meu"');
+sect('10. „Contul meu”');
 const cont = C.cont({ full_name: 'Ion Popescu', phone: '0722111222', username: 'ion@transport.ro' });
 T('are numele', /id="pref-nume"[^>]*value="Ion Popescu"/.test(cont));
 T('are telefonul', /id="pref-tel"[^>]*value="0722111222"/.test(cont));
@@ -148,7 +148,7 @@ T('fiecare cheie are valoare din fabrică', S.KEYS.every(k => S.DEF[k] !== undef
 
 sect('11b. Hartile oferite in preferinte chiar exista');
 // CARTO a inceput sa ceara cheie: tile-urile lui vin cu "API KEY REQUIRED" scris peste hartă. Am
-// scos straturile alea, dar preferinta „harta" le mai oferea — adica omul ar fi ales un strat care
+// scos straturile alea, dar preferinta „harta” le mai oferea — adica omul ar fi ales un strat care
 // nu se deseneaza. Proba leaga cele doua liste, ca sa nu se mai poata desparti.
 const mt = html.indexOf('const MAP_TILES = {');
 const mtEnd = html.indexOf('};', mt);
@@ -163,7 +163,7 @@ if (mt > 0) {
   T('si fiecare strat din catalog se poate alege', !straturi.filter(v => oferite.indexOf(v) < 0).length,
     'straturi neoferite: ' + straturi.filter(v => oferite.indexOf(v) < 0).join(', '));
   T('niciun strat nu mai vine de la un furnizor care cere cheie', !/cartocdn/.test(bucata));
-  T('„Automat" nu mai cade pe un strat inexistent', !/return document\.body\.classList\.contains\('dark'\) \? 'dark' : 'light';/.test(html));
+  T('„Automat” nu mai cade pe un strat inexistent', !/return document\.body\.classList\.contains\('dark'\) \? 'dark' : 'light';/.test(html));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ const login = async (u, p) => {
   let me = await (await GET('/api/me', ckD)).json();
   T('numele nou se vede', me.full_name === 'Dispecer Nou', me.full_name);
   T('telefonul la fel', me.phone === '0722 111 222', me.phone);
-  // Regresia care ne-a mai costat o dată: cu COALESCE, un câmp golit însemna „lasă-l cum era".
+  // Regresia care ne-a mai costat o dată: cu COALESCE, un câmp golit însemna „lasă-l cum era”.
   r = await PUT('/api/me/profile', { phone: '' }, ckD);
   me = await (await GET('/api/me', ckD)).json();
   T('își poate ȘTERGE telefonul', !me.phone, me.phone);

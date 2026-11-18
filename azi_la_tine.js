@@ -1,24 +1,24 @@
-// azi_la_tine.js — „Azi la tine" (Capitolul 2, pasul 1; Alin, 15.10, macheta aprobată): prima privire în RA Insight. Ce
+// azi_la_tine.js — „Azi la tine” (Capitolul 2, pasul 1; Alin, 15.10, macheta aprobată): prima privire în RA Insight. Ce
 // au găsit agenții — mașinile care nu transmit și scăderile de combustibil de azi (RA Watch), actele și reviziile (RA Care),
 // mașinile libere acum (RA Dispatch), ziua de ieri (RA Client), orele de condus (RA Compliance), stilul de condus (RA
 // Optimize) — în rânduri scurte, fiecare cu butoanele lui. Pe reguli, din ce au socotit deja agenții; fără model și fără
-// să se numere, pe niciun pachet (Alin: „3. Da").
+// să se numere, pe niciun pachet (Alin: „3. Da”).
 //
 // Curat: fără bază, fără rețea. Serverul adună datele (regulile agenților: agents.esteFaraSemnal / esteLiber, listele de
 // termene: preaviz.js prin _ramMentenanta), aici se scriu rândurile. Păzit de verify_un_singur_insight.js.
 'use strict';
 
 const NUME = { watch: 'RA Watch', care: 'RA Care', dispatch: 'RA Dispatch', client: 'RA Client', optimize: 'RA Optimize', compliance: 'RA Compliance',
-  insight: 'RA Insight' };   // „insight" = șoferii pe mașini (pasul 2, 22.10): nu e un agent, deci nu se oprește odată cu agenții
-const MAX_RANDURI = 3;      // „Azi la tine" e o privire, nu o listă: restul stă în paginile lor (Alin, 15.10: macheta „mai simplu")
+  insight: 'RA Insight' };   // „insight” = șoferii pe mașini (pasul 2, 22.10): nu e un agent, deci nu se oprește odată cu agenții
+const MAX_RANDURI = 3;      // „Azi la tine” e o privire, nu o listă: restul stă în paginile lor (Alin, 15.10: macheta „mai simplu”)
 const MAX_NUME = 3;         // câte mașini se scriu pe nume într-un rând
 const ORDINE = { r: 0, w: 1, b: 2, g: 3 };
 
-// „15 minute", dar „24 de ore": „de" când ultimele două cifre nu sunt între 1 și 19 (ca _raxDe din pagină).
+// „15 minute”, dar „24 de ore”: „de” când ultimele două cifre nu sunt între 1 și 19 (ca _raxDe din pagină).
 function de(n) { const r = Math.abs(Math.round(n)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
 function masini(n) { return n === 1 ? 'o mașină' : n + de(n) + 'mașini'; }
 function nr(n) { return Math.round(Number(n) || 0).toLocaleString('ro-RO'); }
-// Minute → „45 min", „3 h", „1 h 20 min", „o zi", „3 zile".
+// Minute → „45 min”, „3 h”, „1 h 20 min”, „o zi”, „3 zile”.
 function durata(min) {
   const m = Math.max(1, Math.round(Number(min) || 0));
   if (m < 60) return m + ' min';
@@ -26,7 +26,7 @@ function durata(min) {
   const z = Math.floor(m / 1440);
   return z === 1 ? 'o zi' : z + de(z) + 'zile';
 }
-// Pragul firmei, în vorbe: „de peste o oră", „de peste 2 ore", „de peste 30 de minute".
+// Pragul firmei, în vorbe: „de peste o oră”, „de peste 2 ore”, „de peste 30 de minute”.
 function pragText(offlineMin) {
   const m = Math.round(Number(offlineMin) || 60);
   if (m === 60) return 'de peste o oră';
@@ -39,7 +39,7 @@ function lista(nume, n) { return nume.slice(0, MAX_NUME).join(', ') + (n > MAX_N
 //   agenti: ['watch', 'care', …] — agenții porniți la firmă (doar ei au rânduri);
 //   offlineMin: pragul RA Watch al firmei;
 //   faraSemnal: [{ imei, eticheta, nr, minute }] — mașinile care nu transmit (agents.esteFaraSemnal);
-//   constatari: [{ agent, severity, fkey, title, imei, eticheta, nr }] — ce au scris agenții azi (fără „offline", socotit acum);
+//   constatari: [{ agent, severity, fkey, title, imei, eticheta, nr }] — ce au scris agenții azi (fără „offline”, socotit acum);
 //   termene: [{ stare: 'depasit'|'curand', cine, ce, cand }] — actele, reviziile, permisele (aceeași listă ca Mentenanță & acte);
 //   libere: număr — mașinile libere acum (agents.esteLiber);
 //   ieri: { km, active, total, top: { eticheta, nr, km } } | null — ziua de ieri (cursele);
@@ -51,7 +51,7 @@ function lista(nume, n) { return nume.slice(0, MAX_NUME).join(', ') + (n > MAX_N
 // pentru RA Insight, care se numără) stă după butoanele gratuite, ca un clic pe rând să nu consume o întrebare fără să știe.
 // Butoanele: { fel: 'harta', imeis } · { fel: 'intreaba', trimite } (pe reguli) · { fel: 'raport', trimite } (o cerere de raport,
 // pe reguli) · { fel: 'dece', trimite } (o întrebare pentru RA Insight — doar unde pachetul are AI) · { fel: 'acte', ramura,
-// trimite } (ramura „Mentenanță & acte"; fără ramuri, întrebarea pe reguli). `chei` = rândurile care cer atenție (roșu,
+// trimite } (ramura „Mentenanță & acte”; fără ramuri, întrebarea pe reguli). `chei` = rândurile care cer atenție (roșu,
 // portocaliu), pentru punctul mov de pe bulă: ceva nou de la ultima deschidere.
 function randuri(d) {
   const x = d || {};
@@ -94,7 +94,7 @@ function randuri(d) {
       [{ fel: 'raport', text: 'Stilul de condus', trimite: 'Fă-mi raportul EcoDrive pentru toată flota, azi' }]);
   }
 
-  // RA Care — termenele (aceeași listă ca „Mentenanță & acte"): întâi ce a trecut, apoi ce urmează.
+  // RA Care — termenele (aceeași listă ca „Mentenanță & acte”): întâi ce a trecut, apoi ce urmează.
   const tr = x.termene || [];
   const dep = tr.filter(function (t) { return t.stare === 'depasit'; }), cur = tr.filter(function (t) { return t.stare === 'curand'; });
   const termen = function (t) { return t.ce + ' la **' + t.cine + '** — ' + t.cand; };
@@ -102,8 +102,8 @@ function randuri(d) {
   if (dep.length) pune('care', 'r', 'care:depasit:' + dep.length, (dep.length === 1 ? 'Trecut de termen: ' + termen(dep[0]) : dep.length + ' termene trecute: ' + lista(dep.map(termen), dep.length)) + '.', [acte]);
   if (cur.length) pune('care', 'w', 'care:curand:' + cur.length, (cur.length === 1 ? 'Urmează: ' + termen(cur[0]) : cur.length + ' termene urmează: ' + lista(cur.map(termen), cur.length)) + '.', [acte]);
 
-  // RA Insight — șoferii pe mașini (pasul 2, 22.10; macheta M5): o mașină de un fel = un rând cu „Propunere" (cartonașul cu „Da",
-  // pe reguli, nenumărat); mai multe de același fel = un rând strâns, spre pagina „Șoferi pe mașini".
+  // RA Insight — șoferii pe mașini (pasul 2, 22.10; macheta M5): o mașină de un fel = un rând cu „Propunere” (cartonașul cu „Da”,
+  // pe reguli, nenumărat); mai multe de același fel = un rând strâns, spre pagina „Șoferi pe mașini”.
   const sf = Array.isArray(x.soferi) ? x.soferi : [];
   const prop = function (s) { return [{ fel: 'propunere', text: 'Propunere', trimite: 'Propune un șofer pentru ' + s.nr }]; };
   const pag = [{ fel: 'pagina', text: 'Șoferi pe mașini', ramura: 'soferi', trimite: 'Arată-mi potrivirea șoferilor pe toate mașinile' }];
@@ -138,7 +138,7 @@ function randuri(d) {
   const restul = ordonate.filter(function (r) { return r.cheie !== 'ieri'; });
   const finale = restul.slice(0, MAX_RANDURI).concat(restul.length < MAX_RANDURI ? ieri : []);
   const atentie = function (r) { return r.nivel === 'r' || r.nivel === 'w'; };
-  // `deVazut` = câte cer atenție de tot (și cele care nu încap în cele trei rânduri): „5 de văzut".
+  // `deVazut` = câte cer atenție de tot (și cele care nu încap în cele trei rânduri): „5 de văzut”.
   return { randuri: finale, chei: finale.filter(atentie).map(function (r) { return r.cheie; }), deVazut: ordonate.filter(atentie).length };
 }
 

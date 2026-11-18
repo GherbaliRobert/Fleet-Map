@@ -10,24 +10,24 @@ import { rutaPlanSofer, rutaPlanSimulator, RUTA_PLANURI } from './incarcare';
 
 let registered = false;
 
-// ── începe „unde duce un anunț" ──
+// ── începe „unde duce un anunț” ──
 // Anunțurile noastre de lucru (30.09, doar la noi) duc drept la treaba de făcut, ca pe web (notifAparateNoi /
-// notifMontajDeFacturat) — nu în „Detaliu eveniment", care pentru ele era gol („Fără poziție GPS…", fără buton):
-//   • „aparate noi transmit" → Dispozitive, grupul Neasignate, cu aparatele din anunț bifate și firma propusă aleasă
+// notifMontajDeFacturat) — nu în „Detaliu eveniment”, care pentru ele era gol („Fără poziție GPS…”, fără buton):
+//   • „aparate noi transmit” → Dispozitive, grupul Neasignate, cu aparatele din anunț bifate și firma propusă aleasă
 //     în bară: /admin/devices?filtru=neasignate&bifate=<imei,imei>&firma=<id>. Dispozitive citește adresa
 //     (anuntDinAdresa), bifează și aparatele propuse aceleiași firme din alte anunțuri, apoi o curăță.
-//   • „Montaj de facturat" → Facturare, „Generează factură" unică, cu lucrările puse (rutaFactura, lib/factura.ts).
+//   • „Montaj de facturat” → Facturare, „Generează factură” unică, cu lucrările puse (rutaFactura, lib/factura.ts).
 // Bucata e fără JSX și fără stare: proba o rulează lângă pagina web și lângă serverul pornit.
-//   • „Cerere demo" → Cereri demo (web: goSistem('demoreq')); n-are poziție GPS, detaliul ei era gol pe telefon.
-//   • termenul de montaj („Montaj, mai sunt N zile" / „Termenul de montaj a trecut") → calendarul, pe contractul din
+//   • „Cerere demo” → Cereri demo (web: goSistem('demoreq')); n-are poziție GPS, detaliul ei era gol pe telefon.
+//   • termenul de montaj („Montaj, mai sunt N zile” / „Termenul de montaj a trecut”) → calendarul, pe contractul din
 //     anunț (`contractId`), unde se programează restul. Pe web încă deschide modalul gol — trecut la Alin (01.10).
-//   • cererile (23.10): `cerere_echipa` → „Cereri de la clienți", la noi; `cerere_preluata|programata|rezolvata` → „Cererile tale",
+//   • cererile (23.10): `cerere_echipa` → „Cereri de la clienți”, la noi; `cerere_preluata|programata|rezolvata` → „Cererile tale”,
 //     la client (web: notifCerere). Adresele sunt scrise aici ca text; proba le leagă de lib/cereriEchipa.ts.
-//   • „Au mai rămas … întrebări" (13.11): administratorul firmei, la 80% din pachet → RA Insight, „Pachet și conturi".
-//   • „De azi aveți pachetul …" (16.11): la orice schimbare de pachet cifrele date pe nume se șterg → tot „Pachet și conturi",
+//   • „Au mai rămas … întrebări” (13.11): administratorul firmei, la 80% din pachet → RA Insight, „Pachet și conturi”.
+//   • „De azi aveți pachetul …” (16.11): la orice schimbare de pachet cifrele date pe nume se șterg → tot „Pachet și conturi”,
 //     unde administratorul le împarte din nou.
-//   • anunțurile NOASTRE despre RA Insight (13.11, Alin: „4. DA": soldul, refuzul, firmele la 80% / 100%, plafonul) →
-//     „RA Insight · control" (web: notifAiControl).
+//   • anunțurile NOASTRE despre RA Insight (13.11, Alin: „4. DA”: soldul, refuzul, firmele la 80% / 100%, plafonul) →
+//     „RA Insight · control” (web: notifAiControl).
 export const TIPURI_AI_NOI = ['ai_sold', 'ai_intrebari', 'ai_plasa', 'ai_refuz', 'ai_refuz_gata'];
 export const TIPURI_CU_LOC = ['aparate_noi', 'montaj_de_facturat', 'demo_request', 'montaj_termen', 'plan_incarcare', 'plan_incarcat', 'plan_problema', 'mail_nou', 'cerere_echipa', 'cerere_preluata', 'cerere_programata', 'cerere_rezolvata', 'ai_intrebari_firma', 'ai_pachet_nou'].concat(TIPURI_AI_NOI);
 // `data` vine ca obiect (JSONB) sau, pe unele baze, ca text JSON — ca pe web (loadNotifications).
@@ -42,7 +42,7 @@ function idFirma(v: any): number | null {
 // Adresa anunțului, sau null: anunțul n-are un loc al lui și se deschide detaliul, ca până acum.
 export function adresaAnunt(tip: any, date: any): string | null {
   const d = dateAnunt(date);
-  if (tip === 'mail_nou') return '/admin/mail';   // „Email nou" (panoul Mail, etapa 2) → Mail, fila Primite
+  if (tip === 'mail_nou') return '/admin/mail';   // „Email nou” (panoul Mail, etapa 2) → Mail, fila Primite
   if (tip === 'cerere_echipa') return '/admin/cereri';
   if (tip === 'cerere_preluata' || tip === 'cerere_programata' || tip === 'cerere_rezolvata') return '/echipa?fila=lista';
   if (tip === 'aparate_noi') {
@@ -59,11 +59,11 @@ export function adresaAnunt(tip: any, date: any): string | null {
     return firma != null ? rutaFactura(firma, 'unica', { lucrari: Array.isArray(d.lucrari) ? d.lucrari : [] }) : '/billing';
   }
   if (tip === 'demo_request') return '/admin/demo-requests';
-  // „Au mai rămas … întrebări" (administratorul firmei, la 80% din pachet — 13.11) și „De azi aveți pachetul …" (16.11) → RA Insight,
-  // „Pachet și conturi" (web: insightPachetConturi, după `data.pachet`).
+  // „Au mai rămas … întrebări” (administratorul firmei, la 80% din pachet — 13.11) și „De azi aveți pachetul …” (16.11) → RA Insight,
+  // „Pachet și conturi” (web: insightPachetConturi, după `data.pachet`).
   if (tip === 'ai_intrebari_firma' || tip === 'ai_pachet_nou') return '/insight/pachet';
   if (TIPURI_AI_NOI.indexOf(String(tip)) >= 0) return '/admin/ai-usage';
-  // Planurile de încărcare (12.10): șoferul — planul primit; dispecerul („Am încărcat" / „Am o problemă") — planul, în simulator.
+  // Planurile de încărcare (12.10): șoferul — planul primit; dispecerul („Am încărcat” / „Am o problemă”) — planul, în simulator.
   if (tip === 'plan_incarcare' || tip === 'plan_incarcat' || tip === 'plan_problema') {
     const id = idFirma(d.planId);
     return id == null ? RUTA_PLANURI : (tip === 'plan_incarcare' ? rutaPlanSofer(id) : rutaPlanSimulator(id));
@@ -99,7 +99,7 @@ export function adresaPush(data: any): string {
   if (d.imei) return '/vehicles/' + encodeURIComponent(d.imei);
   return '/notifications';
 }
-// ── sfârșit „unde duce un anunț" ──
+// ── sfârșit „unde duce un anunț” ──
 
 // Înregistrează tokenul la backend cu retry exponențial (3 încercări). Eșecul nu mai e silențios.
 async function registerToken(token: string, attempt = 0) {

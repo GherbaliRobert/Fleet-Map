@@ -5,12 +5,12 @@
 // Ce apără: scadențarul de descărcare (28 de zile cardul, 90 memoria vehiculului), legarea fișierului
 // de șoferul ALES din aplicație, istoricul cu golurile din arhivă, și — cel mai important — că un
 // fișier pe care nu l-am putut citi NU trece drept descărcare valabilă. Dacă ar trece, aplicația ar
-// spune „ești în regulă" pe baza unui fișier pe care nu-l înțelege. Ăsta ar fi cel mai rău fel de
+// spune „ești în regulă” pe baza unui fișier pe care nu-l înțelege. Ăsta ar fi cel mai rău fel de
 // greșeală posibilă aici: liniștitoare și falsă.
 //
 // Și apără CINE intră în listă: doar șoferii cu card de tahograf, doar vehiculele care au tahograf,
 // niciodată flota demo. Serverul de probă pornește ANUME cu demo-ul activ (fără DEMO_DISABLED), ca
-// DEMO0001..5 să existe cu adevărat în bază — altfel „nu apar" ar fi trecut degeaba, pe o bază goală.
+// DEMO0001..5 să existe cu adevărat în bază — altfel „nu apar” ar fi trecut degeaba, pe o bază goală.
 
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -77,13 +77,13 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
 
   // modulul e per companie; contul de probă e super-admin, deci îl are
   const s0 = await GET('/api/tacho/scadentar');
-  if (s0.status === 403) { console.log('\n⚠ Modulul „tahograf" nu e activ pentru contul de probă — nu pot verifica.'); return gata(1); }
+  if (s0.status === 403) { console.log('\n⚠ Modulul „tahograf” nu e activ pentru contul de probă — nu pot verifica.'); return gata(1); }
   T('scadențarul răspunde', s0.status === 200, 'a dat ' + s0.status);
   const d0 = await s0.json();
   T('pragurile sunt cele legale', d0.praguri && d0.praguri.card === 28 && d0.praguri.vu === 90, JSON.stringify(d0.praguri));
 
   // ─── un șofer nou ───
-  sect('1. Un șofer nou apare imediat ca „niciodată descărcat"');
+  sect('1. Un șofer nou apare imediat ca „niciodată descărcat”');
   // categoriile NU sunt decor: în tahograf intră doar șoferii cu card, adică cei cu C*/D* pe permis
   const cr = await POST('/api/drivers', { name: 'Vasile Probă', phone: '0700000000', license_categories: 'B,C,CE' });
   const drv = await cr.json();
@@ -91,7 +91,7 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
   const s1 = await (await GET('/api/tacho/scadentar')).json();
   const gasit = (s1.soferi || []).find(x => x.id === drv.id);
   T('apare în scadențar fără să fi încărcat nimic', !!gasit, (s1.soferi || []).map(x => x.nume).join(', '));
-  T('starea e „niciodata", nu „ok"', gasit && gasit.stare === 'niciodata', gasit && gasit.stare);
+  T('starea e „niciodata”, nu „ok”', gasit && gasit.stare === 'niciodata', gasit && gasit.stare);
   T('nu pretinde zile rămase', gasit && gasit.zileRamase === null, gasit && gasit.zileRamase);
   T('sumarul îl numără', s1.sumar.niciodata >= 1, JSON.stringify(s1.sumar));
 
@@ -110,7 +110,7 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
 
   const s2 = await (await GET('/api/tacho/scadentar')).json();
   const g2 = (s2.soferi || []).find(x => x.id === drv.id);
-  T('nu mai e „niciodată"', g2 && g2.stare === 'ok', g2 && g2.stare);
+  T('nu mai e „niciodată”', g2 && g2.stare === 'ok', g2 && g2.stare);
   T('se socotește de la ULTIMA ZI acoperită, nu de la data încărcării',
     g2 && g2.zileRamase === 28 - 1, g2 && ('rămase ' + g2.zileRamase + ', ultima ' + g2.ultima));
   T('numără fișierul', g2 && g2.fisiere === 1, g2 && g2.fisiere);
@@ -125,12 +125,12 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
   });
   const uj2 = await up2.json();
   T('se acceptă la încărcare (se păstrează, ca dovadă)', up2.status === 200, up2.status);
-  T('dar e marcat „necitit"', uj2.parsed && uj2.parsed.incredere === 'necitit', uj2.parsed && uj2.parsed.incredere);
+  T('dar e marcat „necitit”', uj2.parsed && uj2.parsed.incredere === 'necitit', uj2.parsed && uj2.parsed.incredere);
   T('nu scoate ore din el', uj2.parsed && (!uj2.parsed.totals || !uj2.parsed.totals.conducereMin));
 
   const s3 = await (await GET('/api/tacho/scadentar')).json();
   const g3 = (s3.soferi || []).find(x => x.id === drv2.id);
-  T('șoferul RĂMÂNE „niciodată descărcat"', g3 && g3.stare === 'niciodata',
+  T('șoferul RĂMÂNE „niciodată descărcat”', g3 && g3.stare === 'niciodata',
     g3 && (g3.stare + ' — un fișier necitit l-a scos fals din întârziere!'));
 
   // ─── istoric + goluri ───
@@ -174,7 +174,7 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
   sect('6. Ruta cu nume fix nu e înghițită de /api/tacho/:id');
   const sc = await GET('/api/tacho/scadentar');
   const j = await sc.json();
-  T('„scadentar" chiar ajunge la scadențar, nu la un fișier cu id-ul „scadentar"',
+  T('„scadentar” chiar ajunge la scadențar, nu la un fișier cu id-ul „scadentar”',
     sc.status === 200 && Array.isArray(j.soferi), sc.status + ' · ' + Object.keys(j).join(','));
 
   // ─── CINE intră în listă ─────────────────────────────────────────────────────────────────────
@@ -196,12 +196,12 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
 
   // Cel exclus pentru că n-are categorii completate NU dispare tăcut: e numit pe nume, ca să se
   // poată repara. Ăsta e singurul caz în care lipsa din listă poate ascunde un profesionist real.
-  T('cel fără categorii e numit în „excluse", ca să nu dispară în tăcere',
+  T('cel fără categorii e numit în „excluse”, ca să nu dispară în tăcere',
     (s7.excluse && (s7.excluse.soferiFaraCategorie || []).indexOf('Necompletat Necompletat') >= 0),
     JSON.stringify(s7.excluse));
   T('cel cu permis de B e doar numărat, nu numit', s7.excluse && s7.excluse.soferiNeprofesionisti >= 1,
     JSON.stringify(s7.excluse));
-  T('cel cu categorii completate nu e trecut la „fără categorii"',
+  T('cel cu categorii completate nu e trecut la „fără categorii”',
     (s7.excluse.soferiFaraCategorie || []).indexOf('Marcel Doar B') < 0, JSON.stringify(s7.excluse.soferiFaraCategorie));
 
   sect('8. Doar vehiculele care CHIAR au tahograf');
@@ -209,8 +209,8 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
     { imei: '8811000000001', plate: 'TM 01 CAM', vehicle_type: 'Camion', apare: true },
     { imei: '8811000000002', plate: 'TM 02 CAP', vehicle_type: 'Autotractor', apare: true },
     { imei: '8811000000003', plate: 'TM 03 BUS', vehicle_type: 'Autobuz', apare: true },
-    // capcana: „Tractor" e tractorul AGRICOL, n-are tahograf. O potrivire pe conținut („/tractor/i")
-    // l-ar fi prins odată cu „Autotractor" și ar fi băgat utilaje agricole în scadențar.
+    // capcana: „Tractor” e tractorul AGRICOL, n-are tahograf. O potrivire pe conținut („/tractor/i”)
+    // l-ar fi prins odată cu „Autotractor” și ar fi băgat utilaje agricole în scadențar.
     { imei: '8811000000004', plate: 'TM 04 TRA', vehicle_type: 'Tractor', apare: false },
     { imei: '8811000000005', plate: 'TM 05 DUB', vehicle_type: 'Duba', apare: false },
     { imei: '8811000000006', plate: 'TM 06 AUT', vehicle_type: 'Auto', apare: false },
@@ -228,7 +228,7 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
 
   sect('9. Flota demo nu intră în scadențarul unei flote reale');
   const demoImeis = require('./demo-sim.js').DEMO_IMEIS;
-  // Proba asta trece degeaba dacă demo-ul n-a fost semănat — „nu apar" e adevărat și pe o bază goală.
+  // Proba asta trece degeaba dacă demo-ul n-a fost semănat — „nu apar” e adevărat și pe o bază goală.
   // De-aia întâi DOVEDIM că vehiculele demo chiar sunt în bază (`/api/companies` le numără per companie,
   // fără filtrul de demo), și abia apoi verificăm că scadențarul nu le arată.
   const cos = await (await GET('/api/companies')).json();
@@ -273,10 +273,10 @@ const zi = (d, km) => ({ d, km, s: [sch(0, 0), sch(360, 3), sch(600, 0), sch(645
     T('cel cu permis doar de B nu e pe ecran', ec.indexOf('Marcel Doar B') < 0);
     T('cel fără categorii e NUMIT pe ecran, nu doar scos', ec.indexOf('Necompletat Necompletat') >= 0);
 
-    // Cazul lui azi: nimic de descărcat. Nu are voie să scrie „totul e la zi" — n-ar fi fals liniștitor
+    // Cazul lui azi: nimic de descărcat. Nu are voie să scrie „totul e la zi” — n-ar fi fals liniștitor
     // din greșeală, ci exact pe ecranul care există ca să te avertizeze.
     const gol = rand(Object.assign({}, s9, { soferi: [], vehicule: [] }));
-    T('lista goală NU spune „toate descărcările sunt la zi"', gol.indexOf('la zi') < 0, gol.slice(0, 160));
+    T('lista goală NU spune „toate descărcările sunt la zi”', gol.indexOf('la zi') < 0, gol.slice(0, 160));
     T('lista goală spune că nu e nimic de descărcat', gol.indexOf('Nimic de descărcat') >= 0);
     T('golul explică ce categorie de permis aduce un șofer aici', gol.indexOf('CE') >= 0 && gol.indexOf('permis') >= 0);
     T('golul explică ce categorie de vehicul are tahograf', gol.indexOf('Camion') >= 0 && gol.indexOf('Autotractor') >= 0);

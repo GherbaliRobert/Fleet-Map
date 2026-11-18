@@ -1,16 +1,16 @@
-// verify_flota_incarcare.js — flota pentru simulatorul de încărcare: semiremorcile și remorcile, fila „Încărcare" din fișa
+// verify_flota_incarcare.js — flota pentru simulatorul de încărcare: semiremorcile și remorcile, fila „Încărcare” din fișa
 // vehiculului, filtrul pe fel din lista de vehicule (12.10).
 //
 //   node verify_flota_incarcare.js
 //
 // Robert (12.10): „să adăugăm semiremorcile în aplicație, ca atunci când faci o simulare să nu fii nevoit să bagi
 // dimensiunile de fiecare dată, și să poți alege din flota pe care o ai deja… și pentru camioane, 3,5 t, 7 t" +
-// „le diferențiem, și vreau un icon când vedem lista de vehicule, buton de filtrare".
+// „le diferențiem, și vreau un icon când vedem lista de vehicule, buton de filtrare”.
 //
 // Ce apără proba:
-//   1. regulile (incarcare.js): ce se poate scrie la o semiremorcă și în fila „Încărcare", paleții, lista de tipuri;
+//   1. regulile (incarcare.js): ce se poate scrie la o semiremorcă și în fila „Încărcare”, paleții, lista de tipuri;
 //   2. baza și copia: coloanele fișei se salvează, semiremorcile intră în copie, pleacă odată cu firma, sunt ale firmei;
-//   3. serverul: modulul păzește rutele, scrierea cere „editare vehicule", fila trece prin regulile simulatorului;
+//   3. serverul: modulul păzește rutele, scrierea cere „editare vehicule”, fila trece prin regulile simulatorului;
 //   4. pagina NU scrie cifrele obișnuite (vin de la server); telefonul are aceleași rute și ecranele lui;
 //   5. regulile paginii și ale telefonului (fila, semiremorca, felul vehiculului), RULATE pe aceleași cazuri;
 //   6. pe server pornit: modulul oprit refuză, firma își vede doar semiremorcile ei, fișa primește doar cifre cu sens,
@@ -62,34 +62,34 @@ T('paleți la un rând: prelată 13,6 × 2,48 → 33 EUR / 26 industriali; remor
   inc.paletiEur(4.3, 1.78) === 6 && inc.paletiInd(4.3, 1.78) === 3,
   [inc.paletiEur(13.6, 2.48), inc.paletiInd(13.6, 2.48), inc.paletiEur(7.7, 2.48), inc.paletiInd(7.7, 2.48), inc.paletiEur(4.3, 1.78), inc.paletiInd(4.3, 1.78)]);
 let c = inc.curataRemorca({ fel: 'semiremorca', tip: 'mega', plate: ' tm 12 abc ', lungime_m: '13,62', latime_m: '2.48', inaltime_m: 3, sarcina_kg: '24.000', nr_axe: '3', imei: 'x' });
-T('o semiremorcă bună: număr cu litere mari, „13,62" și „24.000" citite corect, IMEI stricat → gol',
+T('o semiremorcă bună: număr cu litere mari, „13,62” și „24.000” citite corect, IMEI stricat → gol',
   c.rand && c.rand.plate === 'TM 12 ABC' && c.rand.lungime_m === 13.62 && c.rand.sarcina_kg === 24000 && c.rand.nr_axe === 3 && c.rand.imei === null && c.rand.axa_fata_m === null, J(c));
 T('fără fel → refuz', !!inc.curataRemorca({ plate: 'X', lungime_m: 13, latime_m: 2.4, inaltime_m: 2.7 }).eroare);
 T('fără număr → refuz', /număr/i.test(inc.curataRemorca({ fel: 'remorca', lungime_m: 7, latime_m: 2.4, inaltime_m: 2.7 }).eroare || ''));
 T('fără dimensiuni → refuz', /lungimea, lățimea și înălțimea/.test(inc.curataRemorca({ fel: 'remorca', plate: 'X' }).eroare || ''));
-T('dimensiune fără sens → refuz pe față („Lungimea: între 1 și 20")', inc.curataRemorca({ fel: 'semiremorca', plate: 'X', lungime_m: 30, latime_m: 2.4, inaltime_m: 2.7 }).eroare === 'Lungimea: între 1 și 20');
-T('tip necunoscut → gol, nu refuz (omul poate scrie „Altul")', inc.curataRemorca({ fel: 'semiremorca', tip: 'tren', plate: 'X', lungime_m: 13, latime_m: 2.4, inaltime_m: 2.7 }).rand.tip === null);
+T('dimensiune fără sens → refuz pe față („Lungimea: între 1 și 20”)', inc.curataRemorca({ fel: 'semiremorca', plate: 'X', lungime_m: 30, latime_m: 2.4, inaltime_m: 2.7 }).eroare === 'Lungimea: între 1 și 20');
+T('tip necunoscut → gol, nu refuz (omul poate scrie „Altul”)', inc.curataRemorca({ fel: 'semiremorca', tip: 'tren', plate: 'X', lungime_m: 13, latime_m: 2.4, inaltime_m: 2.7 }).rand.tip === null);
 c = inc.curataCaroserie({ inc_fel: 'camion12', inc_lungime: '7,2', inc_ampatament: '', inc_tara_fata: '3600', inc_remorca_id: '5' });
-T('fila „Încărcare": cifre curățate, gol = gol, semiremorca = număr; ce nu vine nu se atinge',
+T('fila „Încărcare”: cifre curățate, gol = gol, semiremorca = număr; ce nu vine nu se atinge',
   c.campuri && c.campuri.inc_fel === 'camion12' && c.campuri.inc_lungime === 7.2 && c.campuri.inc_ampatament === null && c.campuri.inc_tara_fata === 3600 &&
   c.campuri.inc_remorca_id === 5 && !('inc_latime' in c.campuri), J(c));
 T('felul necunoscut → refuz; lungime 99 → refuz', !!inc.curataCaroserie({ inc_fel: 'tren' }).eroare && /Lungimea/.test(inc.curataCaroserie({ inc_lungime: 99 }).eroare || ''));
-T('coloanele fișei: zece, toate „inc_…"', inc.CAMPURI_CAROSERIE.length === 10 && inc.CAMPURI_CAROSERIE.every((k) => /^inc_/.test(k)));
+T('coloanele fișei: zece, toate „inc_…”', inc.CAMPURI_CAROSERIE.length === 10 && inc.CAMPURI_CAROSERIE.every((k) => /^inc_/.test(k)));
 
 // ─── 2. Baza și copia ────────────────────────────────────────────────────────────────────────────────────────────
 sect('2. Baza: coloanele, tabela, copia, firma');
 const iCols = dbSrc.indexOf('const VEHICLE_DETAIL_COLS = [');
 const COLS = iCols > 0 ? dbSrc.slice(iCols, dbSrc.indexOf('];', iCols)) : '';
-T('fișa salvează toate coloanele „Încărcare" (VEHICLE_DETAIL_COLS)', inc.CAMPURI_CAROSERIE.every((k) => COLS.indexOf("'" + k + "'") >= 0));
+T('fișa salvează toate coloanele „Încărcare” (VEHICLE_DETAIL_COLS)', inc.CAMPURI_CAROSERIE.every((k) => COLS.indexOf("'" + k + "'") >= 0));
 T('…cu zecimale unde trebuie (metrii nu se rotunjesc la întreg)', /const DECIMAL_COLS = new Set\(\[[\s\S]{0,200}'inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_ampatament', 'inc_axa_caroserie', 'inc_sa_axa'\]\)/.test(dbSrc));
 T('fiecare coloană e creată în bază', inc.CAMPURI_CAROSERIE.every((k) => new RegExp('ADD COLUMN IF NOT EXISTS ' + k + ' ').test(dbSrc)));
-T('tabela „remorci" are firma și cifrele de care are nevoie simulatorul', /CREATE TABLE IF NOT EXISTS remorci \([\s\S]{0,700}company_id INTEGER[\s\S]{0,700}pivot_axe_m[\s\S]{0,200}limita_axe_kg/.test(dbSrc));
+T('tabela „remorci” are firma și cifrele de care are nevoie simulatorul', /CREATE TABLE IF NOT EXISTS remorci \([\s\S]{0,700}company_id INTEGER[\s\S]{0,700}pivot_axe_m[\s\S]{0,200}limita_axe_kg/.test(dbSrc));
 // Oriunde în listă (alte tabele se adaugă după ea), dar ÎN listă — nu într-un comentariu.
 const iBT = backupSrc.indexOf('const BUSINESS_TABLES = [');
 const BT = iBT >= 0 ? backupSrc.slice(iBT, backupSrc.indexOf('\n];', iBT)).replace(/\/\/[^\n]*/g, '') : '';
 T('semiremorcile intră în copie (BUSINESS_TABLES)', /'remorci',/.test(BT), BT.slice(-200));
 T('pleacă odată cu firma', /async function deleteCompany\(id\) \{[\s\S]{0,400}DELETE FROM remorci WHERE company_id = \$1/.test(dbSrc));
-T('un rând se verifică pe firmă (getRowCompany știe „remorci")', /const allow = \{[^}]*remorci: 1/.test(dbSrc));
+T('un rând se verifică pe firmă (getRowCompany știe „remorci”)', /const allow = \{[^}]*remorci: 1/.test(dbSrc));
 T('ștearsă, nu rămâne legată de nicio mașină', /async function deleteRemorca[\s\S]{0,200}UPDATE devices SET inc_remorca_id = NULL WHERE inc_remorca_id = \$1/.test(dbSrc));
 // Căutat în TOATĂ funcția (de la 05.11 ea rupe și șoferul și grupa firmei vechi, deci e mai lungă), nu într-o fereastră de caractere.
 const iSdc = dbSrc.indexOf('async function setDeviceCompany(');
@@ -99,37 +99,37 @@ T('mașina mutată pe altă firmă își pierde semiremorca obișnuită (era a f
 T('semiremorcile pornesc și ele simulatorul (firmeCuFlotaGrea le adună)', /UNION SELECT DISTINCT company_id FROM remorci WHERE company_id IS NOT NULL/.test(dbSrc));
 
 // ─── 3. Serverul ─────────────────────────────────────────────────────────────────────────────────────────────────
-sect('3. Serverul: modulul păzește, scrierea cere „editare vehicule"');
+sect('3. Serverul: modulul păzește, scrierea cere „editare vehicule”');
 const rute = server.match(/app\.(get|post|put|delete)\('\/api\/remorci[^']*'[^\n]*/g) || [];
 // Șase din 13.10: lista, adăugarea, schimbarea, ștergerea + ce vehicule se pot alege (cuplare) și atașarea la un vehicul.
 T('șase rute pentru semiremorci', rute.length === 6, rute.length);
-T('toate cer modulul „incarcare"', rute.every((r) => /requireFeature\('incarcare'\)/.test(r)));
-T('scrierea cere „editare vehicule"; citirea, doar firma', rute.filter((r) => /^app\.(post|put|delete)/.test(r)).every((r) => /requireEdit\('vehicule'\)/.test(r)) && rute.filter((r) => /^app\.get/.test(r)).every((r) => !/requireEdit/.test(r)));
+T('toate cer modulul „incarcare”', rute.every((r) => /requireFeature\('incarcare'\)/.test(r)));
+T('scrierea cere „editare vehicule”; citirea, doar firma', rute.filter((r) => /^app\.(post|put|delete)/.test(r)).every((r) => /requireEdit\('vehicule'\)/.test(r)) && rute.filter((r) => /^app\.get/.test(r)).every((r) => !/requireEdit/.test(r)));
 T('schimbarea, ștergerea și atașarea verifică firma rândului (ownsRow, 404 ca la un rând care nu există)',
   (server.match(/if \(!\(await ownsRow\(req, 'remorci', req\.params\.id\)\)\) return res\.status\(404\)/g) || []).length === 3);
 T('un rând fără firmă se refuză (super-adminul alege firma)', /Semiremorca trebuie să fie a unei firme — alege firma\./.test(server));
 T('scrierea trece prin incarcare.curataRemorca', (server.match(/incarcare\.curataRemorca\(req\.body\)/g) || []).length === 2);
-T('fila „Încărcare" trece prin incarcare.curataCaroserie, iar semiremorca trebuie să fie a firmei mașinii',
+T('fila „Încărcare” trece prin incarcare.curataCaroserie, iar semiremorca trebuie să fie a firmei mașinii',
   /const cc = incarcare\.curataCaroserie\(b\);[\s\S]{0,600}Semiremorca aleasă nu e a firmei acestui vehicul\./.test(server));
 T('cifrele obișnuite vin de la server, cu felurile care arată fila (tipuriCuMarfa)', /app\.get\('\/api\/incarcare\/meta'[^\n]*incarcare\.meta\(\), \{ tipuriCuMarfa: plans/.test(server));
 
 // ─── 4. Pagina și telefonul: rutele, ecranele, fără cifre scrise de mână ─────────────────────────────────────────
 sect('4. Pagina și telefonul: ce e unde');
 const bloc = (inc0, sf) => { const a = html.indexOf(inc0), b = html.indexOf(sf); return a > 0 && b > a ? html.slice(a, b + sf.length) : ''; };
-const BF = bloc('// ── începe „fila Încărcare" ──', '// ── sfârșit „fila Încărcare" ──');
-const BR = bloc('// ── începe „semiremorcile din flotă" ──', '// ── sfârșit „semiremorcile din flotă" ──');
-const BV = bloc('// ── începe „felul vehiculului" ──', '// ── sfârșit „felul vehiculului" ──');
+const BF = bloc('// ── începe „fila Încărcare” ──', '// ── sfârșit „fila Încărcare” ──');
+const BR = bloc('// ── începe „semiremorcile din flotă” ──', '// ── sfârșit „semiremorcile din flotă” ──');
+const BV = bloc('// ── începe „felul vehiculului” ──', '// ── sfârșit „felul vehiculului” ──');
 T('cele trei blocuri ale paginii sunt între repere', !!BF && !!BR && !!BV);
 const zecimale = (s) => (s.replace(/\/\/[^\n]*/g, '').match(/\b\d+\.\d+\b/g) || []);
 T('pagina NU scrie cifrele obișnuite (nicio zecimală în blocuri: vin din /api/incarcare/meta)', !zecimale(BF).length && !zecimale(BR).length, J(zecimale(BF).concat(zecimale(BR))));
-T('fila „Încărcare" e în fișa vehiculului, cu toate căsuțele coloanelor',
+T('fila „Încărcare” e în fișa vehiculului, cu toate căsuțele coloanelor',
   /data-tab="incarcare" onclick="switchEditTab\('incarcare', this\)"/.test(html) && /id="edit-tab-incarcare"/.test(html) &&
   inc.CAMPURI_CAROSERIE.filter((k) => k !== 'inc_fel' && k !== 'inc_remorca_id').every((k) => html.indexOf('id="edit-' + k.replace(/_/g, '-') + '"') >= 0) &&
   /id="edit-inc-fel"/.test(html) && /id="edit-inc-remorca"/.test(html));
 T('fila se vede după modul și fel (aplicaVizibilitateTaburi) și pleacă la salvare (incCulege)',
   /pune\('incarcare', arataInc\);/.test(html) && /Object\.assign\(details, incCulege\(\)\);/.test(html) && /await incUmple\(dev\);/.test(html));
-T('salvarea arată refuzul serverului („Lungimea: între 1 și 20"), nu doar „Eroare"', /alert\(_e\.error \|\| 'Eroare la salvare'\)/.test(html));
-T('lista de vehicule: filtrul pe fel, rândurile de semiremorci, butoanele „Semiremorcă" / „Remorcă"',
+T('salvarea arată refuzul serverului („Lungimea: între 1 și 20”), nu doar „Eroare”', /alert\(_e\.error \|\| 'Eroare la salvare'\)/.test(html));
+T('lista de vehicule: filtrul pe fel, rândurile de semiremorci, butoanele „Semiremorcă” / „Remorcă”',
   /id="veh-fel-filter"/.test(html) && /if \(d\._remorca\) return _remRand\(d, esc\);/.test(html) &&
   /onclick="remDeschide\(null, 'semiremorca'\)"/.test(html) && /onclick="remDeschide\(null, 'remorca'\)"/.test(html));
 T('fereastra semiremorcii: deasupra listei, firma doar la noi, eroarea serverului pe față',
@@ -138,9 +138,9 @@ T('eroarea din fereastră are pereche pe tema deschisă', /body:not\(\.dark\) #r
 T('telefonul: aceleași rute (meta, listă, salvare, ștergere)',
   /incarcareMeta: \(\) => api<IncMeta>\('\/api\/incarcare\/meta'\)/.test(endpoints) && /remorci: \(companyId\?: number \| null\) => api<Remorca\[\]>\('\/api\/remorci'/.test(endpoints) &&
   /salveazaRemorca: \(id: number \| null, b: any\) => api<Remorca>\('\/api\/remorci'/.test(endpoints) && /stergeRemorca: \(id: number\) =>/.test(endpoints));
-T('telefonul: secțiunea „Încărcare" în fișă, după modul și fel, trimisă la salvare (incDeTrimis)',
+T('telefonul: secțiunea „Încărcare” în fișă, după modul și fel, trimisă la salvare (incDeTrimis)',
   /arataIncEdit = incPornit && /.test(detTel) && /<IncarcareForm val=\{ef\}/.test(detTel) && /Object\.assign\(spec, incDeTrimis\(ef, /.test(detTel) && /incDinFull\(full\)/.test(detTel));
-T('telefonul: ecranul „Semiremorci și remorci" (/remorci), deschis din Vehicule', /<Route path="\/remorci" component=\{P\.remorci\} \/>/.test(appTel) &&
+T('telefonul: ecranul „Semiremorci și remorci” (/remorci), deschis din Vehicule', /<Route path="\/remorci" component=\{P\.remorci\} \/>/.test(appTel) &&
   /remorci: pazit\('vehicule', Remorci,/.test(appTel) && /loc\.route\('\/remorci'\)/.test(vehTel));
 T('telefonul: filtrul pe fel în Vehicule (felulVehiculului, din lib/incarcare.ts)', /\.filter\(\(v\) => !fel \|\| felulVehiculului\(v\) === fel\)/.test(vehTel));
 T('telefonul păstrează iconița mașinii care n-a transmis încă (altfel filtrul ar grupa altfel decât pagina)', /\n\s+icon: d\.icon,\n/.test(store));
@@ -185,7 +185,7 @@ T('ce pleacă la salvare (' + cazTr.length + ' cazuri)', !dif, dif && J(dif));
 const r1 = WEB.obis(VAL[VAL.length - 6], 'camion12', 'autotractor', false, meta);   // valorile obișnuite ale autotractorului + tara spate scrisă de om
 T('autotractor → camion 12 t: cifrele neatinse se schimbă, cea scrisă de om (tara spate 2700) rămâne',
   r1.inc_ampatament === String(fFel('camion12').ampatament) && r1.inc_tara_fata === String(fFel('camion12').taraFata) && r1.inc_tara_spate === '2700' && r1.inc_lungime === String(fFel('camion12').lungime), J(r1));
-T('„Pune cifrele obișnuite" le pune peste tot, dar sarcina utilă doar dacă e goală sau neatinsă',
+T('„Pune cifrele obișnuite” le pune peste tot, dar sarcina utilă doar dacă e goală sau neatinsă',
   WEB.obis(VAL[2], 'duba35', '', true, meta).inc_lungime === String(fFel('duba35').lungime) && WEB.obis(VAL[2], 'duba35', '', true, meta).payload === '7000');
 const t1 = WEB.trimis({ inc_lungime: '7', inc_sa_axa: '0.5', inc_remorca_id: '3' }, 'autotractor', meta);
 T('autotractorul trimite caroseria goală și șaua; un camion, invers', t1.inc_lungime === null && t1.inc_sa_axa === '0.5' && WEB.trimis({ inc_lungime: '7', inc_sa_axa: '0.5' }, 'camion75', meta).inc_sa_axa === null && WEB.trimis({ inc_lungime: '7' }, 'camion75', meta).inc_lungime === '7');
@@ -196,14 +196,14 @@ inc.FEL_REMORCA.forEach((f) => (inc.TIPURI_REMORCA[f.id].map((t) => t.id).concat
 }))));
 dif = prima(REM);
 T('rândul de sub numărul semiremorcii (' + REM.length + ' cazuri)', !dif, dif && J(dif));
-T('…scris românește: „Semiremorcă · Mega · 13,62 × 2,48 × 3 m"', WEB.remText({ fel: 'semiremorca', tip: 'mega', lungime_m: 13.62, latime_m: 2.48, inaltime_m: 3 }, meta) === 'Semiremorcă · Mega · 13,62 × 2,48 × 3 m',
+T('…scris românește: „Semiremorcă · Mega · 13,62 × 2,48 × 3 m”', WEB.remText({ fel: 'semiremorca', tip: 'mega', lungime_m: 13.62, latime_m: 2.48, inaltime_m: 3 }, meta) === 'Semiremorcă · Mega · 13,62 × 2,48 × 3 m',
   WEB.remText({ fel: 'semiremorca', tip: 'mega', lungime_m: 13.62, latime_m: 2.48, inaltime_m: 3 }, meta));
 const RO = [];
 const VALR = [{}, { lungime_m: '', tara_kg: '' }, { lungime_m: '12', latime_m: '2.4', inaltime_m: '2.5', sarcina_kg: '20000', tara_kg: '6000', nr_axe: '2', pivot_axe_m: '7', axa_fata_m: '1', limita_axe_kg: '18000' }];
 inc.FEL_REMORCA.forEach((f) => (inc.TIPURI_REMORCA[f.id].map((t) => t.id).concat(['', 'tren'])).forEach((tip) => [true, false].forEach((peste) => VALR.forEach((v) => RO.push({ c: [f.id, tip, peste, v], w: WEB.remObis(v, f.id, tip, peste, meta), t: TEL.remorcaObisnuite(v, f.id, tip, peste, meta) })))));
 dif = prima(RO);
 T('cifrele obișnuite ale tipului de semiremorcă (' + RO.length + ' cazuri)', !dif, dif && J(dif));
-T('la remorca cu proțap, „de la pivot la axe" ia ampatamentul', WEB.remObis({}, 'remorca', 'prelata', true, meta).pivot_axe_m === String(inc.TIPURI_REMORCA.remorca[0].ampatament));
+T('la remorca cu proțap, „de la pivot la axe” ia ampatamentul', WEB.remObis({}, 'remorca', 'prelata', true, meta).pivot_axe_m === String(inc.TIPURI_REMORCA.remorca[0].ampatament));
 const ICONS = [null, 'car', 'van', 'truck', 'tir', 'bus', 'motorcycle', 'utilaj', 'tractor', 'trailer', 'autotractor', 'trailer_tech', 'excavator', 'forklift', 'combine', 'mixer', 'generator', 'boat', 'ambulance', 'electric', 'phev', 'hybrid', 'cng', 'necunoscut'];
 const TIPURI = [null, 'Auto', 'Autotractor', 'Camion', 'TIR', 'Duba', 'Dubă', 'Autobuz', 'Motocicleta', 'Remorca', 'Remorcă tehnologică', 'Tractor', 'Utilaj', 'Buldoexcavator', 'Motostivuitor', 'Combină agricolă', 'Automixt', 'Grup electrogen', 'Barcă', 'Ambulanță', 'Electric', 'Plug-in hibrid', 'Hibrid', 'CNG/GPL', 'Altul'];
 const FV = [];
@@ -211,7 +211,7 @@ ICONS.forEach((icon) => TIPURI.forEach((vt) => { const d = { icon, vehicle_type:
 [{ _remorca: true, fel: 'semiremorca' }, { _remorca: true, fel: 'remorca' }, { _remorca: true }].forEach((d) => FV.push({ c: d, w: WEB.fel(d), t: TEL.felulVehiculului(d) }));
 dif = prima(FV);
 T('felul fiecărui vehicul (' + FV.length + ' combinații de iconiță și fel)', !dif, dif && J(dif));
-T('autotractorul are felul lui (nu „Camioane"), semiremorca fără GPS la fel', WEB.fel({ vehicle_type: 'Autotractor' }) === 'autotractor' && WEB.fel({ _remorca: true, fel: 'semiremorca' }) === 'semiremorca' && WEB.fel({ vehicle_type: 'Remorca' }) === 'remorca');
+T('autotractorul are felul lui (nu „Camioane”), semiremorca fără GPS la fel', WEB.fel({ vehicle_type: 'Autotractor' }) === 'autotractor' && WEB.fel({ _remorca: true, fel: 'semiremorca' }) === 'semiremorca' && WEB.fel({ vehicle_type: 'Remorca' }) === 'remorca');
 
 // ─── 6. Pe server pornit ─────────────────────────────────────────────────────────────────────────────────────────
 const PORT = 3489, DIR = '.flota-incarcare-db';
@@ -254,10 +254,10 @@ async function intra(user, parola) {
   let r = await A1.GET('/api/incarcare/meta');
   T('cifrele obișnuite vin de la server, cu felurile care arată fila', r.s === 200 && r.j.feluriVehicul && r.j.feluriVehicul.length === 6 && r.j.tipuriCuMarfa.indexOf('Autotractor') >= 0, r.s);
   r = await A2.GET('/api/remorci');
-  T('firma fără camioane (modulul oprit): refuz, „feature_disabled"', r.s === 403 && r.j.error === 'feature_disabled', J(r));
+  T('firma fără camioane (modulul oprit): refuz, „feature_disabled”', r.s === 403 && r.j.error === 'feature_disabled', J(r));
   r = await A1.POST('/api/remorci', { fel: 'semiremorca', tip: 'mega', plate: 'b 10 sem', company_id: T2, lungime_m: '13,62', latime_m: 2.48, inaltime_m: 3, sarcina_kg: '24.000', pivot_axe_m: 7.8 });
   const R1 = r.j;
-  T('firma cu autotractor își trece o semiremorcă („13,62", „24.000"), în firma EI oricare ar fi cererea',
+  T('firma cu autotractor își trece o semiremorcă („13,62”, „24.000”), în firma EI oricare ar fi cererea',
     r.s === 200 && R1.company_id === T1 && R1.plate === 'B 10 SEM' && R1.lungime_m === 13.62 && R1.sarcina_kg === 24000, J(r));
   r = await A1.POST('/api/remorci', { fel: 'semiremorca', plate: 'X', lungime_m: 30, latime_m: 2.4, inaltime_m: 2.7 });
   T('cifre fără sens: refuz pe față', r.s === 400 && r.j.error === 'Lungimea: între 1 și 20', J(r));
@@ -282,7 +282,7 @@ async function intra(user, parola) {
   const IM = '861000000340001';
   r = await A1.PUT('/api/devices/' + IM + '/details', { inc_fel: 'autotractor', inc_ampatament: '3,7', inc_sa_axa: '0.55', inc_tara_fata: '5200', inc_remorca_id: R1.id });
   let f = (await A1.GET('/api/devices/' + IM + '/full')).j;
-  T('fila „Încărcare" se salvează (cu „3,7" citit ca 3,7) și semiremorca obișnuită se leagă',
+  T('fila „Încărcare” se salvează (cu „3,7” citit ca 3,7) și semiremorca obișnuită se leagă',
     r.s === 200 && f.inc_fel === 'autotractor' && Number(f.inc_ampatament) === 3.7 && Number(f.inc_sa_axa) === 0.55 && f.inc_tara_fata === 5200 && f.inc_remorca_id === R1.id, J({ r, f: [f.inc_fel, f.inc_ampatament, f.inc_sa_axa, f.inc_tara_fata, f.inc_remorca_id] }));
   r = await A1.PUT('/api/devices/' + IM + '/details', { inc_remorca_id: R2.id });
   T('semiremorca altei firme: refuz', r.s === 400 && /nu e a firmei acestui vehicul/.test(r.j.error || ''), J(r));

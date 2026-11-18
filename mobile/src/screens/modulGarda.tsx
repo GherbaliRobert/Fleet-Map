@@ -1,5 +1,5 @@
-// Garda pentru modulele din „Management" (Tahograf, e-Transport, Taxa de drum).
-// Pe web, cele trei stau în grupa „Management", pe care o vede doar cine are dreptul „Modifică flota"
+// Garda pentru modulele din „Management” (Tahograf, e-Transport, Taxa de drum).
+// Pe web, cele trei stau în grupa „Management”, pe care o vede doar cine are dreptul „Modifică flota”
 // (administratorul și managerul firmei). Pe telefon apăreau oricui avea dreptul de rapoarte — dispecer,
 // client, vizualizare — adică același om vedea alt meniu pe telefon decât pe web. Rândul din meniu dispare,
 // iar dacă omul ajunge totuși la adresă (buton, notificare veche), vede pagina asta calmă, nu un ecran pe

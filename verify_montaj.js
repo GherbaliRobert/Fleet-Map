@@ -31,7 +31,7 @@ T('clientul plătește cât trebuie', s.totalClient === 1840, String(s.totalClie
 T('partenerul ne cere cât trebuie', s.totalPartener === 1144, String(s.totalPartener));
 T('marja se calculează, nu se scrie de mână', s.marja === 696, String(s.marja));
 T('și procentul de marjă', s.marjaProc === 37.8, String(s.marjaProc));
-T('fără preț de client nu există procent (nu „0%")', M.calc([{ tip: 'gps', buc: 1, costPartener: 60 }]).marjaProc === null);
+T('fără preț de client nu există procent (nu „0%”)', M.calc([{ tip: 'gps', buc: 1, costPartener: 60 }]).marjaProc === null);
 T('o marjă negativă se vede negativă, nu se ascunde',
   M.calc([{ tip: 'gps', buc: 1, pretClient: 50, costPartener: 80 }]).marja === -30);
 
@@ -65,12 +65,12 @@ T('fiecare cere super-admin', rute.every(r => /requireSuperadmin/.test(r[3])), r
 T('și autentificare', rute.every(r => /requireAuth/.test(r[3])));
 
 sect('4. Costurile UNICE (echipamente + montaj) sunt separate de abonament');
-// Cu aparate VÂNDUTE și montaj anexa e „Echipamente și montaj"; cu aparate vândute FĂRĂ montaj, „Echipamente" (lista lui
+// Cu aparate VÂNDUTE și montaj anexa e „Echipamente și montaj”; cu aparate vândute FĂRĂ montaj, „Echipamente” (lista lui
 // Robert, 01.10, pct. 22); la ÎNCHIRIERE (25.09) aparatele nu se vând, deci anexa rămâne doar cu montajul și se numește
-// „Montaj" (verify_stoc_chirie.js citește hârtia desenată).
+// „Montaj” (verify_stoc_chirie.js citește hârtia desenată).
 T('anexa are și marfa, și manopera', /'ANEXA nr\. 2 — ' \+ \(areEchip \? \(areLucrari \? 'Echipamente și montaj' : 'Echipamente'\) : 'Montaj'\) \+ ' \(costuri unice\)'/.test(cpdf));
-// Când se plătește fiecare parte (decizie Alin, 29.09: „1.A"): aparatele integral în avans, pe proformă;
-// montajul după executare, pe vehiculele montate efectiv. (Până atunci: „la livrare și la execuție".)
+// Când se plătește fiecare parte (decizie Alin, 29.09: „1.A”): aparatele integral în avans, pe proformă;
+// montajul după executare, pe vehiculele montate efectiv. (Până atunci: „la livrare și la execuție”.)
 T('și scrie limpede că nu fac parte din abonament — aparatele în avans, montajul după',
   /se plătesc O SINGURĂ DATĂ și NU fac parte din abonamentul lunar din Anexa nr\. 1: echipamentele \(A\), integral în avans, pe baza facturii proforme; montajul \(B\), după executare, pentru vehiculele montate efectiv/.test(cpdf)
   && /se plătesc O SINGURĂ DATĂ, după executare, pentru vehiculele montate efectiv, și NU fac parte din abonamentul lunar/.test(cpdf));
@@ -108,9 +108,9 @@ T('la fel și fiecare echipament', M.ECHIPAMENTE.every(e => !!e.ofertaQ && !!e.o
 T('costul partenerului NU se ia din ofertă', !/costPartener: pret/.test(server));
 T('GDPR-ul se mută la Anexa 3 când există montaj',
   /const nrGdpr = areMontaj \? 3 : 2;/.test(cpdf) && /'ANEXA nr\. ' \+ nrGdpr \+ ' — Acord de prelucrare/.test(cpdf));
-// Și TEXTUL contractului trimite la numărul ăsta (23.09): scria mereu „Anexa nr. 2 — Acord", deși cu
+// Și TEXTUL contractului trimite la numărul ăsta (23.09): scria mereu „Anexa nr. 2 — Acord”, deși cu
 // montaj acordul se tipărea ca Anexa nr. 3.
-T('iar textul contractului trimite la aceeași anexă, nu la „nr. 2" scris de mână',
+T('iar textul contractului trimite la aceeași anexă, nu la „nr. 2” scris de mână',
   /cele din Anexa nr\. ' \+ nrGdpr \+ ' — Acord de prelucrare/.test(cpdf) && !/cele din Anexa nr\. 2 — Acord/.test(cpdf)
   && /'Anexei nr\. ' \+ nrGdpr/.test(cpdf) && !/potrivit Anexei nr\. 2,/.test(cpdf));
 T('anexa de montaj se scrie pe contract, nu pe lucrare',
@@ -118,7 +118,7 @@ T('anexa de montaj se scrie pe contract, nu pe lucrare',
 // (23.09) Lucrarea scrie în anexă DOAR cât contractul nu e semnat, din TOATE lucrările lui adunate
 // (nu din ultima), iar aparatele vândute rămân. Înainte orice lucrare salvată rescria anexa — și a
 // unui contract semnat — și ștergea din ea echipamentele.
-// (01.10) …și la ȘTERGEREA unei lucrări (Alin: „rezolvăm problema"): până atunci anexa rămânea „cum a fost salvată ultima
+// (01.10) …și la ȘTERGEREA unei lucrări (Alin: „rezolvăm problema”): până atunci anexa rămânea „cum a fost salvată ultima
 // dată" — 3 + 2 mașini, ștearsă lucrarea de 2, contractul tot 5 spunea. O SINGURĂ funcție face asta: _refaAnexaDinLucrari.
 const bucMontaj = server.slice(server.indexOf("app.post('/api/companies/:id/montaje'"), server.indexOf("app.delete('/api/montaje/:id'"));
 const bucSterge = server.slice(server.indexOf("app.delete('/api/montaje/:id'"), server.indexOf('function _mesajStergereLucrare('));
@@ -135,7 +135,7 @@ T('salvarea, lucrarea mutată de pe alt contract și ȘTERGEREA refac anexa prin
   (server.replace(/\/\/[^\n]*/g, '').match(/_refaAnexaDinLucrari\(/g) || []).length === 4);
 T('ecranul spune ce s-a întâmplat cu anexa', /j\.anexa === 'semnat'/.test(html) && /Anexa nr\. 2 rămâne cum s-a semnat/.test(html));
 const tsxMontaj = fs.readFileSync('./mobile/src/components/ContractMontaj.tsx', 'utf8');
-T('după „Șterge", web și telefon arată mesajul serverului și reîncarcă fișa; întrebarea nu mai promite „rămâne cum a fost salvată"',
+T('după „Șterge”, web și telefon arată mesajul serverului și reîncarcă fișa; întrebarea nu mai promite „rămâne cum a fost salvată”',
   /\(window\.raxToast \|\| function \(\) \{\}\)\(j\.mesaj \|\| 'Lucrare ștearsă ✓', 'success'\);/.test(html) && /showToast\(\(j && j\.mesaj\) \|\| 'Lucrare ștearsă ✓'\);/.test(tsxMontaj) &&
   !/rămâne cum a fost salvată ultima dată/.test(html + tsxMontaj) && (html + tsxMontaj).split('Dacă ține de un contract nesemnat, Anexa nr. 2 se reface din lucrările rămase.').length === 3);
 T('totalul lunar din Anexa 1 NU include montajul',
@@ -147,10 +147,10 @@ sect('4d. Calculatorul de ofertare — cele trei lucruri reparate');
 // pe hârtia trimisă clientului.
 // Căutăm în MARKUP-ul desenat (`<span>Total inițial…`), nu în comentariile care explică de ce
 // l-am scos — altfel proba ar pica pe propria noastră explicație.
-T('nu se mai desenează „Total inițial" care ascunde echipamentele',
+T('nu se mai desenează „Total inițial” care ascunde echipamentele',
   !/<span>Total inițial \(montaj \+ prima lună\)<\/span>/.test(html));
 T('și nici în PDF-ul ofertei', !/Cost inițial \(montaj \+ prima lună\): ' \+ r\.initial/.test(html));
-T('există un bloc „Cât plătește clientul"', /function _ofBlocPlata\(r\)/.test(html));
+T('există un bloc „Cât plătește clientul”', /function _ofBlocPlata\(r\)/.test(html));
 T('care adună MONTAJUL și ECHIPAMENTELE', /var unic = \(r\.montaj \|\| 0\) \+ hwLei;/.test(html));
 T('cu echipamentele transformate în lei', /var hwLei = \(r\.hwTotal \|\| 0\) \* _fxRate;/.test(html));
 T('spune limpede ce se dă o dată și ce se dă lunar',
@@ -164,7 +164,7 @@ T('și în PDF-ul ofertei e același răspuns, scris pe îndelete',
   /'Cost lunar'/.test(REX) && /'Cost unic, o singură dată'/.test(REX)
   && /Echipamentele se plătesc integral în avans, pe proformă/.test(REX));
 // Oferta și anexa contractului spun ACELAȘI lucru despre când se plătește costul unic: aparatele în avans,
-// pe proformă, montajul după executare (Alin, 29.09; înainte: „la livrare și la execuție", 21.09). Două
+// pe proformă, montajul după executare (Alin, 29.09; înainte: „la livrare și la execuție”, 21.09). Două
 // acte ale noastre n-au voie să se contrazică.
 T('și oferta nu contrazice anexa contractului',
   /integral în avans, pe baza facturii proforme/.test(cpdf) && /Echipamentele se plătesc integral în avans, pe proformă/.test(REX)
@@ -174,7 +174,7 @@ T('și oferta nu contrazice anexa contractului',
 // DEFECT: același număr se scria de patru ori (20 de vehicule → 20 la montaj GPS, 20 la LV-CAN,
 // 20 la FMC650, 20 la LV-CAN200). Dacă uitai unul, oferta ieșea greșită și nu-ți spunea nimeni.
 T('cantitățile se completează din numărul de vehicule', /function _ofCompleteazaDinVehicule\(\)/.test(html));
-// Regula din 28.09 (Alin: „DA — oferta iese corectă din prima"): completarea folosește ACEEAȘI regulă ca
+// Regula din 28.09 (Alin: „DA — oferta iese corectă din prima”): completarea folosește ACEEAȘI regulă ca
 // recomandarea de la pasul 4 — FMC130 la mașini, FMC650 doar la camioane. Până atunci punea FMC650 (aparatul
 // de camion) la toate. Rulată, nu citită din text.
 const _srcOf = (a, b) => html.slice(html.indexOf(a), html.indexOf(b));
@@ -196,7 +196,7 @@ T('LV-CAN doar la vehiculele cu CAN', c20.qLvCan === 20 && c20.lvcan === 20 && c
 T('FMS doar la cele cu FMS', c100.qFms === 20 && c20.qFms === 0);
 T('...și ce ai scris tu rămâne (rulat)', completare(10, 0, 0, { 'of-dq650': true }, { 'of-dq650': 7 }).d650 === 7);
 T('DAR nu se calcă peste ce ai scris tu', /if \(_ofAtinse\[id\]\) return;/.test(html));
-T('un câmp devine „al tău" când scrii în el', /oninput="raxOfAtins\(this\.id\);raxOfRecalc\(\)"/.test(html));
+T('un câmp devine „al tău” când scrii în el', /oninput="raxOfAtins\(this\.id\);raxOfRecalc\(\)"/.test(html));
 T('și scrie pe ecran cum funcționează', /se completează singure din numerele astea/.test(html));
 
 // LIPSĂ: dădeam șase agenți gratis fără ca omul să afle, iar două module reale nu erau în ofertă.
@@ -205,7 +205,7 @@ T('și li se spun numele, ca să se vadă ce primește', /RA Watch[\s\S]{0,200}R
 T('Tahograf are bifă și preț lunar', /id="of-tahograf"/.test(html) && /pTahograf/.test(html));
 T('e-Transport la fel', /id="of-etransport"/.test(html) && /pEtransport/.test(html));
 // Din 10.09 NU mai sunt linii separate: tariful lor intră în abonamentul fiecărei mașini
-// („nu le taxăm separat, nu abuzăm"). Regula e apărată pe larg în verify_tarife.js.
+// („nu le taxăm separat, nu abuzăm”). Regula e apărată pe larg în verify_tarife.js.
 T('amândouă intră în abonamentul pe vehicul, nu ca linie separată',
   /var etV = cfg\.etransport \? \(p\.pEtransport \|\| 0\) : 0;/.test(html) &&
   !/if \(cfg\.tahograf\) lines\.push/.test(html) && !/if \(cfg\.etransport\) lines\.push/.test(html));
@@ -217,11 +217,11 @@ T('cu tarifele lui, ca să nu le cauți prin emailuri', /tarife JSONB DEFAULT '\
 T('lucrările au tabela lor, legate de firmă și de contract',
   /CREATE TABLE IF NOT EXISTS montaje/.test(dbjs) && /contract_id INTEGER/.test(dbjs));
 T('lucrarea ține și numărul facturii primite de la partener', /factura_partener VARCHAR\(60\)/.test(dbjs));
-T('stările lucrării merg de la „de programat" la „facturat clientului"',
+T('stările lucrării merg de la „de programat” la „facturat clientului”',
   M.STARI.join(',') === 'de_programat,programat,executat,facturat_de_partener,facturat_clientului', M.STARI.join(','));
-// (01.10) O stare inventată sau lipsă nu se salvează: lucrarea nouă pornește „de programat", iar una existentă își
-// PĂSTREAZĂ starea — până atunci o salvare fără stare cobora și o lucrare facturată clientului la „de programat".
-T('o stare inventată nu se salvează (cea nouă pornește „de programat", cea existentă își păstrează starea)',
+// (01.10) O stare inventată sau lipsă nu se salvează: lucrarea nouă pornește „de programat”, iar una existentă își
+// PĂSTREAZĂ starea — până atunci o salvare fără stare cobora și o lucrare facturată clientului la „de programat”.
+T('o stare inventată nu se salvează (cea nouă pornește „de programat”, cea existentă își păstrează starea)',
   /const stare = montaj\.STARI\.indexOf\(b\.status\) >= 0 \? b\.status : \(ex \? ex\.status : 'de_programat'\);/.test(server) && /status: stare,/.test(server));
 T('o lucrare fără nicio linie e refuzată', /Nicio linie de montaj/.test(server));
 T('ștergerea partenerului nu șterge lucrările', !/ON DELETE CASCADE[\s\S]{0,80}montaje/.test(dbjs));

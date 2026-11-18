@@ -1,8 +1,8 @@
-// verify_tollro_flota.js — „Taxa de drum" pe TOATĂ flota, prin ruta reală, pe server pornit.
+// verify_tollro_flota.js — „Taxa de drum” pe TOATĂ flota, prin ruta reală, pe server pornit.
 //
 //   node verify_tollro_flota.js
 //
-// Ecranul vechi calcula o mașină pe rând; „care camion mă costă cel mai mult" nu se putea afla.
+// Ecranul vechi calcula o mașină pe rând; „care camion mă costă cel mai mult” nu se putea afla.
 // Aici se apără lista de flotă și, mai ales, ONESTITATEA ei:
 //   • un vehicul sub 3,5 t și unul FĂRĂ masa în fișă sunt două probleme diferite și trebuie să
 //     spună lucruri diferite — primul e o scutire, al doilea o fișă necompletată;
@@ -75,33 +75,33 @@ function gata(code) {
   T('sunt toate cele cinci în listă', V.every(v => !!gasesc(v.plate)), (f.vehicule || []).map(x => x.numar).join(', '));
 
   const cj = gasesc('CJ 12 ABC');
-  T('18 t → treapta „peste 12 t"', cj && cj.categorie === 'c3', cj && cj.categorie);
+  T('18 t → treapta „peste 12 t”', cj && cj.categorie === 'c3', cj && cj.categorie);
   T('Euro 6 recunoscut', cj && cj.euroCunoscut === true);
   T('tariful vine din grilă, nu din interfață',
     cj && cj.leiPerKm.autostrada === toll.GRILA_IMPLICITA.tarife.c3.euro6.autostrada,
     cj && JSON.stringify(cj.leiPerKm));
 
   const bt = gasesc('B 84 TRK');
-  T('„euro V" scris de mână e recunoscut ca Euro 5', bt && bt.euroCunoscut === true && /Euro 5/.test(bt.euroEticheta), bt && bt.euroEticheta);
+  T('„euro V” scris de mână e recunoscut ca Euro 5', bt && bt.euroCunoscut === true && /Euro 5/.test(bt.euroEticheta), bt && bt.euroEticheta);
 
   const sb = gasesc('SB 45 LOG');
-  T('9 t → treapta „7,5 – 12 t"', sb && sb.categorie === 'c2', sb && sb.categorie);
+  T('9 t → treapta „7,5 – 12 t”', sb && sb.categorie === 'c2', sb && sb.categorie);
   // Prudența costă bani în direcția bună: fără normă completată, calculăm SCUMP, nu ieftin.
   T('fără normă Euro → nu pretinde că o știe', sb && sb.euroCunoscut === false);
   T('și se taxează la tariful CEL MAI SCUMP',
     sb && sb.leiPerKm.autostrada === toll.GRILA_IMPLICITA.tarife.c2.euro3.autostrada,
     sb && (sb.leiPerKm.autostrada + ' vs euro3 ' + toll.GRILA_IMPLICITA.tarife.c2.euro3.autostrada));
 
-  sect('2. „Nu se taxează" și „nu știm" sunt două lucruri diferite');
+  sect('2. „Nu se taxează” și „nu știm” sunt două lucruri diferite');
   const dub = gasesc('AR 77 DUB');
   T('3,2 t → nu intră la taxa pe km', dub && dub.aplicabil === false, dub && dub.aplicabil);
-  T('și motivul spune „rovinietă", nu „fișă incompletă"', dub && /rovinietă/i.test(dub.motiv), dub && dub.motiv);
+  T('și motivul spune „rovinietă”, nu „fișă incompletă”', dub && /rovinietă/i.test(dub.motiv), dub && dub.motiv);
   const gol = gasesc('TM 00 GOL');
   T('fără masă în fișă → tot nu intră', gol && gol.aplicabil === false);
   T('dar motivul e ALTUL: fișa necompletată', gol && /masa maximă/i.test(gol.motiv) && !/rovinietă/i.test(gol.motiv), gol && gol.motiv);
 
   sect('2b. Un autoturism nu e întrebat cât cântărește');
-  // Cazul lui Alin (26.08): toate cele trei mașini ale fondatorilor cereau „masa maximă în fișă",
+  // Cazul lui Alin (26.08): toate cele trei mașini ale fondatorilor cereau „masa maximă în fișă”,
   // deși două erau un Dacia Logan și un VW Caddy. La un autoturism întrebarea n-are răspuns util.
   const LOGAN = '6611000000010', COMBINA = '6611000000011', DUBA = '6611000000012';
   await POST('/api/devices', { imei: LOGAN, plate: 'B 154 UIP', brand: 'Dacia', model: 'Logan', vehicle_type: 'Auto' });
@@ -167,10 +167,10 @@ function gata(code) {
       },
     };
     const partial = mk(stare, esc, trNum, trKm, trData)();
-    // Verificarea se uită DOAR în eticheta totalului. Titlul filei conține și el „până acum"
-    // („Ce a costat până acum"), iar o căutare pe tot HTML-ul ar trece chiar dacă totalul ar minți.
+    // Verificarea se uită DOAR în eticheta totalului. Titlul filei conține și el „până acum”
+    // („Ce a costat până acum”), iar o căutare pe tot HTML-ul ar trece chiar dacă totalul ar minți.
     const etTotal = (h) => (h.match(/tr-tot-b">([^<]*)/) || [])[1] || '';
-    T('cât timp se lucrează, totalul scrie „până acum"', /până acum/.test(etTotal(partial)), etTotal(partial));
+    T('cât timp se lucrează, totalul scrie „până acum”', /până acum/.test(etTotal(partial)), etTotal(partial));
     T('și spune câte vehicule au intrat în sumă', /2 din 3 vehicule/.test(etTotal(partial)), etTotal(partial));
     T('totalul e suma celor TERMINATE, nu a tuturor rândurilor',
       partial.indexOf(trNum(238.37 + 260.40)) >= 0 && partial.indexOf(trNum(238.37 + 260.40 + 999)) < 0,
@@ -181,7 +181,7 @@ function gata(code) {
 
     stare.costuri[gasesc('SB 45 LOG').imei] = { stare: 'gata', total: 108.48, kmTaxati: 336, linii: [{ taxabil: true, cost: 108.48, culoare: '#22c55e' }] };
     const complet = mk(stare, esc, trNum, trKm, trData)();
-    T('când s-a terminat, totalul NU mai scrie „până acum"', !/până acum/.test(etTotal(complet)), etTotal(complet));
+    T('când s-a terminat, totalul NU mai scrie „până acum”', !/până acum/.test(etTotal(complet)), etTotal(complet));
     T('ordinea e după cost, cel mai scump primul',
       complet.indexOf('B 84 TRK') < complet.indexOf('CJ 12 ABC') && complet.indexOf('CJ 12 ABC') < complet.indexOf('SB 45 LOG'),
       'B=' + complet.indexOf('B 84 TRK') + ' CJ=' + complet.indexOf('CJ 12 ABC') + ' SB=' + complet.indexOf('SB 45 LOG'));
@@ -212,11 +212,11 @@ function gata(code) {
     // despre nimic — și împinge mesajul care contează mai jos.
     T('NU mai avertizează despre data taxei când n-are ce calcula', !/Taxa se aplică din/.test(gol2), gol2.slice(0, 200));
     T('motivul stă lângă mașină, ca frază, nu ca etichetă în colț', /tr-motiv/.test(gol2));
-    T('titlul grupei nu mai zice „fără taxă" când toate sunt așa', /Vehiculele tale/.test(gol2), (gol2.match(/tr-gh">([^<]+)/) || [])[1]);
+    T('titlul grupei nu mai zice „fără taxă” când toate sunt așa', /Vehiculele tale/.test(gol2), (gol2.match(/tr-gh">([^<]+)/) || [])[1]);
   }
 
   sect('7. Cursă nouă: profilul NU se poate contrazice');
-  // Pe ecranul concurenței, treapta de taxare era un selector liber. Alin a lăsat „3,5–7,5 t" pe un
+  // Pe ecranul concurenței, treapta de taxare era un selector liber. Alin a lăsat „3,5–7,5 t” pe un
   // camion de 41 t declarat în ACELAȘI formular, iar costul a ieșit de trei ori mai mic. Aici treapta
   // se calculează din masa din fișă; formularul nu are ce contrazice.
   const st = await (await GET('/api/tollro/rutare')).json();
@@ -265,7 +265,7 @@ function gata(code) {
 
   sect('9. Grila de tarife: fiecare cifră spune în ce e');
   // Tabelul ăsta a mințit o dată (0,22 stătea pe Euro 6) și a fost prins abia comparând cu ecranul
-  // concurenței. Apoi Alin s-a uitat la el și a întrebat „0,17 e în lei?". Amândouă se apără aici:
+  // concurenței. Apoi Alin s-a uitat la el și a întrebat „0,17 e în lei?”. Amândouă se apără aici:
   // valorile de pe ecran trebuie să fie EXACT cele din catalog, iar fiecare celulă își poartă
   // unitatea — nu doar textul de deasupra tabelului, pe care nimeni nu-l citește.
   const iG = js.indexOf('  // ── începe grila de tarife');
@@ -308,7 +308,7 @@ function gata(code) {
     const presupuse = toll.CATEGORII.reduce((a, c) => a + toll.EURO.filter(e => G.tarife[c.key][e.key].presupus).length, 0);
     T('celulele nepublicate rămân marcate', (hc.match(/class="presupus"/g) || []).length === presupuse * 2,
       (hc.match(/class="presupus"/g) || []).length + ' din ' + presupuse * 2);
-    // Câmpul de calendar arată data în formatul browserului („10/01/2026" se citește ca 10 ianuarie).
+    // Câmpul de calendar arată data în formatul browserului („10/01/2026” se citește ca 10 ianuarie).
     T('data de la care se plătește e scrisă și în cuvinte', /1 octombrie 2026/.test(hc), hc.slice(-220));
     T('fără jargon de programator pe ecranul clientului', !/în cod|ordonanță și s-au tot amânat/i.test(hc));
 

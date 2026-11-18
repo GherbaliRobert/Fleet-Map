@@ -8,7 +8,7 @@ import './CanTellTales.css';
 // Cerut de Robert (02.09): „pe mobile vreau să văd sub formă de pictograme undeva sub hartă, sub
 // formă de martori, dar să rămână și secțiunea mai detaliată".
 //
-// Rostul ei e altul decât al ecranului „Date CAN": acolo te duci când vrei să te uiți la mașină; aici
+// Rostul ei e altul decât al ecranului „Date CAN”: acolo te duci când vrei să te uiți la mașină; aici
 // vezi fără să ceri. De aceea arată DOAR pictograme, cât mai puține — ce cere atenție (martori roșii,
 // ce e deschis) plus cele trei stări permanente (frâna de mână, treapta, încuietoarea). Restul
 // (luminile aprinse, aerul condiționat) nu urcă aici: nu e nimic de făcut cu ele.

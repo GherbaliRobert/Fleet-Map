@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { showToast } from '../app/store';
 import { Icon } from './Icon';
 
-// Editor „program de lucru" (supraveghere mișcare în afara programului). Reutilizat: companie (Setări), grup, vehicul.
+// Editor „program de lucru” (supraveghere mișcare în afara programului). Reutilizat: companie (Setări), grup, vehicul.
 // value: work_schedule existent (sau null). onSave primește obiectul nou (sau null = moștenește, doar în mod override).
 // allowInherit=true → 3 moduri (moștenește compania / program propriu / fără supraveghere) pentru override pe grup/vehicul.
 
@@ -23,7 +23,7 @@ export function WorkSchedEditor({ value, onSave, allowInherit }: {
   const initMode: 'inherit' | 'own' | 'off' = !allowInherit ? 'own'
     : (init == null ? 'inherit' : (init.enabled ? 'own' : 'off'));
   const [mode, setMode] = useState<'inherit' | 'own' | 'off'>(initMode);
-  // Pentru companie: toggle enabled separat (nu are „inherit"). Pentru override „own", supravegherea e implicit activă.
+  // Pentru companie: toggle enabled separat (nu are „inherit”). Pentru override „own”, supravegherea e implicit activă.
   const [enabled, setEnabled] = useState<boolean>(!allowInherit ? !!(init && init.enabled) : true);
   const [tol, setTol] = useState<string>(String(init && init.tolerance_min != null ? init.tolerance_min : 15));
   const [days, setDays] = useState<Record<string, DayState>>(() => {

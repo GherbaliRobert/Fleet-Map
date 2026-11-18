@@ -161,7 +161,7 @@ function trimiteAntet(antet, corpOctetiPeSecunda) {
       t('exportul spune ce tabele a acoperit', Array.isArray(p.rezumat) && p.rezumat.length > 5, 'tabele: ' + (p.rezumat || []).length);
       t('exportul spune ONEST ce NU a putut atribui', Array.isArray(p.tabeleNeatribuite));
       t('pozițiile sunt numărate, nu turnate în fișier', (p.rezumat || []).some(x => x.tabela === 'positions' && x.nota));
-      // ATENȚIE la ce verificăm: `coloaneExcluse` CONȚINE numele „password_hash", intenționat —
+      // ATENȚIE la ce verificăm: `coloaneExcluse` CONȚINE numele „password_hash”, intenționat —
       // e lista pe care exportul o declară ca fiind lăsată afară. Căutarea în tot fișierul ar pica
       // exact pe dovada de transparență. Ce contează e să nu apară în DATE.
       const dateText = JSON.stringify(p.date || {});

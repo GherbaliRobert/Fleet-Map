@@ -1,7 +1,7 @@
-// fueltheft.js — decizia „chiar a dispărut combustibil?", scoasă din server ca să poată fi verificată.
+// fueltheft.js — decizia „chiar a dispărut combustibil?”, scoasă din server ca să poată fi verificată.
 //
-// De ce există: pe 20.08 Robert s-a trezit cu „scădere de la 43 L la 32 L", fără să se fi întâmplat
-// nimic. Cauza nu era senzorul, ci regula: modul „cât a stat oprit" compara O SINGURĂ citire de la
+// De ce există: pe 20.08 Robert s-a trezit cu „scădere de la 43 L la 32 L”, fără să se fi întâmplat
+// nimic. Cauza nu era senzorul, ci regula: modul „cât a stat oprit” compara O SINGURĂ citire de la
 // oprirea motorului cu O SINGURĂ citire de la pornire și alerta pe loc. Exact citirea de la pornire
 // e cea mai nesigură din tot ciclul:
 //
@@ -10,13 +10,13 @@
 //   • dacă mașina a parcat pe pantă și pornește pe drept (sau invers), diferența e de câțiva litri;
 //   • la un rezervor de 400 L, 11 L înseamnă 2,75% — sub eroarea uzuală a unei sonde necalibrate.
 //
-// Modul „în mers" avea deja apărarea corectă (ține o suspiciune o oră și o anulează dacă nivelul
-// revine). Modul „oprit" n-avea niciuna. Aici primește aceeași disciplină: se reține o suspiciune,
+// Modul „în mers” avea deja apărarea corectă (ține o suspiciune o oră și o anulează dacă nivelul
+// revine). Modul „oprit” n-avea niciuna. Aici primește aceeași disciplină: se reține o suspiciune,
 // se lasă senzorul să se așeze, iar alerta pleacă doar dacă nivelul RĂMÂNE jos.
 //
 // A doua capcană, mai insidioasă: `citire()` alege prima sursă disponibilă dintre trei —
 // rezervor calibrat, nivel sintetizat, CAN brut. Alea sunt SCĂRI DIFERITE. Dacă la oprire mașina
-// raporta rezervorul calibrat, iar la pornire doar CAN-ul brut, comparam mere cu pere și „scăderea"
+// raporta rezervorul calibrat, iar la pornire doar CAN-ul brut, comparam mere cu pere și „scăderea”
 // era pur și simplu diferența dintre două moduri de a măsura. Acum comparăm doar sursă cu sursă.
 //
 // Întârzierea nu costă nimic: dacă motorina chiar a fost furată cât a stat mașina parcată noaptea,
@@ -37,12 +37,12 @@ const CONFIRM_MS = _dinMediu('FUEL_CONFIRM_MS', 5 * 60 * 1000);
 const CONFIRM_N = _dinMediu('FUEL_CONFIRM_N', 3);
 // Suspiciune care nu se confirmă (mașina a încetat să transmită) → se uită, NU se emite pe orb.
 const PEND_MAX_MS = 2 * 60 * 60 * 1000;
-// Modul „în mers": nemodificat — o oră până la confirmare.
+// Modul „în mers”: nemodificat — o oră până la confirmare.
 const MERS_CONFIRM_MS = 60 * 60 * 1000;
 
 // Litri REALI (nu procente), cu sursa lor. Ordinea = de la cea mai de încredere la cea mai brută.
 const SURSE = ['tank_level_liters', 'fuel_level_liters', 'can_fuel_level_liters'];
-// `cheiVechi` = cheile pe care serverul le-a CĂRAT din ultima citire reală (carry-forward „sticky"),
+// `cheiVechi` = cheile pe care serverul le-a CĂRAT din ultima citire reală (carry-forward „sticky”),
 // fiindcă pachetul curent nu le conținea. Arată exact ca o citire proaspătă, dar e nivelul de acum
 // câteva ore. Dacă o luăm drept citire, comparăm prezentul cu trecutul și inventăm o scădere —
 // exact alarma falsă de pe Dacia Logan, la fiecare pornire. O mașină parcată care nu mai trimite
@@ -80,12 +80,12 @@ function pas(st, io, prag, acum, cheiVechi) {
   st = st || stareNoua();
   const r = citire(io, cheiVechi);
   const ignBrut = io ? io.ignition : undefined;
-  // Contact lipsă dintr-un pachet (heartbeat doar cu GPS) NU înseamnă „oprit": păstrăm starea de
+  // Contact lipsă dintr-un pachet (heartbeat doar cu GPS) NU înseamnă „oprit”: păstrăm starea de
   // dinainte, altfel apăreau tranziții false pornit→oprit→pornit la fiecare pachet incomplet.
   const ign = (ignBrut === 1 || ignBrut === true) ? 1 : (ignBrut === 0 || ignBrut === false) ? 0 : st.ign;
   let alerta = null;
 
-  // ── Pornit → oprit: reținem nivelul „de parcare", cu tot cu sursa lui ──────────────────────
+  // ── Pornit → oprit: reținem nivelul „de parcare”, cu tot cu sursa lui ──────────────────────
   if (st.ign === 1 && ign === 0) {
     const baza = r || st.last;
     st.park = baza ? { v: baza.v, src: baza.src, at: acum } : null;
@@ -141,7 +141,7 @@ function pas(st, io, prag, acum, cheiVechi) {
   return { st, alerta };
 }
 
-// Mătura periodică: confirmă suspiciunile „în mers" mai vechi de o oră chiar dacă vehiculul a
+// Mătura periodică: confirmă suspiciunile „în mers” mai vechi de o oră chiar dacă vehiculul a
 // încetat să raporteze, și uită suspiciunile de parcare care n-au apucat să se confirme.
 function expira(st, prag, acum) {
   const X = Number(prag);

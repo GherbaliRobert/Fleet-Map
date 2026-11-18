@@ -1,6 +1,6 @@
-// Super-admin: fișa de contract a unei firme — pe web, fila „Contract" din fereastra firmei (_raxCodContract).
+// Super-admin: fișa de contract a unei firme — pe web, fila „Contract” din fereastra firmei (_raxCodContract).
 //
-// Un drum cu câte un buton: în lucru → aprobat → trimis → semnat → încheiat. Cutia „ce urmează" spune
+// Un drum cu câte un buton: în lucru → aprobat → trimis → semnat → încheiat. Cutia „ce urmează” spune
 // unde ești și care e pasul următor; butonul lui SALVEAZĂ întâi ce e scris în câmpuri (ca pe web,
 // raxCtrTreci → raxCtrSalveaza). Semnarea și încheierea întreabă întâi: după ele nu se mai întoarce nimic.
 // Odată semnat, contractul se arată doar de citit — mai trec doar data semnării și motivul încetării
@@ -9,14 +9,14 @@
 // Tot ce e dată de capăt, preaviz, dosar, comparația cu factura sau textul prelungirii vine de la SERVER
 // (/api/companies/:id/overview). Telefonul doar le pune pe ecran.
 //
-// Sus, sub ce lipsește, „Drumul clientului" (24.09): ofertă → trimis la semnat → semnat → montaj → aparate →
+// Sus, sub ce lipsește, „Drumul clientului” (24.09): ofertă → trimis la semnat → semnat → montaj → aparate →
 // prima factură, cu butonul pasului următor — pașii îi socotește serverul (`drum`), butoanele sunt aceleași ca
-// în lista Contracte (usePasiContract). Din 30.09 (ca pe web), pasul „Montajul" duce în calendarul de montaj, iar
-// „Contractul e semnat" pe un contract cu aparate vândute deschide proforma lor, gata pregătită.
+// în lista Contracte (usePasiContract). Din 30.09 (ca pe web), pasul „Montajul” duce în calendarul de montaj, iar
+// „Contractul e semnat” pe un contract cu aparate vândute deschide proforma lor, gata pregătită.
 //
-// Ce e scris în „Datele contractului" și nesalvat NU se pierde (29.09): pașii din drum care lucrează pe contractul
-// salvat („Trimite la semnat", „Am trimis-o", „E semnat") îl salvează întâi, iar o reîncărcare după o acțiune de
-// alături (montaj, anexă, „Completează", un act, un fișier) îl lasă pe ecran.
+// Ce e scris în „Datele contractului” și nesalvat NU se pierde (29.09): pașii din drum care lucrează pe contractul
+// salvat („Trimite la semnat”, „Am trimis-o”, „E semnat”) îl salvează întâi, iar o reîncărcare după o acțiune de
+// alături (montaj, anexă, „Completează”, un act, un fișier) îl lasă pe ecran.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';
 import { Api } from '../api/endpoints';
@@ -62,8 +62,8 @@ function formDin(c: any, noi: string[] | null): Form {
     endreason: (c && c.ended_reason) || '',
   };
 }
-// Fișa se reîncarcă după fiecare acțiune de alături (o lucrare de montaj, anexa, „Completează", un act, un fișier).
-// Ce ai scris în „Datele contractului" și n-ai salvat NU se pierde atunci: un câmp schimbat de tine (față de cum
+// Fișa se reîncarcă după fiecare acțiune de alături (o lucrare de montaj, anexa, „Completează”, un act, un fișier).
+// Ce ai scris în „Datele contractului” și n-ai salvat NU se pierde atunci: un câmp schimbat de tine (față de cum
 // venise, `vechi`) rămâne cum l-ai scris, unul neatins ia valoarea proaspătă de la server (`nou`). Starea vine MEREU
 // de la server: ea se schimbă doar prin pașii contractului, iar o stare veche ținută pe ecran l-ar întoarce din drum
 // la următoarea salvare. Corpul e JavaScript curat, ca `verify_contracte_telefon.js` să-l poată rula.
@@ -93,7 +93,7 @@ export function ContractDetail() {
   // Formularul cum a venit la ultima încărcare, și al cărui contract e — ca reîncărcarea să știe ce ai schimbat tu.
   const baza = useRef<{ id: any; f: Form } | null>(null);
   // `pastreaza`: după o acțiune de alături, ce ai scris și n-ai salvat rămâne pe ecran (cuCeAiScris). Fără el (prima
-  // încărcare, „Reîncarcă", după o salvare, un contract nou sau șters) formularul se ia întreg de la server.
+  // încărcare, „Reîncarcă”, după o salvare, un contract nou sau șters) formularul se ia întreg de la server.
   // Întoarce fișa proaspătă (sau null), ca pasul de după o salvare să lucreze pe ea (salveazaIntai).
   function incarca(pastreaza?: boolean): Promise<any | null> {
     const id = companyId;
@@ -133,9 +133,9 @@ export function ContractDetail() {
 
   const inapoi = () => { if (history.length > 1) history.back(); else loc.route('/admin/contracts'); };
   const { cere: reinnoieste, ui: uiReinnoire } = useReinnoire((cid) => { if (cid === companyId) reincarca(); else loc.route(rutaDosar(cid)); });
-  // Butoanele drumului și „Completează" — aceleași ca în lista Contracte. Aici „Aprobă contractul" salvează întâi
-  // formularul (ca raxCtrTreci pe web), „Trimite la semnat" / „Am trimis-o" / „E semnat" la fel (salveazaIntai).
-  // „Programează montajul" duce în calendar, ca din listă. După „Completează" (datele firmei), ce ai scris în
+  // Butoanele drumului și „Completează” — aceleași ca în lista Contracte. Aici „Aprobă contractul” salvează întâi
+  // formularul (ca raxCtrTreci pe web), „Trimite la semnat” / „Am trimis-o” / „E semnat” la fel (salveazaIntai).
+  // „Programează montajul” duce în calendar, ca din listă. După „Completează” (datele firmei), ce ai scris în
   // formularul contractului rămâne.
   const pasi = usePasiContract({
     trimitePeEmail: !!(d && d.trimite_pe_email),
@@ -143,7 +143,7 @@ export function ContractDetail() {
     aproba: () => treci('aprobat'),
     salveazaIntai,
   });
-  // „Înapoi" pe Android închide întrebarea deschisă a dosarului (semnat, încheiat, șterge, scoate fișierul), nu
+  // „Înapoi” pe Android închide întrebarea deschisă a dosarului (semnat, încheiat, șterge, scoate fișierul), nu
   // ecranul — ca întrebările din listă și din fișa firmei. Cât se salvează, rămâne deschisă.
   useInapoiInchide(!!dialog, () => { if (busy) return false; setDialog(''); return true; });
 
@@ -186,7 +186,7 @@ export function ContractDetail() {
       return null;
     }
     showToast('Contract salvat ✓');
-    // „Contractul e semnat" pe un contract cu aparate VÂNDUTE (web: raxCtrTreci → raxProformaLaSemnare): se deschide
+    // „Contractul e semnat” pe un contract cu aparate VÂNDUTE (web: raxCtrTreci → raxProformaLaSemnare): se deschide
     // proforma avansului, gata pregătită. Se pleacă cu întrebarea încă deschisă — adresa proformei ia locul intrării
     // ei din istoric (spreProforma) —, iar dosarul se reîncarcă singur la întoarcere. `c` e contractul de dinainte de
     // salvare, ca pe web: semnarea nu schimbă Anexa nr. 2.
@@ -199,16 +199,16 @@ export function ContractDetail() {
     if (stare === 'activ' || stare === 'incheiat') { setDialog(stare === 'activ' ? 'semnat' : 'incheiat'); return; }
     salveaza(stare);
   }
-  // Ce scrie în „Datele contractului" și nu e încă pe server. Starea nu contează (o hotărăște pasul). Semnatarii
+  // Ce scrie în „Datele contractului” și nu e încă pe server. Starea nu contează (o hotărăște pasul). Semnatarii
   // noștri PROPUȘI (contract fără semnatari scriși) contează: se văd pe ecran, deci trebuie să ajungă și pe hârtie.
   function nesalvat(): boolean {
     if (!c || !form || semnat) return false;
     const s = formDin(c, []);
     return (Object.keys(s) as (keyof Form)[]).some((k) => k !== 'status' && form[k] !== s[k]);
   }
-  // „Trimite la semnat" (PDF-ul emailat se face din contractul SALVAT), „Am trimis-o" și „E semnat" (după semnare
+  // „Trimite la semnat” (PDF-ul emailat se face din contractul SALVAT), „Am trimis-o” și „E semnat” (după semnare
   // numărul, datele și semnatarii nu se mai schimbă decât prin act adițional) salvează ÎNTÂI ce e scris aici — ca
-  // „Aprobă contractul" și butonul din „ce urmează" (web: raxCtrTreci → raxCtrSalveaza). Starea rămâne cea de acum;
+  // „Aprobă contractul” și butonul din „ce urmează” (web: raxCtrTreci → raxCtrSalveaza). Starea rămâne cea de acum;
   // o schimbă pasul. Foaia pasului primește contractul proaspăt; dacă salvarea n-a mers, nu se deschide.
   async function salveazaIntai(rand: any): Promise<any | null> {
     if (!nesalvat()) return rand;
@@ -291,7 +291,7 @@ export function ContractDetail() {
     const dos = d.dosar || {};
     // Contractul (sau doar firma, fără contract) în forma unui rând din lista Contracte — pentru butoane.
     const rand = randDinFisa(d);
-    // CUI, sediu, reprezentant: le completăm noi, pe loc („Completează", cu ANAF). Ce lipsește spune serverul.
+    // CUI, sediu, reprezentant: le completăm noi, pe loc („Completează”, cu ANAF). Ce lipsește spune serverul.
     const deCompletat = lipsuriFirma(rand).length > 0;
     // Ce lipsește — sus de tot, și doar când chiar lipsește ceva sau expiră.
     const cutieDosar = dos.nivel && dos.nivel !== 'demo' && (dos.text || dos.nivel === 'expira') ? (
@@ -397,7 +397,7 @@ export function ContractDetail() {
     );
   }
 
-  // ── „Ce urmează": unde e contractul pe drum și un singur buton pentru pasul următor ──
+  // ── „Ce urmează”: unde e contractul pe drum și un singur buton pentru pasul următor ──
   function ceUrmeaza() {
     const pas = CTR_PAS[c.status];
     const prel = d.prelungire_in_lucru; // aici e un obiect {id, number, status}
@@ -431,7 +431,7 @@ export function ContractDetail() {
     );
   }
 
-  // ── Formularul contractului NESEMNAT: se lucrează liber între „în lucru", „aprobat" și „trimis" ──
+  // ── Formularul contractului NESEMNAT: se lucrează liber între „în lucru”, „aprobat” și „trimis” ──
   function formular() {
     if (!form) return null;
     const lista = noi || [];
@@ -546,7 +546,7 @@ export function ContractDetail() {
     );
   }
 
-  // ── Un rând din „Actele semnate": scanul contractului sau acordul GDPR separat ──
+  // ── Un rând din „Actele semnate”: scanul contractului sau acordul GDPR separat ──
   function randFisier(care: string, eticheta: string, are: boolean, nume?: string) {
     return (
       <div class="ctr-row">

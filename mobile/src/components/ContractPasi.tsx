@@ -10,12 +10,12 @@
 // Nimic de aici nu HOTĂRĂȘTE ceva: ce lipsește (`dosar.lipsuri`, din stareDosar), drumul (`drum`), dacă serverul
 // poate trimite pe email (`trimite_pe_email`), trecerile și refuzurile vin toate de la SERVER. Telefonul alege
 // doar butonul și arată răspunsul, cu vorbele serverului.
-//   • „Trimite la semnat" (POST /api/contracts/:id/trimite): emailul, PDF-ul atașat (același contractPdf ca la
-//     „Descarcă") și trecerea pe „trimis" le face serverul. Fără SMTP butonul NU minte: devine „Am trimis-o".
-//   • „Completează" scrie pe PUT /api/companies/:id/dosar, care schimbă DOAR cheile primite — și trimitem doar ce
+//   • „Trimite la semnat” (POST /api/contracts/:id/trimite): emailul, PDF-ul atașat (același contractPdf ca la
+//     „Descarcă”) și trecerea pe „trimis” le face serverul. Fără SMTP butonul NU minte: devine „Am trimis-o”.
+//   • „Completează” scrie pe PUT /api/companies/:id/dosar, care schimbă DOAR cheile primite — și trimitem doar ce
 //     s-a schimbat. NU pe PUT /api/companies/:id, care golește ce primește gol.
-//   • Lotul 5 (30.09, ca pe web): „E semnat" pe un contract cu aparate vândute deschide proforma lor, gata pregătită
-//     (raxProformaLaSemnare); „Programează montajul" duce în calendarul de montaj (raxDrumMontaj), nu în formularul
+//   • Lotul 5 (30.09, ca pe web): „E semnat” pe un contract cu aparate vândute deschide proforma lor, gata pregătită
+//     (raxProformaLaSemnare); „Programează montajul” duce în calendarul de montaj (raxDrumMontaj), nu în formularul
 //     lucrării.
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
@@ -34,19 +34,19 @@ import '../screens/detail.css';
 import '../screens/contracte.css';
 
 // Montajul (Alin, 30.09): se programează DOAR în calendar (Business → Montaj), deschis pe contractul clientului — web:
-// raxDrumMontaj. Acolo stau regulile lui: câte mașini au rămas din Anexa nr. 2, instalatorul, stocul, „montată" cu mai
+// raxDrumMontaj. Acolo stau regulile lui: câte mașini au rămas din Anexa nr. 2, instalatorul, stocul, „montată” cu mai
 // puține mașini care întoarce restul. Adresa e UNA, a calendarului (rutaCalendarMontaj, lib/calendarMontaj.ts), aceeași
-// și pentru „Programează în calendar" din dosar. Formularul lucrării din dosar rămâne pentru editare și, cât contractul
+// și pentru „Programează în calendar” din dosar. Formularul lucrării din dosar rămâne pentru editare și, cât contractul
 // e nesemnat, pentru Anexa nr. 2 (ContractMontaj).
-// „Emite prima factură" (29.09): „Generează factură" din Facturare, cu firma aleasă și pe factura UNICĂ, nu pe
+// „Emite prima factură” (29.09): „Generează factură” din Facturare, cu firma aleasă și pe factura UNICĂ, nu pe
 // abonamentul lunii — web: raxDrumFactura → raxOpenGenInvoice(companyId, 'unica'). Abonamentul pleacă singur,
 // luna următoare, pe zile de la montaj. Factură fiscală sau proformă se alege în fereastra de emis.
 // Adresa o face `rutaFactura` (lib/factura.ts) — aceeași și pentru butoanele din fila Facturi a fișei firmei.
 export const rutaPrimaFactura = (companyId: any) => rutaFactura(companyId, 'unica');
 
-// ── Proforma aparatelor, gata pregătită la „E semnat" (Alin, 30.09 — web: raxProformaLaSemnare) ──
-// Contractul cu aparate VÂNDUTE cere avansul pe proformă (cap. IV). După „E semnat" se deschide „Generează factură" pe
-// proformă, cu aparatele din contract deja puse: omul se uită la hârtie și apasă „Emite proforma". NU se emite nimic
+// ── Proforma aparatelor, gata pregătită la „E semnat” (Alin, 30.09 — web: raxProformaLaSemnare) ──
+// Contractul cu aparate VÂNDUTE cere avansul pe proformă (cap. IV). După „E semnat” se deschide „Generează factură” pe
+// proformă, cu aparatele din contract deja puse: omul se uită la hârtie și apasă „Emite proforma”. NU se emite nimic
 // singur. La închiriere nu există avans (aparatele rămân ale noastre), deci nu apare.
 // Aceeași regulă ca pe web (_areAparateVandute): aparatele vândute stau în Anexa nr. 2 (`montaj.echipamente.items`),
 // care poate veni din bază și ca text. Legate printr-o probă care le rulează pe amândouă.
@@ -56,21 +56,21 @@ export function areAparateVandute(c: any): boolean {
   return !!(m && m.echipamente && (m.echipamente.items || []).length);
 }
 export const rutaProformaLaSemnare = (companyId: any) => rutaFactura(companyId, 'unica', { tip: 'proforma', aparate: true });
-// Se pleacă din foaia „E semnat" sau din întrebarea „Contractul e semnat?", amândouă păzite la „înapoi"
+// Se pleacă din foaia „E semnat” sau din întrebarea „Contractul e semnat?”, amândouă păzite la „înapoi”
 // (lib/inapoiFoaie.ts): cât stau deschise, ultima intrare din istoric e a LOR (`raFoaie`), cu adresa ecranului. Adresa
-// proformei o ÎNLOCUIEȘTE — altfel „înapoi" din Facturare ar ateriza pe intrarea foii (același ecran, un „înapoi" care
+// proformei o ÎNLOCUIEȘTE — altfel „înapoi” din Facturare ar ateriza pe intrarea foii (același ecran, un „înapoi” care
 // nu face nimic). Dacă foaia n-a apucat să-și pună intrarea, adresa se adaugă, ca de obicei. Ecranul de aici se
 // reîncarcă singur la întoarcere.
 export function spreProforma(loc: { route: (url: string, replace?: boolean) => void }, companyId: any) {
   const peIntrareaFoii = !!(history.state && (history.state as any).raFoaie);
   loc.route(rutaProformaLaSemnare(companyId), peIntrareaFoii);
 }
-// Fără SMTP pe server, „Trimite la semnat" ar minți; pe web e scris pe butonul „Am trimis-o", la trecerea mouse-ului.
+// Fără SMTP pe server, „Trimite la semnat” ar minți; pe web e scris pe butonul „Am trimis-o”, la trecerea mouse-ului.
 const FARA_EMAIL = 'Emailul nu e configurat pe server: descarcă contractul și trimite-l tu.';
 
 // Contractul, cum îl dă fișa firmei (/overview), în forma unui rând din lista Contracte — ca `_ctreGasit` pe web:
-// datele firmei (pentru „Completează" și adresa la care pleacă) + contractul + dosarul și drumul serverului.
-// Merge și fără contract (atunci are doar firma), ca „Completează" să se poată deschide din cutia dosarului.
+// datele firmei (pentru „Completează” și adresa la care pleacă) + contractul + dosarul și drumul serverului.
+// Merge și fără contract (atunci are doar firma), ca „Completează” să se poată deschide din cutia dosarului.
 export function randDinFisa(o: any): any {
   const co = (o && o.company) || {};
   return Object.assign(
@@ -90,9 +90,9 @@ type Dlg = { fel: 'aproba' | 'amtrimis' | 'trimite' | 'data' | 'semnat' | 'compl
 export function usePasiContract(o: {
   trimitePeEmail: boolean;
   laSchimbat: () => void;
-  // Dosarul: „Aprobă contractul" salvează ÎNTÂI formularul, apoi trece pe „aprobat" (web: raxCtrTreci('aprobat')).
+  // Dosarul: „Aprobă contractul” salvează ÎNTÂI formularul, apoi trece pe „aprobat” (web: raxCtrTreci('aprobat')).
   aproba?: (c: any) => void;
-  // Dosarul: înainte de „Trimite la semnat", „Am trimis-o" și „E semnat" — pași care lucrează pe contractul SALVAT —
+  // Dosarul: înainte de „Trimite la semnat”, „Am trimis-o” și „E semnat” — pași care lucrează pe contractul SALVAT —
   // salvează ce e scris în formular. Întoarce contractul proaspăt (pentru foaia pasului) sau null dacă salvarea n-a
   // mers; atunci foaia nu se deschide, iar mesajul serverului e deja pe ecran.
   salveazaIntai?: (c: any) => Promise<any | null>;
@@ -104,11 +104,11 @@ export function usePasiContract(o: {
   const [busy, setBusy] = useState(false);
   const [urca, setUrca] = useState(''); // „<id contract>:<care>" cât urcă un fișier de pe un rând
   const inchideDlg = () => { if (!busy) setDlg(null); };
-  // „Înapoi" pe Android închide întrebarea deschisă, nu ecranul. Foile „E semnat" și „Completează" se păzesc singure.
+  // „Înapoi” pe Android închide întrebarea deschisă, nu ecranul. Foile „E semnat” și „Completează” se păzesc singure.
   useInapoiInchide(!!dlg && dlg.fel !== 'semnat' && dlg.fel !== 'completeaza', () => { if (busy) return false; setDlg(null); return true; });
   // Două foi păzite NU se schimbă în aceeași randare (lib/inapoiFoaie.ts). Foaia nouă, fiind copil, își pune intrarea
   // în istoric ÎNAINTEA curățeniei întrebării — care apoi nu-și mai recunoaște intrarea și o lasă acolo: după ce
-  // închizi foaia, următorul „înapoi" nu mai face nimic. Deci întrebarea se închide întâi, iar foaia următoare
+  // închizi foaia, următorul „înapoi” nu mai face nimic. Deci întrebarea se închide întâi, iar foaia următoare
   // (`dupa`) se deschide de aici, abia în randarea URMĂTOARE — și doar când nu mai e nicio întrebare deschisă. Până
   // atunci paza întrebării și-a scos intrarea (curățenia rulează înaintea efectelor), iar foaia nouă își pune
   // intrarea abia după întoarcerea din istoric.
@@ -141,16 +141,16 @@ export function usePasiContract(o: {
     } catch (e: any) {
       showToast(e?.message || 'Eroare', true);
       setDlg(null);
-      // Goluri pe hârtie (CUI, sediu, reprezentant): serverul refuză cu 400 — se deschide direct „Completează",
+      // Goluri pe hârtie (CUI, sediu, reprezentant): serverul refuză cu 400 — se deschide direct „Completează”,
       // nu doar un mesaj (ca pe web). Ce lipsește spune dosarul serverului. Foaia se deschide DUPĂ ce s-a închis
       // întrebarea (`dupa`), nu în locul ei.
       if (e?.status === 400 && lipsuriFirma(c).length) setDupa({ fel: 'completeaza', c });
-      // Fără email pe server (503): lista spune din nou `trimite_pe_email`, iar butonul devine „Am trimis-o".
+      // Fără email pe server (503): lista spune din nou `trimite_pe_email`, iar butonul devine „Am trimis-o”.
       else if (e?.status === 503) o.laSchimbat();
     } finally { setBusy(false); }
   }
-  // Foaia unui pas care lucrează pe contractul SALVAT: „Trimite la semnat" (PDF-ul pleacă din ce e în bază), „Am
-  // trimis-o" și „E semnat" (după semnare nu se mai schimbă nimic). În dosar (`salveazaIntai`), ce e scris în
+  // Foaia unui pas care lucrează pe contractul SALVAT: „Trimite la semnat” (PDF-ul pleacă din ce e în bază), „Am
+  // trimis-o" și „E semnat” (după semnare nu se mai schimbă nimic). În dosar (`salveazaIntai`), ce e scris în
   // formular se salvează întâi, iar foaia primește contractul proaspăt. În listă și în fișa firmei nu e formular.
   async function deschide(fel: 'amtrimis' | 'trimite' | 'semnat', c: any) {
     if (busy) return;
@@ -160,7 +160,7 @@ export function usePasiContract(o: {
     try { r = await o.salveazaIntai(c); } catch { r = null; } finally { setBusy(false); }
     if (r) setDlg({ fel, c: r });
   }
-  // După „E semnat" (web: raxCtreSemnat): cu aparate VÂNDUTE în contract se deschide proforma avansului, gata
+  // După „E semnat” (web: raxCtreSemnat): cu aparate VÂNDUTE în contract se deschide proforma avansului, gata
   // pregătită (spreProforma). Altfel — fără aparate vândute, cu aparatele închiriate, sau când serverul n-a primit
   // semnarea —, foaia se închide și ecranul se reîncarcă, ca până acum.
   function dupaSemnare(c: any, semnat: boolean) {
@@ -191,7 +191,7 @@ export function usePasiContract(o: {
     ? buton('mail', 'Trimite la semnat', () => deschide('trimite', c))
     : <>{buton('mail', 'Am trimis-o', () => deschide('amtrimis', c))}<span class="ctr-small ctr-rand">{FARA_EMAIL}</span></>);
 
-  // Butonul pasului „acum" din drumul clientului (_drumButon). Aparatele se adoptă DOAR în „Dispozitive" →
+  // Butonul pasului „acum” din drumul clientului (_drumButon). Aparatele se adoptă DOAR în „Dispozitive” →
   // Neasignate (decizie 17.09): butonul te duce acolo, nu adoptă nimic de aici.
   function butonDrum(cheie: string, c: any) {
     if (!c || !c.id) return null;
@@ -200,7 +200,7 @@ export function usePasiContract(o: {
       if (c.status === 'aprobat') return trimiteSauAmTrimis(c);
     }
     if (cheie === 'semnat' && c.status === 'trimis') return buton('fileSignature', 'E semnat', () => deschide('semnat', c));
-    // Pasul „Montajul" e cel de acum doar după semnare (drumul îl dă serverul): se programează în calendar, ca pe web.
+    // Pasul „Montajul” e cel de acum doar după semnare (drumul îl dă serverul): se programează în calendar, ca pe web.
     if (cheie === 'montaj') return buton('wrench', 'Programează montajul', () => loc.route(rutaCalendarMontaj(c.id)));
     if (cheie === 'aparate') return buton('cpu', 'Adoptă aparatele', () => loc.route(RUTA_NEASIGNATE));
     if (cheie === 'factura') return buton('report', 'Emite prima factură', () => loc.route(rutaPrimaFactura(c.company_id)));
@@ -277,16 +277,16 @@ export function usePasiContract(o: {
       {dlg.fel === 'aproba' && (
         <Confirma title="Aprobă contractul" busy={busy} okLabel="Aprobă"
           text={'Aprobi contractul ' + (dlg.c.number || '') + '?\n\nDin clipa asta hârtia nu mai e ciornă: se poate trimite la semnat.'}
-          onOk={() => put(dlg.c, { status: 'aprobat' }, 'Contract aprobat ✓ — urmează „Trimite la semnat"')} onCancel={inchideDlg} />
+          onOk={() => put(dlg.c, { status: 'aprobat' }, 'Contract aprobat ✓ — urmează „Trimite la semnat”')} onCancel={inchideDlg} />
       )}
       {dlg.fel === 'amtrimis' && (
         <Confirma title="Am trimis-o" busy={busy} okLabel="Da, l-am trimis"
-          text={'L-ai trimis tu clientului (email, WhatsApp)?\n\nContractul trece pe „trimis la client". Când vine semnat, apeși „E semnat" și îl încarci.'}
-          onOk={() => put(dlg.c, { status: 'trimis' }, 'Marcat „trimis la client" ✓')} onCancel={inchideDlg} />
+          text={'L-ai trimis tu clientului (email, WhatsApp)?\n\nContractul trece pe „trimis la client”. Când vine semnat, apeși „E semnat” și îl încarci.'}
+          onOk={() => put(dlg.c, { status: 'trimis' }, 'Marcat „trimis la client” ✓')} onCancel={inchideDlg} />
       )}
       {dlg.fel === 'trimite' && (
         <Confirma title="Trimite la semnat" busy={busy} okLabel="Trimite"
-          text={'Contractul ' + (dlg.c.number || '') + ' pleacă pe email, cu PDF-ul atașat, ca să-l semneze. Răspunsul lor — contractul semnat — vine la adresa noastră.\n\nCând îl primești, apeși „E semnat" și îl încarci.'}
+          text={'Contractul ' + (dlg.c.number || '') + ' pleacă pe email, cu PDF-ul atașat, ca să-l semneze. Răspunsul lor — contractul semnat — vine la adresa noastră.\n\nCând îl primești, apeși „E semnat” și îl încarci.'}
           field={{ label: 'Adresa clientului', type: 'email', value: dlg.c.contact_email || '', placeholder: 'contact@firma.ro' }}
           onOk={(v) => trimite(dlg.c, v)} onCancel={inchideDlg} />
       )}
@@ -303,10 +303,10 @@ export function usePasiContract(o: {
   return { pas, lipsuri, butonDrum, ui, completeaza: (c: any) => setDlg({ fel: 'completeaza', c }) };
 }
 
-// ── „E semnat" (raxCtreSemnat): ziua semnării + fișierul semnat primit de la client. Întâi urcă fișierul,
+// ── „E semnat” (raxCtreSemnat): ziua semnării + fișierul semnat primit de la client. Întâi urcă fișierul,
 // apoi contractul trece în vigoare. Semnat nu se mai întoarce — de aceea întreabă întâi. Data se scrie la
-// prânz, ca pe web. Ziua propusă e cea deja scrisă în contract (câmpul „Data semnării" din dosar), și abia fără
-// ea ziua de azi — ca butonul „Contractul e semnat de amândoi" din dosar. Altfel foaia rescria data salvată cu azi.
+// prânz, ca pe web. Ziua propusă e cea deja scrisă în contract (câmpul „Data semnării” din dosar), și abia fără
+// ea ziua de azi — ca butonul „Contractul e semnat de amândoi” din dosar. Altfel foaia rescria data salvată cu azi.
 // `onGata(semnat)`: semnat = serverul a trecut contractul în vigoare (abia atunci poate urma proforma aparatelor).
 function SemnatFoaie({ c, onInchide, onGata }: { c: any; onInchide: () => void; onGata: (semnat: boolean) => void }) {
   const [ziS, setZi] = useState(() => inputZi(c.signed_at) || azi());
@@ -360,7 +360,7 @@ function SemnatFoaie({ c, onInchide, onGata }: { c: any; onInchide: () => void; 
   );
 }
 
-// ── „Completează" (raxCtreCompleteaza): datele firmei pentru contract, cu „Preia de la ANAF" ──
+// ── „Completează” (raxCtreCompleteaza): datele firmei pentru contract, cu „Preia de la ANAF” ──
 // Pleacă DOAR ce s-a schimbat față de ce era (PUT /api/companies/:id/dosar scrie doar cheile primite): o casetă
 // lăsată cum era nu atinge nimic, iar telefonul, IBAN-ul și restul firmei nu se ating deloc.
 type Dz = { cui: string; name: string; reg_com: string; address: string; rep: string; reprole: string; email: string };
@@ -372,12 +372,12 @@ function dzDin(c: any): Dz {
 function CompleteazaFirma({ c, onInchide, onSalvat }: { c: any; onInchide: () => void; onSalvat: () => void }) {
   const [start] = useState<Dz>(() => dzDin(c));
   const [f, setF] = useState<Dz>(() => dzDin(c));
-  // fel: 'rau' (roșu) · 'ok' (verde, cu bifă) · '' (gri, „Caut la ANAF…"); `avert` = firma radiată / inactivă.
+  // fel: 'rau' (roșu) · 'ok' (verde, cu bifă) · '' (gri, „Caut la ANAF…”); `avert` = firma radiată / inactivă.
   const [msg, setMsg] = useState<{ t: string; fel: '' | 'ok' | 'rau'; avert?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [anafBusy, setAnafBusy] = useState(false);
   // Plătitoare de TVA, cum a răspuns ANAF aici (null = n-am întrebat) — ca pe web (_dzTva). Se salvează odată cu restul:
-  // hotărăște „RO" în fața CUI-ului pe factură și codul de TVA din e-Factura.
+  // hotărăște „RO” în fața CUI-ului pe factură și codul de TVA din e-Factura.
   const [tva, setTva] = useState<boolean | null>(null);
   const sf = (k: keyof Dz, v: string) => setF((x) => ({ ...x, [k]: v }));
   const schimbat = JSON.stringify(f) !== JSON.stringify(start) || tva !== null;
@@ -417,7 +417,7 @@ function CompleteazaFirma({ c, onInchide, onSalvat }: { c: any; onInchide: () =>
     if (t(f.email) !== t(start.email)) corp.contact_email = t(f.email);
     if (t(f.rep) !== t(start.rep) || t(f.reprole) !== t(start.reprole)) corp.legal_rep = t(f.rep) ? { name: t(f.rep), role: t(f.reprole) } : null;
     if (tva === true || tva === false) corp.vat_payer = tva;
-    if (!Object.keys(corp).length) { setMsg({ t: 'N-ai schimbat nimic: scrie ce lipsește, apoi „Salvează".', fel: '' }); return; }
+    if (!Object.keys(corp).length) { setMsg({ t: 'N-ai schimbat nimic: scrie ce lipsește, apoi „Salvează”.', fel: '' }); return; }
     setBusy(true); setMsg(null);
     try {
       await Api.completeazaDosar(Number(c.company_id), corp);

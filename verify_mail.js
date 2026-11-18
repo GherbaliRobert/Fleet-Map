@@ -1,17 +1,17 @@
-// verify_mail.js — panoul Mail al fondatorilor, etapa 1: „Trimise" + „Scrie" (Robert, 12.10: „noi adminii să avem un
-// panou de mail"; „1 este ok" — adresa comună o văd toți, adresa personală doar omul ei; „și pe telefon").
+// verify_mail.js — panoul Mail al fondatorilor, etapa 1: „Trimise” + „Scrie” (Robert, 12.10: „noi adminii să avem un
+// panou de mail"; „1 este ok” — adresa comună o văd toți, adresa personală doar omul ei; „și pe telefon”).
 //
 //   node verify_mail.js
 //
 // Ce păzește (cu un Brevo FALS, local — nu pleacă niciun email adevărat), pe server pornit:
 //   1. adresele: contact@ (comuna, din EMAIL_FROM) + adresa fiecărui fondator pe domeniu; fiecare vede comuna și pe A LUI;
-//   2. „Scrie": pleacă prin Brevo de pe adresa aleasă, cu numele omului și răspunsul înapoi la ea; nimeni nu scrie de pe
+//   2. „Scrie”: pleacă prin Brevo de pe adresa aleasă, cu numele omului și răspunsul înapoi la ea; nimeni nu scrie de pe
 //      adresa altuia; destinatari, subiect, mesaj și atașamente verificate pe server;
-//   3. „Trimise": emailurile NOASTRE se scriu singure (invitațiile, mesajele scrise aici), cu felul lor; unul care n-a
-//      plecat apare „n-a plecat", cu motivul; mesajul personal al unui fondator NU se vede la celălalt (nici în listă,
+//   3. „Trimise”: emailurile NOASTRE se scriu singure (invitațiile, mesajele scrise aici), cu felul lor; unul care n-a
+//      plecat apare „n-a plecat”, cu motivul; mesajul personal al unui fondator NU se vede la celălalt (nici în listă,
 //      nici deschis: 404); rapoartele și alertele unei firme NU intră (nu ne uităm la ce face o companie);
 //   4. doar fondatorii: un administrator de firmă primește 403; indicatorul de încărcare vine de la server;
-//   5. pagina și telefonul: rândul „Mail" în meniu, același loc, aceleași rute, conținutul HTML în cadru izolat.
+//   5. pagina și telefonul: rândul „Mail” în meniu, același loc, aceleași rute, conținutul HTML în cadru izolat.
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -37,12 +37,12 @@ const fals = http.createServer((req, res) => {
   // ─── 5. Pagina și telefonul (fără server) ─────────────────────────────────────────────────────────
   console.log('5. Pagina și telefonul');
   const PAG = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-  // Din 23.10, între ele stă „Cereri de la clienți" (macheta „Anunță echipa RA Track", aprobată pe 22.10).
-  T('rândul „Mail" stă în Business, după „Cereri demo" și „Cereri de la clienți", și cheamă goSistem(\'mail\')',
+  // Din 23.10, între ele stă „Cereri de la clienți” (macheta „Anunță echipa RA Track”, aprobată pe 22.10).
+  T('rândul „Mail” stă în Business, după „Cereri demo” și „Cereri de la clienți”, și cheamă goSistem(\'mail\')',
     /goSistem\('demoreq'\);[^\n]*\n\s*<button class="nav-item nav-sub" data-super onclick="navGo\(this, function\(\)\{ goSistem\('cereri'\); \}\)"><i class="fas fa-headset"><\/i><span>Cereri de la clienți<\/span>[^\n]*\n\s*<button class="nav-item nav-sub" data-super onclick="navGo\(this, function\(\)\{ goSistem\('mail'\); \}\)"><i class="fas fa-envelope"><\/i><span>Mail<\/span>/.test(PAG));
   T('secțiunea e în listele unice (_RAX_TABURI / _RAX_NUME) și se deschide cu raxLoadMail',
     /mail: 'admin-tab-mail'/.test(PAG) && /mail: 'Mail'/.test(PAG) && /name === 'mail'\) \{\s*if \(window\.raxLoadMail\) window\.raxLoadMail\(\);/.test(PAG) && /<div id="admin-tab-mail"/.test(PAG));
-  const BLOC = (PAG.match(/── începe „Panoul Mail"[\s\S]*?── sfârșit „Panoul Mail" ──/) || [''])[0];
+  const BLOC = (PAG.match(/── începe „Panoul Mail”[\s\S]*?── sfârșit „Panoul Mail” ──/) || [''])[0];
   T('ecranul cere totul de la server (adrese, listă, deschidere, trimitere) — nu ține liste de adrese scrise de mână',
     /\/api\/mail\/adrese/.test(BLOC) && /\/api\/mail\/trimise/.test(BLOC) && /\/api\/mail\/trimite'/.test(BLOC) && !/ratrack\.ro/.test(BLOC));
   T('conținutul HTML al unui email se arată într-un cadru izolat (sandbox gol: fără scripturi)', /setAttribute\('sandbox', ''\)/.test(BLOC) && /f\.srcdoc = /.test(BLOC));
@@ -52,20 +52,20 @@ const fals = http.createServer((req, res) => {
   const EP = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'api', 'endpoints.ts'), 'utf8');
   const APP = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'App.tsx'), 'utf8');
   const MENU = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'screens', 'Menu.tsx'), 'utf8');
-  T('telefonul: ecranul „Mail", doar pentru fondatori, pe ruta /admin/mail, în meniu după „Cereri demo"',
+  T('telefonul: ecranul „Mail”, doar pentru fondatori, pe ruta /admin/mail, în meniu după „Cereri demo”',
     /mail: doarSuper\(Mail, 'Mail'\)/.test(APP) && /<Route path="\/admin\/mail" component=\{P\.mail\} \/>/.test(APP) &&
     /'Cereri demo', \(\) => loc\.route\('\/admin\/demo-requests'\)[\s\S]{0,700}item\('mail', 'Mail', \(\) => loc\.route\('\/admin\/mail'\)\)/.test(MENU));
   T('telefonul folosește aceleași rute ca pagina', ['/api/mail/adrese', '/api/mail/trimise', '/api/mail/trimite'].every((r) => EP.indexOf("'" + r) >= 0 || EP.indexOf('`' + r) >= 0));
-  T('telefonul: aceleași cuvinte ca pagina (spațiul, starea, lista goală, „n-a plecat")',
+  T('telefonul: aceleași cuvinte ca pagina (spațiul, starea, lista goală, „n-a plecat”)',
     ['Mailul ocupă', 'toată baza:', 'Serverul n-are email configurat: nu pleacă nimic până nu se pune cheia Brevo în Railway.', 'Niciun email trimis încă.', 'Nimic găsit.', 'n-a plecat', 'Caută după destinatar sau subiect…']
       .every((t) => MOB.indexOf(t) >= 0 && BLOC.indexOf(t) >= 0));
   T('telefonul: HTML-ul tot într-un cadru izolat', /<iframe sandbox=""/.test(MOB));
   const SRV = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
   const RS = fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8');
   // Din 28.10 raportul programat cere doar urmărirea livrării (`livrare`: Brevo e întrebat dacă a ajuns) — tot fără jurnal, deci tot nu
-  // intră în „Trimise".
+  // intră în „Trimise”.
   // Din 29.10 emailul raportului are HTML-ul lui (email_raport.js: cifrele de sus, butonul spre Istoric) — tot fără jurnal.
-  T('rapoartele programate ale unei firme NU intră în „Trimise" (fără jurnal; doar urmărirea livrării)', /channels\.sendEmailTo\(rcp, subject, text, attachments, em\.html,\s*\{ livrare: \{ ref: 'sched:'/.test(RS) && !/jurnal/.test(RS));
+  T('rapoartele programate ale unei firme NU intră în „Trimise” (fără jurnal; doar urmărirea livrării)', /channels\.sendEmailTo\(rcp, subject, text, attachments, em\.html,\s*\{ livrare: \{ ref: 'sched:'/.test(RS) && !/jurnal/.test(RS));
   T('toate emailurile noastre poartă felul lor (factură, neplată, contract, invitație, formular, suport, mesaj; din 13.10 și redirecționat; din 23.10 și cererea clientului)',
     ['factura', 'neplata', 'contract', 'contract_montaj', 'invitatie', 'formular', 'suport', 'mesaj', 'cerere'].every((f) => SRV.indexOf("fel: '" + f + "'") >= 0 || (f === 'factura' && /fel: pf \? 'proforma' : 'factura'/.test(SRV)) || (f === 'invitatie' && /fel: opts\.invite \? 'invitatie' : 'parola'/.test(SRV)) || (f === 'mesaj' && /const fel = primit \? 'raspuns' : \(redirPrimit \|\| redirTrimis\) \? 'redirectionat' : 'mesaj';/.test(SRV) && /jurnal: \{ fel: fel, userId: uid/.test(SRV))));
 
@@ -125,13 +125,13 @@ const fals = http.createServer((req, res) => {
       aR.j.activ === true && aR.j.cale === 'brevo' && aR.j.spatiu && aR.j.spatiu.mailOcteti > 0 && aR.j.spatiu.bazaOcteti > 0 && aR.j.spatiu.capOcteti === 5 * 1024 * 1024 * 1024,
       JSON.stringify(aR.j.spatiu));
 
-    // „Scrie": de pe adresa lui, cu un atașament
+    // „Scrie”: de pe adresa lui, cu un atașament
     const n1 = primite.length;
     const PDF = Buffer.from('%PDF-1.4 oferta');
     const s1 = await json('POST', '/api/mail/trimite', R, { de_la: 'robert.gherbali@ratrack.ro', catre: 'sef@client.ro, contabil@client.ro', subiect: 'Oferta RA Track',
       text: 'Bună ziua,\nvă trimit oferta.\nRobert', atasamente: [{ nume: 'Oferta.pdf', b64: PDF.toString('base64') }] });
     const e1 = primite[primite.length - 1];
-    T('„Scrie" de pe adresa lui: pleacă prin Brevo, cu numele lui urmat de „| RA Track" (Robert, 14.10), răspunsul înapoi la el, doi destinatari și PDF-ul',
+    T('„Scrie” de pe adresa lui: pleacă prin Brevo, cu numele lui urmat de „| RA Track" (Robert, 14.10), răspunsul înapoi la el, doi destinatari și PDF-ul',
       s1.status === 200 && primite.length === n1 + 1 && e1.corp.sender.email === 'robert.gherbali@ratrack.ro' && e1.corp.sender.name === 'Robert Gherbali | RA Track' &&
       e1.corp.replyTo && e1.corp.replyTo.email === 'robert.gherbali@ratrack.ro' && e1.corp.to.length === 2 && e1.corp.attachment[0].name === 'Oferta.pdf',
       JSON.stringify({ st: s1.status, j: s1.j, s: e1 && e1.corp.sender }).slice(0, 250));
@@ -154,18 +154,18 @@ const fals = http.createServer((req, res) => {
     const s3 = await json('POST', '/api/mail/trimite', R, { de_la: 'robert.gherbali@ratrack.ro', catre: 'blocat@client.ro', subiect: 'EROARE de livrare', text: 'x' });
     T('Brevo refuză: răspunsul spune motivul (502)', s3.status === 502 && /recipient blocked/.test(s3.j.error || ''), JSON.stringify(s3.j));
 
-    // „Trimise"
+    // „Trimise”
     const tR = await json('GET', '/api/mail/trimise', R), tA = await json('GET', '/api/mail/trimise', A);
     const subR = (tR.j.mailuri || []).map((m) => m.subiect);
     const subA = (tA.j.mailuri || []).map((m) => m.subiect);
     const mesajR = (tR.j.mailuri || []).filter((m) => m.subiect === 'Oferta RA Track')[0] || {};
-    T('Robert își vede mesajul: felul „Mesaj", scris de el, cu atașamentul, „trimis"',
+    T('Robert își vede mesajul: felul „Mesaj”, scris de el, cu atașamentul, „trimis”',
       mesajR.felText === 'Mesaj' && mesajR.cine === 'Robert Gherbali' && mesajR.stare === 'trimis' && (mesajR.atasamente || [])[0].nume === 'Oferta.pdf' &&
       mesajR.de_la === 'robert.gherbali@ratrack.ro' && mesajR.catre === 'sef@client.ro, contabil@client.ro', JSON.stringify(mesajR).slice(0, 250));
     const esuat = (tR.j.mailuri || []).filter((m) => m.subiect === 'EROARE de livrare')[0] || {};
-    T('emailul refuzat apare „n-a plecat", cu motivul', esuat.stare === 'esuat' && /recipient blocked/.test(esuat.eroare || ''), JSON.stringify(esuat).slice(0, 200));
+    T('emailul refuzat apare „n-a plecat”, cu motivul', esuat.stare === 'esuat' && /recipient blocked/.test(esuat.eroare || ''), JSON.stringify(esuat).slice(0, 200));
     const inv = (tR.j.mailuri || []).filter((m) => m.fel === 'invitatie');
-    T('invitațiile (emailuri ale aplicației, de pe contact@) apar singure, cu felul „Invitație", la amândoi',
+    T('invitațiile (emailuri ale aplicației, de pe contact@) apar singure, cu felul „Invitație”, la amândoi',
       inv.length >= 2 && inv.every((m) => m.de_la === 'contact@ratrack.ro' && m.felText === 'Invitație' && m.cine === 'aplicația') &&
       (tA.j.mailuri || []).filter((m) => m.fel === 'invitatie').length === inv.length, JSON.stringify(inv.map((m) => m.catre)));
     T('mesajul lui Alin de pe adresa comună se vede la amândoi', subR.indexOf('Programare montaj') >= 0 && subA.indexOf('Programare montaj') >= 0);
@@ -193,18 +193,18 @@ const fals = http.createServer((req, res) => {
     T('rând în jurnalul de audit pentru fiecare email scris (fără conținut)', randuri.some((r) => r.action === 'mail_trimis') && !JSON.stringify(randuri).includes('vă trimit oferta'));
 
     // Raportul programat, trimis pe email (Robert, 14.10): atașamentul poartă numele casei, ca la descărcarea din platformă —
-    // „RA-Track - Raport {numele raportului} - {ziua}.xlsx" (era „utilization_2026-10-13.xlsx").
+    // „RA-Track - Raport {numele raportului} - {ziua}.xlsx" (era „utilization_2026-10-13.xlsx”).
     await json('POST', '/api/devices', S, { imei: '861000000399001', name: 'Logan Mail', plate: 'B 99 MAI', company_id: co.id });
     const prog = (await json('POST', '/api/report-schedules', F, { report_type: 'utilization', period: 'last7', frequency: 'daily', hour: 6, format: 'xlsx', recipients: 'rapoarte@firma-mail.ro' })).j;
     const n0r = primite.length;
     const rul = await json('POST', '/api/report-schedules/' + prog.id + '/run', F);
     const eR = primite.slice(n0r).filter((x) => x.corp.to && x.corp.to.some((t) => t.email === 'rapoarte@firma-mail.ro'))[0];
     const etR = require('./reports').REPORTS.utilization.label, pz = (x) => String(x).padStart(2, '0'), azi = new Date();
-    // Ca la descărcare: caracterele care nu pot sta într-un nume de fișier („/" din „Index km / ore") se scot.
+    // Ca la descărcare: caracterele care nu pot sta într-un nume de fișier („/” din „Index km / ore”) se scot.
     const asteptat = ('RA-Track - Raport ' + etR + ' - ' + pz(azi.getDate()) + '.' + pz(azi.getMonth() + 1) + '.' + azi.getFullYear())
       .replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() + '.xlsx';
     const numeAt = eR && eR.corp.attachment && eR.corp.attachment[0] && eR.corp.attachment[0].name;
-    T('raportul programat pleacă pe email cu numele casei, ca din platformă („' + asteptat + '")', rul.status === 200 && numeAt === asteptat,
+    T('raportul programat pleacă pe email cu numele casei, ca din platformă („' + asteptat + '”)', rul.status === 200 && numeAt === asteptat,
       JSON.stringify({ st: rul.status, j: rul.j, nume: numeAt }).slice(0, 300));
     T('…și numele vine dintr-un singur loc (descărcarea și emailul folosesc aceeași funcție)',
       /const filename = reportExport\.numeRaport\(report\) \+ '\.' \+ fmt;/.test(fs.readFileSync(path.join(__dirname, 'report_schedules.js'), 'utf8')) &&

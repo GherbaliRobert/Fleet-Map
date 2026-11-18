@@ -1,4 +1,4 @@
-// Fișa mașinii → „Sonda combustibil" (calibrare voltaj → litri) și „Sonde (avansat)" — aceleași file ca
+// Fișa mașinii → „Sonda combustibil” (calibrare voltaj → litri) și „Sonde (avansat)” — aceleași file ca
 // pe web (public/index.html → #edit-tab-calibration, #edit-tab-sensors, FUEL_PRESETS, collectFuelSensors).
 //
 // Capcana de pierdere de date: PUT /tank-calibration și PUT /fuel-sensors ÎNLOCUIESC lista întreagă. Web-ul le
@@ -26,7 +26,7 @@ function presetDin(source: string, mode: string): string {
   const p = FUEL_PRESETS.find((x) => x.source && x.source === source && x.mode === (mode || 'direct'));
   return p ? p.v : 'generic';
 }
-// Numele pe înțeles al sursei, pentru foaia „Senzori" (fără „analog_input_1" în fața clientului, când se poate).
+// Numele pe înțeles al sursei, pentru foaia „Senzori” (fără „analog_input_1” în fața clientului, când se poate).
 export function numeSursa(source: string, mode: string): string {
   const p = FUEL_PRESETS.find((x) => x.source && x.source === source && x.mode === (mode || 'direct'))
     || FUEL_PRESETS.find((x) => x.source && x.source === source);
@@ -81,7 +81,7 @@ const info = 'background:var(--bg-dark);border-radius:10px;padding:10px 12px;mar
 const btnSec = 'min-height:44px;border-radius:10px;border:1px dashed var(--accent);background:transparent;color:var(--accent);font-weight:800;font-size:14px;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%';
 const btnDel = 'flex:0 0 auto;width:44px;height:44px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:var(--red);display:flex;align-items:center;justify-content:center';
 
-// ─── Editorul „Sonda combustibil" ───
+// ─── Editorul „Sonda combustibil” ───
 export function SondaSimplaForm({ rows, setRows }: { rows: RandCal[]; setRows: (r: RandCal[]) => void }) {
   const pune = (i: number, k: 'v' | 'l', val: string) => setRows(rows.map((r, j) => (j === i ? { ...r, [k]: val } : r)));
   return (
@@ -111,7 +111,7 @@ export function SondaSimplaForm({ rows, setRows }: { rows: RandCal[]; setRows: (
   );
 }
 
-// ─── Editorul „Sonde (avansat)" ───
+// ─── Editorul „Sonde (avansat)” ───
 export function SondeAvansatForm({ list, setList }: { list: SondaEdit[]; setList: (l: SondaEdit[]) => void }) {
   const schimba = (i: number, patch: Partial<SondaEdit>) => setList(list.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const lbl = 'display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px';
@@ -183,8 +183,8 @@ export function SondeAvansatForm({ list, setList }: { list: SondaEdit[]; setList
   );
 }
 
-// ─── Foaia „Senzori" din fișă (doar citire) ───
-// Înainte citea câmpuri care nu există (type/id/io) și scria „—" pe fiecare rând.
+// ─── Foaia „Senzori” din fișă (doar citire) ───
+// Înainte citea câmpuri care nu există (type/id/io) și scria „—” pe fiecare rând.
 export function SenzoriVedere({ sensors, calib }: { sensors: any[]; calib: { voltage: number; liters: number }[] }) {
   if (!sensors.length && !calib.length) return <div class="center-msg">Niciun senzor configurat pe acest vehicul.</div>;
   const kv = (k: string, v: any) => <div class="kv"><span class="k">{k}</span><span class="v">{v}</span></div>;

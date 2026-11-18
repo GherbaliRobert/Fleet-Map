@@ -1,13 +1,13 @@
-// Un fișier făcut de SERVER, cerut cu POST (ex. „Aparate GPS" → Excel/PDF cu rândurile de pe ecran).
+// Un fișier făcut de SERVER, cerut cu POST (ex. „Aparate GPS” → Excel/PDF cu rândurile de pe ecran).
 // E geamănul lui `salveazaDeLaServer` din export.ts, care știe doar GET: exportul inventarului are nevoie de
 // POST, ca să trimită exact aparatele de pe ecran (GET-ul scoate tot inventarul). Dacă export.ts primește
 // odată un `body` opțional, fișierul ăsta se poate șterge și apelul se mută acolo.
-//   • Numele vine din antetul răspunsului, pus de `sendReport` pe server („RA-Track - Raport … - data"):
-//     telefonul nu-și mai compune singur „raport_…" (regula de brand din CLAUDE.md).
+//   • Numele vine din antetul răspunsului, pus de `sendReport` pe server („RA-Track - Raport … - data”):
+//     telefonul nu-și mai compune singur „raport_…” (regula de brand din CLAUDE.md).
 //   • Cererea trece prin stratul nativ, cu tokenul (un fetch din pagină e blocat — serverul nu trimite CORS).
 //   • Eroarea serverului ajunge pe ecran cu vorbele lui.
-//   • `deschide` = „Vezi" (ca `salveazaDeLaServer`): foaia telefonului se deschide ca s-o citești (vizualizatorul de
-//     PDF-uri) — ex. „Previzualizează" factura înainte de emitere (lotul 5); fără el = „Descarcă" / trimite.
+//   • `deschide` = „Vezi” (ca `salveazaDeLaServer`): foaia telefonului se deschide ca s-o citești (vizualizatorul de
+//     PDF-uri) — ex. „Previzualizează” factura înainte de emitere (lotul 5); fără el = „Descarcă” / trimite.
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { API_BASE, getAuthToken } from '../api/client';
 import { numeDinAntet } from './export';

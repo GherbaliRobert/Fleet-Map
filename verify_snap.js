@@ -26,7 +26,7 @@ async function req(m, p, body) {
   return { status: r.status, body: j };
 }
 
-// „Overpass" fals: un singur drum PERFECT DREPT pe paralela 45.7500, de la lng 21.20 la 21.30.
+// „Overpass” fals: un singur drum PERFECT DREPT pe paralela 45.7500, de la lng 21.20 la 21.30.
 // Orice punct de test cade lângă el, deci proiecția trebuie să-l aducă exact pe 45.7500.
 const DRUM_LAT = 45.75;
 function startOverpass() {
@@ -74,7 +74,7 @@ const metri = (a, b) => Math.abs(a - b) * 111320;   // diferență de latitudine
     const aproape = [[45.75013, 21.2100], [45.74987, 21.2150], [45.75011, 21.2200], [45.74990, 21.2250]];
     const r1 = await req('POST', '/api/match', { points: aproape });
     t('răspunde cu traseul aliniat', r1.body && Array.isArray(r1.body.matched) && r1.body.matched.length === 4, JSON.stringify(r1.body).slice(0, 200));
-    t('spune ce metodă a folosit („osm")', r1.body && r1.body.source === 'osm', r1.body && r1.body.source);
+    t('spune ce metodă a folosit („osm”)', r1.body && r1.body.source === 'osm', r1.body && r1.body.source);
     t('include atribuirea ODbL (obligatorie pentru date OSM)', r1.body && /OpenStreetMap/.test(r1.body.attribution || ''), r1.body && r1.body.attribution);
     if (r1.body && r1.body.matched) {
       const abateri = r1.body.matched.map(p => metri(p[0], DRUM_LAT));
@@ -90,7 +90,7 @@ const metri = (a, b) => Math.abs(a - b) * 111320;   // diferență de latitudine
     t('al doilea apel vine din cache (zero interogări externe)', ovHits === 0 && r2.body && r2.body.matched, 'interogări=' + ovHits);
 
     // ── 3. Puncte DEPARTE de orice drum → NU pretinde că a aliniat ──
-    // (deplasare în afara drumurilor, zonă fără acoperire OSM: mai bine „nu pot" decât puncte mutate aiurea)
+    // (deplasare în afara drumurilor, zonă fără acoperire OSM: mai bine „nu pot” decât puncte mutate aiurea)
     const departe = [[45.9000, 21.2100], [45.9001, 21.2150], [45.9002, 21.2200]];
     const r3 = await req('POST', '/api/match', { points: departe });
     t('puncte fără drum aproape → refuză, nu inventează', r3.body && r3.body.matched === null, JSON.stringify(r3.body).slice(0, 150));
@@ -108,18 +108,18 @@ const metri = (a, b) => Math.abs(a - b) * 111320;   // diferență de latitudine
     t('apelul automat NU interoghează Overpass', ovHits === 0, 'interogări=' + ovHits);
     t('și explică de ce n-a aliniat', r5.body && r5.body.matched === null && r5.body.reason === 'osrm_neconfigurat', JSON.stringify(r5.body));
 
-    // ── 6. „Limite reale" folosește ACELEAȘI date descărcate → fără interogare nouă ──
+    // ── 6. „Limite reale” folosește ACELEAȘI date descărcate → fără interogare nouă ──
     ovHits = 0;
     const r6 = await req('POST', '/api/road-limits', { points: aproape });
-    t('„Limite reale" pe același traseu refolosește cache-ul', ovHits === 0, 'interogări=' + ovHits);
+    t('„Limite reale” pe același traseu refolosește cache-ul', ovHits === 0, 'interogări=' + ovHits);
     t('și întoarce limita drumului (50 km/h)', r6.body && (r6.body.limits || []).every(l => l === 50), JSON.stringify(r6.body && r6.body.limits));
 
-    // ── 7. Serviciul OSM picat ≠ „nu există drumuri pe acolo" ──
+    // ── 7. Serviciul OSM picat ≠ „nu există drumuri pe acolo” ──
     // Instanțele publice Overpass chiar cad des (504 / timeout). Dacă spunem greșit, operatorul caută vina
     // în datele lui, nu în serviciu.
     const ovOk = ov; ov.close(); ov = null;
     const r7 = await req('POST', '/api/match', { points: [[45.75014, 21.2600], [45.74986, 21.2650], [45.75005, 21.2700]] });
-    t('serviciu OSM picat → motiv distinct, nu „fără drumuri"', r7.body && r7.body.reason === 'osm_indisponibil', JSON.stringify(r7.body));
+    t('serviciu OSM picat → motiv distinct, nu „fără drumuri”', r7.body && r7.body.reason === 'osm_indisponibil', JSON.stringify(r7.body));
     void ovOk;
 
     // ── 8. Autentificare obligatorie ──

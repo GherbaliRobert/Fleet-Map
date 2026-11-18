@@ -13,7 +13,7 @@ import './oferte.css';
 // Super-admin: Ofertare Live — lista ofertelor salvate, ca pe web: pâlnia de sus, starea fiecărei oferte și
 // pașii ei (Am trimis-o / Acceptată / Pierdută / Redeschide), hârtia, clientul nou din ofertă, creionul.
 //
-// Nicio sumă nu se socotește aici. Calculatorul (OfferCalc) și „Prețurile noastre" (OurPrices) iau totul de la
+// Nicio sumă nu se socotește aici. Calculatorul (OfferCalc) și „Prețurile noastre” (OurPrices) iau totul de la
 // server, care rulează chiar pagina web; hârtia unei oferte salvate vine tot de acolo (`hartie: true`) și se
 // face PDF de generatorul serverului. Termenul și motivele pierderii vin din `/api/admin/offers/meta`.
 // (Calculatorul din iulie, cu prețurile lui vechi, a plecat pe 23.09; cel de acum e al web-ului.)
@@ -25,7 +25,7 @@ const OF_ET: Record<string, Et> = {
   acceptata: { et: 'Acceptată', c: 'var(--of-ok)', ic: 'check' },
   pierduta: { et: 'Pierdută', c: 'var(--text-muted)', ic: 'x' },
 };
-// „Expirată" nu e o stare ținută în bază: se socotește din termen, ca pe web (_ofStare).
+// „Expirată” nu e o stare ținută în bază: se socotește din termen, ca pe web (_ofStare).
 function stare(o: any): string {
   const s = o.status || 'ciorna';
   if (s === 'trimisa' && o.valid_until && Number(o.valid_until) < Date.now()) return 'expirata';
@@ -35,7 +35,7 @@ function zile(o: any): number | null {
   if (!o.valid_until) return null;
   return Math.ceil((Number(o.valid_until) - Date.now()) / 86400000);
 }
-// „20 de zile", dar „5 zile".
+// „20 de zile”, dar „5 zile”.
 function de(n: number) { const x = Math.abs(Math.round(n)); if (x === 0) return ' '; const r = x % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
 function subStare(o: any): string {
   const s = stare(o), z = zile(o);
@@ -93,7 +93,7 @@ export function Offers() {
     loadList();
     // Cursul de azi e doar rezerva pentru ofertele vechi, fără curs înghețat în ele.
     Api.fx().then((f: any) => setFxAzi(Number(f && f.eur) || 0)).catch(() => {});
-    // Termenul și motivele vin de la server — niciun „30" și nicio listă de motive scrise aici.
+    // Termenul și motivele vin de la server — niciun „30” și nicio listă de motive scrise aici.
     Api.offerMeta().then((m: any) => { if (m && Array.isArray(m.motivePierdut)) setMeta({ valabilZile: m.valabilZile || null, motivePierdut: m.motivePierdut }); }).catch(() => {});
   }, []);
   useInapoiInchide(!!foaie, () => { if (busy) return false; setFoaie(null); return true; });
@@ -107,7 +107,7 @@ export function Offers() {
     try {
       await Api.offerSetStare(o.id, Object.assign({ status }, extra || {}));
       setFoaie(null);
-      showToast('Ofertă marcată „' + ((OF_ET[status] || {}).et || status) + '" ✓');
+      showToast('Ofertă marcată „' + ((OF_ET[status] || {}).et || status) + '” ✓');
       loadList();
     } catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { setBusy(''); }
@@ -189,7 +189,7 @@ export function Offers() {
           <div class="adm-sec2" style="margin-top:0">Oferte salvate ({offers.length})</div>
           <Palnie rows={offers} />
           <div class="of-hint" style="margin:-4px 0 10px">
-            „Vezi hârtia" deschide PDF-ul ofertei în foaia de partajare a telefonului: de acolo îl deschizi cu aplicația de
+            „Vezi hârtia” deschide PDF-ul ofertei în foaia de partajare a telefonului: de acolo îl deschizi cu aplicația de
             PDF-uri, îl salvezi sau îl trimiți. E exact fișierul pe care îl primește clientul.
           </div>
           {offers.map((o: any) => {
@@ -222,7 +222,7 @@ export function Offers() {
                   </div>
                   <div style="text-align:right">
                     <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px">La început</div>
-                    {/* Ofertele salvate înainte de 21.09 n-au suma asta: liniuță cinstită, nu „0 lei". */}
+                    {/* Ofertele salvate înainte de 21.09 n-au suma asta: liniuță cinstită, nu „0 lei”. */}
                     {once > 0 ? (<>
                       <div style="font-size:13.5px;font-weight:800">{lei(once)}</div>
                       <div style="font-size:10.5px;color:var(--text-muted)">{eur(once, fx)}</div>
@@ -234,7 +234,7 @@ export function Offers() {
                   <button class="of-b" disabled={busy === 'pdf-' + o.id} onClick={() => hartia(o)} aria-label="Vezi hârtia">
                     {busy === 'pdf-' + o.id ? <span class="spin" style="width:15px;height:15px;border-width:2px" /> : <Icon name="eye" size={15} />} Vezi hârtia
                   </button>
-                  {/* Un singur nume, cu text (Alin, 30.09 — web: raxOfRenderList): „Deschide dosarul clientului". Prima dată
+                  {/* Un singur nume, cu text (Alin, 30.09 — web: raxOfRenderList): „Deschide dosarul clientului”. Prima dată
                       face firma, contractul și contul clientului din ofertă (Client nou, datele și prețul vin singure); după,
                       deschide dosarul lui (fișa firmei, fila Contract). */}
                   {dosar

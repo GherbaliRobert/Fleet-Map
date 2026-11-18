@@ -1,19 +1,19 @@
-// Calendarul montajului — PRIMA filă din Business → Montaj, ca pe web (blocul „calendarul de montaj" din
+// Calendarul montajului — PRIMA filă din Business → Montaj, ca pe web (blocul „calendarul de montaj” din
 // public/index.html). SINGURUL loc în care se programează montajul unui contract SEMNAT.
 //
 // Ce e pe web e și aici, pe o singură coloană, lizibil la 375px, fără derulare laterală:
-//   • luna (‹ / › / „Azi") și filtrul pe instalator („vezi doar zilele lui ocupate");
+//   • luna (‹ / › / „Azi”) și filtrul pe instalator („vezi doar zilele lui ocupate”);
 //   • grila lunii, strânsă: pe fiecare zi câte mașini se montează (verde = confirmat de instalator și de client, galben
 //     = mai lipsește o confirmare, gri = montat). Pe web grila scrie și clientul; pe telefon n-are loc, așa că sub grilă
 //     stau zilele cu montaj, cu clientul, mașinile, instalatorul și starea — exact ce scrie pe web în eticheta zilei;
-//   • „Ce ai de montat": contractele semnate cu mașini rămase, termenul de 30 de zile (roșu depășit, portocaliu curând),
-//     butonul „Programează" pe fiecare, și stocul de aparate;
-//   • „Programate" / „Istoric" (01.10): zilele încă programate și cele montate sau anulate (cu motivul), cu
-//     „Reprogramează" pe o zi anulată;
-//   • o zi liberă apăsată → „Programează montajul" pe ziua aia (cu ce mai are fiecare instalator în ziua aia, nota de
-//     stoc și cele două confirmări); o zi ocupată → ce e pe ea + „Programează";
-//   • o lucrare apăsată → confirmările, „S-a montat?", „Altă zi sau alt instalator" (Mută), „La client" și „Anulează"
-//     (cu motivul: instalatorul sau clientul nu poate; rămâne în istoric) — cu „Reprogramează" pe loc, dacă vrei.
+//   • „Ce ai de montat”: contractele semnate cu mașini rămase, termenul de 30 de zile (roșu depășit, portocaliu curând),
+//     butonul „Programează” pe fiecare, și stocul de aparate;
+//   • „Programate” / „Istoric” (01.10): zilele încă programate și cele montate sau anulate (cu motivul), cu
+//     „Reprogramează” pe o zi anulată;
+//   • o zi liberă apăsată → „Programează montajul” pe ziua aia (cu ce mai are fiecare instalator în ziua aia, nota de
+//     stoc și cele două confirmări); o zi ocupată → ce e pe ea + „Programează”;
+//   • o lucrare apăsată → confirmările, „S-a montat?”, „Altă zi sau alt instalator” (Mută), „La client” și „Anulează”
+//     (cu motivul: instalatorul sau clientul nu poate; rămâne în istoric) — cu „Reprogramează” pe loc, dacă vrei.
 //
 // Telefonul NU socotește nimic din programare: ce mai e de programat, termenul, prețul pentru client (din Anexa
 // nr. 2), costul instalatorului, textele istoricului și nota de stoc le face serverul, cu vorbele lui la refuz.
@@ -38,13 +38,13 @@ import '../screens/detail.css';
 import '../screens/contracte.css';
 import '../screens/montaj.css';
 
-// Instalatorul ales sus se ține minte cât trăiește aplicația: „La client" duce în dosarul firmei, iar „înapoi"
+// Instalatorul ales sus se ține minte cât trăiește aplicația: „La client” duce în dosarul firmei, iar „înapoi”
 // trebuie să găsească calendarul cum l-ai lăsat (ca filtrele din fila Lucrări).
 let partTinut = '';
 let filaTinuta: 'programate' | 'istoric' = 'programate';
 
 // O singură foaie deschisă deodată; trecerea de la una la alta (ziua → programarea, lucrarea → întrebarea / anularea)
-// păstrează aceeași pază de „înapoi" (vezi useInapoiInchide: două foi păzite schimbate deodată lasă istoricul strâmb).
+// păstrează aceeași pază de „înapoi” (vezi useInapoiInchide: două foi păzite schimbate deodată lasă istoricul strâmb).
 type Foaie =
   | { fel: 'zi'; zi: string }
   | { fel: 'prog'; f: FormProg; start: string }
@@ -61,8 +61,8 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
   incarcand?: boolean;               // altă lună pe drum: săgețile așteaptă
   onLuna: (luna: string) => void;
   onSchimbat: (luna?: string) => void;   // după programare / mutare / montată / anulare: ecranul reîncarcă (pe luna dată)
-  onClient: (companyId: number) => void; // „La client": dosarul firmei (se cheamă din foaie — ecranul înlocuiește adresa)
-  onInterventie: (x: CalInterventie, dinFoaie: boolean) => void; // o intervenție → cererea ei, în „Cereri de la clienți"
+  onClient: (companyId: number) => void; // „La client”: dosarul firmei (se cheamă din foaie — ecranul înlocuiește adresa)
+  onInterventie: (x: CalInterventie, dinFoaie: boolean) => void; // o intervenție → cererea ei, în „Cereri de la clienți”
   pre?: number | null;               // venit din drumul clientului: contractul de programat
   onPreFolosit?: () => void;
 }) {
@@ -76,8 +76,8 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
   const setPart = (v: string) => { partTinut = v; setPartS(v); };
   const setFila = (v: 'programate' | 'istoric') => { filaTinuta = v; setFilaS(v); };
 
-  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal, „Renunț" și „înapoi" de pe Android.
-  // Din întrebarea „Montată?" și din anulare, „înapoi" te întoarce în foaia zilei (ca „Renunță" pe web, unde
+  // Întoarce true dacă foaia s-a închis. Aceeași întrebare pentru X, fundal, „Renunț” și „înapoi” de pe Android.
+  // Din întrebarea „Montată?” și din anulare, „înapoi” te întoarce în foaia zilei (ca „Renunță” pe web, unde
   // panoul rămâne deschis) — foaia rămâne deschisă, deci paza își pune intrarea la loc.
   function inchide(): boolean {
     if (busy) return false;
@@ -93,7 +93,7 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
   }
   useInapoiInchide(!!foaie, inchide);
 
-  // Venit din „Drumul clientului" / din fișă („Programează montajul"): formularul pe contractul lui, ca raxLoadMontaj
+  // Venit din „Drumul clientului” / din fișă („Programează montajul”): formularul pe contractul lui, ca raxLoadMontaj
   // cu `_raxMj.cal.pre`. Dacă n-are nimic de programat, o spune — cu numele firmei.
   useEffect(() => {
     if (pre == null || !d) return;
@@ -102,7 +102,7 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
     if ('contract_id' in r) { deschideProg(d.azi, r.contract_id, null); return; }
     if (!deProgramatActive(d).length) { deschideFara(CAL_TEXT.nimic); return; }
     if (r.faraClient) { deschideFara(faraClientText(r.faraClient)); return; }
-    // Contractul nu e la „De programat" (nesemnat, sau fără montaj de aparat): numele firmei din lista contractelor.
+    // Contractul nu e la „De programat” (nesemnat, sau fără montaj de aparat): numele firmei din lista contractelor.
     const nr = ++preNr.current;
     numeFirmaContract(pre).then((nume) => {
       if (nr !== preNr.current) return;
@@ -110,7 +110,7 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
     });
   }, [pre, d]);
 
-  // Lucrările care se pot deschide: cele ale lunii și cele programate în alte luni (fila „Programate").
+  // Lucrările care se pot deschide: cele ale lunii și cele programate în alte luni (fila „Programate”).
   const toate = d ? d.lucrari.concat((d.programate || []).filter((p) => !d.lucrari.some((l) => l.id === p.id))) : [];
   // O lucrare deschisă care nu mai e programată (anulată, mutată între timp): foaia se închide, nu rămâne goală.
   const lucrareDeschisa = foaie && (foaie.fel === 'lucrare' || foaie.fel === 'intreb' || foaie.fel === 'anul') && d ? toate.find((x) => x.id === foaie.id) : null;
@@ -119,7 +119,7 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
   }, [foaie, lucrareDeschisa]);
 
   function deschideFara(text: string) { setMsg(''); setFoaie({ fel: 'fara', text }); }
-  // „Programează": pe o zi (din grilă / din foaia zilei), pe un contract („Ce ai de montat"), sau pe contractul cerut.
+  // „Programează”: pe o zi (din grilă / din foaia zilei), pe un contract („Ce ai de montat”), sau pe contractul cerut.
   // Instalatorul ales sus se propune singur (raxMjCalZi / raxMjCalProgrameaza); venit din drum, niciunul.
   function deschideProg(zi: string | null, contractId: number | null, partener: string | null) {
     const f = formNou(d, zi, contractId, partener);
@@ -168,7 +168,7 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
     } catch (e: any) { setMsg(eroarea(e, 'Nu s-a putut muta.')); }
     finally { setBusy(false); }
   }
-  // Întrebarea s-a pus; un refuz al serverului („Între 1 și 3") se vede înapoi în foaia zilei, ca pe web (#mjc-msg).
+  // Întrebarea s-a pus; un refuz al serverului („Între 1 și 3”) se vede înapoi în foaia zilei, ca pe web (#mjc-msg).
   async function faIntrebarea(x: { ce: 'montata'; id: number; f: FormLuc; start: string }) {
     if (busy) return;
     setBusy(true);
@@ -297,7 +297,7 @@ export function CalendarMontaj({ d, err, incarcand, onLuna, onSchimbat, onClient
 
       <DeProgramat d={d} onProgrameaza={(cid) => deschideProg(null, cid, part || null)} />
 
-      {/* „Programate" / „Istoric" (01.10): zilele încă programate și cele montate sau anulate, cu motivul. */}
+      {/* „Programate” / „Istoric” (01.10): zilele încă programate și cele montate sau anulate, cu motivul. */}
       <div class="mjc-file">
         <button type="button" class={'ctr-btn mjc-fila' + (fila === 'programate' ? ' pri' : '')} onClick={() => setFila('programate')}>Programate · {prog.length}</button>
         <button type="button" class={'ctr-btn mjc-fila' + (fila === 'istoric' ? ' pri' : '')} onClick={() => setFila('istoric')}>Istoric · {(d.istoric || []).length}</button>
@@ -414,7 +414,7 @@ function RandInterventie({ x, onClick }: { x: CalInterventie; onClick: () => voi
   );
 }
 
-// Un rând din istoric: ziua, clientul, ce s-a întâmplat (textul serverului), amănuntele și „Reprogramează".
+// Un rând din istoric: ziua, clientul, ce s-a întâmplat (textul serverului), amănuntele și „Reprogramează”.
 function RandIstoric({ l, onReprog }: { l: CalIstoric; onReprog: () => void }) {
   return (
     <div class="ctr-row">
@@ -429,7 +429,7 @@ function RandIstoric({ l, onReprog }: { l: CalIstoric; onReprog: () => void }) {
   );
 }
 
-// „Ce ai de montat" (_mjcDeProgramatHtml): contractele semnate cu ce a mai rămas, cel mai strâns termen primul
+// „Ce ai de montat” (_mjcDeProgramatHtml): contractele semnate cu ce a mai rămas, cel mai strâns termen primul
 // (ordinea serverului), plus stocul de aparate.
 export function DeProgramat({ d, onProgrameaza }: { d: CalDate; onProgrameaza: (contractId: number) => void }) {
   return (
@@ -459,7 +459,7 @@ export function DeProgramat({ d, onProgrameaza }: { d: CalDate; onProgrameaza: (
   );
 }
 
-// „Programează montajul" (_mjcFormHtml): clientul, ziua, câte mașini (din cât a rămas), cine montează — cu ce mai are
+// „Programează montajul” (_mjcFormHtml): clientul, ziua, câte mașini (din cât a rămas), cine montează — cu ce mai are
 // fiecare instalator în ziua aia —, ce se mai montează pe mașini (propus din câte mașini cât timp n-ai scris tu de
 // mână), nota de stoc (de la server) și cele două confirmări vorbite la telefon.
 export function FoaieProgramare({ d, f, msg, busy, onF, onClose, onSalveaza }: {
@@ -591,8 +591,8 @@ export function FoaieLucrare({ d, l, f, msg, busy, onF, onClose, onMontata, onMu
   );
 }
 
-// Anularea (_mjcAnuleazaHtml): unul din cele DOUĂ motive ale serverului, amănuntele dacă vrei și, la „Reprogramează",
-// ziua nouă cu instalatorul ei. Lucrarea anulată rămâne în istoric; mașinile se întorc la „Ce ai de montat".
+// Anularea (_mjcAnuleazaHtml): unul din cele DOUĂ motive ale serverului, amănuntele dacă vrei și, la „Reprogramează”,
+// ziua nouă cu instalatorul ei. Lucrarea anulată rămâne în istoric; mașinile se întorc la „Ce ai de montat”.
 export function FoaieAnulare({ d, l, f, msg, busy, onF, onClose, onTrimite }: {
   d: CalDate; l: CalLucrare; f: FormAnulare; msg: string; busy: boolean; onF: (f: FormAnulare) => void; onClose: () => boolean; onTrimite: () => void;
 }) {
@@ -671,7 +671,7 @@ export function FoaieReprog({ d, l, f, msg, busy, onF, onClose, onTrimite }: {
   );
 }
 
-// Foaia de jos (ca în Stoc). Închiderea (X, fundal) trece prin aceeași funcție ca „înapoi" de pe Android.
+// Foaia de jos (ca în Stoc). Închiderea (X, fundal) trece prin aceeași funcție ca „înapoi” de pe Android.
 function Foaie({ titlu, icon, onClose, children }: { titlu: string; icon: 'calendar' | 'wrench'; onClose: () => boolean; children: any }) {
   return (
     <div class="sheet-ov" onClick={(e: any) => { if (e.target === e.currentTarget) onClose(); }}>

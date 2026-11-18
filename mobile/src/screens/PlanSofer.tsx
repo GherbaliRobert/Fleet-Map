@@ -1,5 +1,5 @@
-// Planul de încărcare primit (pasul 4, 12.10) — ecranul șoferului, după macheta aprobată (artboard-ul „Telefon"): marfa
-// văzută de sus, ordinea de încărcare, greutatea pe osii și cele două butoane. Pe web e fereastra „Planul de încărcare"
+// Planul de încărcare primit (pasul 4, 12.10) — ecranul șoferului, după macheta aprobată (artboard-ul „Telefon”): marfa
+// văzută de sus, ordinea de încărcare, greutatea pe osii și cele două butoane. Pe web e fereastra „Planul de încărcare”
 // (simPlanSofer). Cifrele și textele vin de la server (incarcare.js); desenul e copia celui de pe web (lib/simDesen.ts).
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation, useRoute } from 'preact-iso';

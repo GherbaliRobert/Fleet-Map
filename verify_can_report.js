@@ -1,10 +1,10 @@
-// verify_can_report.js — raportul „CAN detaliat": catalogul de semnale, poarta contra injecției și
+// verify_can_report.js — raportul „CAN detaliat”: catalogul de semnale, poarta contra injecției și
 // lanțul complet pachet → istoric → raport.
 //
 // De ce există. Raportul lasă OMUL să aleagă ce chei se citesc din baza de date. Asta e o cale nouă
 // prin care un text venit din interfață ajunge într-o interogare, deci poarta care validează cheile
 // trebuie apărată de un test, nu de bună-credință. Al doilea rost: unitățile. `io_signals.js` spune
-// „external_voltage se împarte la 1000 și e în volți", iar `io_format.js` spune același lucru în
+// „external_voltage se împarte la 1000 și e în volți”, iar `io_format.js` spune același lucru în
 // felul lui. Dacă cele două o iau razna, raportul arată 14210 V și nimeni nu observă imediat.
 //
 //   node verify_can_report.js
@@ -48,7 +48,7 @@ check('curata() plafonează numărul de coloane', ioSig.curata(ioSig.SEMNALE.map
 check('curata() elimină dublurile', ioSig.curata(['can_engine_rpm', 'can_engine_rpm']).length === 1);
 
 console.log('\n3. Unitățile se acordă cu formatarea din aplicație');
-// `formatIoValue` scrie valoarea pe ecran („14.21 V"). `io_signals.valoare` o dă ca număr, pentru
+// `formatIoValue` scrie valoarea pe ecran („14.21 V”). `io_signals.valoare` o dă ca număr, pentru
 // tabel și grafic. Trebuie să spună ACELAȘI lucru — altfel raportul arată volți în milivolți.
 const PROBE = { external_voltage: 14210, battery_voltage: 4050, can_engine_rpm: 1480, can_engine_temp: 87,
   can_fuel_level_liters: 38.4, can_total_mileage: 184374.2, total_odometer: 9123456, can_fuel_rate: 7.1,
@@ -70,7 +70,7 @@ check('unitatea apare și în textul afișat',
     return u === '/5' || u === 'sat.' || u === 'erori' || scris.indexOf(u) >= 0;
   }),
   Object.keys(PROBE).filter((k) => String(ioFmt.formatIoValue(k, PROBE[k])).indexOf(ioSig.semnal(k).unitate) < 0));
-check('un zero rămâne zero, nu „lipsă"', ioSig.valoare('can_engine_rpm', 0) === 0);
+check('un zero rămâne zero, nu „lipsă”', ioSig.valoare('can_engine_rpm', 0) === 0);
 check('text neconvertibil → null (nu NaN în tabel)', ioSig.valoare('can_engine_rpm', 'abc') === null);
 check('valoare venită ca TEXT se convertește (CAN trimite uneori string)', ioSig.valoare('can_engine_rpm', '1480') === 1480);
 

@@ -1,5 +1,5 @@
-// verify_campuri.js — câmpurile și butoanele din secțiunile deschise de pe „Acasă", sub stilul casei; și, din 06.11, casetele și
-// listele derulante din TOATĂ aplicația web, într-un singur fel (Alin: „1 da, 2 da").
+// verify_campuri.js — câmpurile și butoanele din secțiunile deschise de pe „Acasă”, sub stilul casei; și, din 06.11, casetele și
+// listele derulante din TOATĂ aplicația web, într-un singur fel (Alin: „1 da, 2 da”).
 //
 //   node verify_campuri.js
 //
@@ -11,7 +11,7 @@
 // Ce prinde: o secțiune rămasă fără clasă, stilul casei rescris pe alături (exact așa dispăruse
 // săgeata select-ului și locul lăsat lupei), scurtătura `background` care șterge săgeata, lanțul
 // de `:not(...)` fără `:where(...)` care calcă regulile locale, și ora ultimei poziții care
-// redevine „Invalid Date".
+// redevine „Invalid Date”.
 const fs = require('fs');
 const P = (f) => require('path').join(__dirname, f);
 const html = fs.readFileSync(P('public/index.html'), 'utf8');
@@ -29,7 +29,7 @@ function regula(sursa, selector) {
 console.log('\n1. Secțiunile poartă clasa stilului de casă');
 ['companies', 'users', 'devices', 'archived', 'ofertare', 'accounts', 'inventar'].forEach(function (s) {
   const m = html.match(new RegExp('<div id="admin-tab-' + s + '"[^>]*>'));
-  T('secțiunea „' + s + '" e sub `ra-camp`', !!m && /class="[^"]*\bra-camp\b/.test(m[0]), m && m[0]);
+  T('secțiunea „' + s + '” e sub `ra-camp`', !!m && /class="[^"]*\bra-camp\b/.test(m[0]), m && m[0]);
 });
 
 console.log('\n2. Stilul e definit o singură dată, și e complet');
@@ -52,15 +52,15 @@ T('select-ul are săgeată desenată de noi',
   /\.ra-camp select\{[\s\S]{0,400}?background-image:linear-gradient/.test(css) && /\.ra-camp select\{[\s\S]{0,400}?appearance:none/.test(css));
 T('regula generală folosește `:where(...)`, ca să nu calce regulile locale',
   /\.ra-camp input:where\(:not\(\[type=checkbox\]\)/.test(css));
-T('formularul „Adaugă utilizator" nu-și mai ține un stil paralel',
+T('formularul „Adaugă utilizator” nu-și mai ține un stil paralel',
   !/#users-modal \.add-user-form input/.test(html));
 T('filtrul de companii din Utilizatori folosește clasa casei, nu stil scris de mână',
   /<select class="rax-field" onchange="_usersFilter/.test(html));
 
-console.log('\n4. Ora ultimei poziții — nu mai scrie „Invalid Date"');
+console.log('\n4. Ora ultimei poziții — nu mai scrie „Invalid Date”');
 const bucata = (function () {
-  const a = html.indexOf('// ── începe „Ora ultimei poziții"');
-  const b = html.indexOf('// ── sfârșit „Ora ultimei poziții" ──', a);
+  const a = html.indexOf('// ── începe „Ora ultimei poziții”');
+  const b = html.indexOf('// ── sfârșit „Ora ultimei poziții” ──', a);
   if (a < 0 || b < 0) throw new Error('nu găsesc funcția orei');
   return html.slice(a, b);
 })();
@@ -70,11 +70,11 @@ T('din epoch (număr) iese o dată', /2026/.test(_raxDataOra(acum)), _raxDataOra
 T('din epoch scris ca text, la fel', _raxDataOra(String(acum)) === _raxDataOra(acum), _raxDataOra(String(acum)));
 T('din text ISO iese tot o dată', /2026/.test(_raxDataOra('2026-09-15T08:30:00Z')), _raxDataOra('2026-09-15T08:30:00Z'));
 T('din gol iese liniuță', _raxDataOra(null) === '—' && _raxDataOra('') === '—' && _raxDataOra(undefined) === '—');
-T('din gunoi iese tot liniuță, nu „Invalid Date"', _raxDataOra('cine știe ce') === '—', _raxDataOra('cine știe ce'));
+T('din gunoi iese tot liniuță, nu „Invalid Date”', _raxDataOra('cine știe ce') === '—', _raxDataOra('cine știe ce'));
 T('tabelul de dispozitive o folosește', /_raxDataOra\(d\.last_position_time\)/.test(html));
 
 // ═══ Din 06.11: casetele și listele derulante, un singur fel în toată aplicația ═══════════════════════════════════════════
-// Alin, cu trei poze (fișa șoferului, „Companie", „Tip combustibil"): „hai să le modernizăm, că sunt din anii 2000". Măsurat
+// Alin, cu trei poze (fișa șoferului, „Companie”, „Tip combustibil”): „hai să le modernizăm, că sunt din anii 2000”. Măsurat
 // înainte: 56 de feluri de casete, lista albastră a sistemului, casetele gri ale sistemului pe tema închisă (Alerte, Mentenanță).
 const JS = fs.readFileSync(P('public/js/campuri.js'), 'utf8');
 const BLOC = (function () {
@@ -83,7 +83,7 @@ const BLOC = (function () {
 })();
 const FARA_COM = BLOC.replace(/\/\*[\s\S]*?\*\//g, '');
 
-console.log('\n5. Forma comună (app.css, blocul „Casetele și listele derulante")');
+console.log('\n5. Forma comună (app.css, blocul „Casetele și listele derulante”)');
 T('blocul există, la capătul foii de stil (bate ce e scris înainte)', BLOC.length > 2000 && css.trim().endsWith(BLOC.trim()));
 T('42 px în formulare, colțuri de 10 px', /--camp-h:\s*42px/.test(BLOC) && /--camp-r:\s*10px/.test(BLOC));
 const PREF = ':is(#ra-campuri, html) :is(#ra-campuri, body)';
@@ -99,21 +99,21 @@ T('caseta: fundalul panoului (cu background-color, nu cu scurtătura care ar șt
   /background-color: var\(--bg-panel\); border: 1\.5px solid var\(--border-light\); border-radius: var\(--camp-r\);/.test(BLOC) && /font-weight: 600;/.test(BLOC) &&
   !/^\s*:is\(#ra-campuri, html\)[^{]*\{[^}]*\bbackground:/m.test(FARA_COM.split('@supports')[0]));
 T('inelul verde când scrii', /&:focus \{ border-color: var\(--accent\); box-shadow: 0 0 0 4px color-mix\(in srgb, var\(--accent\) 22%, transparent\); \}/.test(BLOC));
-T('stările „deschis" ale listei cu căutare și ale calendarului, cu aceeași greutate', /:is\(\.ss-wrap\.ss-open \.ss-input, \.rep-dt-input\.active\)/.test(BLOC));
-T('caseta calendarului (flatpickr o face „doar citire") NU arată stinsă', /\[readonly\]:not\(\.flatpickr-input \+ input\):not\(\.rep-dt-input\)/.test(BLOC));
+T('stările „deschis” ale listei cu căutare și ale calendarului, cu aceeași greutate', /:is\(\.ss-wrap\.ss-open \.ss-input, \.rep-dt-input\.active\)/.test(BLOC));
+T('caseta calendarului (flatpickr o face „doar citire”) NU arată stinsă', /\[readonly\]:not\(\.flatpickr-input \+ input\):not\(\.rep-dt-input\)/.test(BLOC));
 T('săgeata listei: a noastră, pe ambele teme, iar locul ei bate și o margine scrisă în linie',
   (BLOC.match(/--camp-sageata: url\(/g) || []).length === 2 && /stroke='%2364748b'/.test(BLOC) && /stroke='%238A93A3'/.test(BLOC) && /padding-right: 36px !important/.test(BLOC));
-T('lista care se deschide: DOAR unde browserul o știe (@supports), cu „::picker(select)"',
+T('lista care se deschide: DOAR unde browserul o știe (@supports), cu „::picker(select)”',
   /@supports \(appearance: base-select\) \{[\s\S]*&, &::picker\(select\) \{ appearance: base-select; \}/.test(BLOC) && !/base-select/.test(FARA_COM.split('@supports (appearance: base-select)')[0]));
 T('…bifa verde pe ce e ales, pe ambele teme (#166534 pe alb, #3FE07D pe negru)',
   /--camp-ales: #166534/.test(BLOC) && /--camp-ales: #3FE07D/.test(BLOC) && /& option:checked \{[^}]*color: var\(--camp-ales\)/.test(BLOC) && /& option::checkmark \{[^}]*var\(--camp-bifa\)/.test(BLOC));
 T('…fără lista calendarului și fără listele cu mai multe rânduri', /select:not\(\[multiple\]\):not\(\[size\]\):not\(\.flatpickr-monthDropdown-months\)/.test(BLOC));
-T('…butonul dinăuntru taie textul lung cu „…", iar măsura ține lățimea celei mai lungi opțiuni',
+T('…butonul dinăuntru taie textul lung cu „…”, iar măsura ține lățimea celei mai lungi opțiuni',
   /& > button\.camp-sel > selectedcontent \{[^}]*text-overflow: ellipsis/.test(BLOC) && /& > button\.camp-sel > \.camp-sel-m \{[^}]*visibility: hidden; height: 0/.test(BLOC));
-T('…„mai puțină mișcare" oprește animațiile', (BLOC.match(/prefers-reduced-motion: reduce/g) || []).length >= 2);
+T('…„mai puțină mișcare” oprește animațiile', (BLOC.match(/prefers-reduced-motion: reduce/g) || []).length >= 2);
 T('în formulare: 42 px; caseta cu iconiță (lista cu căutare, calendarul) își păstrează locul iconiței',
   /height: var\(--camp-h\); min-height: var\(--camp-h\)/.test(BLOC) && /&:is\(input\):not\(\.ss-input\):not\(\.rep-dt-input\) \{ padding-left: 14px; padding-right: 14px; \}/.test(BLOC));
-T('…formularele: fișa mașinii și a șoferului, Alerte / Mentenanță / Documente, Utilizatori, programări, Setări, „Anunță echipa"',
+T('…formularele: fișa mașinii și a șoferului, Alerte / Mentenanță / Documente, Utilizatori, programări, Setări, „Anunță echipa”',
   /:is\(\.form-group, \.admin-add, \.add-user-form, \.doc-form, \.sch-form, \.pref-f, \.ce-win, #user-edit-modal, #apikeys-modal\)/.test(BLOC));
 
 console.log('\n6. Butonul din listele derulante (js/campuri.js)');
@@ -181,11 +181,11 @@ T('etichetele câmpurilor de la Alerte (viteza, axele) ca celelalte etichete ale
   const supporta = await pg.evaluate(() => CSS.supports('appearance', 'base-select'));
   if (!supporta) console.log('  (browserul n-are lista nouă: se verifică doar caseta)');
   else {
-    T('lista e „base-select"', f.ap === 'base-select', f.ap);
+    T('lista e „base-select”', f.ap === 'base-select', f.ap);
     const b = await pg.evaluate(() => { const s = document.getElementById('firma'), b = s.firstElementChild, sc = b && b.querySelector('selectedcontent');
       return { tag: b && b.tagName, cls: b && b.className, txt: sc && sc.textContent, el: sc && getComputedStyle(sc).textOverflow, cut: sc && sc.scrollWidth > sc.clientWidth }; });
     T('lista are butonul nostru, cu textul ales', b.tag === 'BUTTON' && b.cls === 'camp-sel' && b.txt === 'Construcții Vest Logistic Internațional SRL', JSON.stringify(b));
-    T('textul lung NU iese din chenar: se taie cu „…", lista rămâne de 42 px', b.cut === true && b.el === 'ellipsis' && f.h === 42, JSON.stringify(b));
+    T('textul lung NU iese din chenar: se taie cu „…”, lista rămâne de 42 px', b.cut === true && b.el === 'ellipsis' && f.h === 42, JSON.stringify(b));
     await pg.evaluate(() => { document.getElementById('firma').value = '1'; });
     T('valoarea pusă din cod se vede în listă', (await pg.evaluate(() => document.querySelector('#firma selectedcontent').textContent)) === 'Compania mea');
     await pg.evaluate(() => { document.getElementById('firma').innerHTML = '<option value="7">Unitip Test</option><option value="8" selected>Ford Trans SRL</option>'; });
@@ -197,14 +197,14 @@ T('etichetele câmpurilor de la Alerte (viteza, axele) ca celelalte etichete ale
     const w1 = (await st('auto')).w; await pg.evaluate(() => { document.getElementById('auto').selectedIndex = 1; }); const w2 = (await st('auto')).w;
     T('o listă fără lățime scrisă are lățimea celei mai lungi opțiuni: nu sare bara când alegi altceva', w1 === w2 && w1 > 150, w1 + ' / ' + w2);
     // 10.11: lista din tabel se strângea la 60 px (butonul dinăuntru era o grilă, pe care Chrome n-o socotea). Ca lista veche: cât cea mai
-    // lungă opțiune, până la `max-width`; ce nu încape se taie cu „…".
+    // lungă opțiune, până la `max-width`; ce nu încape se taie cu „…”.
     const tb = await pg.evaluate(() => { const s = document.getElementById('tabel'), sc = s.querySelector('selectedcontent');
       return { w: Math.round(s.getBoundingClientRect().width), txt: sc && sc.textContent, cut: sc && sc.scrollWidth > sc.clientWidth }; });
-    T('într-un tabel îngust, lista NU se strânge: are lățimea ei (aici 160 px, cât îi dă max-width), „— neasignat —" întreg', tb.w === 160 && tb.txt === '— neasignat —' && tb.cut === false, JSON.stringify(tb));
+    T('într-un tabel îngust, lista NU se strânge: are lățimea ei (aici 160 px, cât îi dă max-width), „— neasignat —” întreg', tb.w === 160 && tb.txt === '— neasignat —' && tb.cut === false, JSON.stringify(tb));
     await pg.evaluate(() => { document.getElementById('tabel').selectedIndex = 2; });
     const tb2 = await pg.evaluate(() => { const s = document.getElementById('tabel'), sc = s.querySelector('selectedcontent');
       return { w: Math.round(s.getBoundingClientRect().width), cut: sc && sc.scrollWidth > sc.clientWidth, el: sc && getComputedStyle(sc).textOverflow }; });
-    T('…iar un nume mai lung decât 160 px se taie cu „…", fără să lățească lista', tb2.w === 160 && tb2.cut === true && tb2.el === 'ellipsis', JSON.stringify(tb2));
+    T('…iar un nume mai lung decât 160 px se taie cu „…”, fără să lățească lista', tb2.w === 160 && tb2.cut === true && tb2.el === 'ellipsis', JSON.stringify(tb2));
     await pg.click('#firma'); await pg.waitForTimeout(250);
     const pk = await pg.evaluate(() => { const s = document.getElementById('firma'); const c = getComputedStyle(s, '::picker(select)'); const o = s.querySelector('option:checked'); const co = getComputedStyle(o);
       return { deschis: s.matches(':open'), rad: c.borderTopLeftRadius, bg: c.backgroundColor, culoare: co.color, fw: co.fontWeight }; });
@@ -213,8 +213,8 @@ T('etichetele câmpurilor de la Alerte (viteza, axele) ca celelalte etichete ale
     await pg.keyboard.press('Escape');
   }
   const zi = await st('zi'), link = await st('link');
-  T('caseta calendarului („doar citire" pentru flatpickr) arată ca una obișnuită', zi.bg === 'rgb(255, 255, 255)', zi.bg);
-  T('o casetă „doar citire" adevărată (linkul de copiat) e stinsă', link.bg === 'rgb(241, 245, 249)', link.bg);
+  T('caseta calendarului („doar citire” pentru flatpickr) arată ca una obișnuită', zi.bg === 'rgb(255, 255, 255)', zi.bg);
+  T('o casetă „doar citire” adevărată (linkul de copiat) e stinsă', link.bg === 'rgb(241, 245, 249)', link.bg);
   // Culorile trec la tema nouă în 0,15 s (tranziția casetei) — se măsoară după.
   await pg.evaluate(() => document.body.classList.add('dark')); await pg.waitForTimeout(400);
   const nd = await st('nume'), fd = await st('firma');

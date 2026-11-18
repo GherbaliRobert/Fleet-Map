@@ -1,16 +1,16 @@
 // incarcare.js — regulile simulatorului de încărcare (Robert, 12.10: „să poți alege din flota pe care o ai deja… și pentru
 // camioane, de exemplu 3,5 t, 7 t"). CURAT: fără bază de date, fără rețea.
 //
-//   • FELURI_VEHICUL — felul vehiculului cu caroserie (fila „Încărcare" din fișa vehiculului): autotractor, dubă 3,5 t,
+//   • FELURI_VEHICUL — felul vehiculului cu caroserie (fila „Încărcare” din fișa vehiculului): autotractor, dubă 3,5 t,
 //     camion 7,5 / 12 / 18 t, altul. Cifrele sunt cele OBIȘNUITE: omul le schimbă după fișa tehnică a mașinii lui.
 //   • TIPURI_REMORCA — semiremorcile (pe șaua autotractorului) și remorcile cu proțap (la camionul cu cârlig), deosebite
-//     (Robert: „le diferențiem"), cu tipurile lor obișnuite.
+//     (Robert: „le diferențiem”), cu tipurile lor obișnuite.
 //   • curataRemorca / curataCaroserie — ce se poate scrie (cifre cu sens, în metri și kilograme).
 //   • paletiEur / paletiInd — câți paleți încap la un rând (EUR 120 × 80, industrial 120 × 100).
 //   • simuleaza — simulatorul (pasul 3, 12.10): cum se așază marfa (aranjeaza), greutatea pe osii (osii), cifrele și
 //     TEXTELE gata scrise. Pagina, PDF-ul și (mai târziu) telefonul le primesc de la server — nimeni nu le socotește a doua oară.
-//     Limitele pe axe: din „Config Camion" (fișa), altfel cele obișnuite ale felului (limFata / limSpate / masaMax), spuse ca
-//     „presupuse". Fizica e cea a machetei aprobate (12.10): momente față de axe, pivot, șa.
+//     Limitele pe axe: din „Config Camion” (fișa), altfel cele obișnuite ale felului (limFata / limSpate / masaMax), spuse ca
+//     „presupuse”. Fizica e cea a machetei aprobate (12.10): momente față de axe, pivot, șa.
 //
 // Le citesc serverul (validarea, rutele) și ecranele, prin GET /api/incarcare/meta — pagina și telefonul NU scriu a doua
 // oară cifrele obișnuite. Legat prin verify_flota_incarcare.js.
@@ -60,13 +60,13 @@ function paletiInd(L, W) {
   return 0;
 }
 
-// Numerele scrise de om: „13,6" sau „13.6", „24.000" (cu punct de mii) sau „24000". Gol → null.
+// Numerele scrise de om: „13,6” sau „13.6”, „24.000” (cu punct de mii) sau „24000”. Gol → null.
 function _nr(v) {
   if (v == null || v === '') return null;
   if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
   const s = String(v).trim().replace(/\s/g, '');
   if (!s) return null;
-  // „24.000" = 24000 (mii); „13.6" = 13,6 (zecimale). Un punct urmat de exact trei cifre, fără virgulă = mii.
+  // „24.000” = 24000 (mii); „13.6” = 13,6 (zecimale). Un punct urmat de exact trei cifre, fără virgulă = mii.
   const t = /^\d{1,3}(\.\d{3})+$/.test(s) ? s.replace(/\./g, '') : s.replace(',', '.');
   const n = Number(t);
   return Number.isFinite(n) ? n : NaN;
@@ -107,7 +107,7 @@ function curataRemorca(b) {
   return { rand: r };
 }
 
-// Câmpurile „Încărcare" din fișa vehiculului (coloanele inc_* din devices). Ce nu vine, nu se atinge.
+// Câmpurile „Încărcare” din fișa vehiculului (coloanele inc_* din devices). Ce nu vine, nu se atinge.
 const CAMPURI_CAROSERIE = ['inc_fel', 'inc_lungime', 'inc_latime', 'inc_inaltime', 'inc_ampatament', 'inc_axa_caroserie', 'inc_sa_axa', 'inc_tara_fata', 'inc_tara_spate', 'inc_remorca_id'];
 function curataCaroserie(b) {
   b = b || {};
@@ -126,7 +126,7 @@ function curataCaroserie(b) {
   return { campuri: out };
 }
 
-// ═══════════════════════════ Simulatorul (pasul 3, 12.10: „cu 3D și greutatea pe osii") ═══════════════════════════
+// ═══════════════════════════ Simulatorul (pasul 3, 12.10: „cu 3D și greutatea pe osii”) ═══════════════════════════
 // Estimări obișnuite, folosite doar când fișa nu spune altceva (machetă aprobată de Robert, 12.10):
 const PIVOT_DE_LA_FATA = 1.2;   // m: pivotul semiremorcii, de la peretele din față al spațiului de încărcare
 const PARTE_TARA_PIVOT = 0.36;  // cât din tara semiremorcii stă pe pivot (restul, pe axele ei)
@@ -190,7 +190,7 @@ function curataOpriri(lista) {
   return out.length ? out : ['Oprirea 1'];
 }
 
-// Felul unui vehicul fără fila „Încărcare" completată, după tipul din fișă (prima simulare merge și așa).
+// Felul unui vehicul fără fila „Încărcare” completată, după tipul din fișă (prima simulare merge și așa).
 function felDinTip(t) {
   const s = String(t || '');
   if (/^(Autotractor|TIR|autotractor|tir)$/.test(s)) return 'autotractor';
@@ -204,7 +204,7 @@ function _axeDinFisa(dev) {
   return a && typeof a === 'object' ? a : {};
 }
 // Vehiculul din fișă → ce trebuie simulatorului. `presupuse` = cifre luate din cele obișnuite ale felului; `lipsa` = cifre
-// fără de care nu se poate desena (doar la „Altul"). null = vehiculul nu cară marfă.
+// fără de care nu se poate desena (doar la „Altul”). null = vehiculul nu cară marfă.
 function vehiculDin(dev) {
   dev = dev || {};
   const fel = FELURI_VEHICUL.some((f) => f.id === dev.inc_fel) ? dev.inc_fel : felDinTip(dev.vehicle_type);
@@ -242,7 +242,7 @@ function vehiculDin(dev) {
   if (v.tare[1] == null) v.tare[1] = 0;
   return v;
 }
-// ─── Ce se cuplează la un vehicul (13.10, Robert: „am adăugat o remorcă dar tot nu-mi apare în simulator") ───
+// ─── Ce se cuplează la un vehicul (13.10, Robert: „am adăugat o remorcă dar tot nu-mi apare în simulator”) ───
 // O SINGURĂ regulă, pentru ecrane (`_incFlota` → `remorci_ids` / `remorci_mesaj`) și pentru simulare (`_incSimulareDin`):
 // la autotractor — o semiremorcă; la camion (are cârlig) — o remorcă cu proțap; la dubă — nimic; mereu din firma vehiculului.
 function felCuplat(v) { return !v ? null : (v.tip === 'trac' ? 'semiremorca' : (v.carlig ? 'remorca' : null)); }
@@ -282,7 +282,7 @@ function remorciPentru(v, remorci) {
   }
   return { ids, mesaj: null, gol: true };
 }
-// Invers, din fișa remorcii (13.10, Robert: „buton … de atașare la un vehicul"): la ce vehicule ale firmei ei se poate
+// Invers, din fișa remorcii (13.10, Robert: „buton … de atașare la un vehicul”): la ce vehicule ale firmei ei se poate
 // atașa, cu ACEEAȘI regulă (remorcaPotrivita), și — când nu e niciunul — de ce. `vehicule`: [{ imei, plate, tip, carlig,
 // company_id }] — `tip` null = vehicul care nu cară marfă (autoturism), pus doar ca să se poată spune motivul.
 function vehiculePentruRemorca(r, vehicule) {
@@ -342,8 +342,8 @@ function _orient(it, B) {
   best.straturi = straturi;
   return best;
 }
-// Așază marfa în rânduri, de la peretele din față spre uși, în corpurile date (camionul, apoi remorca). „După opriri":
-// ultima oprire lângă perete (se descarcă ultima); „echilibrat": marfa ușoară pe metru în față. Un rând merge în primul corp
+// Așază marfa în rânduri, de la peretele din față spre uși, în corpurile date (camionul, apoi remorca). „După opriri”:
+// ultima oprire lângă perete (se descarcă ultima); „echilibrat”: marfa ușoară pe metru în față. Un rând merge în primul corp
 // în care încape; în fiecare corp rândurile doar se adaugă spre uși, deci ordinea de descărcare se păstrează.
 function aranjeaza(corpuri, marfa, mod) {
   const C = corpuri.map((B) => ({ Lcm: Math.round(B.L * 100), kg: 0, mx: 0, folosit: 0 }));
@@ -385,7 +385,7 @@ function aranjeaza(corpuri, marfa, mod) {
   return { cutii, ramase, corpuri: C, incarcate, total, kg, vol, xcw: kg ? mxw / kg / 100 : 0, ordine, ordineMarfa };
 }
 
-// Greutatea pe fiecare axă (kg), din momentele față de axe. Tara pe axe vine din fila „Încărcare", limitele din „Config Camion".
+// Greutatea pe fiecare axă (kg), din momentele față de axe. Tara pe axe vine din fila „Încărcare”, limitele din „Config Camion”.
 function osii(veh, semi, rem, C) {
   const list = [];
   let lim, extra = '';
@@ -495,7 +495,7 @@ function simuleaza(o) {
   const numeOp = (n) => opriri[n - 1] || ('Oprirea ' + n);
   const pasi = P.ordineMarfa.map((i, k, arr) => {
     const it = marfa[i], inc = it.buc - P.ramase[i], ale = P.cutii.filter((c) => c.i === i);
-    const det = [], unu = inc === 1;   // „primul, lipit" la o singură bucată, „primii, lipiți" la mai multe
+    const det = [], unu = inc === 1;   // „primul, lipit” la o singură bucată, „primii, lipiți” la mai multe
     if (k === 0) det.push(arr.length > 1 ? (unu ? 'Primul, lipit de peretele din față.' : 'Primii, lipiți de peretele din față.') : (unu ? 'Lipit de peretele din față.' : 'Lipiți de peretele din față.'));
     else if (k === arr.length - 1) det.push(unu ? 'Ultimul, spre uși: se descarcă primul.' : 'Ultimii, spre uși: se descarcă primii.');
     if (rem && ale.length) det.push(ale.every((c) => c.c === 1) ? 'În remorcă.' : (ale.some((c) => c.c === 1) ? 'În camion și în remorcă.' : 'În camion.'));
@@ -536,7 +536,7 @@ function simuleaza(o) {
 }
 
 // ─── Planurile de încărcare (pasul 4, 12.10): starea unui plan, scrisă o dată, pentru web, telefon și anunțuri ───
-// Ora se scrie pe ora României: „azi, 09:12", „ieri, 18:40", „10.10, 07:05".
+// Ora se scrie pe ora României: „azi, 09:12”, „ieri, 18:40”, „10.10, 07:05”.
 function cand(ms, acum) {
   if (!ms) return '';
   const zi = (t) => new Date(t).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' });
@@ -546,7 +546,7 @@ function cand(ms, acum) {
   if (zi(ms) === zi(a - 86400000)) return 'ieri, ' + ora;
   return new Date(Number(ms)).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit' }) + ', ' + ora;
 }
-// Ce s-a întâmplat ultima dată cu planul: ciornă → trimis → încărcat (sau „Am o problemă").
+// Ce s-a întâmplat ultima dată cu planul: ciornă → trimis → încărcat (sau „Am o problemă”).
 function stareaPlanului(p, acum) {
   p = p || {};
   const cine = p.trimis_catre_nume || 'șofer';

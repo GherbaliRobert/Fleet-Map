@@ -122,8 +122,8 @@ button.co-pill { min-height: 30px; }
 .co-pas.gata { color: var(--co-ok); }
 .co-pas.gata .n { background: rgba(63,224,125,.18); color: var(--co-ok); }
 .co-pas span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Pe telefon (05.11): cifra deasupra numelui și fiecare pas cât îi trebuie — pe un rând „Contractul" și „Administratorul"
-   se tăiau („Contract…", „Adminis…") la orice lățime de telefon. Măsurat: la 360 px încap toate trei, întregi. */
+/* Pe telefon (05.11): cifra deasupra numelui și fiecare pas cât îi trebuie — pe un rând „Contractul” și „Administratorul”
+   se tăiau („Contract…”, „Adminis…”) la orice lățime de telefon. Măsurat: la 360 px încap toate trei, întregi. */
 @media (max-width: 430px) {
   .co-pas { flex: 1 1 auto; flex-direction: column; gap: 4px; padding: 7px 6px; text-align: center; }
   .co-pas span.t { overflow: visible; text-overflow: clip; }
@@ -138,7 +138,7 @@ button.co-pill { min-height: 30px; }
 .co-gata ul { margin: 8px 0 0 18px; font-size: 13.5px; line-height: 1.55; }
 .co-gata ul li { margin-bottom: 4px; }
 
-/* Bara de jos din „Mută între companii" */
+/* Bara de jos din „Mută între companii” */
 .co-bulk { position: sticky; bottom: 0; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
   margin-top: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -6px 18px rgba(0,0,0,.18); }
 .co-bulk .r { display: flex; gap: 8px; align-items: center; }
@@ -149,7 +149,7 @@ button.co-pill { min-height: 30px; }
 .fm-chip.co-rau { border-color: var(--red); color: var(--red); }
 .fm-chip.co-rau b { color: var(--red); }
 
-/* Fila „Stare" a fișei firmei (12.10): cartonașe, câte un subiect pe fiecare — ca pe web (.raco-st). Culorile vin din
+/* Fila „Stare” a fișei firmei (12.10): cartonașe, câte un subiect pe fiecare — ca pe web (.raco-st). Culorile vin din
    --co-ok / --co-warn, care au pereche pe tema luminoasă (sus, în fișier). */
 .co-stare { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 12px; }
 @media (min-width: 560px) { .co-stare { grid-template-columns: 1fr 1fr; } }
@@ -162,6 +162,6 @@ button.co-pill { min-height: 30px; }
 .co-st .v.mut { color: var(--text-muted); }
 .co-st .d { font-size: 13px; color: var(--text-secondary); line-height: 1.45; overflow-wrap: anywhere; }
 
-/* Fila „Acces": pachetul RA Insight al firmei, pe două rânduri. */
+/* Fila „Acces”: pachetul RA Insight al firmei, pe două rânduri. */
 .co-pk { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .co-pk .fm-btn { min-width: 0; }

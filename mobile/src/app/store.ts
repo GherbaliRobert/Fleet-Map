@@ -9,8 +9,8 @@ import { localMapLayerChoice, setMapLayerFromAccount } from '../lib/mapLayer';
 import { trimitePrefs, asteaptaPrefs, reperPrefs, schimbateDupa, uitaPrefs } from '../lib/uiPrefsCoada';
 
 export const theme = signal<'dark' | 'light'>('dark');
-// Tema ALEASĂ, cu numele de pe cont (ca pe web): închisă / deschisă / „ca pe dispozitiv". `theme` e culoarea
-// rezultată, pe care o pictează ecranul. Vezi blocul „Preferințele de pe cont", la finalul fișierului.
+// Tema ALEASĂ, cu numele de pe cont (ca pe web): închisă / deschisă / „ca pe dispozitiv”. `theme` e culoarea
+// rezultată, pe care o pictează ecranul. Vezi blocul „Preferințele de pe cont”, la finalul fișierului.
 export type TemaCont = 'inchisa' | 'deschisa' | 'sistem';
 export const temaCont = signal<TemaCont>('inchisa');
 
@@ -27,7 +27,7 @@ async function applyStatusBar(t: 'dark' | 'light') {
 
 export async function initTheme() {
   try { const t = await getTheme(); theme.value = (t === 'light' ? 'light' : 'dark'); } catch { /* dark */ }
-  // „Ca pe dispozitiv": culoarea ținută minte e cea de data trecută (ca să nu pâlpâie ecranul la pornire);
+  // „Ca pe dispozitiv”: culoarea ținută minte e cea de data trecută (ca să nu pâlpâie ecranul la pornire);
   // o recalculăm după cum e telefonul ACUM.
   const mod = _temaMod();
   temaCont.value = mod || (theme.value === 'light' ? 'deschisa' : 'inchisa');
@@ -35,7 +35,7 @@ export async function initTheme() {
   document.documentElement.setAttribute('data-theme', theme.value);
   applyStatusBar(theme.value);
 }
-// Rândul „Temă" din meniu: comută închisă ↔ deschisă și urcă alegerea pe cont, exact ca butonul cu
+// Rândul „Temă” din meniu: comută închisă ↔ deschisă și urcă alegerea pe cont, exact ca butonul cu
 // lună/soare de pe web. Nu așteptăm serverul: tema se schimbă pe loc oricum.
 export async function toggleTheme() {
   const next: TemaCont = theme.value === 'dark' ? 'deschisa' : 'inchisa';
@@ -50,7 +50,7 @@ export const authReady = signal(false);
 export const mesajLaIntrare = signal<string | null>(null);
 export const livePos = signal<Position[]>([]);  // feed live (din /api/live + WS) — doar vehiculele care transmit
 export const roster = signal<Position[]>([]);   // TOATE vehiculele înregistrate (din /api/devices) → apar și cele fără transmisie
-// Flota afișată = pozițiile live + vehiculele înregistrate care NU sunt în live (marcate „fără transmisie")
+// Flota afișată = pozițiile live + vehiculele înregistrate care NU sunt în live (marcate „fără transmisie”)
 export const vehicles = computed<Position[]>(() => {
   const live = livePos.value, r = roster.value;
   if (!r.length) return live;
@@ -66,7 +66,7 @@ export const toastMsg = signal<{ text: string; err?: boolean } | null>(null);
 // ── Ecranele tăiate de firmă din rolul omului ──
 // Vin din /api/me (`ecraneAscunse`). Cheile sunt EXACT cele din lista ECRANE din server.js — nu inventa
 // altele: o cheie greșită aici ar ascunde sau ar lăsa la vedere alt ecran decât cel tăiat. Serverul refuză
-// oricum rutele ecranului tăiat (pazaEcrane); telefonul doar nu mai arată butoane care ar răspunde „acces interzis".
+// oricum rutele ecranului tăiat (pazaEcrane); telefonul doar nu mai arată butoane care ar răspunde „acces interzis”.
 export type EcranCheie =
   | 'localizare' | 'traseu' | 'statistici' | 'rapoarte' | 'programari' | 'hotspot'
   | 'vehicule' | 'soferi' | 'grupe' | 'alerte' | 'mentenanta' | 'documente'
@@ -94,12 +94,12 @@ export function accesFirma(m: unknown): AccesFirma | null {
 // factura/abonamentul", de dinainte de 28.09.)
 export const MESAJ_ACCES_SUSPENDAT = 'Accesul este suspendat. Contactați furnizorul pentru reactivare.';
 // La PORNIREA aplicației, contul unei firme oprite (neplată sau de noi) nu mai intră — ca pe web (checkAuth,
-// public/index.html; hotărât pe 30.09: „la fel ca și pe web"). Sesiunea de pe telefon se închide, iar ecranul de
+// public/index.html; hotărât pe 30.09: „la fel ca și pe web”). Sesiunea de pe telefon se închide, iar ecranul de
 // autentificare arată mesajul pe care îl dă și serverul când refuză intrarea (MESAJ_SUSPENDAT, server.js) — legat
 // printr-o probă de amândouă. Cu aplicația DEJA deschisă rămâne banda roșie, tot ca pe web, până la următoarea pornire.
 // Din 01.10 (lista lui Robert, pct. 26) o singură formulare pentru suspendare: aceeași ca banda de sus.
 export const MESAJ_SUSPENDAT_LA_INTRARE = MESAJ_ACCES_SUSPENDAT;
-// Aceeași condiție ca pe web: accesul „expired", iar contul nu e de platformă.
+// Aceeași condiție ca pe web: accesul „expired”, iar contul nu e de platformă.
 export function accesOprit(m: unknown): boolean {
   const a = accesFirma(m);
   return !!a && a.status === 'expired' && !(m as { isSuper?: boolean }).isSuper;
@@ -211,7 +211,7 @@ let curPollMs = 7000;
 let pollTick = 0;
 function _pollOnce() {
   refreshVehicles();
-  // Împrospătează rosterul periodic: timestamp-uri corecte pentru „fără transmisie" + vehiculele care revin online.
+  // Împrospătează rosterul periodic: timestamp-uri corecte pentru „fără transmisie” + vehiculele care revin online.
   if ((pollTick++ % 4) === 0) refreshRoster();
 }
 function _arm(ms: number) { if (pollTimer) clearInterval(pollTimer); curPollMs = ms; pollTimer = setInterval(_pollOnce, ms); }
@@ -228,7 +228,7 @@ export function stopPolling() {
   polling = false;
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
-const WS_BACKSTOP_MS = 25000; // poll de siguranță cât timp WS-ul e „conectat" (anti-stall silențios pe mobil)
+const WS_BACKSTOP_MS = 25000; // poll de siguranță cât timp WS-ul e „conectat” (anti-stall silențios pe mobil)
 
 // ─── Live updates: WebSocket (latență mică + sarcină redusă la scară) cu fallback la polling ───
 // Pe device: wss://ratrack.ro/?token=… (webview-ul nu trimite cookie → auth pe token). Pe web dev: ws://localhost:3000.
@@ -238,7 +238,7 @@ let wsWanted = false;
 let wsReconnect: any = null;
 let wsBackoff = 1500;
 let livePollMs = 7000;
-let _wsAccessMsgShown = false; // anti-spam: „acces suspendat" o singură dată per sesiune (WS reconectează des)
+let _wsAccessMsgShown = false; // anti-spam: „acces suspendat” o singură dată per sesiune (WS reconectează des)
 
 function upsertVehicle(pos: Position) {
   if (!pos || !pos.imei) return;
@@ -251,7 +251,7 @@ function applyWs(msg: any) {
   if (!msg || !msg.type) return;
   if (msg.type === 'init' && Array.isArray(msg.data)) {
     livePos.value = msg.data; vehiclesLoading.value = false;
-    // Serverul trimite fluxul doar unei firme cu acces. Dacă profilul încă spune „suspendat", firma a fost
+    // Serverul trimite fluxul doar unei firme cu acces. Dacă profilul încă spune „suspendat”, firma a fost
     // reactivată între timp (a plătit): îl reîmprospătăm, ca banda roșie să nu rămână agățată până la
     // revenirea în aplicație. Iar o nouă suspendare se anunță din nou.
     if (accesFirma(me.value)?.status === 'expired') { _wsAccessMsgShown = false; refreshMe(); }
@@ -267,9 +267,9 @@ function applyWs(msg: any) {
   if (msg.type === 'stale' && msg.data && msg.data.imei) { upsertVehicle({ imei: msg.data.imei, speed: 0, stale: true } as any); return; }
   if (msg.type === 'disconnect' && msg.data && msg.data.imei) {
     // Purge (24h fără semnal) → scoate din listă. Deconectare normală (close socket) → zeroează DOAR viteza
-    // (serverul face la fel la închiderea socketului). NU mai falsificăm timestamp-ul: înainte îl „îmbătrâneam"
+    // (serverul face la fel la închiderea socketului). NU mai falsificăm timestamp-ul: înainte îl „îmbătrâneam”
     // la acum−6 min, ceea ce făcea un vehicul fără fix de ore să pară iar online/proaspăt — exact bug-ul reparat
-    // pe web. Rămâne ultimul fix REAL → prospețimea (online / „în mișcare") e onestă.
+    // pe web. Rămâne ultimul fix REAL → prospețimea (online / „în mișcare”) e onestă.
     if (msg.data.reason === 'purged') { livePos.value = livePos.value.filter((v) => v.imei !== msg.data.imei); return; }
     upsertVehicle({ imei: msg.data.imei, speed: 0 } as any);
     return;
@@ -281,7 +281,7 @@ function applyWs(msg: any) {
     return;
   }
   if (msg.type === 'notification') {
-    // Notificare nouă pe WS-ul live → badge-ul de „necitite" crește instant (ca web-ul), nu doar la poll-ul de 30s.
+    // Notificare nouă pe WS-ul live → badge-ul de „necitite” crește instant (ca web-ul), nu doar la poll-ul de 30s.
     unread.value = unread.value + 1;
     if (msg.data) lastNotif.value = msg.data; // expune notificarea (ex. report_ready) ecranelor care o urmăresc
     return;
@@ -289,7 +289,7 @@ function applyWs(msg: any) {
   if (msg.type === 'error' && msg.data && msg.data.error === 'access_expired') {
     // Serverul a refuzat fluxul live: accesul firmei e oprit (neplată sau de noi). NU e eroare de autentificare →
     // nu delogăm. Profilul se reîmprospătează, ca banda roșie de sus să se aprindă pe loc, nu abia la revenirea
-    // în aplicație — o singură dată: cât profilul spune deja „suspendat", reconectările nu mai cer nimic.
+    // în aplicație — o singură dată: cât profilul spune deja „suspendat”, reconectările nu mai cer nimic.
     if (accesFirma(me.value)?.status !== 'expired') refreshMe();
     if (!_wsAccessMsgShown) { _wsAccessMsgShown = true; showToast(MESAJ_ACCES_SUSPENDAT, true); }
     return;
@@ -335,12 +335,12 @@ onUnauthorized(() => { if (!token.value) return; showToast('Sesiune expirată �
 
 // ── Preferințele de pe CONT (GET/PUT /api/me/ui-prefs), aceleași ca pe web ──
 // Tema, harta cu care pornești și ecranul de pornire stăteau doar în telefon: le schimbai pe web, pe telefon
-// rămâneau cum erau (deși webul promite „le regăsești și pe telefon"). Acum adevărul e pe cont. Telefonul ține
+// rămâneau cum erau (deși webul promite „le regăsești și pe telefon”). Acum adevărul e pe cont. Telefonul ține
 // doar o copie, ca prima pictare la pornire să fie deja în culorile bune.
 export const uiPrefs = signal<Record<string, any> | null>(null);      // valorile efective; null până sosesc
 export const uiPrefsSursa = signal<Record<string, string>>({});       // 'user' / 'company' / 'app', pe cheie
 // Ecranul de pornire de deschis O SINGURĂ DATĂ, după pornirea la rece sau după autentificare (App.tsx îl
-// consumă doar dacă omul e încă pe „/"). La revenirea din fundal nu se mai pune nimic aici.
+// consumă doar dacă omul e încă pe „/”). La revenirea din fundal nu se mai pune nimic aici.
 export const ecranPornireCerut = signal<string | null>(null);
 
 const TEMA_MOD = 'pref_tema';           // alegerea: inchisa / deschisa / sistem (pref_theme ține culoarea rezultată)
@@ -352,7 +352,7 @@ function _temaMod(): TemaCont | null {
 function _mq(): MediaQueryList | null {
   try { return window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null; } catch { return null; }
 }
-// Ca pe web: „sistem" = întunecat doar dacă dispozitivul spune că e întunecat.
+// Ca pe web: „sistem” = întunecat doar dacă dispozitivul spune că e întunecat.
 function _temaEfectiva(t: TemaCont): 'dark' | 'light' {
   if (t === 'deschisa') return 'light';
   if (t === 'sistem') { const mq = _mq(); return mq && mq.matches ? 'dark' : 'light'; }
@@ -433,7 +433,7 @@ export async function syncUiPrefs(laPornire = false) {
 
 // Ecranul ales → adresa de pe telefon. Ca pe web: dacă rolul omului nu ajunge la ecran, rămâne pe pornire.
 // Localizare = lista de Vehicule; Traseul pe flotă nu există pe telefon (se deschide din fișa mașinii).
-// La contul de platformă nu se aplică: pe web, verticala fondatorului ignoră preferința și deschide „Acasă".
+// La contul de platformă nu se aplică: pe web, verticala fondatorului ignoră preferința și deschide „Acasă”.
 export function rutaEcranPornire(k: unknown): string | null {
   if (!me.value || me.value.isSuper) return null;
   if (k === 'statistici' && !ecranAscuns('statistici')) return '/stats';

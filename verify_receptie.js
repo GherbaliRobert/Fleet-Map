@@ -4,7 +4,7 @@
 //   node verify_receptie.js
 //
 // Ce prinde:
-//   1. revenirea la „agenda firmei primește tot" — pragurile detectorului sunt intenționat mici (50 km/h,
+//   1. revenirea la „agenda firmei primește tot” — pragurile detectorului sunt intenționat mici (50 km/h,
 //      80 °C, 13 V), fiindcă pragul adevărat îl pune fiecare om în contul lui; adresele din agendă n-au cont;
 //   2. o pauză sau un plafon zilnic scoase din cale (o mașină cu senzor defect ar arde adresa de trimitere);
 //   3. un supraveghetor care sună degeaba (flota doarme, aparatele sunt deconectate) sau care NU sună când
@@ -32,7 +32,7 @@ console.log('\n1. Adresele firmei nu mai primesc mersul normal');
   // Catalogul REAL de praguri (același pe care omul îl vede în preferințele lui).
   const cat = new Function(decupeaza('const EVENT_TYPES = [', '\n];') + '\nreturn EVENT_TYPES;')();
   const P = Object.fromEntries(cat.map((e) => [e.key, e]));
-  // Așa filtrează codul: peste prag, sau sub prag pentru cele „below".
+  // Așa filtrează codul: peste prag, sau sub prag pentru cele „below”.
   const trece = (tip, val) => {
     const d = P[tip];
     if (!d || !d.threshold) return true;
@@ -100,7 +100,7 @@ console.log('\n2. Supraveghetorul sună doar când chiar e o problemă');
 
   const mediu = {
     // ALERT_EMAIL e adresa noastră de alertă, setată în Railway. Fără ea, codul NU trimite email (corect):
-    // proba ar arăta „0 emailuri" și ar minți despre motiv.
+    // proba ar arăta „0 emailuri” și ar minți despre motiv.
     process: { env: { ALERT_EMAIL: 'alerte@ratrack.ro' }, exit: function () { jurnal.iesiri++; } },
     db: {
       createNotification: async function (n) { jurnal.notificari++; return Object.assign({ id: 1 }, n); },
@@ -155,7 +155,7 @@ console.log('\n2. Supraveghetorul sună doar când chiar e o problemă');
   W.verifica(); await pauza();
   T('o pană NOUĂ, după ce recepția și-a revenit, se anunță din nou', jurnal.notificari === 2, jurnal);
 
-// ── 3. Ecranul „Stare producție" ───────────────────────────────────────────────────────────────────
+// ── 3. Ecranul „Stare producție” ───────────────────────────────────────────────────────────────────
 console.log('\n3. Semaforul de producție spune adevărul');
 {
   const zona = decupeaza('    let newest = 0, live = 0;', 'const totalDev = _qDev.rows[0].n;');

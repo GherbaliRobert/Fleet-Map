@@ -14,10 +14,10 @@ import { ButonProp } from './InsightPropunere';
 import '../screens/admin.css';      // comutatorul (.sw)
 import '../screens/contracte.css';  // butoanele de hârtie
 
-// „Vezi pachetele", trecerea la alt pachet și „Pachet și conturi", ca pe web (insightPachete, arataConfirmarea,
+// „Vezi pachetele”, trecerea la alt pachet și „Pachet și conturi”, ca pe web (insightPachete, arataConfirmarea,
 // deseneazaPachetConturi). Cifrele și textele vin de la server; regulile de desenat stau în lib/insightPachet.ts. Doar text: fără HTML.
 
-// ── Fereastra de confirmare: textul EXACT de la server, bifa, „Confirm". La 409, serverul trimite textul nou și omul îl citește din nou. ──
+// ── Fereastra de confirmare: textul EXACT de la server, bifa, „Confirm”. La 409, serverul trimite textul nou și omul îl citește din nou. ──
 function FoaieTrecere({ cod, j, onInchide, onGata }: { cod: string; j: any; onInchide: () => void; onGata: (mesaj: string) => void }) {
   const [text, setText] = useState(String(j.text || ''));
   const [buton, setButon] = useState(String(j.buton || TEXT_CONFIRM));
@@ -67,9 +67,9 @@ function Celula({ c }: { c: CelulaCmp & { nume: string; ai: boolean; al: boolean
   );
 }
 
-// ── „Vezi pachetele" ──
-// `treci` (16.11): „Treci la Pro" din caseta de la capătul întrebărilor — confirmarea se deschide singură, o dată, peste pachete
-// (web: insightTrecere, direct peste pagina de sub ea). Doar administratorul care poate schimba pachetul are butonul „Alege …".
+// ── „Vezi pachetele” ──
+// `treci` (16.11): „Treci la Pro” din caseta de la capătul întrebărilor — confirmarea se deschide singură, o dată, peste pachete
+// (web: insightTrecere, direct peste pagina de sub ea). Doar administratorul care poate schimba pachetul are butonul „Alege …”.
 export function PaginaPachete({ onSchimbat, treci }: { onSchimbat: () => void; treci?: string }) {
   const [j, setJ] = useState<any | null>(null);
   const [err, setErr] = useState('');
@@ -146,7 +146,7 @@ export function PaginaPachete({ onSchimbat, treci }: { onSchimbat: () => void; t
   );
 }
 
-// Un coleg, cu cifra lui pe lună (16.11, Alin: fără „Restul" / „Cel mult" — „nu e profesional"): o casetă; 0 = doar răspunsurile
+// Un coleg, cu cifra lui pe lună (16.11, Alin: fără „Restul” / „Cel mult” — „nu e profesional”): o casetă; 0 = doar răspunsurile
 // pe loc. Cifra care nu încape rămâne scrisă, cu chenar roșu (web: S.nuIncape). Primul administrator n-are casetă (`Cota`).
 function Limita({ o, ni, onSalveaza }: { o: any; ni: NuIncape | null; onSalveaza: (id: any, val: string) => void }) {
   const vechi = o.cuLimita ? o.limita : '0';
@@ -165,12 +165,12 @@ function Cota({ c }: { c: { numar: string; text: string } }) {
   return <span class="pkc-cota"><b>{c.numar}</b><span>{c.text}</span></span>;
 }
 
-// ── „Pachet și conturi": doar administratorul firmei, chiar și fără un cont RA Insight al lui ──
+// ── „Pachet și conturi”: doar administratorul firmei, chiar și fără un cont RA Insight al lui ──
 export function PaginaPachetConturi({ laPachete, onSchimbat }: { laPachete: () => void; onSchimbat: () => void }) {
   const [j, setJ] = useState<any | null>(null);
   const [err, setErr] = useState('');
   const [daLoc, setDaLoc] = useState<any | null>(null);
-  // Cifra care nu încape (web: S.nuIncape) și confirmarea „Treci la Pro" (aceeași foaie ca în „Vezi pachetele").
+  // Cifra care nu încape (web: S.nuIncape) și confirmarea „Treci la Pro” (aceeași foaie ca în „Vezi pachetele”).
   const [ni, setNi] = useState<NuIncape | null>(null);
   const [trecere, setTrecere] = useState<{ cod: string; j: any } | null>(null);
   const [cer, setCer] = useState('');

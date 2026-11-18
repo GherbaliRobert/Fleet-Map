@@ -1,6 +1,6 @@
 // Documente vehicule — același ecran ca pe web (Management → Documente): TOATE mașinile flotei, fiecare cu
-// actele ei în ordinea din „Acte cerute", inclusiv cele care LIPSESC. Sus, avertismentul numește mașina
-// și actul. Filele „Valabile / Istoric / Acte cerute", căutare, costuri. Starea actului (expirat / expiră
+// actele ei în ordinea din „Acte cerute”, inclusiv cele care LIPSESC. Sus, avertismentul numește mașina
+// și actul. Filele „Valabile / Istoric / Acte cerute”, căutare, costuri. Starea actului (expirat / expiră
 // curând) vine de la server (_due, _days), cu preavizul de acte al firmei — aceeași cifră ca alerta.
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
@@ -16,7 +16,7 @@ import './flota.css';
 
 export function AdminDocuments() {
   const loc = useLocation();
-  // Firma poate tăia unui rol editarea actelor separat de „modifică flota" (editariTaiate) — serverul refuză atunci.
+  // Firma poate tăia unui rol editarea actelor separat de „modifică flota” (editariTaiate) — serverul refuză atunci.
   const canEdit = !!me.value?.permissions?.manageFleet && !(me.value?.editariTaiate || []).includes('documente');
   const [acte, setActe] = useState<any[] | null>(null);
   const [hist, setHist] = useState<any[]>([]);
@@ -48,7 +48,7 @@ export function AdminDocuments() {
   const pot = (d: any) => !k || norm([d.doc_type, d.number, d.issuer, numar(devs, d.imei), modelul(devs, d.imei)].join(' ')).indexOf(k) >= 0;
   const list = (acte || []).filter(pot);
   const histF = hist.filter(pot);
-  // Și actele înlocuite intră la bani — altfel „cât am dat pe acte" ar uita tot ce e mai vechi de o reînnoire.
+  // Și actele înlocuite intră la bani — altfel „cât am dat pe acte” ar uita tot ce e mai vechi de o reînnoire.
   // Fără dată de emitere, reperul e ziua în care actul a fost introdus (ca cele trei cifre să se adune).
   const cst = costuri(list.concat(histF), (d) => zi10(d.issue_date) || zi10(d.created_at));
 
@@ -102,7 +102,7 @@ export function AdminDocuments() {
     const imeis = toate.filter((i) => (byVeh.get(i) || []).length || (lipsaDe[i] || []).length)
       .sort((a, b) => { const sa = scor(a), sb = scor(b); return sa !== sb ? sa - sb : numar(devs, a).localeCompare(numar(devs, b), 'ro'); });
 
-    // „1 mașină are acte expirate" nu ajută: scriem CARE mașină și CE anume îi lipsește sau i-a expirat.
+    // „1 mașină are acte expirate” nu ajută: scriem CARE mașină și CE anume îi lipsește sau i-a expirat.
     let banner: any = null;
     if (imeis.length) {
       const linii: { grav: number; el: any }[] = [];
@@ -199,8 +199,8 @@ export function AdminDocuments() {
   );
 }
 
-// Fila „Acte cerute", doar de citit pe telefon: ce acte trebuie să aibă fiecare fel de mașină. Tot de
-// aici se decide ce apare „lipsește". Lista gata îmbinată vine de la server; ce a schimbat firma e
+// Fila „Acte cerute”, doar de citit pe telefon: ce acte trebuie să aibă fiecare fel de mașină. Tot de
+// aici se decide ce apare „lipsește”. Lista gata îmbinată vine de la server; ce a schimbat firma e
 // scos în evidență. Se modifică din aplicația web.
 function ActeCerute({ req, canEdit }: { req: any | null; canEdit: boolean }) {
   if (!req) return <div class="fl-empty"><div class="spin" style="margin:0 auto" /></div>;
@@ -211,8 +211,8 @@ function ActeCerute({ req, canEdit }: { req: any | null; canEdit: boolean }) {
   return (
     <>
       <div class="fl-note">
-        <b>Ce acte trebuie să aibă fiecare fel de mașină.</b> „Obligatoriu" = dacă lipsește, ți-o spunem cu roșu în lista de acte.
-        „Opțional" = îl urmărim dacă îl introduci, dar nu te batem la cap.
+        <b>Ce acte trebuie să aibă fiecare fel de mașină.</b> „Obligatoriu” = dacă lipsește, ți-o spunem cu roșu în lista de acte.
+        „Opțional” = îl urmărim dacă îl introduci, dar nu te batem la cap.
         {canEdit ? ' Lista se schimbă din aplicația web, în Documente → Acte cerute.' : ''}
       </div>
       <div class="fl-tb">

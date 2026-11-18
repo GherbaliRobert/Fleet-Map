@@ -1,6 +1,6 @@
 // Flota administrată — ce folosesc împreună Mentenanța, Documentele, Șoferii, Grupele și fișa mașinii.
 // Copia pe telefon a regulilor de AFIȘARE de pe web (public/index.html: mntState, mntLeftLabel, docState,
-// docLeftLabel, markerCategory…). Regulile care contează — ce e „restant", ce e „expiră curând", cu ce
+// docLeftLabel, markerCategory…). Regulile care contează — ce e „restant”, ce e „expiră curând”, cu ce
 // preaviz — le calculează SERVERUL (_due, _days, _odo) și aici doar se traduc în cuvinte. Nicio listă de
 // lucrări, de acte sau de clase scrisă aici: vin din maint_types.js, prin server.
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
@@ -16,7 +16,7 @@ export function norm(s: any): string {
   return String(s == null ? '' : s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
 }
 export function zi10(v: any): string | null { return v ? String(v).slice(0, 10) : null; }
-// „12.03.2026" dintr-o dată de calendar (fără să alunece o zi din cauza fusului orar).
+// „12.03.2026” dintr-o dată de calendar (fără să alunece o zi din cauza fusului orar).
 export function dataRo(v: any): string {
   const d = zi10(v); if (!d) return '';
   const t = new Date(d + 'T12:00:00');
@@ -64,7 +64,7 @@ export function modelul(devs: any[], imei: string): string {
   const d = vehDe(devs, imei);
   return (d && d.plate && d.name) ? String(d.name) : '';
 }
-// Pentru selectoare: „B 12 ABC · Dacia Logan", ordonate după număr.
+// Pentru selectoare: „B 12 ABC · Dacia Logan”, ordonate după număr.
 export function optiuniVehicule(devs: any[]): { value: string; label: string }[] {
   return devs
     .map((d) => {
@@ -186,7 +186,7 @@ export function metaLucrare(cat: Catalog | null, type: string): { icon: IconName
 }
 
 // ─── Mentenanță (web: mntDone / mntState / mntLeftLabel / mntWhen / mntRepeat) ───
-const KM_PE_ZI = 250; // doar pentru ordine: aduce „mai are 500 km" și „mai are 3 luni" la aceeași unitate
+const KM_PE_ZI = 250; // doar pentru ordine: aduce „mai are 500 km” și „mai are 3 luni” la aceeași unitate
 export function mntFacuta(m: any): boolean { return m.status === 'done' || m.status === 'completed' || !!m.done_date; }
 // Zile de CALENDAR de azi până la data dată (omul numără zile, nu ore).
 export function zilePana(d: string): number | null {
@@ -202,7 +202,7 @@ export function mntZileRamase(m: any): number | null {
   if (m.due_km && m._odo) out.push(Math.round((m.due_km - m._odo) / KM_PE_ZI));
   return out.length ? Math.min.apply(null, out) : null;
 }
-// 'done' | 'over' | 'soon' | 'none' | 'ok'. Restanța și „curând" vin de la server (_due), cu preavizul firmei.
+// 'done' | 'over' | 'soon' | 'none' | 'ok'. Restanța și „curând” vin de la server (_due), cu preavizul firmei.
 export function mntStare(m: any): string {
   if (mntFacuta(m)) return 'done';
   if (m._due === 'overdue') return 'over';
@@ -242,7 +242,7 @@ export function mntRepeta(m: any): string {
   if (m.interval_months) p.push(m.interval_months + (Number(m.interval_months) === 1 ? ' lună' : ' luni'));
   return p.join(' / ');
 }
-// „12 luni" spus omenește (web: _mntDurata).
+// „12 luni” spus omenește (web: _mntDurata).
 export function durata(luni: any): string {
   const n = parseInt(luni) || 0;
   if (!n) return '';
@@ -259,7 +259,7 @@ export function esteAct(cat: Catalog | null, type: string): boolean {
 }
 
 // ─── Documente (web: docState / docDays / docLeftLabel) ───
-// Starea vine de la server (_due), cu preavizul de acte al firmei („Avertisment acte"), nu cu 30 de zile
+// Starea vine de la server (_due), cu preavizul de acte al firmei („Avertisment acte”), nu cu 30 de zile
 // bătute aici: dacă firma pune 14 sau 45 de zile, culoarea se mută odată cu alerta.
 export function docStare(d: any): string { return d._due || (d.expiry_date ? 'ok' : 'none'); }
 export function docZile(d: any): number | null {
@@ -292,7 +292,7 @@ export function costuri(list: any[], dataDe: (x: any) => string | null): { luna:
   return { luna, an, total, year: y };
 }
 
-// Numărul de înmatriculare adus la o formă comparabilă: „B 268 ROY" = „B-268-ROY" = „b268roy".
+// Numărul de înmatriculare adus la o formă comparabilă: „B 268 ROY” = „B-268-ROY” = „b268roy”.
 export function cheieNumar(p: any): string { return String(p == null ? '' : p).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 export function vehDupaNumar(devs: any[], plate: any): any | null {
   const k = cheieNumar(plate); if (k.length < 4) return null;

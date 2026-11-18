@@ -97,11 +97,11 @@ async function ruleaza(nume, pts, tolerantaPct) {
     void before;
   }
 
-  // ── „Consum azi" din fișa vehiculului ────────────────────────────────────────────────────────
+  // ── „Consum azi” din fișa vehiculului ────────────────────────────────────────────────────────
   // A DOUA copie a aceleiași greșeli, în server.js. O reparasem doar în rapoarte, iar cifra din fișa
   // vehiculului (și din telefon) ar fi rămas umflată. Proba rulează chiar bucata din server, nu o
   // rescriere a ei: o extrage din fișier ca text și o execută.
-  console.log('\nD. „Consum azi" din fișa vehiculului (server.js)');
+  console.log('\nD. „Consum azi” din fișa vehiculului (server.js)');
   {
     const fs = require('fs');
     const path = require('path');

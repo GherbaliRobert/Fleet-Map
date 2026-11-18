@@ -3,7 +3,7 @@
 // Două lipsuri reparate, verificate aici cu poziții REALE trimise pe TCP (codec8E), nu cu apeluri simulate:
 //
 // 1. Tipul `alert` LIPSEA din catalogul de preferințe (EVENT_TYPES). Push-ul se trimite doar pentru tipuri
-//    bifate, iar bifa nu exista nicăieri → o regulă din „Alerte" nu putea ajunge NICIODATĂ pe telefon.
+//    bifate, iar bifa nu exista nicăieri → o regulă din „Alerte” nu putea ajunge NICIODATĂ pe telefon.
 // 2. O regulă de zonă accepta o SINGURĂ zonă (`geofenceId`), iar răcirea de 5 minute era pe (regulă, vehicul):
 //    chiar cu mai multe zone, a doua trecere din aceeași oră ar fi fost înghițită. Acum: `geofenceIds` +
 //    răcire per zonă.
@@ -83,10 +83,10 @@ function kill(p) { return new Promise((r) => { if (!p) return r(); p.once('exit'
     await sleep(2500);
     t('super-admin autentificat', (await req('POST', '/api/login', { username: 'admin', password: 'admin123' })).status === 200);
 
-    // ── Tipul „alert" trebuie să EXISTE în catalogul de preferințe, altfel nu se poate bifa push ──
+    // ── Tipul „alert” trebuie să EXISTE în catalogul de preferințe, altfel nu se poate bifa push ──
     const et = (await req('GET', '/api/event-types')).body || [];
     const alertType = et.find(x => x.key === 'alert');
-    t('tipul „alert" apare în preferințele de notificare', !!alertType, et.map(x => x.key).join(', '));
+    t('tipul „alert” apare în preferințele de notificare', !!alertType, et.map(x => x.key).join(', '));
     t('push implicit PORNIT pentru regulile de alertă', !!(alertType && alertType.pushDefault), JSON.stringify(alertType));
 
     // ── Companie + vehicul + două zone vecine ──
@@ -105,7 +105,7 @@ function kill(p) { return new Promise((r) => { if (!p) return r(); p.once('exit'
     t('regulă cu DOUĂ zone salvată', !!(rule && rule.id) && JSON.stringify(rule.condition).includes(String(zB.id)), JSON.stringify(rule && rule.condition));
 
     // ── Traseu: în afara zonelor → intră în A → iese → intră în B, totul în câteva secunde ──
-    await sendPos(45.700, 21.150, 40, true);   // afară (seedează starea „în afară" pt. ambele)
+    await sendPos(45.700, 21.150, 40, true);   // afară (seedează starea „în afară” pt. ambele)
     await sleep(900);
     await sendPos(45.700, 21.200, 30, true);   // INTRARE în zona A
     await sleep(900);
@@ -128,7 +128,7 @@ function kill(p) { return new Promise((r) => { if (!p) return r(); p.once('exit'
       name: 'Regulă veche', type: 'geofence_exit', imei: IMEI, enabled: true,
       condition: { geofenceId: zB.id }, company_id: co.id
     })).body;
-    await sendPos(45.700, 21.230, 20, true);   // încă în B (seed „înăuntru" pt. regula nouă)
+    await sendPos(45.700, 21.230, 20, true);   // încă în B (seed „înăuntru” pt. regula nouă)
     await sleep(900);
     await sendPos(45.700, 21.260, 50, true);   // IEȘIRE din B
     await sleep(2500);

@@ -11,7 +11,7 @@
 //     totdeauna, până la repornirea procesului;
 //   · cache-ul serverului chiar taie apelurile repetate;
 //   · OSRM e OPRIT fără OSRM_URL (nu mai lovim serverul public de demonstrație) și merge cu el setat;
-//   · „Stare producție" spune adevărul despre furnizorul folosit.
+//   · „Stare producție” spune adevărul despre furnizorul folosit.
 const { spawn } = require('child_process');
 const http = require('http');
 const os = require('os'), path = require('path'), fs = require('fs');
@@ -39,7 +39,7 @@ async function req(m, p, body) {
 
 function startFakes() {
   return new Promise((res) => {
-    // „Nominatim" fals: întoarce o adresă derivată din coordonate, ca să putem verifica maparea
+    // „Nominatim” fals: întoarce o adresă derivată din coordonate, ca să putem verifica maparea
     nom = http.createServer((rq, rs) => {
       nomHits++;
       nomUA = rq.headers['user-agent'] || null;
@@ -47,7 +47,7 @@ function startFakes() {
       const u = new URL(rq.url, 'http://x');
       const lat = u.searchParams.get('lat'), lon = u.searchParams.get('lon');
       rs.writeHead(200, { 'Content-Type': 'application/json' });
-      // Formă realistă pentru România: comuna („Clinceni") apare DOAR în display_name, nu în `address` —
+      // Formă realistă pentru România: comuna („Clinceni”) apare DOAR în display_name, nu în `address` —
       // exact capcana pentru care adresa detaliată o extrage țintit, dinaintea județului.
       rs.end(JSON.stringify({
         display_name: 'Strada ' + Number(lat).toFixed(2) + ', Cartierul Vechi, Oraș ' + Number(lon).toFixed(2) + ', Comuna Test, Județul Test, 123456, România',
@@ -57,7 +57,7 @@ function startFakes() {
         },
       }));
     }).listen(NOMPORT, () => {
-      // „OSRM" fals: un `matchings` valid, minim
+      // „OSRM” fals: un `matchings` valid, minim
       osrm = http.createServer((rq, rs) => {
         osrmHits++;
         rs.writeHead(200, { 'Content-Type': 'application/json' });
@@ -113,7 +113,7 @@ async function health(key) {
     t('trimite un User-Agent care identifică aplicația', !!nomUA && /RA-Track/.test(nomUA) && /ratrack\.ro/.test(nomUA), String(nomUA));
 
     // ── 1b. Adresa DETALIATĂ pentru fișa vehiculului, din ACELAȘI apel de rețea ──
-    // „Olteni" (doar localitatea) nu-i spune dispecerului unde să trimită pe cineva.
+    // „Olteni” (doar localitatea) nu-i spune dispecerului unde să trimită pe cineva.
     nomHits = 0;
     const gd = await req('POST', '/api/geocode/reverse', { points: [[45.75, 21.23]] , detail: 'full' });
     const eticheta = gd.body.labels[0] || '';
@@ -152,9 +152,9 @@ async function health(key) {
     const g5 = await req('POST', '/api/geocode/reverse', { points: [[46.11, 22.22]] });
     t('după ce furnizorul revine, REÎNCEARCĂ (eșecul nu s-a memorat)', nomHits === 1 && !!g5.body.labels[0], 'apeluri=' + nomHits + ' label=' + g5.body.labels[0]);
 
-    // ── 5. „Stare producție" spune ce furnizor folosim ──
+    // ── 5. „Stare producție” spune ce furnizor folosim ──
     const hg = await health('geocode');
-    t('„Stare producție" raportează geocodarea', !!hg, JSON.stringify(hg));
+    t('„Stare producție” raportează geocodarea', !!hg, JSON.stringify(hg));
     t('recunoaște că NU e Nominatim public', hg && /furnizor propriu/.test(hg.detail || ''), hg && hg.detail);
     t('numără și eșecurile (429-ul de mai sus)', hg && /refuzate pentru depășirea limitei/.test(hg.detail || ''), hg && hg.detail);
 
@@ -165,11 +165,11 @@ async function health(key) {
     const m1 = await req('POST', '/api/match', { points: [[45, 21], [45.001, 21.001], [45.002, 21.002]], auto: true });
     t('fără OSRM_URL, alinierea automată e oprită', m1.body && m1.body.matched === null && m1.body.reason === 'osrm_neconfigurat', JSON.stringify(m1.body));
     t('și NU a plecat nicio cerere externă', osrmHits === 0, 'apeluri=' + osrmHits);
-    // La cerere, se încearcă metoda gratuită; cu Overpass indisponibil trebuie să spună ASTA, nu „fără drumuri".
+    // La cerere, se încearcă metoda gratuită; cu Overpass indisponibil trebuie să spună ASTA, nu „fără drumuri”.
     const m1b = await req('POST', '/api/match', { points: [[45, 21], [45.001, 21.001], [45.002, 21.002]] });
     t('la cerere, încearcă metoda gratuită și raportează corect indisponibilitatea', m1b.body && m1b.body.reason === 'osm_indisponibil', JSON.stringify(m1b.body));
     const ho = await health('osrm');
-    t('„Stare producție" explică de ce e oprit', ho && /OSRM_URL nesetat/.test(ho.detail || ''), ho && ho.detail);
+    t('„Stare producție” explică de ce e oprit', ho && /OSRM_URL nesetat/.test(ho.detail || ''), ho && ho.detail);
 
     // ── 7. Cu OSRM_URL setat, merge ──
     await kill(srv); srv = null;
@@ -181,7 +181,7 @@ async function health(key) {
     t('map-matching-ul întoarce geometrie', m2.body && Array.isArray(m2.body.matched) && m2.body.matched.length >= 2, JSON.stringify(m2.body).slice(0, 200));
     t('a folosit serverul propriu', osrmHits >= 1, 'apeluri=' + osrmHits);
     const ho2 = await health('osrm');
-    t('„Stare producție" arată serverul propriu', ho2 && /server propriu/.test(ho2.detail || ''), ho2 && ho2.detail);
+    t('„Stare producție” arată serverul propriu', ho2 && /server propriu/.test(ho2.detail || ''), ho2 && ho2.detail);
 
     // ── 8. Fără autentificare, endpoint-ul nu e deschis (altfel devine proxy gratuit de geocodare) ──
     cookie = '';

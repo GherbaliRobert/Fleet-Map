@@ -4,10 +4,10 @@
 const IDLE_SPEED = 3;        // km/h sub care vehiculul e considerat oprit
 const MAX_STEP_KM = 10;      // ignoră salturi GPS mai mari (puncte aberante)
 let geocode = null; try { geocode = require('./geocode'); } catch (e) {} // reverse-geocode (adrese în Foaie de parcurs)
-let roadlimits = null; try { roadlimits = require('./roadlimits'); } catch (e) {} // limite reale de viteză din OpenStreetMap (mod OSM la „Depășiri viteză")
+let roadlimits = null; try { roadlimits = require('./roadlimits'); } catch (e) {} // limite reale de viteză din OpenStreetMap (mod OSM la „Depășiri viteză”)
 const condus = require('./condus');   // pragurile și scorul EcoDrive — aceleași pentru raport și pentru Safe Drive (o singură regulă)
 const tacho = require('./tacho');
-const cifre = require('./cifre');   // cifrele greu de crezut la consum („de verificat") — un singur loc pentru praguri     // Reg. 561 se aplică? — aceeași regulă ca agentul RA Compliance (tacho.supusReg561)
+const cifre = require('./cifre');   // cifrele greu de crezut la consum („de verificat”) — un singur loc pentru praguri     // Reg. 561 se aplică? — aceeași regulă ca agentul RA Compliance (tacho.supusReg561)
 const insight = require('./insight'); // începutul unei zile pe ora României (inceputZiRO)
 const probleme = require('./probleme'); // senzorul de combustibil care nu se mișcă — aceeași regulă în rapoarte și în RA Insight
 const preaviz = require('./preaviz'); // starea unui act / a unei revizii și preavizul firmei — aceleași ca listele (Scadențe)
@@ -21,9 +21,9 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Bucharest';
 function fmtTs(ts) { return ts ? new Date(ts).toLocaleString('ro-RO', { timeZone: DISPLAY_TZ }) : ''; }
 function fmtTsMin(ts) { return ts ? new Date(ts).toLocaleString('ro-RO', { timeZone: DISPLAY_TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; } // dată + oră, fără secunde
-function fmtHM(ts) { return ts ? new Date(ts).toLocaleTimeString('ro-RO', { timeZone: DISPLAY_TZ, hour: '2-digit', minute: '2-digit' }) : ''; } // doar ora HH:MM (ziua e deja în coloana „Zi")
-// Vechimea unei poziții (ms). isNow=true (raport „până acum") → prefix „acum X" (ex. „acum 12 min");
-// isNow=false (raport pe o zi din trecut) → durată simplă „34 min" — fără „acum", ca să nu inducă în eroare.
+function fmtHM(ts) { return ts ? new Date(ts).toLocaleTimeString('ro-RO', { timeZone: DISPLAY_TZ, hour: '2-digit', minute: '2-digit' }) : ''; } // doar ora HH:MM (ziua e deja în coloana „Zi”)
+// Vechimea unei poziții (ms). isNow=true (raport „până acum”) → prefix „acum X” (ex. „acum 12 min”);
+// isNow=false (raport pe o zi din trecut) → durată simplă „34 min” — fără „acum”, ca să nu inducă în eroare.
 function _ageStr(ms, isNow) {
   if (ms == null || !isFinite(ms) || ms < 0) return '—';
   const pre = isNow ? 'acum ' : '';
@@ -36,7 +36,7 @@ function _ageStr(ms, isNow) {
   const d = Math.floor(h / 24);
   return pre + d + (d === 1 ? ' zi' : ' zile');
 }
-// Calitatea fix-ului GPS după numărul de sateliți (ca userul să înțeleagă coloana „Sateliți").
+// Calitatea fix-ului GPS după numărul de sateliți (ca userul să înțeleagă coloana „Sateliți”).
 function _satQ(n) {
   n = Number(n) || 0;
   if (n <= 3) return 'semnal slab';
@@ -55,17 +55,17 @@ function loc(p) { return p ? p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(
 function io(p) { return p && p.io_data ? p.io_data : {}; }
 // Odometru (km) din CAN la un punct (start/stop cursă). Fallback null dacă vehiculul n-are CAN.
 function odo(p) { const i = io(p); let v = i.can_total_mileage; if (v == null) v = i.can_total_mileage_counted; if (v == null) v = i.total_odometer; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
-// Odometru REAL din bord = DOAR can_total_mileage (IO 87). NU folosim can_total_mileage_counted (IO 105 = „de la pornire/contor",
-// ALT contor cu ALTĂ bază): amestecul lor dădea un index inflat, „din viitor" (ex. 33.158 în loc de 32.685 real din bord — când
-// mașina parchează și nu mai trimite can_total_mileage, un ping cu doar _counted „împingea" indexul). Nici total_odometer (contorul
+// Odometru REAL din bord = DOAR can_total_mileage (IO 87). NU folosim can_total_mileage_counted (IO 105 = „de la pornire/contor”,
+// ALT contor cu ALTĂ bază): amestecul lor dădea un index inflat, „din viitor” (ex. 33.158 în loc de 32.685 real din bord — când
+// mașina parchează și nu mai trimite can_total_mileage, un ping cu doar _counted „împingea” indexul). Nici total_odometer (contorul
 // GPS al device-ului, metri — intră abia la indexul bord+GPS, pasul 2).
-// IMPORTANT: valorile CAN pot fi STRINGURI („32685.7") → citim cu != null + parseFloat (ca _odoFromIo din server.js), NU typeof==='number'.
+// IMPORTANT: valorile CAN pot fi STRINGURI („32685.7”) → citim cu != null + parseFloat (ca _odoFromIo din server.js), NU typeof==='number'.
 function odoCan(p) { const v = io(p).can_total_mileage; if (v == null) return null; const n = parseFloat(v); return (isFinite(n) && n > 0) ? Math.round(n) : null; }
 // Index ore de funcționare (moto-ore) din CAN: total (IO 104, h) preferat; altfel worktime (IO 102/103, minute→h). null dacă lipsește.
 function engH(p) { const i = io(p); let h = i.can_engine_total_hours != null ? parseFloat(i.can_engine_total_hours) : (i.can_engine_worktime != null ? parseFloat(i.can_engine_worktime) / 60 : (i.can_engine_worktime_counted != null ? parseFloat(i.can_engine_worktime_counted) / 60 : null)); return (h != null && isFinite(h) && h > 0) ? Math.round(h) : null; }
-// Grupare mii stil RO (145320 → „145.320").
+// Grupare mii stil RO (145320 → „145.320”).
 function _grp(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
-// Contorul GPS al device-ului „de la montare" (total_odometer, IO 16, METRI). Baza indexului bord+GPS (pasul 2). null dacă lipsește.
+// Contorul GPS al device-ului „de la montare” (total_odometer, IO 16, METRI). Baza indexului bord+GPS (pasul 2). null dacă lipsește.
 function todo(p) { const i = io(p); if (i.total_odometer == null) return null; const n = parseFloat(i.total_odometer); return (isFinite(n) && n >= 0) ? n : null; }
 // Odometru CURENT (km) pt. mentenanța pe km — ca _odoFromIo din server.js: can_total_mileage → _counted → total_odometer/1000.
 function _odoNow(io) { if (!io) return null; let km = io.can_total_mileage != null ? parseFloat(io.can_total_mileage) : (io.can_total_mileage_counted != null ? parseFloat(io.can_total_mileage_counted) : (io.total_odometer != null ? parseFloat(io.total_odometer) / 1000 : null)); return (km != null && isFinite(km) && km > 0) ? Math.round(km) : null; }
@@ -75,7 +75,7 @@ function addr(p) { if (!p) return ''; if (geocode && geocode.peek) { const a = g
 // tolerant la string (valorile CAN vin adesea ca stringuri numerice). Fallback `can_fuel_level_liters` DOAR dacă
 // e deja număr (normalizat /10 la ingestie); nu forțăm parseFloat pe string acolo (ar ieși ×10).
 function fuelL(p) { const i = io(p); if (i.fuel_level_liters != null) { const n = parseFloat(i.fuel_level_liters); if (isFinite(n) && n > 0) return n; } return (typeof i.can_fuel_level_liters === 'number' && i.can_fuel_level_liters > 0) ? i.can_fuel_level_liters : null; }
-// Contor CUMULATIV de combustibil consumat (CAN „total fuel used", L). Monoton crescător → delta = consum EXACT,
+// Contor CUMULATIV de combustibil consumat (CAN „total fuel used”, L). Monoton crescător → delta = consum EXACT,
 // chiar și pe distanțe scurte unde nivelul rezervorului nu se mișcă vizibil. Sursă PREFERATĂ pentru consum.
 // IO-urile CAN vin adesea ca STRING numeric (ca `can_total_mileage` → vezi _odoFromIo): citim cu != null + parseFloat,
 // altfel `typeof === 'number'` respinge stringul și contorul e ignorat (sursa cădea mereu pe Senzor/Estimat).
@@ -91,7 +91,7 @@ function fuelCumul(p) { const i = io(p); const raw = i.can_fuel_consumed != null
 // punct la 5 minute ieșeau 25. (Adevărul: 27.)
 //
 // Scăderea netă e imună la asta — zgomotul se anulează singur, fiindcă la fel de des urcă pe cât
-// coboară. Alimentările se adună înapoi, ca să nu treacă drept „nu s-a consumat".
+// coboară. Alimentările se adună înapoi, ca să nu treacă drept „nu s-a consumat”.
 // Seria pe zile din `fuelStats` folosea deja formula asta; doar totalul pe vehicul nu.
 function _nivelConsum(first, last, refueled) {
   if (first == null || last == null) return 0;
@@ -110,7 +110,7 @@ function _capat(valori, dinCoada) {
 // Contorul CAN cumulativ. Ne LEGĂM de un singur câmp și mergem numai pe el.
 // Unele trackere trimit ba `can_fuel_consumed`, ba `can_fuel_consumed_counted` — două contoare
 // diferite, amândouă crescătoare, cu zeci de litri între ele. Sărind de la unul la altul, fiecare
-// alternanță producea un „consum" din senin: în probă, 79 L în loc de 27.
+// alternanță producea un „consum” din senin: în probă, 79 L în loc de 27.
 const _CUMUL_KEYS = ['can_fuel_consumed', 'can_fuel_consumed_counted', 'can_engine_total_fuel_used'];
 function _cumulTracker() {
   let cheie = null, prev = null, sum = 0, vazut = false;
@@ -135,12 +135,12 @@ function _cumulTracker() {
 }
 
 function ignOn(p) { return io(p).ignition === 1; }
-// Turația CAN (RON: „can_rpm" în raportul CAN, unele parsere „can_engine_rpm"). null dacă lipsește.
+// Turația CAN (RON: „can_rpm” în raportul CAN, unele parsere „can_engine_rpm”). null dacă lipsește.
 function canRpm(p) { const i = io(p); const v = i.can_rpm != null ? i.can_rpm : (i.can_engine_rpm != null ? i.can_engine_rpm : null); const n = v != null ? parseFloat(v) : NaN; return isFinite(n) ? n : null; } // string-tolerant (valorile CAN pot veni ca string)
 // Motor pornit dacă RPM-ul CAN o arată (>300) SAU contactul e ON. RPM se ADAUGĂ ca semnal (prinde
 // contactul nesigur), NU înlocuiește — altfel o mașină care trimite can_rpm=0/nesigur ar rămâne nedetectată.
 function engineRunning(p) { return canRpm(p) > 300 || ignOn(p); }
-// Viteză CAN (dacă există) — folosită doar ca semnal suplimentar; GPS rămâne baza pentru „staționat".
+// Viteză CAN (dacă există) — folosită doar ca semnal suplimentar; GPS rămâne baza pentru „staționat”.
 function canSpeed(p) { const i = io(p); return (typeof i.can_vehicle_speed === 'number') ? i.can_vehicle_speed : (typeof i.can_tacho_speed === 'number' ? i.can_tacho_speed : (typeof i.can_wheel_speed === 'number' ? i.can_wheel_speed : null)); }
 // Rata de consum la RALANTI (L/h) după tipul mașinii — pentru ESTIMARE, când nu avem consumul real din CAN.
 // Un motor mare (camion) arde mult mai mult stând pe loc decât un autoturism.
@@ -168,9 +168,9 @@ function resolvePrice(c, opts) {
   return (opts && opts.fuelPrice) || 7.5;
 }
 
-// ─── Citirea pozițiilor: TOATĂ perioada, nu primele 50.000 (Alin, 05.10: „rezolvăm acum, înaintea pasului 3") ───
+// ─── Citirea pozițiilor: TOATĂ perioada, nu primele 50.000 (Alin, 05.10: „rezolvăm acum, înaintea pasului 3”) ───
 // O lună a unei mașini care merge zilnic are cam 50.000 de poziții (măsurat de noi la exportul istoricului). Rapoartele
-// citeau cel mult atât, în ordinea timpului, fără să spună: „km luna trecută" număra doar primele ~2 săptămâni.
+// citeau cel mult atât, în ordinea timpului, fără să spună: „km luna trecută” număra doar primele ~2 săptămâni.
 //   • `fiecarePozitie` citește pe PAGINI (20.000 de poziții ≈ 15 MB) și cheamă `fn(p)` pentru fiecare, în ordine —
 //     rapoartele care merg poziție cu poziție (km, consum, ralanti, viteză, EcoDrive, ore motor, alimentări) nu mai
 //     țin toată perioada în memorie. MĂSURAT: o poziție cu io_data obișnuit ≈ 785 de octeți în memorie.
@@ -207,7 +207,7 @@ async function fiecarePozitie(db, imei, from, to, fn) {
     dupa = rows[rows.length - 1].cheie;   // timpul scris ca TEXT (microsecunde) — o dată JS le-ar pierde
   }
 }
-// Ultimele `n` poziții din perioadă (pentru „Ultima locație": restul perioadei nu contează).
+// Ultimele `n` poziții din perioadă (pentru „Ultima locație”: restul perioadei nu contează).
 async function coadaIstoric(db, imei, from, to, n) {
   const baza = db._tfBaza || db;
   if (typeof baza.istoricCoada !== 'function') { const tot = await history(db, imei, from, to); return tot.slice(-n); }
@@ -233,9 +233,9 @@ function segmentTrack(pts, stopMinSec) {
   const stops = [], trips = [];
   if (pts.length < 2) return { stops, trips };
   const moving = pts.map(p => (p.speed || 0) > IDLE_SPEED);
-  // runs consecutive de aceeași stare. Rupe și la un „salt" spațial într-o serie de opriri: dacă între
+  // runs consecutive de aceeași stare. Rupe și la un „salt” spațial într-o serie de opriri: dacă între
   // două puncte oprite consecutive sunt >200m, mașina s-a mutat cu aparatul tăcut (deplasare neînregistrată)
-  // → sunt DOUĂ parcări diferite, nu una singură lipită greșit la primul punct (fix „oprire falsă la locul greșit").
+  // → sunt DOUĂ parcări diferite, nu una singură lipită greșit la primul punct (fix „oprire falsă la locul greșit”).
   const runs = []; let s = 0;
   for (let i = 1; i < pts.length; i++) {
     const jumped = !moving[i] && !moving[i-1] && haversineKm(pts[i-1].latitude, pts[i-1].longitude, pts[i].latitude, pts[i].longitude) > 0.2;
@@ -279,13 +279,13 @@ function segmentTrack(pts, stopMinSec) {
 // Contract: un raport poate întoarce `charts: [{ type, title, labels, datasets:[{label,data}] }]`.
 // Frontend-ul (renderReport) le desenează cu Chart.js și aplică paleta automat.
 // ⚠ UN singur formatator pentru tot procesul (21.10): unul nou la fiecare poziție ținea ocupați ~17 KB pe poziție
-// și nu-i mai dădea înapoi — „Condus & repaus" pe o lună, 3 mașini: 28 s și ~6 GB. Păzit de verify_formatoare.js.
+// și nu-i mai dădea înapoi — „Condus & repaus” pe o lună, 3 mașini: 28 s și ~6 GB. Păzit de verify_formatoare.js.
 let _fmtZiISO = null;
 function _dayKeyISO(ts) { try { if (!_fmtZiISO) _fmtZiISO = new Intl.DateTimeFormat('en-CA', { timeZone: DISPLAY_TZ }); return _fmtZiISO.format(new Date(ts)); } catch (e) { return ''; } } // YYYY-MM-DD în fusul afișat (nu UTC) → atribuire corectă a zilei lângă miezul nopții
 function _ziPlusISO(z, n) { const d = new Date(String(z) + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } // AAAA-LL-ZZ ± n zile
 function _dayLabel(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] : isoKey; }
 function _dayLabelFull(isoKey) { const p = String(isoKey).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : isoKey; } // YYYY-MM-DD → DD.MM.YYYY
-// Listă compactă de zile (chei sortate „YYYY-MM-DD") → grupează zilele CONSECUTIVE în intervale: „01–05.07.2026, 08.07.2026".
+// Listă compactă de zile (chei sortate „YYYY-MM-DD”) → grupează zilele CONSECUTIVE în intervale: „01–05.07.2026, 08.07.2026”.
 function _fmtDayRanges(keys) {
   if (!keys || !keys.length) return '';
   const a = keys.map(k => { const q = k.split('-').map(Number); return { y: q[0], m: q[1], d: q[2], ms: Date.UTC(q[0], q[1] - 1, q[2]) }; });
@@ -335,7 +335,7 @@ function _tripCharts(trips) {
   ];
 }
 
-// perVehicle GENERIC pentru orice raport cu prima coloană „Vehicul" și mai multe rânduri/mașină
+// perVehicle GENERIC pentru orice raport cu prima coloană „Vehicul” și mai multe rânduri/mașină
 // (selector online + sheet/mașină în Excel). Sumar minim: nr. de înregistrări (corect indiferent de raport).
 function _genericPerVehicle(result) {
   const cols = result.columns || [], rows = result.rows || [];
@@ -348,7 +348,7 @@ function _genericPerVehicle(result) {
     vehicul: name, summary: [['Înregistrări', groups[name].length]], rows: groups[name]
   }));
 }
-// Adaugă automat coloana „Șofer" (imediat după „Vehicul") la ORICE raport care începe cu coloana „Vehicul".
+// Adaugă automat coloana „Șofer” (imediat după „Vehicul”) la ORICE raport care începe cu coloana „Vehicul”.
 // Un singur loc → toate rapoartele despre mașini primesc șoferul alocat, fără să edităm fiecare raport.
 function _injectDriverColumn(result, imeis, devMap) {
   const cols = result.columns;
@@ -365,7 +365,7 @@ function _injectDriverColumn(result, imeis, devMap) {
       if (Array.isArray(v.summary)) v.summary = [['Șofer', (l2d[String(v.vehicul)] || '—')]].concat(v.summary);
     });
   }
-  if (Array.isArray(result.summaryTotals)) result.summaryTotals = [''].concat(result.summaryTotals); // rândul TOTAL: aliniază cu coloana „Șofer" adăugată în tabelul Sumar
+  if (Array.isArray(result.summaryTotals)) result.summaryTotals = [''].concat(result.summaryTotals); // rândul TOTAL: aliniază cu coloana „Șofer” adăugată în tabelul Sumar
 }
 
 async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
@@ -394,7 +394,7 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
     return [ label(devMap, imei), fmtTs(tr.start), addr(tr.startP), fmtTs(tr.end), addr(tr.endP), fmtDur(tr.durationSec), dist.toFixed(2),
       ks != null ? ks : '—', ke != null ? ke : '—', tr.avgSpeed, tr.maxSpeed ];
   });
-  // Date structurate pe vehicul (pt. export Excel: sheet „Sumar" + un sheet per mașină).
+  // Date structurate pe vehicul (pt. export Excel: sheet „Sumar” + un sheet per mașină).
   const byImei = {};
   tripList.forEach(({ imei, tr }, i) => {
     if (!byImei[imei]) byImei[imei] = { name: label(devMap, imei), trips: [], rows: [] };
@@ -422,7 +422,7 @@ async function rTrips(db, imeis, from, to, opts, devMap) { // Foaie de parcurs
 async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / staționări
   const fromMs = new Date(from).getTime();
   // Caută cu 24h ÎNAINTE de interval: o parcare începută seara dinainte primește ora REALĂ de sosire,
-  // nu „primul ping din zi" (fix: „a ajuns la 00:51" era de fapt primul semnal, nu sosirea).
+  // nu „primul ping din zi” (fix: „a ajuns la 00:51” era de fapt primul semnal, nu sosirea).
   const lookFrom = new Date(fromMs - 24 * 3600 * 1000).toISOString();
   const items = []; let total = 0, totalDur = 0; const all = []; const perVeh = {};
   for (const imei of imeis) {
@@ -437,13 +437,13 @@ async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / stațion�
       pv.n++; pv.dur += st.durationSec; if (st.durationSec > pv.max) pv.max = st.durationSec;
     }
   }
-  // Pre-încarcă adresele opririlor în cache (ca la Foaie de parcurs) → coloana „Locație" = ADRESE, nu coordonate.
+  // Pre-încarcă adresele opririlor în cache (ca la Foaie de parcurs) → coloana „Locație” = ADRESE, nu coordonate.
   // Locațiile care se repetă (ex. sediul) se deduplică; ce nu apucă în buget rămâne pe coordonate (fallback).
   if (geocode && geocode.warm && items.length) {
     try { await geocode.warm(items.map(x => ({ lat: x.st.p.latitude, lng: x.st.p.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
   const rows = items.map(({ imei, st }) => [ label(devMap, imei), fmtTs(st.start), fmtTs(st.end), fmtDur(st.durationSec), addr(st.p) ]);
-  // Sumar PE VEHICUL cu sens (Excel „Sumar" + online): Opriri / Timp staționat / Cea mai lungă — nu generic „Înregistrări".
+  // Sumar PE VEHICUL cu sens (Excel „Sumar” + online): Opriri / Timp staționat / Cea mai lungă — nu generic „Înregistrări”.
   const names = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
   let perVehicle;
   if (names.length >= 2) {
@@ -474,20 +474,20 @@ async function rStops(db, imeis, from, to, opts, devMap) { // Opriri / stațion�
     summary: { 'Opriri': total, 'Timp staționat total': fmtDur(totalDur) }, charts, perVehicle };
 }
 
-// Legenda modului „Limite reale (OSM)" — sursă, toleranță și atribuirea ODbL (obligatorie la afișarea datelor OpenStreetMap).
+// Legenda modului „Limite reale (OSM)” — sursă, toleranță și atribuirea ODbL (obligatorie la afișarea datelor OpenStreetMap).
 function _speedingOsmLegend(skipped, osmOver) {
   const items = [
     ['Limită drum', 'Limita reală a fiecărui drum, citită din OpenStreetMap (unde lipsește tag-ul, e estimată din tipul drumului).'],
     ['Depășire', 'Viteza a depășit limita drumului cu peste 3 km/h (toleranță pentru zgomotul GPS), grupată în evenimente ca pe hartă.']
   ];
-  if (osmOver > 0) items.push(['Prag afișare', 'Arătăm DOAR depășirile de peste +' + osmOver + ' km/h față de limita fiecărui drum — la fel pe orice drum (50, 70, 90...). Așa 75 pe un drum de 70 (doar +5) nu apare, dar 72 pe unul de 50 (+22), da. Reglabil din „Afișează depășirile".']);
+  if (osmOver > 0) items.push(['Prag afișare', 'Arătăm DOAR depășirile de peste +' + osmOver + ' km/h față de limita fiecărui drum — la fel pe orice drum (50, 70, 90...). Așa 75 pe un drum de 70 (doar +5) nu apare, dar 72 pe unul de 50 (+22), da. Reglabil din „Afișează depășirile”.']);
   items.push(['© OpenStreetMap contributors', 'Limitele de viteză provin din OpenStreetMap, sub licența ODbL.']);
-  if (skipped && skipped.length) items.push(['Vehicule sărite (neanalizate)', skipped.map(s => s.nm + ' — ' + s.reason).join('; ') + '. Apar și în tabel cu „Neanalizat".']);
+  if (skipped && skipped.length) items.push(['Vehicule sărite (neanalizate)', skipped.map(s => s.nm + ' — ' + s.reason).join('; ') + '. Apar și în tabel cu „Neanalizat”.']);
   return { title: 'Limite reale (OpenStreetMap) — cum se citesc', items };
 }
 
 async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri viteză
-  const useOsm = !!opts.osm && roadlimits && roadlimits.limitsForPoints; // „Limite reale": compară cu limita reală a fiecărui drum (OSM), nu cu un prag fix
+  const useOsm = !!opts.osm && roadlimits && roadlimits.limitsForPoints; // „Limite reale”: compară cu limita reală a fiecărui drum (OSM), nu cu un prag fix
   const limit = opts.limit || 90;   // mod clasic: prag fix pentru toată flota (implicit 90, reglabil din formular)
   const osmOver = useOsm ? (opts.osmOver || 0) : 0; // OSM: prag RELATIV — arătăm doar depășirile de peste atât peste limita drumului (universal, indiferent de drum: 75 pe 70 = +5 mărunt, 72 pe 50 = +22 real)
   const OSM_MAX_VEH = 25;           // plafon interogări OSM per rulare — protejează serviciul gratuit Overpass de supraîncărcare
@@ -496,7 +496,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
   const skipped = []; let osmOk = 0, osmTried = 0;
   for (const imei of imeis) {
     // Limitele reale (OSM) se cer pentru tot traseul deodată → aici trebuie tot șirul (cu avertismentul plafonului).
-    // Cu limita fixă se citește toată perioada, pe pagini (vezi „Citirea pozițiilor").
+    // Cu limita fixă se citește toată perioada, pe pagini (vezi „Citirea pozițiilor”).
     const pts = useOsm ? await history(db, imei, from, to) : null;
     const nm = label(devMap, imei);
     let lims = null;
@@ -542,7 +542,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
     try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 300, budgetMs: opts.geoBudgetMs || (imeis.length <= 1 ? 14000 : 8000) }); } catch (e) {}
   }
   rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); }); // Locație e col. 5
-  // Mașinile care NU au putut fi analizate apar EXPLICIT în tabel — ca să nu fie confundate cu cele „curate" (verificate, fără depășiri).
+  // Mașinile care NU au putut fi analizate apar EXPLICIT în tabel — ca să nu fie confundate cu cele „curate” (verificate, fără depășiri).
   skipped.forEach(s => rows.push([ s.nm, '—', '—', '—', '—', 'Neanalizat — ' + s.reason ]));
   const nDay = _groupByDay(evs, x => x.start, null);
   const buckets = useOsm ? [30, 50] : [limit + 10, limit + 20, limit + 35]; // OSM: cu cât s-a depășit (trepte ca pe hartă); clasic: viteză absolută
@@ -570,7 +570,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
         ] : []
       };
     });
-    // Mașinile sărite: aceleași chei de sumar (→ tabelul „Sumar" rămâne aliniat), marcate „neanalizat", cu motivul pe foaia proprie.
+    // Mașinile sărite: aceleași chei de sumar (→ tabelul „Sumar” rămâne aliniat), marcate „neanalizat”, cu motivul pe foaia proprie.
     const skipEntries = skipped.map(s => ({
       vehicul: s.nm,
       summary: [['Depășiri', 'neanalizat'], [useOsm ? 'Max peste limită' : 'Viteză max', '—']],
@@ -590,7 +590,7 @@ async function rSpeeding(db, imeis, from, to, opts, devMap) { // Depășiri vite
   return result;
 }
 
-// Etichete afișate pt. tipul de combustibil (valorile din fișă vin fără diacritice: „Motorina", „Benzina", …).
+// Etichete afișate pt. tipul de combustibil (valorile din fișă vin fără diacritice: „Motorina”, „Benzina”, …).
 const _FUEL_LABEL = { motorina: 'Motorină', diesel: 'Motorină', benzina: 'Benzină', 'benzină': 'Benzină', gpl: 'GPL', electric: 'Electric', hibrid: 'Hibrid', altul: 'Altul' };
 async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scăderi/furt
   const refuelMin = opts.refuelMin || 5, dropMin = opts.dropMin || 10;
@@ -602,13 +602,13 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scăd
     const ftL = _ft ? (_FUEL_LABEL[String(_ft).toLowerCase()] || _ft) : '—';
     const pv = perVeh[nm] || (perVeh[nm] = { refuels: 0, drops: 0, added: 0, lost: 0, refs: [] });
     let prev = null;
-    // Toată perioada, pe pagini (vezi „Citirea pozițiilor").
+    // Toată perioada, pe pagini (vezi „Citirea pozițiilor”).
     await fiecarePozitie(db, imei, from, to, function (p) {
       const fl = fuelL(p);
       if (fl == null) return;
       // Gardă de timp: realimentarea se ia doar din citiri apropiate (<1h). Scăderea e suspectă și peste noapte
       // DACĂ motorul a stat STINS (parcat → nu e consum); cu motorul pornit păstrăm garda de 1h (altfel consumul
-      // normal de peste mai multe ore ar apărea ca o „scădere/furt").
+      // normal de peste mai multe ore ar apărea ca o „scădere/furt”).
       if (prev != null) {
         const delta = fl - prev.v, gapH = (t(p) - prev.ts) / 3600000, ign = ignOn(p) || ignOn(prev.p);
         if (delta >= refuelMin && gapH <= 1) { rows.push([ nm, fmtTs(p.timestamp), 'Alimentare', ftL, +delta.toFixed(1), prev.v.toFixed(1) + ' → ' + fl.toFixed(1), loc(p) ]); evPts.push(p); refuels++; addedL += delta; refs.push({ ts: p.timestamp, v: delta }); pv.refuels++; pv.added += delta; pv.refs.push({ ts: p.timestamp, v: delta }); valori.push({ imei, vehicul: nm, ts: new Date(t(p)).toISOString(), fel: 'alimentare', litri: Math.round(delta * 10) / 10, de: Math.round(prev.v * 10) / 10, la: Math.round(fl * 10) / 10, motorPornit: !!ign, _p: p }); }
@@ -622,7 +622,7 @@ async function rFuel(db, imeis, from, to, opts, devMap) { // Alimentări & scăd
   if (geocode && geocode.warm && evPts.length) {
     try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
-  rows.forEach((r, i) => { if (evPts[i]) r[6] = addr(evPts[i]); }); // Locație e acum col. 6 (după adăugarea „Combustibil")
+  rows.forEach((r, i) => { if (evPts[i]) r[6] = addr(evPts[i]); }); // Locație e acum col. 6 (după adăugarea „Combustibil”)
   valori.forEach(function (v) { v.loc = addr(v._p); v.lat = v._p.latitude; v.lng = v._p.longitude; delete v._p; });
   const refDay = _groupByDay(refs, x => x.ts, x => x.v);
   const charts = (refuels || drops) ? [
@@ -729,7 +729,7 @@ async function rGeofence(db, imeis, from, to, opts, devMap, companyId) { // Vizi
       };
     });
   }
-  // Fără sumar (la cererea userului): nici KPI-uri online, nici foaie „Sumar" în Excel — doar tabelul + graficele + foile per vehicul.
+  // Fără sumar (la cererea userului): nici KPI-uri online, nici foaie „Sumar” în Excel — doar tabelul + graficele + foile per vehicul.
   return { columns: ['Vehicul','Zonă','Intrare','Ieșire','Durată'], rows,
     summary: {}, charts, perVehicle, noSummarySheet: true };
 }
@@ -853,7 +853,7 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
   const dNames = Object.keys(byDriver).sort((a, b) => a.localeCompare(b));
   const totalDays = dNames.reduce((s, n) => s + byDriver[n].days.size, 0);
   let perVehicle;
-  if (dNames.length >= 1) { // mereu ≥1 → sumar pe șofer + foaie „Sumar" separată în Excel, chiar și pentru un singur șofer
+  if (dNames.length >= 1) { // mereu ≥1 → sumar pe șofer + foaie „Sumar” separată în Excel, chiar și pentru un singur șofer
     perVehicle = dNames.map(dv => {
       const b = byDriver[dv], dks = Object.keys(b.dd).sort();
       return {
@@ -873,7 +873,7 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
   return {
     columns: ['Șofer','Vehicul','Zi','Prima activ.','Ultima activ.','Timp condus','Km'], rows,
     summary: { 'Șoferi': dNames.length, 'Zile lucrate': totalDays, 'Ore lucrate': fmtDur(totalWorked), 'La volan': fmtDur(totalDrive), 'Km total': Math.round(totalKm) },
-    // TOTAL explicit pt. tabelul „Sumar pe șofer": orele se adună ca durate, Media/zi nu se adună („—") — aliniat la ordinea din summary
+    // TOTAL explicit pt. tabelul „Sumar pe șofer”: orele se adună ca durate, Media/zi nu se adună („—”) — aliniat la ordinea din summary
     summaryTotals: [ totalDays, fmtDur(totalWorked), fmtDur(totalDrive), Math.round(totalKm), '—' ],
     charts, perVehicle, groupLabel: 'Șofer'
   };
@@ -884,13 +884,13 @@ async function rDriver(db, imeis, from, to, opts, devMap) { // Pontaj șofer (pe
 // Marchează încălcări: conducere continuă > 4h30 (fără pauză ≥45 min) și conducere zilnică > 9h.
 // Legenda HOS — regulile Reg. 561 verificate + sursa (tahograf vs GPS) + limitele estimării.
 const HOS_LEGEND = { title: 'Reg. (CE) 561/2006 — regulile verificate', items: [
-  ['Se aplică la', 'Camioane, autotractoare, TIR-uri, autobuze și autocare (după tipul din fișa mașinii) și orice mașină care trimite date de tahograf. La celelalte apare „Nu se aplică".'],
+  ['Se aplică la', 'Camioane, autotractoare, TIR-uri, autobuze și autocare (după tipul din fișa mașinii) și orice mașină care trimite date de tahograf. La celelalte apare „Nu se aplică”.'],
   ['Condus continuu', 'Cel mult 4h30 la volan fără o pauză de 45 de minute. Peste → încălcare.'],
   ['Condus zilnic', 'Cel mult 9 ore pe zi, extensibil la 10 ore de cel mult 2 ori pe săptămână. Peste 10 ore sau a 3-a zi extinsă → încălcare.'],
   ['Repaus zilnic', 'Cel puțin 11 ore, reductibil la 9 ore de cel mult 3 ori pe săptămână. Se verifică DOAR cu tahograf (din GPS, repausul cu motorul oprit nu e vizibil).'],
   ['Condus săptămânal', 'Cel mult 56 de ore într-o săptămână (luni–duminică). Peste → încălcare. Săptămâna se socotește întreagă, de luni, chiar dacă perioada aleasă începe mai târziu.'],
   ['Două săptămâni', 'Cel mult 90 de ore în două săptămâni la rând. Peste → încălcare.'],
-  ['Sursă', '„tahograf" = citit din tahograful digital (exact, valoare legală). „GPS (est.)" = estimat din viteză/contact (orientativ).'],
+  ['Sursă', '„tahograf” = citit din tahograful digital (exact, valoare legală). „GPS (est.)” = estimat din viteză/contact (orientativ).'],
   ['Atenție', 'Estimările GPS sunt orientative, NU înlocuiesc cardul de tahograf. Repausul săptămânal (45 de ore) nu e inclus.']
 ] };
 
@@ -911,7 +911,7 @@ async function rHos(db, imeis, from, to, opts, devMap) {
     const dev = devMap[imei] || {}, iv = ist[imei];
     cineDe[imei] = iv ? condus.soferLa(iv) : (() => (dev.driver_id != null ? dev.driver_id : 0));
     if (!iv) { adauga(dev.driver_id != null ? dev.driver_id : 0, imei); continue; }
-    // Șoferii care au avut mașina în perioadă, plus „nimeni" dacă istoricul lasă o gaură în ea.
+    // Șoferii care au avut mașina în perioadă, plus „nimeni” dacă istoricul lasă o gaură în ea.
     const ids = new Set(); let acoperit = fromMs;
     iv.slice().sort((x, y) => x.de_la - y.de_la).forEach((x) => {
       const pana = x.pana_la == null ? Infinity : x.pana_la;
@@ -942,7 +942,7 @@ async function rHos(db, imeis, from, to, opts, devMap) {
     }
   }
   const rows = []; let totDrive = 0, totRest = 0, totWork = 0, totInfr = 0; const dayDrive = {}; const perSubj = [];
-  const valori = [];   // zilele ca NUMERE, pe șofer (ramura „Ore de condus" din RA Insight); ecranul și fișierele nu le folosesc
+  const valori = [];   // zilele ca NUMERE, pe șofer (ramura „Ore de condus” din RA Insight); ecranul și fișierele nu le folosesc
   for (const key of Object.keys(byDriver)) {
     const { name, imeis: dImeis, driverId } = byDriver[key];
     // Timeline UNIFICAT al șoferului (toate mașinile lui), cronologic → condusul continuu și zilnic se calculează corect peste schimbări de mașină.
@@ -960,8 +960,8 @@ async function rHos(db, imeis, from, to, opts, devMap) {
     }
     if (merged.length < 2) continue;
     // Reg. 561 se aplică la camioane și autobuze (tipul din fișă) sau la mașinile care trimit date de tahograf — aceeași regulă
-    // ca agentul RA Compliance (tacho.supusReg561). Până pe 07.10: „nu e autoturism/dubă" → tipul „Auto" (autoturismul din
-    // fișă) intra sub Reg. 561, iar „autocar" (conținea „car") ieșea.
+    // ca agentul RA Compliance (tacho.supusReg561). Până pe 07.10: „nu e autoturism/dubă” → tipul „Auto” (autoturismul din
+    // fișă) intra sub Reg. 561, iar „autocar” (conținea „car”) ieșea.
     const subject = [...folosite].some((i) => tacho.supusReg561((devMap[i] || {}).vehicle_type, useTacho));
     merged.sort((a, b) => t(a.p) - t(b.p));
     const byDay = {}; let contSec = 0, restRun = 0, restRunDay = null;
@@ -976,7 +976,7 @@ async function rHos(db, imeis, from, to, opts, devMap) {
       let kind;
       if (useTacho) { const s = stOf(pr); kind = s === 3 ? 'drive' : s === 2 ? 'work' : s === 1 ? 'avail' : 'rest'; }
       else { kind = (pr.speed || 0) > IDLE_SPEED ? 'drive' : (ignOn(pr) ? 'work' : 'rest'); }
-      d[kind === 'avail' ? 'work' : kind] += dt; // „disponibil" (tahograf) → contorizat ca muncă
+      d[kind === 'avail' ? 'work' : kind] += dt; // „disponibil” (tahograf) → contorizat ca muncă
       const cm = contMinOf(pr);
       if (cm != null) { if (cm / 60 > d.contMax) d.contMax = cm / 60; }
       else if (kind === 'drive') { contSec += dt; if (contSec / 3600 > d.contMax) d.contMax = contSec / 3600; }
@@ -1002,7 +1002,7 @@ async function rHos(db, imeis, from, to, opts, devMap) {
         const dh = d.drive / 3600;
         if (dh > 10) infr.push('condus zilnic ' + fmtDur(d.drive) + ' (peste 10 ore)');
         else if (dh > 9) { weekExt[wk] = (weekExt[wk] || 0) + 1; if (weekExt[wk] > 2) infr.push('a ' + weekExt[wk] + '-a zi extinsă (peste 9 ore) în săptămână'); }
-        if (useTacho && d.drive > 0 && d.restMax > 0) { // repausul se verifică DOAR cu tahograf: din GPS, repausul cu motorul oprit e „gap", nu se vede → am da fals-pozitive
+        if (useTacho && d.drive > 0 && d.restMax > 0) { // repausul se verifică DOAR cu tahograf: din GPS, repausul cu motorul oprit e „gap”, nu se vede → am da fals-pozitive
           const rh = d.restMax / 3600;
           if (rh < 9) infr.push('repaus zilnic ' + fmtDur(d.restMax) + ' (sub 9 ore)');
           else if (rh < 11) { weekRed[wk] = (weekRed[wk] || 0) + 1; if (weekRed[wk] > 3) infr.push('a ' + weekRed[wk] + '-a reducere de repaus în săptămână'); }
@@ -1045,12 +1045,12 @@ async function rHos(db, imeis, from, to, opts, devMap) {
   };
 }
 
-// Tipuri de vehicul care se măsoară în ORE de funcționare (nu km) — ca „în bord": utilaje, tractoare, generatoare etc.
+// Tipuri de vehicul care se măsoară în ORE de funcționare (nu km) — ca „în bord”: utilaje, tractoare, generatoare etc.
 const MACHINE_TYPES = new Set(['utilaj','buldoexcavator','excavator','tractor','motostivuitor','stivuitor','combină agricolă','combina agricola','combină','combina','combine','grup electrogen','generator','automixt','mixer','forklift']);
 async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / ore — istoricul indexului din bord: început → realizat → sfârșit (km la auto, ore la utilaje)
   const items = [];
   for (const imei of imeis) {
-    // O singură trecere prin TOATĂ perioada, pe pagini (vezi „Citirea pozițiilor"): km GPS (fallback + validarea deltei
+    // O singură trecere prin TOATĂ perioada, pe pagini (vezi „Citirea pozițiilor”): km GPS (fallback + validarea deltei
     // CAN), prima/ultima citire a odometrului CAN, a contorului de ore și a contorului total al aparatului.
     let kmGps = 0, prevP = null;
     let odoFirst = null, odoLast = null, hFirst = null, hLast = null, tdFirst = null, tdLast = null;
@@ -1063,14 +1063,14 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
     });
     const dev = devMap[imei] || {};
     const isMachine = MACHINE_TYPES.has(String(dev.vehicle_type || '').toLowerCase().trim());
-    // Metru primar = „ce e în bord": utilaj cu contor de ore → ore; altfel km (cu fallback dacă lipsesc datele).
+    // Metru primar = „ce e în bord”: utilaj cu contor de ore → ore; altfel km (cu fallback dacă lipsesc datele).
     let unit = (isMachine && hLast != null) ? 'ore' : 'km';
     if (unit === 'km' && odoLast == null && kmGps <= 0 && hLast != null) unit = 'ore';
 
     let startTxt = '—', realTxt = '—', endTxt = '—', src = '—', sortKey = 0, realKm = 0, realH = 0;
     if (unit === 'km') {
-      // Prioritate: „Km la bord" (introdus de operator = citit de pe bord) BATE CAN-ul. Unele mașini au odometrul CAN
-      // greșit/învechit (ex. Dacia: CAN dă 32.685 „ultima", dar bordul real e 33.560) → cifra operatorului e autoritară. Apoi CAN, apoi GPS.
+      // Prioritate: „Km la bord” (introdus de operator = citit de pe bord) BATE CAN-ul. Unele mașini au odometrul CAN
+      // greșit/învechit (ex. Dacia: CAN dă 32.685 „ultima”, dar bordul real e 33.560) → cifra operatorului e autoritară. Apoi CAN, apoi GPS.
       const baseKm = dev.odo_base_km != null ? parseFloat(dev.odo_base_km) : null;
       const baseDev = dev.odo_base_dev_m != null ? parseFloat(dev.odo_base_dev_m) : null;
       const bordOk = baseKm != null && baseDev != null && tdLast != null && tdLast >= baseDev - 1000; // contor monoton (toleranță zgomot)
@@ -1089,7 +1089,7 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
         const startKm = dOk ? odoFirst : (odoLast - realized); // delta de încredere → start real; altfel proiectăm înapoi din indexul curent (ca să se lege început + realizat = sfârșit)
         startTxt = _grp(startKm) + ' km'; realTxt = _grp(realized) + ' km'; endTxt = _grp(odoLast) + ' km'; src = 'CAN'; sortKey = realized; realKm = realized;
       }
-      else { realTxt = _grp(kmGps) + ' km'; src = 'GPS (estimat)'; sortKey = kmGps; realKm = kmGps; } // fără CAN și fără „km la bord" → doar realizatul GPS
+      else { realTxt = _grp(kmGps) + ' km'; src = 'GPS (estimat)'; sortKey = kmGps; realKm = kmGps; } // fără CAN și fără „km la bord” → doar realizatul GPS
     } else { // ore de funcționare (moto-ore)
       if (hFirst != null && hLast != null && hLast >= hFirst) { const dH = hLast - hFirst; startTxt = _grp(hFirst) + ' h'; realTxt = _grp(dH) + ' h'; endTxt = _grp(hLast) + ' h'; src = 'CAN'; sortKey = dH; realH = dH; }
       else if (hLast != null) { endTxt = _grp(hLast) + ' h'; src = 'CAN'; } // avem doar indexul curent, nu și delta
@@ -1103,29 +1103,29 @@ async function rUtilization(db, imeis, from, to, opts, devMap) { // Index km / o
     { type: 'bar', title: 'Km realizați pe vehicul', labels: topKm.labels, datasets: [{ label: 'km', data: topKm.data }] }
   ] : [];
   // FĂRĂ sumar (cerut explicit): raportul e per-vehicul (index început → realizat → sfârșit + sursă); un bloc de totaluri nu adăuga nimic util.
-  // `valori` = aceleași cifre, ca NUMERE, pe mașină — pentru „AI Raport" (02.10), care compară și clasează fără să
-  // citească textul tabelului („1.234 km"). Ecranul și exporturile nu le folosesc.
+  // `valori` = aceleași cifre, ca NUMERE, pe mașină — pentru „AI Raport” (02.10), care compară și clasează fără să
+  // citească textul tabelului („1.234 km”). Ecranul și exporturile nu le folosesc.
   const valori = items.map(x => ({ vehicul: x.nm, imei: x.imei, km: Math.round(x.realKm * 10) / 10, ore: Math.round(x.realH * 10) / 10, unitate: x.unit, sursa: x.src }));
   return { columns: ['Vehicul','Index început','Realizat','Index sfârșit','Sursă'], rows, charts, valori };
 }
 
-async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: unde a STAȚIONAT ultima dată fiecare vehicul (parcarea); dacă încă merge la final → poziția curentă marcată „în mișcare"
-  const refMs = Math.min(new Date(to).getTime(), Date.now()); // „staționează de" se măsoară până la ACUM dacă intervalul e curent, altfel până la finalul intervalului
+async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație: unde a STAȚIONAT ultima dată fiecare vehicul (parcarea); dacă încă merge la final → poziția curentă marcată „în mișcare”
+  const refMs = Math.min(new Date(to).getTime(), Date.now()); // „staționează de” se măsoară până la ACUM dacă intervalul e curent, altfel până la finalul intervalului
   // 1. Pentru fiecare vehicul: ultima poziție + de când e oprită (coada contiguă de puncte staționare de la final)
   const items = [];
   for (const imei of imeis) {
     // Doar coada perioadei: ultima poziție și staționarea ei. Citind de la început, o perioadă lungă se oprea la
-    // plafon și „ultima locație" ieșea de la mijlocul perioadei (vezi „Citirea pozițiilor").
+    // plafon și „ultima locație” ieșea de la mijlocul perioadei (vezi „Citirea pozițiilor”).
     const pts = await coadaIstoric(db, imei, from, to, 5000);
     if (!pts.length) continue;
     const pLast = pts[pts.length - 1];
     const movingNow = (pLast.speed || 0) > IDLE_SPEED;
     let k = pts.length - 1;                                   // scan înapoi cât timp e oprită → primul punct al staționării curente
     while (k > 0 && (pts[k - 1].speed || 0) <= IDLE_SPEED) k--;
-    // k = 0: oprirea ține de la primul punct citit — a început, poate, mai demult („de cel puțin", la AI Raport).
+    // k = 0: oprirea ține de la primul punct citit — a început, poate, mai demult („de cel puțin”, la AI Raport).
     items.push({ imei, pLast, movingNow, stoppedAt: pts[k].timestamp, deLaInceput: k === 0 && (pts[0].speed || 0) <= IDLE_SPEED });
   }
-  // 2. Adrese în cache (poziția curentă/parcarea fiecărui vehicul) → coloana „Locație" arată ADRESE, nu coordonate.
+  // 2. Adrese în cache (poziția curentă/parcarea fiecărui vehicul) → coloana „Locație” arată ADRESE, nu coordonate.
   if (geocode && geocode.warm && items.length) {
     try { await geocode.warm(items.map(x => ({ lat: x.pLast.latitude, lng: x.pLast.longitude })), { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {}
   }
@@ -1137,14 +1137,14 @@ async function rLocation(db, imeis, from, to, opts, devMap) { // Ultima locație
     if (movingNow) return [ nm, addr(pLast), '—', 'în mișcare', ign, satTxt ];
     return [ nm, addr(pLast), fmtTs(stoppedAt), _ageStr(refMs - new Date(stoppedAt).getTime(), false), ign, satTxt ];
   });
-  // `valori` = aceleași lucruri ca cifre, pe mașină — pentru „AI Raport" („de cât timp stă", „de cel puțin", vechimea
+  // `valori` = aceleași lucruri ca cifre, pe mașină — pentru „AI Raport” („de cât timp stă”, „de cel puțin”, vechimea
   // ultimei poziții). Ecranul și exporturile nu le folosesc.
   const valori = items.map(({ imei, pLast, movingNow, stoppedAt, deLaInceput }) => ({ imei, vehicul: label(devMap, imei), inMiscare: !!movingNow,
     opritLa: movingNow ? null : new Date(stoppedAt).toISOString(), ultima: new Date(pLast.timestamp).toISOString(), deCelPutin: !movingNow && !!deLaInceput }));
   return {
     columns: ['Vehicul', 'Locație (unde a oprit)', 'A oprit la', 'Staționează de', 'Contact', 'Sateliți'],
     rows, valori
-    // fără sumar; antetul arată „Perioada: de la — până la" (intervalul contează acum, căutăm ultima oprire în el)
+    // fără sumar; antetul arată „Perioada: de la — până la” (intervalul contează acum, căutăm ultima oprire în el)
   };
 }
 
@@ -1190,7 +1190,7 @@ async function rDaily(db, imeis, from, to, opts, devMap) { // Situație zilnică
     { type: 'line', title: 'Timp în mers pe zi (ore)', labels: dk.map(_dayLabel), datasets: [{ label: 'ore', data: dk.map(k => Math.round(dayMove[k] / 360) / 10) }] },
     { type: 'bar',  title: 'Ralanti pe zi (ore)',      labels: dk.map(_dayLabel), datasets: [{ label: 'ore', data: dk.map(k => Math.round((dayIdle[k] || 0) / 360) / 10) }] }
   ] : [];
-  // Sumar PE VEHICUL cu sens (Excel „Sumar" + online): Km total / Zile active / Timp mers / Ralanti total.
+  // Sumar PE VEHICUL cu sens (Excel „Sumar” + online): Km total / Zile active / Timp mers / Ralanti total.
   const names = Object.keys(perVeh).sort((a, b) => a.localeCompare(b));
   let perVehicle;
   if (names.length >= 2) {
@@ -1254,7 +1254,7 @@ async function rRoute(db, imeis, from, to, opts, devMap) { // Traseu — jurnal 
   };
 }
 
-// Legenda coloanei „Sursă" — explică cele 3 metode (CAN > Senzor > Estimat) + varianta „Estimat (nivel CAN)".
+// Legenda coloanei „Sursă” — explică cele 3 metode (CAN > Senzor > Estimat) + varianta „Estimat (nivel CAN)”.
 // Sursă unică de adevăr: setată pe obiectul raportului → randată identic online, în Excel și în PDF.
 const CONSUMPTION_LEGEND = { title: 'Sursa consumului — cum a fost calculat', items: [
   ['CAN', 'Contor CAN: mașina raportează exact litrii consumați. Cea mai precisă metodă.'],
@@ -1279,7 +1279,7 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
     { type: 'bar', title: 'L/100km pe vehicul',    labels: topPer.labels,  datasets: [{ label: 'L/100km', data: topPer.data }] }
   ] : [];
   // Sumarul pe FOAIE SEPARATĂ în Excel (summarySheet), nu îngrămădit la baza tabelului. Online rămâne ca chips.
-  // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport"); ecranul și exporturile nu le folosesc.
+  // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport”); ecranul și exporturile nu le folosesc.
   const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, l100: m.per100 != null ? Math.round(m.per100 * 10) / 10 : null, sursa: m.source || null, areDate: !!(m.hasFuel || m.consumed > 0), deVerificat: m.deVerificat || [],
     nivelStart: m.first != null ? Math.round(m.first) : null, nivelFinal: m.last != null ? Math.round(m.last) : null, nivelBlocat: !!m.nivelBlocat, consumFisa: m.consumFisa, consumImplicit: m.consumImplicit }; });
   const deVerificat = _deVerificatConsum(cm, imeis, devMap);
@@ -1288,8 +1288,8 @@ async function rConsumption(db, imeis, from, to, opts, devMap) { // Consum carbu
     legend: _legendaCuDeVerificat(CONSUMPTION_LEGEND, deVerificat), valori, deVerificat };
 }
 
-// Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea" reală a CAN-ului: contorul de km e adesea
-// vechi/„stale" pe pingul curent — parcată nu-l mai trimite). Cheile sunt fixe (fără injecție).
+// Ultima valoare NENULĂ a unei chei din io_data + momentul ei (pt. „citirea” reală a CAN-ului: contorul de km e adesea
+// vechi/„stale” pe pingul curent — parcată nu-l mai trimite). Cheile sunt fixe (fără injecție).
 async function _lastIo(db, imei, key, to) {
   try {
     const r = await db.pool.query("SELECT io_data->>'" + key + "' AS v, timestamp FROM positions WHERE imei = $1 AND timestamp <= $2 AND io_data->>'" + key + "' IS NOT NULL ORDER BY timestamp DESC LIMIT 1", [imei, to]);
@@ -1306,7 +1306,7 @@ async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN — instant
     // Sarcină axe + DTC de pe ultimul ping (string-tolerant: valorile CAN pot veni ca string → altfel se concatenau greșit).
     const axle = [i.can_axle1_load, i.can_axle2_load, i.can_axle3_load, i.can_axle4_load, i.can_axle5_load].reduce((s, v) => s + (parseFloat(v) || 0), 0) || parseFloat(i.can_load_weight) || 0;
     const dtc = parseFloat(i.can_dtc_errors) || 0;
-    // Combustibil + odometre citite ca ULTIMA valoare REALĂ (nu de pe pingul parcat, care adesea nu mai trimite CAN → apărea „—").
+    // Combustibil + odometre citite ca ULTIMA valoare REALĂ (nu de pe pingul parcat, care adesea nu mai trimite CAN → apărea „—”).
     const fuel = (await _lastIo(db, imei, 'fuel_level_liters', to)) || (await _lastIo(db, imei, 'can_fuel_level_liters', to));
     const canMil = await _lastIo(db, imei, 'can_total_mileage', to);   // odometru REAL din bord (contorul mașinii)
     const gpsOdo = await _lastIo(db, imei, 'total_odometer', to);      // odometru GPS al device-ului (metri) — de la montaj
@@ -1328,15 +1328,15 @@ async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN — instant
     legend: { title: 'Date CAN — ce înseamnă coloanele', items: [
       ['Actualizat', 'Când am primit ultima dată date de la mașină (ultimul contact).'],
       ['Km bord (CAN)', 'Kilometrajul REAL din bordul mașinii — contorul mașinii.'],
-      ['Km GPS (device)', 'Cât a măsurat trackerul din GPS de la montare — de obicei mai mic (pornește de la 0 la instalare). Diferența față de „Km bord" e normală.'],
-      ['Sarcină axe', 'Greutatea pe axe (kg) — doar la camioane cu senzori de sarcină; „—" la mașinile fără.'],
+      ['Km GPS (device)', 'Cât a măsurat trackerul din GPS de la montare — de obicei mai mic (pornește de la 0 la instalare). Diferența față de „Km bord” e normală.'],
+      ['Sarcină axe', 'Greutatea pe axe (kg) — doar la camioane cu senzori de sarcină; „—” la mașinile fără.'],
       ['Erori DTC', 'Câte coduri de defect raportează mașina (0 = niciunul). Peste 0 → de verificat la service.']
     ] }
   };
 }
 
 // ── CAN detaliat: ISTORICUL semnalelor alese de om ────────────────────────────────────────────────
-// Restul rapoartelor CAN răspund la o întrebare fixă („de câte ori a supraturat?"). Ăsta răspunde la
+// Restul rapoartelor CAN răspund la o întrebare fixă („de câte ori a supraturat?”). Ăsta răspunde la
 // întrebarea pe care nu i-o putem ghici: *arată-mi cum a evoluat exact ce mă interesează pe mine*.
 // Omul bifează semnalele (turație, temperatură, nivel carburant…), noi îi dăm istoricul lor.
 //
@@ -1347,7 +1347,7 @@ async function rCan(db, imeis, from, to, opts, devMap) { // Date CAN — instant
 //    legendă, ca omul să știe ce vede.
 //  • Agregarea se face în BAZĂ (db.getCanSeries), nu în memorie — altfel un raport pe 30 de zile ar
 //    încetini și primirea datelor de la mașini (același pool de conexiuni).
-//  • O celulă goală înseamnă „mașina n-a trimis semnalul în intervalul ăla", nu zero. Zero e o
+//  • O celulă goală înseamnă „mașina n-a trimis semnalul în intervalul ăla”, nu zero. Zero e o
 //    valoare; goul e o lipsă. Le ținem separat.
 function _canBucketSec(fromMs, toMs) {
   const ore = Math.max(1, (toMs - fromMs) / 3600000);
@@ -1506,7 +1506,7 @@ async function rOverRev(db, imeis, from, to, opts, devMap) { // Supraturații �
       over = isOver; prevTs = t(p);
     }
     const prag = _grp(RPM_MAX) + ' rpm';
-    if (!hadRpm) { rows.push([nm, '—', '—', 'Fără RPM', prag, '—', '—']); worstPts.push(null); continue; } // „Fără RPM" în coloana RPM max (nu în Supraturații)
+    if (!hadRpm) { rows.push([nm, '—', '—', 'Fără RPM', prag, '—', '—']); worstPts.push(null); continue; } // „Fără RPM” în coloana RPM max (nu în Supraturații)
     if (!count) { rows.push([nm, 0, fmtDur(0), maxRpm ? _grp(maxRpm) + ' rpm' : '—', prag, '—', '—']); worstPts.push(null); continue; }
     fleetEvents += count;
     rows.push([nm, count, fmtDur(Math.round(overSec)), _grp(maxRpm) + ' rpm', prag, fmtTs(worst.ts), loc(worst.p)]);
@@ -1522,7 +1522,7 @@ async function rOverRev(db, imeis, from, to, opts, devMap) { // Supraturații �
     summarySheet: true,
     legend: { title: 'Supraturații — ce înseamnă', items: [
       ['Supraturație', 'De câte ori turația a depășit pragul mașinii — condus agresiv, treaptă greșită sau uzură de motor.'],
-      ['Prag pe combustibil', 'Motorină 2500 rpm (motoare care toarcă jos); Benzină și GPL 4000 rpm (toarcă sus). Setează „Tip combustibil" în fișa mașinii ca pragul să fie corect.'],
+      ['Prag pe combustibil', 'Motorină 2500 rpm (motoare care toarcă jos); Benzină și GPL 4000 rpm (toarcă sus). Setează „Tip combustibil” în fișa mașinii ca pragul să fie corect.'],
       ['Timp', 'Cât timp total a stat motorul peste prag.'],
       ['Fără RPM', 'Mașina nu raportează turația prin CAN — nu poate fi evaluată.']
     ] }
@@ -1572,7 +1572,7 @@ async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: g
   for (const imei of imeis) {
     const nm = label(devMap, imei);
     let prev = null, engineSec = 0, idleSec = 0, moveSec = 0, ptoSec = 0, hadEngine = false;
-    // Toată perioada, pe pagini (vezi „Citirea pozițiilor").
+    // Toată perioada, pe pagini (vezi „Citirea pozițiilor”).
     await fiecarePozitie(db, imei, from, to, function (p) {
       const rpm = canRpm(p);
       const on = ignOn(p) || (rpm != null && rpm > 300);              // motor pornit
@@ -1604,8 +1604,8 @@ async function rEngineHours(db, imeis, from, to, opts, devMap) { // Ore motor: g
     summarySheet: true,
     legend: { title: 'Ore motor — cum se împarte timpul cu motorul pornit', items: [
       ['În gol (ralanti)', 'Staționat, fără PTO — timp și combustibil irosite.'],
-      ['În mers', 'Vehiculul se deplasează (condus efectiv). La o mașină obișnuită, ăsta e tot timpul „productiv".'],
-      ['Cu PTO', 'Staționat, dar cu priza de putere activă — echipamentul lucrează (macara, basculă, betonieră). „—" la vehiculele fără PTO.'],
+      ['În mers', 'Vehiculul se deplasează (condus efectiv). La o mașină obișnuită, ăsta e tot timpul „productiv”.'],
+      ['Cu PTO', 'Staționat, dar cu priza de putere activă — echipamentul lucrează (macara, basculă, betonieră). „—” la vehiculele fără PTO.'],
       ['% gol', 'Cât din timpul cu motorul pornit a fost irosit la ralanti.']
     ] }
   };
@@ -1680,7 +1680,7 @@ async function rEvents(db, imeis, from, to, opts, devMap) { // Evenimente (alert
       };
     });
   }
-  // Fără sumar (la cererea userului): nici KPI online, nici foaie „Sumar" în Excel — doar o foaie per mașină.
+  // Fără sumar (la cererea userului): nici KPI online, nici foaie „Sumar” în Excel — doar o foaie per mașină.
   return { columns: ['Vehicul', 'Eveniment', 'Data', 'Detalii', 'Locație'], rows, summary: {}, charts, perVehicle, noSummarySheet: true };
 }
 
@@ -1692,7 +1692,7 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
     if (items.length >= cap) { capped = true; break; }
     const pts = await history(db, imei, from, to);
     const nm = label(devMap, imei);
-    // Combustibilul CAN vine RAR (nu pe fiecare ping) → cărăm ultima valoare cunoscută („sticky"), ca nivelul să fie
+    // Combustibilul CAN vine RAR (nu pe fiecare ping) → cărăm ultima valoare cunoscută („sticky”), ca nivelul să fie
     // CONTINUU (nu se teleportează). Seed din ultima citire dinaintea intervalului, ca să nu avem goluri la început.
     let lastFuel = null;
     try {
@@ -1709,7 +1709,7 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
   }
   // Adresa exactă în loc de coordonate: geocodăm TOATE pozițiile pe backend (serviciul public e ~1/s → buget generos,
   // job în fundal). Cu eșantionare (puține rânduri) se umple tot; cache-ul face rapoartele repetate instant.
-  // Pentru rapoarte uriașe („Toate", mii de rânduri) plafonul de timp le lasă parțial → restul se completează în frontend.
+  // Pentru rapoarte uriașe („Toate”, mii de rânduri) plafonul de timp le lasă parțial → restul se completează în frontend.
   if (geocode && geocode.warm && items.length) {
     const budget = Math.min(items.length * 1100 + 4000, opts.geoBudgetMs || 30000);
     try { await geocode.warm(items.map(x => ({ lat: x.p.latitude, lng: x.p.longitude })), { maxUnique: Math.min(items.length, 1000), budgetMs: budget }); } catch (e) {}
@@ -1722,7 +1722,7 @@ async function rAnalytic(db, imeis, from, to, opts, devMap) { // Analitic (brut,
     if (!perVeh[nm]) { perVeh[nm] = []; order.push(nm); }
     perVeh[nm].push(row);
   }
-  // Sumar explicit (nu genericul „Înregistrări"): câte poziții GPS are fiecare vehicul.
+  // Sumar explicit (nu genericul „Înregistrări”): câte poziții GPS are fiecare vehicul.
   let perVehicle;
   if (order.length >= 2) {
     perVehicle = order.slice().sort((a, b) => a.localeCompare(b)).map(nm => ({ vehicul: nm, summary: [['Poziții GPS', perVeh[nm].length]], rows: perVeh[nm] }));
@@ -1752,7 +1752,7 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
     const nm = label(devMap, imei);
     let km = 0, accel = 0, brake = 0, hardTurn = 0, speedOverSec = 0, idleSec = 0, driveSec = 0;
     const events = []; // jurnal: { ts, type, detail, p }
-    // Toată perioada, pe pagini (vezi „Citirea pozițiilor"): fiecare pereche de puncte vecine, ca înainte.
+    // Toată perioada, pe pagini (vezi „Citirea pozițiilor”): fiecare pereche de puncte vecine, ca înainte.
     let pr = null;
     await fiecarePozitie(db, imei, from, to, function (p) {
       const anterior = pr; pr = p;
@@ -1781,7 +1781,7 @@ async function rEcoDrive(db, imeis, from, to, opts, devMap) { // EcoDrive — sc
     perVeh[nm] = { score, grade, accel, brake, turn: hardTurn, speedOverSec, idleShare, km: Math.round(km) };
     deFlota.push({ scor: score, km: km }); fleetVeh++; totA += accel; totB += brake; totT += hardTurn; vehScore.push([nm, score]);
   }
-  // Adresă la locul fiecărui eveniment brusc — DOAR dacă userul a ales „Adrese exacte" (opts.geo). Altfel rămân coordonate (rapid, fără amestec).
+  // Adresă la locul fiecărui eveniment brusc — DOAR dacă userul a ales „Adrese exacte” (opts.geo). Altfel rămân coordonate (rapid, fără amestec).
   if (opts.geo !== false && geocode && geocode.warm && evPts.length) {
     try { await geocode.warm(evPts.map(p => ({ lat: p.latitude, lng: p.longitude })), { maxUnique: 300, budgetMs: opts.geoBudgetMs || (imeis.length <= 1 ? 14000 : 8000) }); } catch (e) {}
     rows.forEach((r, i) => { if (evPts[i]) r[4] = addr(evPts[i]); }); // Locație e col. 4
@@ -1835,7 +1835,7 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
     const cine = ist[imei] ? condus.soferLa(ist[imei]) : (() => (dev.driver_id != null ? dev.driver_id : 0));
     const peSofer = {}; // key -> { km, drive } pe mașina asta
     let pr = null;
-    // Toată perioada, pe pagini (vezi „Citirea pozițiilor"): fiecare pereche de puncte vecine, ca înainte.
+    // Toată perioada, pe pagini (vezi „Citirea pozițiilor”): fiecare pereche de puncte vecine, ca înainte.
     await fiecarePozitie(db, imei, from, to, function (p) {
       const anterior = pr; pr = p;
       if (!anterior) return;
@@ -1881,7 +1881,7 @@ async function rEcoDriveDrivers(db, imeis, from, to, opts, devMap) {
     columns: ['Rang', 'Șofer', 'Scor', 'Notă', 'Evenim./100km', 'Km'],
     rows,
     summary: { 'Scor mediu flotă (0-100)': condus.scorFlota(deFlota), 'Șoferi evaluați': rows.length, 'Accelerări bruște': totA, 'Frânări bruște': totB },
-    charts, legend: ECODRIVE_LEGEND, summarySheet: true // sumarul pe foaie „Sumar" separată, nu îngrămădit sub tabel
+    charts, legend: ECODRIVE_LEGEND, summarySheet: true // sumarul pe foaie „Sumar” separată, nu îngrămădit sub tabel
   };
 }
 
@@ -1916,7 +1916,7 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
         start = null; startP = null; endP = null;
       }
     };
-    // Toată perioada, pe pagini (vezi „Citirea pozițiilor"); o oprire care trece peste capătul unei pagini rămâne una singură.
+    // Toată perioada, pe pagini (vezi „Citirea pozițiilor”); o oprire care trece peste capătul unei pagini rămâne una singură.
     await fiecarePozitie(db, imei, from, to, function (p) {
       // Ralanti = MOTOR PORNIT (RPM CAN SAU contact) + STAȚIONAT (GPS ≤ 3 — baza sigură, cea care mergea).
       if (engineRunning(p) && (p.speed || 0) <= IDLE_SPEED) { if (!start) { start = p.timestamp; startP = p; } last = p.timestamp; endP = p; }
@@ -1928,8 +1928,8 @@ async function rIdling(db, imeis, from, to, opts, devMap) { // Ralanti (motor po
   if (geocode && geocode.warm && items.length) {
     try { await geocode.warm(items.filter(x => x.endP).map(x => ({ lat: x.endP.latitude, lng: x.endP.longitude })), { maxUnique: 150, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {}
   }
-  // Fiecare mașină apare în raport: cele cu ralanti → rândurile lor; cele FĂRĂ → un rând „0/—"
-  // (arată clar că n-a avut ralanti, nu dispare din raport). Combustibil: „(CAN)" = real din contor, „(estimat)" = aproximare.
+  // Fiecare mașină apare în raport: cele cu ralanti → rândurile lor; cele FĂRĂ → un rând „0/—”
+  // (arată clar că n-a avut ralanti, nu dispare din raport). Combustibil: „(CAN)” = real din contor, „(estimat)” = aproximare.
   const itemsByNm = {}; items.forEach(x => { (itemsByNm[x.nm] || (itemsByNm[x.nm] = [])).push(x); });
   const rows = [];
   for (const nm of allNames) {
@@ -1977,7 +1977,7 @@ async function rCosts(db, imeis, from, to, opts, devMap) { // Costuri combustibi
     { type: 'bar', title: 'Cost combustibil pe vehicul (RON)', labels: topC.labels, datasets: [{ label: 'RON', data: topC.data }] },
     { type: 'bar', title: 'Cost pe km (RON)',                  labels: topK.labels, datasets: [{ label: 'RON/km', data: topK.data }] }
   ] : [];
-  // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport"); ecranul și exporturile nu le folosesc.
+  // `valori` = cifrele ca NUMERE, pe mașină (pentru „AI Raport”); ecranul și exporturile nu le folosesc.
   const valori = imeis.filter(imei => cm[imei]).map(imei => { const m = cm[imei]; return { vehicul: label(devMap, imei), imei, km: Math.round(m.dist), litri: Math.round(m.consumed * 10) / 10, pret: Math.round(m.price * 100) / 100, cost: Math.round(m.consumed * m.price), estimat: !!m.estimated, deVerificat: m.deVerificat || [] }; });
   const deVerificat = _deVerificatConsum(cm, imeis, devMap);
   const legend = _legendaCuDeVerificat(null, deVerificat);
@@ -2022,8 +2022,8 @@ async function rEmissions(db, imeis, from, to, opts, devMap) { // Emisii CO₂ (
 
 // Catalog: cat = monitorizare | consum | can | evenimente | siguranta
 function fmtDate(d) { try { return new Date(d).toLocaleDateString('ro-RO', { timeZone: DISPLAY_TZ }); } catch (e) { return String(d || ''); } }
-// Starea din raportul „Scadențe" = starea din listele Mentenanță / Documente (preaviz.js, cu preavizul FIRMEI), plus
-// „Critic" pentru ultima săptămână dinaintea unui termen pe dată. Până pe 07.10: praguri fixe (7 / 30 de zile, 500 / 2.000 km).
+// Starea din raportul „Scadențe” = starea din listele Mentenanță / Documente (preaviz.js, cu preavizul FIRMEI), plus
+// „Critic” pentru ultima săptămână dinaintea unui termen pe dată. Până pe 07.10: praguri fixe (7 / 30 de zile, 500 / 2.000 km).
 const _CRITIC_ZILE = 7;
 function _stareScadenta(st, zile) {
   if (st === 'expired' || st === 'overdue') return 'Depășit';
@@ -2042,8 +2042,8 @@ async function _preavizFirme(db) {
 // ── Model de consum ROBUST (sursă unică pentru Consum / Costuri / Costuri-totale / Emisii) ───────────────
 // Senzorul de nivel e folosit DOAR dacă dă un L/100km plauzibil (1..200) pe distanță reală; altfel estimează
 // din km × consum-pe-tip + ralanti. Gardă de timp pe distanță (dt<=300s) și pe realimentări (salt după o pauză
-// mare = ignorat). Întoarce un map imei -> metrici. Oglindește logica din fuelStats (pagina „Statistici consum").
-// „De verificat", pe mașini: [{ imei, vehicul, texte }] — pentru legenda rapoartelor (ecran, Excel, PDF) și pentru RA Insight.
+// mare = ignorat). Întoarce un map imei -> metrici. Oglindește logica din fuelStats (pagina „Statistici consum”).
+// „De verificat”, pe mașini: [{ imei, vehicul, texte }] — pentru legenda rapoartelor (ecran, Excel, PDF) și pentru RA Insight.
 function _deVerificatConsum(cm, imeis, devMap) {
   return imeis.filter(function (imei) { return cm[imei] && (cm[imei].deVerificat || []).length; })
     .map(function (imei) { return { imei: imei, vehicul: label(devMap, imei), texte: cm[imei].deVerificat }; });
@@ -2063,7 +2063,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     let refueled = 0, dist = 0, prevFuel = null, idleSec = 0, prevP = null;
     const niveluri = [];                 // toate citirile de nivel, pentru capete robuste (doar numere: puțină memorie)
     const cumul = _cumulTracker();
-    // Toată perioada, pe pagini (vezi „Citirea pozițiilor").
+    // Toată perioada, pe pagini (vezi „Citirea pozițiilor”).
     await fiecarePozitie(db, imei, from, to, function (p) {
       const fl = fuelL(p), ts = t(p);
       cumul.add(p);
@@ -2091,7 +2091,7 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
     const sensorL = _nivelConsum(first, last, refueled); // scăderea NETĂ + alimentările (vezi _nivelConsum)
     const sensorPer100 = (sensorL > 0 && dist > 1) ? (sensorL / dist * 100) : null;
-    // Prag minim 3 L/100km: sub atât pe distanță reală = ac „gros" (în trepte) care a ratat consum → NU-l credem,
+    // Prag minim 3 L/100km: sub atât pe distanță reală = ac „gros” (în trepte) care a ratat consum → NU-l credem,
     // trecem pe estimare (evită cifre absurd de mici, gen 1.6 L/100km la Caddy). Contorul CAN cumulativ NU are pragul ăsta (e exact).
     const sensorOk = sensorL > 0 && dist > 1 && sensorPer100 >= 3 && sensorPer100 <= MAX_PER100;
     let consumed = cumulOk ? cumulL : (sensorOk ? sensorL : (dist * cRoad / 100 + idleL));
@@ -2101,8 +2101,8 @@ async function _consumptionMap(db, imeis, from, to, opts) {
     // CAN dar prea grosier pt. scăderi mici (consum estimat, dar mașina NU e oarbă) > fără nicio dată (pur din fișă).
     const source = cumulOk ? 'CAN' : (sensorOk ? 'Senzor' : (hasFuel ? 'Estimat (nivel CAN)' : 'Estimat'));
     // Cifre greu de crezut (sub 3 sau peste 40 l/100 km, la camioane sub 10 sau peste 70; prețul pe litru sub 3 sau peste
-    // 12 lei) — marcate „de verificat", nu schimbate. Aceleași texte în rapoarte, în ramura Combustibil, în AI Raport și în
-    // RA Insight (Alin, 08.10: „să aibă grijă cumva să nu dea greșit"). Pe drum zero nu e nimic de spus.
+    // 12 lei) — marcate „de verificat”, nu schimbate. Aceleași texte în rapoarte, în ramura Combustibil, în AI Raport și în
+    // RA Insight (Alin, 08.10: „să aibă grijă cumva să nu dea greșit”). Pe drum zero nu e nimic de spus.
     const deVerificat = (consumed > 0 || dist > 1) ? cifre.consumDeVerificat({ l100: per100, km: dist, pret: price, camion: tacho.vehiculAreTahograf(c.vtype),
       electric: /electr/i.test(String(c.fuelType || '')) }) : [];
     // Senzorul care nu se mișcă (probleme.js, 15.10): pe sute de km nivelul n-a variat — consumul de aici e socotit, nu măsurat.
@@ -2119,10 +2119,10 @@ async function _consumptionMap(db, imeis, from, to, opts) {
 
 // ── Raport NOU: Scadențe documente & service (expirări ITP/RCA/roviniete/tahograf + revizii) ─────────────
 async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
-  // Documente + service, pe DATĂ și pe KM. „Zile rămase" mereu față de AZI. Include ȘI service-ul EFECTUAT (cu data + km).
+  // Documente + service, pe DATĂ și pe KM. „Zile rămase” mereu față de AZI. Include ȘI service-ul EFECTUAT (cu data + km).
   const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate()); const acum = n0.getTime();
   const lead = await _preavizFirme(db);
-  const showAll = !!(opts && opts.all); // „Tot" → fără orizont (arată chiar tot); altfel filtrăm „până la finalul lunii alese"
+  const showAll = !!(opts && opts.all); // „Tot” → fără orizont (arată chiar tot); altfel filtrăm „până la finalul lunii alese”
   const horizon = showAll ? null : (to ? new Date(to) : null); // filtrează doar scadențele pe DATĂ; km + efectuate rămân mereu
   const items = [];
   const rank = { 'Depășit': 0, 'Critic': 1, 'Curând': 2, 'OK': 3, '—': 4, 'Efectuat': 5 };
@@ -2136,7 +2136,7 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   // Documente (scadență pe DATĂ)
   try {
     // replaced_at IS NULL = doar actul valabil acum; cele înlocuite stau în istoric și nu au ce căuta
-    // într-un raport de scadențe (altfel fiecare RCA reînnoit ar apărea etern ca „expirat").
+    // într-un raport de scadențe (altfel fiecare RCA reînnoit ar apărea etern ca „expirat”).
     const r = await db.pool.query('SELECT imei, company_id, doc_type, expiry_date FROM vehicle_documents WHERE imei = ANY($1) AND expiry_date IS NOT NULL AND replaced_at IS NULL', [imeis]);
     for (const d of r.rows) { if (horizon && new Date(d.expiry_date) > horizon) continue; const days = preaviz.zileRamase(d.expiry_date, acum);
       const st = _stareScadenta(preaviz.stareAct(d, lead.of(d.company_id).docDays, acum), days);
@@ -2165,11 +2165,11 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   } catch (e) {}
   items.sort((a, b) => (a.sk1 - b.sk1) || (a.sk2 - b.sk2)); // scadente după urgență (Depășit→…→OK), efectuatele la final (cele mai recente primele)
   const rows = items.map(x => x.row);
-  // Foaie SEPARATĂ per mașină în Excel (+ selector online) — grupăm rândurile pe vehicul. FĂRĂ sumar: nici foaia „Sumar" (noSummarySheet), nici tabelul „Sumar pe vehicul" online (noVehSummary).
+  // Foaie SEPARATĂ per mașină în Excel (+ selector online) — grupăm rândurile pe vehicul. FĂRĂ sumar: nici foaia „Sumar” (noSummarySheet), nici tabelul „Sumar pe vehicul” online (noVehSummary).
   const groups = {}, order = [];
   for (const r of rows) { const k = String(r[0]); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); }
   const perVehicle = order.length >= 2 ? order.sort((a, b) => a.localeCompare(b)).map(nm => ({ vehicul: nm, summary: [], rows: groups[nm] })) : undefined;
-  // Etichetă de perioadă cu sens (nu interval de date fals): „Toate scadențele" / „Scadențe până la <dată>".
+  // Etichetă de perioadă cu sens (nu interval de date fals): „Toate scadențele” / „Scadențe până la <dată>".
   const periodLabel = showAll ? ('Toate scadențele (la zi: ' + fmtDate(ref) + ')') : ('Scadențe până la ' + fmtDate(to));
   return { columns: ['Vehicul', 'Categorie', 'Tip', 'Scadență', 'Efectuat', 'Stare'], rows, perVehicle, periodLabel, noSummarySheet: true, noVehSummary: true };
 }
@@ -2269,13 +2269,13 @@ async function rFuelAnomaly(db, imeis, from, to, opts, devMap) {
       worstPts.push(worst.p);
     }
   }
-  // Adresă exactă pt. cea mai suspectă scădere (una/mașină suspectă) — ÎNAINTE de sortare (o „coacem" în r[6]).
+  // Adresă exactă pt. cea mai suspectă scădere (una/mașină suspectă) — ÎNAINTE de sortare (o „coacem” în r[6]).
   if (geocode && geocode.warm) {
     const coords = worstPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude }));
     if (coords.length) { try { await geocode.warm(coords, { maxUnique: 100, budgetMs: imeis.length <= 1 ? 12000 : 8000 }); } catch (e) {} }
   }
   rows.forEach((r, i) => { if (worstPts[i]) r[6] = addr(worstPts[i]); });
-  // Sortare: suspecte (scor mare) sus → OK (scor 0) → Fără date CAN („—") la coadă.
+  // Sortare: suspecte (scor mare) sus → OK (scor 0) → Fără date CAN („—”) la coadă.
   const sk = v => (v === '—' || v == null ? -1 : Number(v));
   rows.sort((a, b) => sk(b[3]) - sk(a[3]));
   const charts = [{ type: 'doughnut', title: 'Starea flotei', labels: ['Fără probleme', 'Risc mediu', 'Risc ridicat', 'Fără date CAN'], datasets: [{ label: 'vehicule', data: [clean, med, high, noData] }] }];
@@ -2298,7 +2298,7 @@ function _dailySeries(readings, agg) {
   return { labels: order.map(_dayLabel), data: order.map(k => Math.round((byDay[k] || 0) * 10) / 10) };
 }
 
-// Grafice pt. rapoartele de senzori: 1 bară „total pe vehicul" + câte o serie zilnică/mașină (max 16).
+// Grafice pt. rapoartele de senzori: 1 bară „total pe vehicul” + câte o serie zilnică/mașină (max 16).
 function _senzChart(vTotal, vSeries, totalTitle, unit, perTitlePrefix, perType) {
   const charts = [];
   if (vTotal.length) { const t = _topN(vTotal, 20); charts.push({ type: 'bar', title: totalTitle, labels: t.labels, datasets: [{ label: unit, data: t.data }] }); }
@@ -2356,7 +2356,7 @@ async function rFuelProbe(db, imeis, from, to, opts, devMap) { // Sondă litrome
     vLevel.push([nm, Math.round(last)]);
   }
   if (geocode && geocode.warm) { const c = evPts.filter(Boolean).map(p => ({ lat: p.latitude, lng: p.longitude })); if (c.length) { try { await geocode.warm(c, { maxUnique: 200, budgetMs: imeis.length <= 1 ? 14000 : 8000 }); } catch (e) {} } }
-  rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); }); // adresele „se coc" în rânduri (perVehicle folosește aceleași referințe)
+  rows.forEach((r, i) => { if (evPts[i]) r[5] = addr(evPts[i]); }); // adresele „se coc” în rânduri (perVehicle folosește aceleași referințe)
   const charts = vLevel.length ? [{ type: 'bar', title: 'Nivel curent pe vehicul (L)', labels: _topN(vLevel, 20).labels, datasets: [{ label: 'L', data: _topN(vLevel, 20).data }] }] : [];
   return {
     columns: ['Vehicul', 'Data', 'Eveniment', 'Δ litri', 'Nivel', 'Locație'], rows,
@@ -2417,7 +2417,7 @@ async function rWeight(db, imeis, from, to, opts, devMap) { // Senzori greutate 
     perVehicle, charts,
     summary: { 'Total vehicule': imeis.length, 'Cu senzor greutate': vMax.length, 'Supraîncărcări (total)': perVehicle.reduce((s, v) => s + (v.summary.find(x => x[0] === 'Supraîncărcări') || [0, 0])[1], 0) },
     legend: { title: 'Senzori greutate — analiză', items: [
-      ['Grafic', 'Greutatea în timp + linia „Sarcină utilă" (limita din fișă) → vezi unde curba trece de limită (supraîncărcare).'],
+      ['Grafic', 'Greutatea în timp + linia „Sarcină utilă” (limita din fișă) → vezi unde curba trece de limită (supraîncărcare).'],
       ['Încărcare', 'Greutatea a urcat cu ≥ ' + _grp(wMin) + ' kg (s-a încărcat).'],
       ['Descărcare', 'Greutatea a scăzut cu ≥ ' + _grp(wMin) + ' kg (s-a descărcat).'],
       ['Supraîncărcare', 'Greutatea a depășit sarcina utilă din fișă — risc de amendă / uzură.'],
@@ -2558,7 +2558,7 @@ async function rIoT(db, imeis, from, to, opts, devMap) { // Senzori IoT (frigori
     perVehicle, charts,
     summary: { 'Total vehicule': imeis.length, 'Cu senzori IoT': vTemp.length, 'Abateri (total flotă)': perVehicle.reduce((s, v) => s + (v.summary.find(x => x[0] === 'Abateri') || [0, 0])[1], 0) },
     legend: { title: 'Senzori IoT — temperatură & alarme', items: [
-      ['Grafic', 'Temperatura în timp + liniile „Min/Max admis" (intervalul din fișă) → vezi când iese din interval.'],
+      ['Grafic', 'Temperatura în timp + liniile „Min/Max admis” (intervalul din fișă) → vezi când iese din interval.'],
       ['Abatere', 'Cât timp temperatura a fost în afara intervalului sigur (prea cald/prea rece) — alarmă lanț frig.'],
       ['Vârf', 'Cea mai extremă temperatură atinsă în timpul abaterii.'],
       ['Interval', 'Intervalul sigur (min…max °C) din fișa vehiculului. Fără el nu se pot detecta abateri.'],
@@ -2611,7 +2611,7 @@ const REPORT_CATEGORIES = [
   { key: 'siguranta', label: 'Siguranță & EcoDrive' }
 ];
 
-// Statistici consum agregate (flotă + per vehicul + trend) — numeric, pentru pagina „Statistici consum".
+// Statistici consum agregate (flotă + per vehicul + trend) — numeric, pentru pagina „Statistici consum”.
 // Refolosește EXACT helperii de combustibil (fuelL, haversineKm, ignOn, IDLE_SPEED, MAX_STEP_KM) ca rapoartele,
 // ca să nu dublăm logica. Întoarce { range, kpi, series, topConsumers, perVehicle } într-un singur apel.
 function _bucketKey(ts, bucket) { const s = new Date(ts).toISOString(); return bucket === 'month' ? s.slice(0, 7) : s.slice(0, 10); }
@@ -2639,7 +2639,7 @@ async function fuelStats(db, imeis, from, to, opts) {
     const niveluri = [];
     const cumul = _cumulTracker();
     const bF = {}, bL = {}, bPrev = {}, bRefuel = {}, bIdle = {}, bDist = {};
-    // Toată perioada, pe pagini (vezi „Citirea pozițiilor").
+    // Toată perioada, pe pagini (vezi „Citirea pozițiilor”).
     await fiecarePozitie(db, imei, from, to, function (p) {
       const fl = fuelL(p), bk = _bucketKey(p.timestamp, bucket);
       cumul.add(p);
@@ -2652,7 +2652,7 @@ async function fuelStats(db, imeis, from, to, opts) {
         bPrev[bk] = fl;
       }
       // Km socotiți EXACT ca raportul Consum (_consumptionMap): doar între poziții la cel mult 5 minute una de alta (07.10 —
-      // fără garda de timp, o gaură de semnal adăuga linia dreaptă dintre două locuri și „Statistici consum" ieșea altfel).
+      // fără garda de timp, o gaură de semnal adăuga linia dreaptă dintre două locuri și „Statistici consum” ieșea altfel).
       if (prevP) { const dt = (t(p) - t(prevP)) / 1000, dd = haversineKm(prevP.latitude, prevP.longitude, p.latitude, p.longitude); if (dt > 0 && dt <= 300 && dd < MAX_STEP_KM) { dist += dd; bDist[bk] = (bDist[bk] || 0) + dd; } }
       if (ignOn(p) && (p.speed || 0) <= IDLE_SPEED && prevP && ignOn(prevP) && (prevP.speed || 0) <= IDLE_SPEED) { const dt = (new Date(p.timestamp) - new Date(prevP.timestamp)) / 1000; if (dt > 0 && dt < 3600) { idleSec += dt; bIdle[bk] = (bIdle[bk] || 0) + dt; } }
       prevP = p;
@@ -2671,7 +2671,7 @@ async function fuelStats(db, imeis, from, to, opts) {
     const cumulOk = cumulL != null && cumulL > 0 && dist > 1 && cumulPer100 >= 1 && cumulPer100 <= MAX_PER100;
     const sensorL = _nivelConsum(first, last, refueled); // scăderea NETĂ + alimentările (vezi _nivelConsum)
     const sensorPer100 = (sensorL > 0 && dist > 1) ? (sensorL / dist * 100) : null;
-    // Senzorul de nivel e „de încredere" doar dacă dă consum > 0 pe distanță reală și un L/100km plauzibil ≥3
+    // Senzorul de nivel e „de încredere” doar dacă dă consum > 0 pe distanță reală și un L/100km plauzibil ≥3
     // (sub atât = ac grosier care a ratat consum → estimăm). Ține pasul cu _consumptionMap (raportul Consum carburant).
     const sensorOk = sensorL > 0 && dist > 1 && sensorPer100 >= 3 && sensorPer100 <= MAX_PER100;
     // Estimare din config (sau implicit pe tip) + km + ralanti — folosită când nu există nici contor, nici senzor fiabil.
@@ -2737,7 +2737,7 @@ function _tfWrapDb(db, tf) {
   const match = _tfMatcher(tf);
   const w = Object.create(db);
   // Citirile pozițiilor din rapoarte (history / fiecarePozitie / coadaIstoric) filtrează ELE, după `_tfMatch`, pe baza
-  // neînvelită (`_tfBaza`) — ca plafonul și paginile să se socotească pe ce e în bază (vezi sus, la „Citirea pozițiilor").
+  // neînvelită (`_tfBaza`) — ca plafonul și paginile să se socotească pe ce e în bază (vezi sus, la „Citirea pozițiilor”).
   w._tfMatch = match; w._tfBaza = db;
   w.getDeviceHistory = async (imei, from, to, limit) => (await db.getDeviceHistory(imei, from, to, limit)).filter(p => match(p.timestamp));
   w.getAlertHistoryRange = async (imeis, from, to, limit) => (await db.getAlertHistoryRange(imeis, from, to, limit)).filter(a => match(a.triggered_at));
@@ -2757,7 +2757,7 @@ async function runReport(db, type, imeis, from, to, opts, companyId) {
   const _tf = opts && opts.timeFilter;
   const dbx = _tf ? _tfWrapDb(db, _tf) : db;
   // companyId (null = super/toate) e propagat la fn-urile care citesc definiții scopabile pe companie (ex: geofence).
-  // Rularea își strânge mașinile tăiate de plafon (`_rularea`, vezi „Citirea pozițiilor") — fiecare raport pe ale lui.
+  // Rularea își strânge mașinile tăiate de plafon (`_rularea`, vezi „Citirea pozițiilor”) — fiecare raport pe ale lui.
   const rulare = { trunchiate: [] };
   const result = await _rularea.run(rulare, function () { return def.fn(dbx, imeis, from, to, opts || {}, devMap, companyId); });
   if (_tf && result && result.summary) result.summary['Filtru zile/ore'] = _tfLabel(_tf); // vizibil în UI, istoric și exporturi
@@ -2771,7 +2771,7 @@ async function runReport(db, type, imeis, from, to, opts, companyId) {
       : { title: 'Atenție', items: [['Perioada e prea lungă', txt]] };
   }
   if (!result.perVehicle && !result.noPerVehicle) { try { const pv = _genericPerVehicle(result); if (pv) result.perVehicle = pv; } catch (e) {} }
-  try { _injectDriverColumn(result, imeis, devMap); } catch (e) {} // coloană „Șofer" la orice raport pe vehicule (după perVehicle → prinde și sumarele)
+  try { _injectDriverColumn(result, imeis, devMap); } catch (e) {} // coloană „Șofer” la orice raport pe vehicule (după perVehicle → prinde și sumarele)
   return result;
 }
 
@@ -2819,9 +2819,9 @@ async function analyzeZone(db, imeis, from, to, zone) {
 }
 
 // `_nivelConsum` / `_capat` / `_cumulTracker` sunt exportate ca să le folosească ȘI serverul, pentru
-// „Consum azi" din fișa vehiculului. Acolo era A DOUA copie a aceleiași greșeli — aduna toate scăderile
+// „Consum azi” din fișa vehiculului. Acolo era A DOUA copie a aceleiași greșeli — aduna toate scăderile
 // de nivel. O reparasem doar în rapoarte, iar cifra din fișă ar fi rămas umflată.
-// Cifrele de sus ale unui raport (cel mult 4, din sumarul lui, fără rândul „Atenție"): O socoteală, folosită de cartonașul din
+// Cifrele de sus ale unui raport (cel mult 4, din sumarul lui, fără rândul „Atenție”): O socoteală, folosită de cartonașul din
 // RA Insight (rapoartele cerute în cuvinte) și de emailul raportului programat (29.10) — ca omul să vadă aceleași cifre în ambele.
 function kpiRaport(report) {
   const s = report && report.summary;
@@ -2837,4 +2837,4 @@ module.exports = { runReport, fuelStats, REPORTS, REPORT_CATEGORIES, hotspot, an
   _ajutor: { ignOn, engineRunning, fuelCumul, haversineKm, idleRate, defConsumption, resolvePrice, fiecarePozitie,
     fmtDur,                              // „3 h 10 min” — forma duratelor din rapoarte (17.11); probele o citesc de aici
     consumptionMap: _consumptionMap,     // ramura Combustibil: același motor ca rapoartele Consum / Costuri / Emisii
-    coloanaSofer: _injectDriverColumn } };   // proba AI Raport pune rândurile pe forma ADEVĂRATĂ (cu „Șofer" pe locul 2)
+    coloanaSofer: _injectDriverColumn } };   // proba AI Raport pune rândurile pe forma ADEVĂRATĂ (cu „Șofer” pe locul 2)

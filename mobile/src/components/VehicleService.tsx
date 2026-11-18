@@ -1,7 +1,7 @@
 // VehicleService — lucrările de service ale UNEI mașini, în foaia de editare a vehiculului (web: fila
-// „Service" din fișă). Aceleași rânduri și aceeași fereastră ca în ecranul Mentenanță: vezi „depășit cu
+// „Service” din fișă). Aceleași rânduri și aceeași fereastră ca în ecranul Mentenanță: vezi „depășit cu
 // 2.300 km" cu roșu, bifezi, modifici, adaugi o lucrare cu mașina deja aleasă.
-// Se montează DOAR când firma n-a tăiat rolului ecranul „mentenanta" (serverul refuză atunci lista) —
+// Se montează DOAR când firma n-a tăiat rolului ecranul „mentenanta” (serverul refuză atunci lista) —
 // verificarea e și aici, ca blocul să nu arate o eroare în locul lucrărilor.
 import { useEffect, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';

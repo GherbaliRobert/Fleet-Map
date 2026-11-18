@@ -2,27 +2,27 @@
 //
 // Fără bază, fără rețea, fără model: tot ce e aici se rulează într-o probă (verify_insight.js).
 //
-// De ce există (Alin, 02.10, cu două capturi): „Câți km a făcut B 154 UIP săptămâna trecută?" → „B 154 UIP nu
-// apare în flotă". RA Insight primea mașinile DOAR cu numele („Dacia Logan 3"); numărul de înmatriculare nu
-// ajungea la el. Iar la „Dacia Logan 3", trimis imediat după, uitase întrebarea: fiecare mesaj pleca singur.
+// De ce există (Alin, 02.10, cu două capturi): „Câți km a făcut B 154 UIP săptămâna trecută?” → „B 154 UIP nu
+// apare în flotă". RA Insight primea mașinile DOAR cu numele („Dacia Logan 3”); numărul de înmatriculare nu
+// ajungea la el. Iar la „Dacia Logan 3”, trimis imediat după, uitase întrebarea: fiecare mesaj pleca singur.
 // Aici stau cele două reparații: fișa flotei (număr, nume, șofer, grupă) și forma memoriei.
 'use strict';
 
 const DIACRITICE = /[̀-ͯ]/g;
 function norm(s) { return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(DIACRITICE, '').replace(/\s+/g, ' ').trim(); }
-// „B 154 UIP", „b154uip", „B-154-UIP" → „b154uip". Numerele se compară așa, fără spații și semne.
+// „B 154 UIP”, „b154uip”, „B-154-UIP” → „b154uip”. Numerele se compară așa, fără spații și semne.
 function compact(s) { return norm(s).replace(/[^a-z0-9]/g, ''); }
 function cuvinte(s) { return norm(s).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean); }
 
-// Terminațiile lipite de un nume în română: „Loganul", „Caddy-ului", „Passatului", „Transitul".
+// Terminațiile lipite de un nume în română: „Loganul”, „Caddy-ului”, „Passatului”, „Transitul”.
 // Doar pentru POTRIVIRE (nu schimbăm ce scrie omul); un cuvânt prea scurt după tăiere rămâne întreg.
 const TERMINATII = ['urile', 'ului', 'ul', 'lui', 'le', 'ii', 'a'];
 function radacina(c) {
   for (const t of TERMINATII) if (c.length - t.length >= 4 && c.endsWith(t)) return c.slice(0, -t.length);
   return c;
 }
-// Cuvinte care apar în aproape orice întrebare și nu deosebesc o mașină de alta: „mașina", „camionul"…
-// O mașină numită „Camion 1" se găsește tot, prin cifra de lângă (vezi `_dupaNume`).
+// Cuvinte care apar în aproape orice întrebare și nu deosebesc o mașină de alta: „mașina”, „camionul”…
+// O mașină numită „Camion 1” se găsește tot, prin cifra de lângă (vezi `_dupaNume`).
 const GENERICE = new Set(['masina', 'masini', 'masinii', 'masinile', 'vehicul', 'vehicule', 'vehiculul', 'auto', 'camion',
   'camionul', 'camioane', 'duba', 'dubita', 'autoutilitara', 'utilitara', 'autoturism', 'tir', 'tirul', 'utilaj', 'utilajul',
   'flota', 'flotei', 'firma', 'masinuta', 'nr', 'numar', 'numarul', 'cu', 'de', 'la', 'si', 'pe', 'in', 'din']);
@@ -41,7 +41,7 @@ function fisaFlotei(devices, soferi) {
     return {
       imei: String(d.imei), nume: nume || nr || String(d.imei), nr: nr, sofer: sofer, grupa: grupa,
       tip: d.vehicle_type || null,
-      // cum o scriu rapoartele („Dacia Logan 3 (B 154 UIP)") — ca AI Raport s-o recunoască în rândurile lor
+      // cum o scriu rapoartele („Dacia Logan 3 (B 154 UIP)”) — ca AI Raport s-o recunoască în rândurile lor
       etRaport: (nume || String(d.imei)) + (nr ? ' (' + nr + ')' : ''),
       _nr: compact(nr), _nume: norm(nume), _cuv: cuvinte(nume).map(radacina), _sofer: cuvinte(sofer), _grupa: norm(grupa)
     };
@@ -57,8 +57,8 @@ function eticheta(v) {
 // ─── Ce mașini pomenește un text ────────────────────────────────────────────────────────────────────
 // Întoarce { masini, grupe, ambigue, folosit }:
 //   masini  = fișele găsite fără îndoială;
-//   grupe   = { nume, masini } — „grupa Cluj" înseamnă toate mașinile ei;
-//   ambigue = { cheie, variante } — „Logan" când flota are trei Logan: NU alegem noi, întrebăm omul.
+//   grupe   = { nume, masini } — „grupa Cluj” înseamnă toate mașinile ei;
+//   ambigue = { cheie, variante } — „Logan” când flota are trei Logan: NU alegem noi, întrebăm omul.
 function gasesteInText(text, fisa, optiuni) {
   const dinUnealta = !!(optiuni && optiuni.dinUnealta);
   const out = { masini: [], grupe: [], ambigue: [] };
@@ -67,13 +67,13 @@ function gasesteInText(text, fisa, optiuni) {
   const luate = new Set();
   const adauga = function (v) { if (!luate.has(v.imei)) { luate.add(v.imei); out.masini.push(v); } };
 
-  // 1) Numerele de înmatriculare — întâi, fiindcă sunt unice. Se compară fără spații: „B154UIP" = „B 154 UIP".
-  //    După potrivire, bucata se scoate din text, ca cifrele ei („154") să nu mai prindă și alt nume.
+  // 1) Numerele de înmatriculare — întâi, fiindcă sunt unice. Se compară fără spații: „B154UIP” = „B 154 UIP”.
+  //    După potrivire, bucata se scoate din text, ca cifrele ei („154”) să nu mai prindă și alt nume.
   const tc = compact(text);
   for (const v of fisa) {
     if (v._nr && v._nr.length >= 5 && tc.indexOf(v._nr) >= 0) { adauga(v); t = _scoateNr(t, v.nr); }
   }
-  // Număr scris pe jumătate („154 UIP", fără județ): doar dacă are cifre ȘI litere și e destul de lung,
+  // Număr scris pe jumătate („154 UIP”, fără județ): doar dacă are cifre ȘI litere și e destul de lung,
   // ca o cifră oarecare din întrebare să nu ajungă număr de mașină.
   if (!out.masini.length) {
     const bucati = (t.match(/\b\d{2,3}\s?[a-z]{3}\b/g) || []).map(compact);
@@ -84,7 +84,7 @@ function gasesteInText(text, fisa, optiuni) {
     }
   }
 
-  // 2) Grupele: „grupa Cluj", „grupul Distribuție", sau numele grupei scris întreg.
+  // 2) Grupele: „grupa Cluj”, „grupul Distribuție”, sau numele grupei scris întreg.
   const grupeVazute = {};
   for (const v of fisa) if (v._grupa) (grupeVazute[v._grupa] = grupeVazute[v._grupa] || { nume: v.grupa, masini: [] }).masini.push(v);
   for (const k of Object.keys(grupeVazute)) {
@@ -92,14 +92,14 @@ function gasesteInText(text, fisa, optiuni) {
     if (new RegExp('(^|[^a-z0-9])' + _re(k) + '([^a-z0-9]|$)').test(t)) out.grupe.push(grupeVazute[k]);
   }
 
-  // 3) Numele mașinii: întâi scris întreg („Dacia Logan 3"), cel mai lung întâi, ca „Dacia Logan" să nu fure „Dacia Logan 3".
+  // 3) Numele mașinii: întâi scris întreg („Dacia Logan 3”), cel mai lung întâi, ca „Dacia Logan” să nu fure „Dacia Logan 3”.
   const dupaLungime = fisa.filter(function (v) { return v._nume && v._nume.length >= 3 && !luate.has(v.imei); })
     .sort(function (a, b) { return b._nume.length - a._nume.length; });
   for (const v of dupaLungime) {
     const re = new RegExp('(^|[^a-z0-9])' + _re(v._nume) + '([^a-z0-9]|$)');
     if (re.test(t)) { adauga(v); t = t.replace(re, ' '); }
   }
-  // …apoi scris cu terminație („Camionul 1", „Loganul 3" la o mașină numită „Logan 3"): aceleași cuvinte, în ordine.
+  // …apoi scris cu terminație („Camionul 1”, „Loganul 3” la o mașină numită „Logan 3”): aceleași cuvinte, în ordine.
   const stemeText = cuvinte(t).map(radacina);
   for (const v of fisa) {
     if (luate.has(v.imei) || v._cuv.length < 2) continue;
@@ -109,18 +109,18 @@ function gasesteInText(text, fisa, optiuni) {
       if (la) { adauga(v); break; }
     }
   }
-  // …apoi după cuvintele care deosebesc numele („Passat", „Caddy", „Loganul"). Dacă rămân mai multe, e ambiguu.
+  // …apoi după cuvintele care deosebesc numele („Passat”, „Caddy”, „Loganul”). Dacă rămân mai multe, e ambiguu.
   const dupaNume = _dupaNume(t, fisa.filter(function (v) { return !luate.has(v.imei); }));
   for (const g of dupaNume) {
     if (g.variante.length === 1) adauga(g.variante[0]);
     else out.ambigue.push(g);
   }
 
-  // 4) Șoferul: numele întreg, sau „lui Ion" / „șoferul Popescu" (un singur cuvânt doar cu vorba de dinainte,
-  //    altfel „consum mare" ar găsi pe Ionel Mare).
+  // 4) Șoferul: numele întreg, sau „lui Ion” / „șoferul Popescu” (un singur cuvânt doar cu vorba de dinainte,
+  //    altfel „consum mare” ar găsi pe Ionel Mare).
   const tok = cuvinte(t);
   const pePrenume = {};   // cuvântul scris → mașinile șoferilor care îl au în nume
-  const dinNumeIntreg = new Set();   // „Ion Mare" scris întreg: „ion" nu mai caută și alți Ion
+  const dinNumeIntreg = new Set();   // „Ion Mare” scris întreg: „ion” nu mai caută și alți Ion
   for (const v of fisa) {
     if (!v._sofer.length || luate.has(v.imei)) continue;
     const intreg = v._sofer.join(' ');
@@ -130,7 +130,7 @@ function gasesteInText(text, fisa, optiuni) {
     if (!v._sofer.length || luate.has(v.imei)) continue;
     for (let i = 0; i < tok.length; i++) {
       if (dinNumeIntreg.has(tok[i])) continue;
-      // Din unealtă (modelul a scris doar „Ion"), cuvântul vine singur: e deja un nume ales, nu o frază.
+      // Din unealtă (modelul a scris doar „Ion”), cuvântul vine singur: e deja un nume ales, nu o frază.
       const cuVorba = i > 0 && /^(lui|soferul|soferului|sofer|soferii)$/.test(tok[i - 1]);
       if ((cuVorba || dinUnealta) && tok[i].length >= 3 && v._sofer.indexOf(tok[i]) >= 0) {
         (pePrenume[tok[i]] = pePrenume[tok[i]] || []).push(v);
@@ -143,9 +143,9 @@ function gasesteInText(text, fisa, optiuni) {
     if (!lista.length) continue;
     const soferi = new Set(lista.map(function (v) { return v._sofer.join(' '); }));
     if (soferi.size === 1) lista.forEach(adauga);       // un singur șofer (poate cu mai multe mașini) — ale lui
-    else out.ambigue.push({ cheie: k, variante: lista }); // doi „Ion" în firmă: întrebăm care
+    else out.ambigue.push({ cheie: k, variante: lista }); // doi „Ion” în firmă: întrebăm care
   }
-  // „Loganul lui Ion": trei Logan și doi Ion, dar un singur Logan al unui Ion. Când două îndoieli se taie
+  // „Loganul lui Ion”: trei Logan și doi Ion, dar un singur Logan al unui Ion. Când două îndoieli se taie
   // într-o singură mașină, aia e.
   if (out.ambigue.length >= 2) {
     let comun = out.ambigue[0].variante;
@@ -158,9 +158,9 @@ function gasesteInText(text, fisa, optiuni) {
   return out;
 }
 // Cuvintele unui nume care pot numi o mașină: nu sunt generice și nu sunt doar cifre. Un cuvânt pe care îl au
-// toate mașinile („Logan", la o flotă numai de Logan) tot numește ceva: toate — deci e o îndoială de lămurit, nu
-// „nimic" (proba a prins asta: „cât a mers loganul?" nu găsea nicio mașină). O cifră din nume („Logan 3",
-// „Camion 1") alege între mașinile găsite după cuvânt, dacă omul a scris-o lângă.
+// toate mașinile („Logan”, la o flotă numai de Logan) tot numește ceva: toate — deci e o îndoială de lămurit, nu
+// „nimic” (proba a prins asta: „cât a mers loganul?” nu găsea nicio mașină). O cifră din nume („Logan 3”,
+// „Camion 1”) alege între mașinile găsite după cuvânt, dacă omul a scris-o lângă.
 function _dupaNume(t, ramase) {
   const tok = cuvinte(t).map(radacina);
   if (!tok.length || !ramase.length) return [];
@@ -168,7 +168,7 @@ function _dupaNume(t, ramase) {
   for (const v of ramase) {
     const distinctive = v._cuv.filter(function (c) { return c.length >= 3 && !/^\d+$/.test(c) && !GENERICE_R.has(c); });
     const prinse = distinctive.filter(function (c) { return tok.indexOf(c) >= 0; });
-    // un cod cu cifre („B7", „TGX") prinde și singur
+    // un cod cu cifre („B7”, „TGX”) prinde și singur
     const coduri = v._cuv.filter(function (c) { return /\d/.test(c) && /[a-z]/.test(c) && c.length >= 2 && tok.indexOf(c) >= 0; });
     if (!prinse.length && !coduri.length) continue;
     const cheie = (prinse[0] || coduri[0]);
@@ -177,7 +177,7 @@ function _dupaNume(t, ramase) {
   return Object.keys(grupuri).map(function (cheie) {
     let variante = grupuri[cheie];
     if (variante.length > 1) {
-      // „Logan 3": cifra scrisă imediat după cuvânt alege mașina cu cifra aceea în nume
+      // „Logan 3”: cifra scrisă imediat după cuvânt alege mașina cu cifra aceea în nume
       const i = tok.indexOf(cheie);
       const cifra = i >= 0 && tok[i + 1] && /^\d+$/.test(tok[i + 1]) ? tok[i + 1] : null;
       if (cifra) { const cu = variante.filter(function (v) { return v._cuv.indexOf(cifra) >= 0; }); if (cu.length) variante = cu; }
@@ -187,14 +187,14 @@ function _dupaNume(t, ramase) {
 }
 function _re(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function _scoateNr(t, nr) {
-  // „B 154 UIP", „b154uip", „b-154-uip": orice despărțire între bucăți
+  // „B 154 UIP”, „b154uip”, „b-154-uip”: orice despărțire între bucăți
   const parti = String(nr).match(/[A-Za-z]+|\d+/g) || [];
   if (!parti.length) return t;
   const re = new RegExp(parti.map(function (p) { return _re(norm(p)); }).join('[\\s.\\-]*'), 'g');
   return t.replace(re, ' ');
 }
 
-// Ce a cerut modelul printr-o unealtă („vehicle": „B 154 UIP" / „Loganul lui Ion" / „Logan") → o mașină sigură,
+// Ce a cerut modelul printr-o unealtă („vehicle”: „B 154 UIP” / „Loganul lui Ion” / „Logan”) → o mașină sigură,
 // mai multe de ales, o grupă sau nimic. Aceleași reguli ca la textul omului, ca să nu existe două socoteli.
 function rezolva(cine, fisa) {
   const q = String(cine == null ? '' : cine).trim();
@@ -212,8 +212,8 @@ function rezolva(cine, fisa) {
 }
 
 // ─── Ora României ───────────────────────────────────────────────────────────────────────────────────
-// „Azi", „ieri", „săptămâna trecută" se socotesc pe ceasul ROMÂNIEI, nu pe al serverului (UTC). Înainte,
-// „azi" pentru RA Insight începea la 03:00 vara, iar cifrele nu se potriveau cu raportul din ecran.
+// „Azi”, „ieri”, „săptămâna trecută” se socotesc pe ceasul ROMÂNIEI, nu pe al serverului (UTC). Înainte,
+// „azi” pentru RA Insight începea la 03:00 vara, iar cifrele nu se potriveau cu raportul din ecran.
 const TZ = 'Europe/Bucharest';
 function _parti(ms) {
   const p = {};
@@ -222,7 +222,7 @@ function _parti(ms) {
   return { y: +p.year, m0: +p.month - 1, d: +p.day, h: +p.hour, mi: +p.minute, s: +p.second,
     dow: { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[p.weekday] || 1 };
 }
-// Ora României (0–23) în clipa `ms`: pentru pragurile pe oră ale agenților („după-amiaza" lui RA Dispatch).
+// Ora României (0–23) în clipa `ms`: pentru pragurile pe oră ale agenților („după-amiaza” lui RA Dispatch).
 function oraRO(ms) { return _parti(ms == null ? Date.now() : Number(ms)).h; }
 // Momentul (UTC) în care e miezul nopții în România, în ziua y-m0-d (zilele în plus/minus se întorc singure).
 function inceputZiRO(y, m0, d) {
@@ -235,7 +235,7 @@ function inceputZiRO(y, m0, d) {
   return ms;
 }
 const PERIOADE = ['today', 'yesterday', 'last_7_days', 'last_30_days', 'this_week', 'last_week', 'this_month', 'last_month'];
-// Perioada cerută → { from, to } (ISO). `month` = „2026-09" (o lună anume). Fără nimic: ultimele 7 zile.
+// Perioada cerută → { from, to } (ISO). `month` = „2026-09” (o lună anume). Fără nimic: ultimele 7 zile.
 function perioada(input, acum) {
   const now = acum != null ? Number(acum) : Date.now();
   const i = input || {};
@@ -244,8 +244,8 @@ function perioada(input, acum) {
   const p = String(i.period || '').toLowerCase();
   let from, to = now;
   const luna = /^(\d{4})-(\d{2})$/.exec(String(i.month || ''));
-  // O zi scrisă „AAAA-LL-ZZ" e o zi a României: „from" de la miezul ei, „to" = ultima zi, care intră ÎNTREAGĂ (08.10: un
-  // „to" de „2026-10-07" se citea ca miezul nopții UTC dinaintea zilei, deci 7 octombrie ieșea din interval).
+  // O zi scrisă „AAAA-LL-ZZ” e o zi a României: „from” de la miezul ei, „to” = ultima zi, care intră ÎNTREAGĂ (08.10: un
+  // „to” de „2026-10-07” se citea ca miezul nopții UTC dinaintea zilei, deci 7 octombrie ieșea din interval).
   const zi = function (x) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(x || '').trim()); return m ? [+m[1], +m[2] - 1, +m[3]] : null; };
   const zf = zi(i.from), zt = zi(i.to);
   if (i.from && i.to && (zf || !isNaN(Date.parse(i.from))) && (zt || !isNaN(Date.parse(i.to)))) {
@@ -264,13 +264,13 @@ function perioada(input, acum) {
   if (!(from < to)) { from = now - 7 * 86400000; to = now; }
   return { from: new Date(from).toISOString(), to: new Date(to).toISOString() };
 }
-// ─── Zilele săptămânii și weekendul (Alin, 14.10: „rezolvăm") ──────────────────────────────────────
-// „Unde a fost Loganul duminică?" primea răspunsul rapid despre ACUM, „câți km în weekend?" — „Distanță azi: 0 km", iar
-// AI Raport citea ambele ca „ultimele 7 zile". O singură regulă, folosită de amândouă: întoarce perioada sau null.
-//   „marți" = cea mai apropiată marți (azi, dacă azi e marți); „marțea trecută" = cea dinainte de azi;
-//   „în weekend" = sâmbătă + duminică (cel de acum, dacă suntem în el); „weekendul trecut" = cel dinainte;
-//   „de luni (până acum)" = săptămâna în curs; „de luni până miercuri" = cele trei zile.
-// „luni" după un număr sau după „ultimele" e luna de calendar („ultimele 3 luni"), nu ziua.
+// ─── Zilele săptămânii și weekendul (Alin, 14.10: „rezolvăm”) ──────────────────────────────────────
+// „Unde a fost Loganul duminică?” primea răspunsul rapid despre ACUM, „câți km în weekend?” — „Distanță azi: 0 km”, iar
+// AI Raport citea ambele ca „ultimele 7 zile”. O singură regulă, folosită de amândouă: întoarce perioada sau null.
+//   „marți” = cea mai apropiată marți (azi, dacă azi e marți); „marțea trecută” = cea dinainte de azi;
+//   „în weekend” = sâmbătă + duminică (cel de acum, dacă suntem în el); „weekendul trecut” = cel dinainte;
+//   „de luni (până acum)” = săptămâna în curs; „de luni până miercuri” = cele trei zile.
+// „luni” după un număr sau după „ultimele” e luna de calendar („ultimele 3 luni”), nu ziua.
 const _ZILE_SAPT = { luni: 1, lunea: 1, marti: 2, martea: 2, miercuri: 3, miercurea: 3, joi: 4, joia: 4, vineri: 5, vinerea: 5, sambata: 6, duminica: 7 };
 const _NU_E_ZIUA = /(?:^| )(?:\d+|o|doua|trei|patru|cinci|sase|sapte|opt|noua|zece|unsprezece|douasprezece|ultimele|ultimii|cateva|cele|multe|mai multe) $/;
 function _zileDinText(t) {
@@ -294,18 +294,18 @@ function ziuaSaptamanii(text, acum) {
   const ziua = function (dd) { return inceputZiRO(z.y, z.m0, z.d + dd); };
   if (/(?:^| )(weekend\w*|wekend\w*|week end\w*|sfarsit\w* de saptamana)(?= |$)/.test(t)) {
     let sam = 6 - z.dow;                                // sâmbăta săptămânii în curs, față de azi
-    if (z.dow < 6 || trecut) sam -= 7;                  // weekendul de acum doar sâmbătă / duminică, fără „trecut"
+    if (z.dow < 6 || trecut) sam -= 7;                  // weekendul de acum doar sâmbătă / duminică, fără „trecut”
     return iso(ziua(sam), ziua(sam + 2));
   }
   const zile = _zileDinText(t);
   if (!zile.length) return null;
-  // „de luni (până acum / azi)": săptămâna în curs
+  // „de luni (până acum / azi)”: săptămâna în curs
   if (zile.length === 1 && zile[0] === 1 && /(?:^| )de (?:la )?luni(?: pana (?:acum|azi|astazi|in prezent))?(?= |$)/.test(t) && !trecut) return iso(ziua(1 - z.dow), now);
   const inapoi = function (zi, panaLa) { let d = (panaLa - zi + 7) % 7; return d; };
   const ultima = zile[zile.length - 1];
   let d2 = inapoi(ultima, z.dow);
   if (d2 === 0 && trecut) d2 = 7;
-  if (zile.length >= 2) {                              // „de luni până miercuri", „între luni și miercuri"
+  if (zile.length >= 2) {                              // „de luni până miercuri”, „între luni și miercuri”
     const d1 = d2 + inapoi(zile[0], ultima);
     return iso(ziua(-d1), ziua(-d2 + 1));
   }
@@ -313,7 +313,7 @@ function ziuaSaptamanii(text, acum) {
 }
 
 const LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
-// { from, to } → cum o spune omul: „azi", „ieri", „21–27 septembrie", „septembrie 2026", „1 octombrie – azi".
+// { from, to } → cum o spune omul: „azi”, „ieri”, „21–27 septembrie”, „septembrie 2026”, „1 octombrie – azi”.
 function etichetaPerioadei(from, to, acum) {
   const now = acum != null ? Number(acum) : Date.now();
   const a = Date.parse(from), b = Date.parse(to);
@@ -338,13 +338,13 @@ function etichetaPerioadei(from, to, acum) {
 
 // ─── Răspunsurile rapide (gratuite) — DOAR la întrebări despre ACUM, pe toată flota ──────────────────
 // Euristica veche se aprindea pe un cuvânt: „Câți KILOMETRI a făcut B 154 UIP săptămâna trecută și ce consum
-// a avut?" primea „Distanță azi — toată flota" (Alin a scăpat doar fiindcă a scris „kilometir"). Acum răspunsul
+// a avut?" primea „Distanță azi — toată flota” (Alin a scăpat doar fiindcă a scris „kilometir”). Acum răspunsul
 // rapid pleacă numai dacă întrebarea nu cere altă perioadă, alt subiect sau o continuare a discuției.
 const ALTA_PERIOADA = /(^|[^a-z])(ieri|alaltaieri|saptaman\w*|luna|lunii|lunile|anul|anului|zile|zilele|ultim\w*|trecut\w*|precedent\w*|ianuarie|februarie|martie|aprilie|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie|\d{1,2}[.\/-]\d{1,2})([^a-z]|$)/;
 const ALT_SUBIECT = /(consum|combustib|motorin|benzin|litri|cost|bani|lei\b|ralanti|aliment|scor|franar|acceler|condus|pauz|revizi|\bitp\b|\brca\b|service|document|expir|alert|problem|de ce|compar|\bore\b)/;
-// Ce s-a ÎNTÂMPLAT într-o zi nu e „acum", chiar fără altă perioadă scrisă (Alin, 10.11, cu o discuție: „Pe unde a umblat azi? Câți
-// km a făcut azi? Care sunt cele mai frecvente locații?" primea pe „Instant" doar km-ii de azi ai TOATEI flote): drumul, opririle,
-// locurile, cursele sunt istoric — le citește RA Insight din rapoarte. „Unde e", „care sunt oprite", „care sunt pe drum" rămân „acum".
+// Ce s-a ÎNTÂMPLAT într-o zi nu e „acum”, chiar fără altă perioadă scrisă (Alin, 10.11, cu o discuție: „Pe unde a umblat azi? Câți
+// km a făcut azi? Care sunt cele mai frecvente locații?" primea pe „Instant” doar km-ii de azi ai TOATEI flote): drumul, opririle,
+// locurile, cursele sunt istoric — le citește RA Insight din rapoarte. „Unde e”, „care sunt oprite”, „care sunt pe drum” rămân „acum”.
 const ISTORIC_ZI = /(pe unde|umbla|trase(u|e)|\brut(a|e|ele)\b|\bdrum(ul|uri|urile)\b|\b(a|au) (fost|stat|oprit|trecut)\b|oprir|stationar|frecvent|\bcurs(a|e|ele|ei)\b|vizit)/;
 // Mai multe întrebări deodată (două semne de întrebare, ori două rânduri care întreabă fiecare ceva): răspunsul rapid știe UNA.
 const INCEPE_INTREBARE = /^(cat|cati|cate|care|unde|ce|cum|cine|cand|de ce|pe unde|ai|are|a |au )/;
@@ -354,8 +354,8 @@ function maiMulteIntrebari(text) {
   const randuri = s.split(/\n/).map(norm).filter(Boolean);
   return randuri.filter(function (r) { return /\?$/.test(r) || INCEPE_INTREBARE.test(r); }).length >= 2;
 }
-// Mașina din discuție, la răspunsul rapid (10.11): doar o întrebare despre O mașină — „unde e", „câți km a făcut" —, la singular.
-// „Care sunt oprite", „unde sunt", „cât au mers", „care merg" sunt despre flotă, oricât s-ar fi vorbit înainte de o mașină.
+// Mașina din discuție, la răspunsul rapid (10.11): doar o întrebare despre O mașină — „unde e”, „câți km a făcut” —, la singular.
+// „Care sunt oprite”, „unde sunt”, „cât au mers”, „care merg” sunt despre flotă, oricât s-ar fi vorbit înainte de o mașină.
 const LA_PLURAL = /(^|[^a-z])(sunt|au|merg|stau|lor)([^a-z]|$)/;
 function peMasinaDinDiscutie(text, intent) { return (intent === 'where' || intent === 'distance') && !LA_PLURAL.test(norm(text)); }
 function potrivitPentruRapid(text, gasite, areContext) {
@@ -364,10 +364,10 @@ function potrivitPentruRapid(text, gasite, areContext) {
   if (gasite && (gasite.grupe.length || gasite.ambigue.length)) return false;
   if (maiMulteIntrebari(text)) return false;
   if (ALTA_PERIOADA.test(t)) return false;
-  if (ziuaSaptamanii(text)) return false;              // „duminică", „în weekend", „de luni" — altă zi decât acum
+  if (ziuaSaptamanii(text)) return false;              // „duminică”, „în weekend”, „de luni” — altă zi decât acum
   if (ALT_SUBIECT.test(t)) return false;
   if (ISTORIC_ZI.test(t)) return false;
-  // o continuare („și ieri?", „dar Loganul?") ține de discuție, nu de o întrebare nouă
+  // o continuare („și ieri?”, „dar Loganul?”) ține de discuție, nu de o întrebare nouă
   if (areContext && /^(si|dar|iar|apoi|ok|bine)\b/.test(t)) return false;
   return true;
 }
@@ -381,7 +381,7 @@ function istoricPentruModel(mesaje, max, lungime) {
   const out = [];
   for (const m of ultime) {
     let text = String(m.text).trim();
-    if (m.rol === 'assistant') text = litereRomanesti(text);   // un răspuns vechi cu litere străine nu-l mai „învață" pe model
+    if (m.rol === 'assistant') text = litereRomanesti(text);   // un răspuns vechi cu litere străine nu-l mai „învață” pe model
     if (text.length > L) text = text.slice(0, L) + ' […]';
     const prev = out[out.length - 1];
     if (prev && prev.role === m.rol) prev.content += '\n\n' + text;
@@ -392,7 +392,7 @@ function istoricPentruModel(mesaje, max, lungime) {
   return out;
 }
 // Titlul unei conversații noi: prima întrebare, curățată și scurtată (fără să mai cheltuim o întrebare pe el).
-// `masini` (opțional) = fișele recunoscute: numărul lor se scrie cum e în aplicație („B 154 UIP"), oricum l-ar fi tastat omul.
+// `masini` (opțional) = fișele recunoscute: numărul lor se scrie cum e în aplicație („B 154 UIP”), oricum l-ar fi tastat omul.
 function titluDin(text, masini) {
   let t = String(text || '').replace(/\s+/g, ' ').trim();
   if (!t) return 'Conversație nouă';
@@ -407,45 +407,45 @@ function titluDin(text, masini) {
 }
 
 // Cum scrie RA Insight — ACELEAȘI reguli în discuție și în asistentul fondatorilor (Alin, 08.10, la „Cât de grabă e afacerea
-// lui?": „nu poți să scrii așa greșit"). Stau în partea fixă a instrucțiunilor (cea din cache).
+// lui?": „nu poți să scrii așa greșit”). Stau în partea fixă a instrucțiunilor (cea din cache).
 const SCRISUL = 'SCRISUL: română corectă și simplă, ca un dispecer cu experiență care vorbește cu patronul: propoziții scurte, ' +
   'cu diacritice, cuvinte obișnuite. Fără expresii traduse cuvânt cu cuvânt, fără cuvinte inventate, fără întrebări retorice, fără ' +
-  'glume și fără presupuneri despre oameni sau despre afacerea lor. O recomandare începe cu un verb („Vorbește cu…", „Completează…", ' +
-  '„Programează…") și spune motivul, cu cifra lui. Dacă nu ești sigur de o formulare, alege una mai simplă. Scrie numai cu litere ' +
+  'glume și fără presupuneri despre oameni sau despre afacerea lor. O recomandare începe cu un verb („Vorbește cu…”, „Completează…”, ' +
+  '„Programează…”) și spune motivul, cu cifra lui. Dacă nu ești sigur de o formulare, alege una mai simplă. Scrie numai cu litere ' +
   'românești: niciun cuvânt cu litere din alt alfabet (de pildă rusești).';
 
-// Literele din alt alfabet (Alin, 19.10: „октомбrie 2026" într-un răspuns) — regula stă în litere.js (o singură dată, pentru
+// Literele din alt alfabet (Alin, 19.10: „октомбrie 2026” într-un răspuns) — regula stă în litere.js (o singură dată, pentru
 // orice text scris de model); aici doar o dăm mai departe, ca restul codului să o găsească tot la RA Insight.
 const litere = require('./litere.js');
 const areLitereStraine = litere.areLitereStraine, litereRomanesti = litere.litereRomanesti;
 
-// ECHIPAMENTUL e treaba NOASTRĂ (Alin, 19.10: „păi voi nu ați verificat dacă are, eu vă plătesc"). ACEEAȘI regulă în RA Insight,
-// în „Rezumă cu RA Insight" și în rezumatul agenților — un singur loc.
+// ECHIPAMENTUL e treaba NOASTRĂ (Alin, 19.10: „păi voi nu ați verificat dacă are, eu vă plătesc”). ACEEAȘI regulă în RA Insight,
+// în „Rezumă cu RA Insight” și în rezumatul agenților — un singur loc.
 const ECHIPAMENTUL = 'ECHIPAMENTUL: aparatul GPS, senzorii (de combustibil, de temperatură), legătura cu calculatorul mașinii și montajul sunt treaba ' +
-  'RA Track, nu a omului. Nu-i cere să verifice, să repare sau să ceară echipament („verifică dacă are senzor", „verifică aparatul", ' +
-  '„sună instalatorul") și nu pune o cifră lipsă pe seama lor. Spune doar faptul: „la B 154 UIP consumul e socotit din fișă, nu măsurat".';
+  'RA Track, nu a omului. Nu-i cere să verifice, să repare sau să ceară echipament („verifică dacă are senzor”, „verifică aparatul”, ' +
+  '„sună instalatorul”) și nu pune o cifră lipsă pe seama lor. Spune doar faptul: „la B 154 UIP consumul e socotit din fișă, nu măsurat”.';
 
-// ─── Analiza atentă (28.10; Alin, la propunerea „Analiza aprofundată, făcută de Haiku": „1 da") ───────────────────────
-// La întrebările grele — „de ce?", „compară", „ce să fac" (aiRaport.PENTRU_INSIGHT) — același Haiku lucrează mai atent, la toate
-// pachetele cu AI: gândește mai mult (efortul „medium", în ai.js), își face singur comparația cu perioada dinainte și răspunde
-// mereu în aceeași formă. Fără model nou, fără etichetă nouă pe ecran (insigna rămâne „Analiză · 1 întrebare"). Textul stă aici,
+// ─── Analiza atentă (28.10; Alin, la propunerea „Analiza aprofundată, făcută de Haiku”: „1 da”) ───────────────────────
+// La întrebările grele — „de ce?”, „compară”, „ce să fac” (aiRaport.PENTRU_INSIGHT) — același Haiku lucrează mai atent, la toate
+// pachetele cu AI: gândește mai mult (efortul „medium”, în ai.js), își face singur comparația cu perioada dinainte și răspunde
+// mereu în aceeași formă. Fără model nou, fără etichetă nouă pe ecran (insigna rămâne „Analiză · 1 întrebare”). Textul stă aici,
 // o dată; serverul îl pune în contextul întrebării (nu în partea fixă din cache).
-const ANALIZA_ATENTA = 'ÎNTREBARE DE ANALIZĂ („de ce", „compară", „ce să fac"). Lucrează atent:\n' +
+const ANALIZA_ATENTA = 'ÎNTREBARE DE ANALIZĂ („de ce”, „compară”, „ce să fac”). Lucrează atent:\n' +
   '1. Înainte să răspunzi, citește cu uneltele raportul potrivit pentru perioada întrebării ȘI pentru perioada dinainte, de aceeași lungime ' +
   '(de pildă săptămâna asta și săptămâna trecută), pe mașini; dacă e vorba de condus, și pe șoferi; pe zile, dacă ajută. Ce e deja în ' +
-  '„RAPOARTE FĂCUTE ACUM" nu mai cere o dată.\n' +
+  '„RAPOARTE FĂCUTE ACUM” nu mai cere o dată.\n' +
   '2. Răspunde scurt, în forma asta:\n' +
   '**Ce s-a întâmplat** — o frază, cu cifra principală și comparația cu perioada dinainte.\n' +
   '**De ce** — două-trei cauze, fiecare cu cifra ei din rapoarte (mașina, șoferul, ziua).\n' +
   '**Ce poți face** — doi-trei pași pe care omul îi face singur în aplicație (o alertă, fișa mașinii, discuția cu șoferul, un raport).\n' +
   'Cifrele, numai din ce au întors uneltele. Dacă datele nu ajung pentru o cauză, spune asta pe scurt; nu ghici.';
-// Ce întrebare primește analiza atentă: DOAR „de ce" (și „din ce cauză", „motivul"), „compară" și „ce să fac" („ce ar trebui să
-// fac", „ce pot face") — cum s-a propus. Mai strâmt decât aiRaport.PENTRU_INSIGHT, care prinde și „scrie-i", „cum pot", „explică":
-// acolo forma „Ce s-a întâmplat → De ce → Ce poți face" n-ar avea sens.
+// Ce întrebare primește analiza atentă: DOAR „de ce” (și „din ce cauză”, „motivul”), „compară” și „ce să fac” („ce ar trebui să
+// fac", „ce pot face”) — cum s-a propus. Mai strâmt decât aiRaport.PENTRU_INSIGHT, care prinde și „scrie-i”, „cum pot”, „explică”:
+// acolo forma „Ce s-a întâmplat → De ce → Ce poți face” n-ar avea sens.
 const ANALIZA_RE = /(^|[^a-z])(de ce|din ce cauza|motivul|compar[a-z]*|ce sa fac|ce ar trebui sa fac|ce pot face|ce putem face)([^a-z]|$)/;
 function esteAnaliza(text) { return ANALIZA_RE.test(norm(text || '')); }
 
-// ─── Totalurile unui raport pe fiecare mașină (Alin, 15.10: „De verificat" pe sume bune) ──────────────────────────────
+// ─── Totalurile unui raport pe fiecare mașină (Alin, 15.10: „De verificat” pe sume bune) ──────────────────────────────
 // RA Insight primește din raport cel mult 25 de rânduri; când adună singur cursele pe mașini, greșește (sau adună doar ce
 // vede). Sumele le face aplicația, pe TOATE rândurile: câte rânduri, kilometrii / litrii / leii adunați, viteza cea mai
 // mare. Pe zile (când rândurile țin mai multe zile): aceleași sume pe mașină și pe zi. null = raportul nu e pe mașini.
@@ -482,7 +482,7 @@ function totaluriPeMasina(columns, rows) {
   return out;
 }
 
-// Cele mai mari valori, socotite din TOATE rândurile unui raport (22.10, proba modelelor: „cea mai lungă cursă de luna trecută" —
+// Cele mai mari valori, socotite din TOATE rândurile unui raport (22.10, proba modelelor: „cea mai lungă cursă de luna trecută” —
 // modelul vedea doar primele 25 din 119 curse; Haiku a renunțat după 69 de secunde, Sonnet a citit zi cu zi și tot n-a fost
 // sigur). Pe fiecare coloană cu cifre (km, km/h, lei, litri, consum), primele `n` rânduri, de la cea mai mare. Doar când
 // raportul are mai multe rânduri decât vede modelul (25).
@@ -510,9 +510,9 @@ function celeMaiMari(columns, rows, n) {
 }
 
 // Vorbele despre echipament, prinse în răspunsul modelului (22.10, proba modelelor: „Mașina nu trimite date despre nivelul din
-// rezervor", „întreabă RA Track cum se trece consumul măsurat"). Regula e în ECHIPAMENTUL, dar modelul o mai calcă: aplicația
+// rezervor", „întreabă RA Track cum se trece consumul măsurat”). Regula e în ECHIPAMENTUL, dar modelul o mai calcă: aplicația
 // verifică, ca la literele străine, iar o asemenea frază cere o rescriere (_raInsight). Întoarce frazele găsite.
-// „B 268 ROY nu transmite de 3 zile" e un fapt (RA Watch) și NU se prinde: doar „nu trimite date despre / nivelul".
+// „B 268 ROY nu transmite de 3 zile” e un fapt (RA Watch) și NU se prinde: doar „nu trimite date despre / nivelul”.
 const ECHIP_RE = [
   /\bnu\s+(?:mai\s+)?(?:trimite|transmite)\s+(?:date(?:le)?\s+despre|nivelul)/i,
   /\bsenzorul\b[^.!?\n]{0,40}\b(?:blocat|defect|stricat|necalibrat)/i,

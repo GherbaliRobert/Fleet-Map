@@ -1,4 +1,4 @@
-// workschedule.js — program de lucru + „e ora curentă în program?". Logică pură (testabilă), fără DB.
+// workschedule.js — program de lucru + „e ora curentă în program?”. Logică pură (testabilă), fără DB.
 // Structură: { enabled, tz, tolerance_min, days:{mon:[{from,to}],...}, holidays:['YYYY-MM-DD'] }.
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 function _hmOk(s) { return /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(s || '')); }
@@ -55,7 +55,7 @@ function isWithin(sched, nowMs) {
   if (!sched || !sched.enabled) return true;
   const tz = sched.tz || 'Europe/Bucharest';
   let p; try { p = _tzParts(nowMs, tz); } catch (e) { return true; } // fus invalid → nu bloca (fail-safe)
-  if (Array.isArray(sched.holidays) && sched.holidays.indexOf(p.ymd) >= 0) return false; // zi liberă → orice mișcare e „în afara"
+  if (Array.isArray(sched.holidays) && sched.holidays.indexOf(p.ymd) >= 0) return false; // zi liberă → orice mișcare e „în afara”
   const intervals = (sched.days && sched.days[p.wd]) || [];
   if (!intervals.length) return false;                       // ziua nu are program
   const tol = Math.max(0, parseInt(sched.tolerance_min) || 0);

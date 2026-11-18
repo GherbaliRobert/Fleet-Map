@@ -1,13 +1,13 @@
-// factura_pdf.js — factura și proforma, ca fișier PDF făcut pe server (Alin, 30.09: „de acord, apucă-te").
+// factura_pdf.js — factura și proforma, ca fișier PDF făcut pe server (Alin, 30.09: „de acord, apucă-te”).
 //
 // Până atunci, factura se deschidea într-o fereastră de printare (HTML) din care omul își salva singur un PDF —
 // cu numele pe care îl alegea el și cu fontul pe care îl avea browserul. Acum se face aici, ca oferta
 // (`report_export.js`) și contractul (`contract_pdf.js`): logo-ul casei pentru fundal alb, fonturile cu
-// diacritice și numele „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf". Aceeași hârtie pleacă și
-// atașată la email (`server.js` → trimiterea facturii), deci ce vede clientul pe email, în „Facturile mele"
+// diacritice și numele „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf”. Aceeași hârtie pleacă și
+// atașată la email (`server.js` → trimiterea facturii), deci ce vede clientul pe email, în „Facturile mele”
 // și ce descărcăm noi e UNUL și același fișier.
 //
-// Fișierul e CURAT: primește factura (cu emitentul și clientul „înghețați" în ea la emitere) și o desenează.
+// Fișierul e CURAT: primește factura (cu emitentul și clientul „înghețați” în ea la emitere) și o desenează.
 // Nu atinge baza și nu știe de rute.
 
 const PDFDocument = require('pdfkit');
@@ -19,7 +19,7 @@ const TEXT = '#1a2235', GRI = '#64748b', GRI_TEXT = '#475569', LINIE = '#e2e8f0'
 const PORTOCALIU = '#c2410c';   // doar pe previzualizare: să nu poată fi luată drept document emis
 
 let _logoBuf = null, _logoTried = false;
-// „logo-light.png" e varianta ÎNCHISĂ (pentru fundal deschis) — pe hârtie albă asta se vede (regula casei).
+// „logo-light.png” e varianta ÎNCHISĂ (pentru fundal deschis) — pe hârtie albă asta se vede (regula casei).
 function _logo() {
   if (!_logoTried) { _logoTried = true; try { _logoBuf = fs.readFileSync(path.join(__dirname, 'public', 'logo-light.png')); } catch (e) { _logoBuf = null; } }
   return _logoBuf;
@@ -40,8 +40,8 @@ function _bani(n) {
   return (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// CUI-ul, cum se scrie pe factură: cu „RO" în față DOAR la o firmă plătitoare de TVA (atunci e codul ei de TVA),
-// fără „RO" la una neplătitoare. Plătitoare = orice în afară de un `false` explicit (așa e și în baza de date).
+// CUI-ul, cum se scrie pe factură: cu „RO” în față DOAR la o firmă plătitoare de TVA (atunci e codul ei de TVA),
+// fără „RO” la una neplătitoare. Plătitoare = orice în afară de un `false` explicit (așa e și în baza de date).
 // Până pe 30.09 se scria exact ce se tastase, iar TVA-ul adus de la ANAF nu se salva nicăieri.
 function cuiAfisat(cui, platitorTva) {
   const cifre = String(cui == null ? '' : cui).replace(/\s+/g, '').replace(/^RO/i, '');
@@ -50,7 +50,7 @@ function cuiAfisat(cui, platitorTva) {
 }
 
 // Numele fișierului, după regula casei (ca rapoartele, ofertele și contractele):
-// „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf" / „RA-Track - Proformă PF-2027-00001 - …".
+// „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf” / „RA-Track - Proformă PF-2027-00001 - …”.
 // Caracterele interzise în numele de fișier se scot din TOT numele.
 function numeFisier(inv) {
   const curat = function (t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim(); };
@@ -68,7 +68,7 @@ function _jos(doc) { return doc.page.height - doc.page.margins.bottom; }
 
 // Desenează factura pe un document pdfkit (sau pe orice obiect cu aceleași metode — așa o citește proba).
 //   inv: rândul facturii, cu `issuer` și `client` înghețați la emitere, `lines`, totaluri, `note`, `fel`, `type`
-//   emitentAcum: „Date emitent" de azi, DOAR ca rezervă pentru facturile vechi fără emitent înghețat
+//   emitentAcum: „Date emitent” de azi, DOAR ca rezervă pentru facturile vechi fără emitent înghețat
 // Coloanele JSON pot veni din bază și ca text (după motor): le citim oricum ar veni.
 function _json(v) { if (v && typeof v === 'object') return v; if (typeof v === 'string' && v) { try { return JSON.parse(v); } catch (e) {} } return null; }
 function scrieFactura(doc, inv, emitentAcum) {
@@ -95,7 +95,7 @@ function scrieFactura(doc, inv, emitentAcum) {
 
   // ── Părțile: două casete de aceeași înălțime ──
   const gap = 14, bw = (w - gap) / 2, pad = 12, y0 = yLinie + 16;
-  // Cota scrisă sus e cea APLICATĂ pe rânduri (serverul le pune pe toate cota din „Date emitent"), apoi cea a emitentului;
+  // Cota scrisă sus e cea APLICATĂ pe rânduri (serverul le pune pe toate cota din „Date emitent”), apoi cea a emitentului;
   // fără niciuna, cea legală de azi — 21% din 01.08.2025 (până pe 01.10 hârtia scria aici 19%: lista lui Robert, pct. 4).
   const tva = (linii[0] && linii[0].vatRate != null) ? linii[0].vatRate : (iss.vat_rate != null ? iss.vat_rate : 21);
   const furnizor = [
@@ -117,7 +117,7 @@ function scrieFactura(doc, inv, emitentAcum) {
     randuri.forEach(function (r) { h += doc.heightOfString(r, { width: bw - 2 * pad }) + 2; });
     return h + pad;
   };
-  const numeFurnizor = iss.name || '(completează „Date emitent")';
+  const numeFurnizor = iss.name || '(completează „Date emitent”)';
   const numeClient = cl.name || inv.company_name || '—';
   const hBox = Math.max(inaltime(numeFurnizor, furnizor), inaltime(numeClient, client));
   const caseta = function (x, eticheta, nume, randuri) {
@@ -203,7 +203,7 @@ function scrieFactura(doc, inv, emitentAcum) {
     doc.font(bold ? 'Nunito-Bold' : 'Nunito').fontSize(9).fillColor(TEXT).text(text, left, y, { width: w });
     y = doc.y + 5;
   };
-  // La factura unică și la proformă, „Perioada" era ziua emiterii de două ori (30.01 → 30.01): acolo stau mențiunile.
+  // La factura unică și la proformă, „Perioada” era ziua emiterii de două ori (30.01 → 30.01): acolo stau mențiunile.
   if (inv.fel === 'unica' || pf) {
     if (inv.note) scrieRand('Mențiuni: ' + inv.note);
   } else {
@@ -217,7 +217,7 @@ function scrieFactura(doc, inv, emitentAcum) {
 
   // ── Josul hârtiei ──
   const subsol = inv.previzualizare
-    ? 'PREVIZUALIZARE — documentul nu e emis încă: numărul, data și trimiterea către client se fac la „Emite". Nu are valoare fiscală.'
+    ? 'PREVIZUALIZARE — documentul nu e emis încă: numărul, data și trimiterea către client se fac la „Emite”. Nu are valoare fiscală.'
     : pf
     ? 'Proformă emisă din platforma RA Track. Document fără valoare fiscală: factura fiscală se emite la încasare, cu aceleași rânduri.'
     : 'Factură emisă electronic din platforma RA Track. Document valabil fără semnătură și ștampilă conform art. 319 alin. (29) Cod fiscal.' +

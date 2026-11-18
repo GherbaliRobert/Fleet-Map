@@ -4,10 +4,10 @@
 //
 // Trei lucruri găsite pe 21.09, umblând prin secțiune:
 //
-//   1. Butonul „Aplică RA Insight pe companie" NU FĂCEA NIMIC la ofertele cu pachet de apeluri —
-//      adică exact cazul obișnuit. Rămăsese în text „· peste cotă X €/apel", de pe vremea când
+//   1. Butonul „Aplică RA Insight pe companie” NU FĂCEA NIMIC la ofertele cu pachet de apeluri —
+//      adică exact cazul obișnuit. Rămăsese în text „· peste cotă X €/apel”, de pe vremea când
 //      depășirea se plătea; funcția a fost scoasă deliberat, variabila a plecat cu ea, textul a
-//      rămas. Fereastra crăpa cu `priceEur is not defined`. La ofertele „nelimitat" mergea, de-aia
+//      rămas. Fereastra crăpa cu `priceEur is not defined`. La ofertele „nelimitat” mergea, de-aia
 //      n-a sărit în ochi.
 //   2. Lista de oferte arăta doar abonamentul lunar. Banii de la ÎNCEPUT (montaj + aparate) —
 //      de obicei suma cea mare, 7.000 de lei lângă 290 lei/lună — lipseau cu totul.
@@ -44,11 +44,11 @@ function bloc(sursa, a, b) {
   if (i < 0 || j < 0 || j <= i) throw new Error('nu găsesc blocul ' + a);
   return sursa.slice(i, j);
 }
-const PAL = bloc(html, '// ── începe „pâlnia de oferte"', '// ── sfârșit „pâlnia de oferte"');
-const RUTE = bloc(server, '// ── începe „pâlnia de oferte"', '// ── sfârșit „pâlnia de oferte"');
+const PAL = bloc(html, '// ── începe „pâlnia de oferte”', '// ── sfârșit „pâlnia de oferte”');
+const RUTE = bloc(server, '// ── începe „pâlnia de oferte”', '// ── sfârșit „pâlnia de oferte”');
 const faraComentarii = (s) => s.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
-sect('1. Butonul ✨ „Aplică RA Insight pe companie" a fost SCOS de tot');
+sect('1. Butonul ✨ „Aplică RA Insight pe companie” a fost SCOS de tot');
 // Pe 21.09 a fost reparat (crăpa cu `priceEur is not defined`). Pe 22.09 a plecat cu totul: era o a
 // DOUA cale spre ceva ce se întâmplă singur la semnare — contractul făcut din ofertă aprinde ce s-a
 // vândut (`_aplicaOfertaPeFirma`) — iar el o cerea pe un ecran unde clientul de obicei nici nu
@@ -59,8 +59,8 @@ T('ruta de pe server a plecat odată cu el', !/apply-to-company/.test(faraComent
 // Regula pentru care a existat proba asta rămâne: când scoți o funcție, îi scoți și CUVINTELE.
 T('`priceEur` a dispărut din pagină', !/priceEur/.test(faraComentarii(html)));
 T('nu mai există preț pe întrebare nicăieri', !/€\/apel/.test(faraComentarii(html)));
-// Pastila „AI" de pe rând rămâne — ea doar SPUNE că oferta include RA Insight, nu face nimic.
-T('pastila „AI" rămâne pe rând', /hasAi \? '<span[\s\S]{0,220}>AI<\/span>/.test(html));
+// Pastila „AI” de pe rând rămâne — ea doar SPUNE că oferta include RA Insight, nu face nimic.
+T('pastila „AI” rămâne pe rând', /hasAi \? '<span[\s\S]{0,220}>AI<\/span>/.test(html));
 // (23.09) Se aprinde când contractul se face DIN ofertă — ca ciornă, nu abia la semnare — și primește
 // acum și socoteala ofertei (prețul pe mașină), ca să scrie pe firmă și prețul de facturare.
 T('iar ce s-a vândut se aprinde când contractul se face din ofertă, într-un singur loc',
@@ -74,7 +74,7 @@ T('socotit cu cursul ÎNGHEȚAT în ofertă, nu cu cel de azi',
   /\(r\.hwTotal \|\| 0\) \* \(r\.cfg\.fxRate \|\| _fxRate\)/.test(html));
 T('serverul îl primește și îl scrie', /once_total: b\.once_total/.test(server) && /once_total/.test(dbsrc));
 T('coloana există în bază', /ALTER TABLE offers ADD COLUMN IF NOT EXISTS once_total/.test(dbsrc));
-T('ofertele vechi arată o liniuță, nu „0 lei"',
+T('ofertele vechi arată o liniuță, nu „0 lei”',
   /o\.once_total != null && Number\(o\.once_total\) > 0[\s\S]{0,400}>—<\/span>/.test(html));
 T('amândouă sumele, în lei ȘI euro', /var bani = function \(lei, fx\)[\s\S]{0,300}' lei<\/b>'[\s\S]{0,200}' €<\/span>'/.test(html));
 T('cursul din ofertă, nu cel de azi', /var fxOf = function \(o\) \{ return \(\(o\.config && o\.config\.cfg && o\.config\.cfg\.fxRate\) \|\| _fxRate\); \}/.test(html));
@@ -86,11 +86,11 @@ T('și motivele pentru care se pierde o ofertă', /const OFERTA_MOTIVE_PIERDUT =
 T('ecranul le CERE de la server, nu le scrie',
   /\/api\/admin\/offers\/meta/.test(PAL) && !/OFERTA_MOTIVE_PIERDUT/.test(PAL));
 T('ecranul nu-și scrie lista de motive', !/A ales alt furnizor/.test(PAL) && /A ales alt furnizor/.test(RUTE));
-// Fereastra „ultima lună" (30 de zile) e altceva decât termenul ofertei — e o fereastră de
+// Fereastra „ultima lună” (30 de zile) e altceva decât termenul ofertei — e o fereastră de
 // privit, nu o regulă de afacere. De-aia se scoate din căutare, ca să nu dea alarmă falsă.
 T('ecranul nu-și scrie termenul', !/\b30\b/.test(faraComentarii(PAL).replace(/30 \* 86400000/g, '')),
   (faraComentarii(PAL).replace(/30 \* 86400000/g, '').match(/\b30\b/g) || []).join(','));
-T('și nici nu ține o valoare „de rezervă" pentru el', /valabilZile: null/.test(PAL));
+T('și nici nu ține o valoare „de rezervă” pentru el', /valabilZile: null/.test(PAL));
 // Orice stare pe care o scrie serverul trebuie să aibă un cuvânt pe ecran, altfel apare o pastilă goală.
 const stariServer = (RUTE.match(/const OFERTA_STARI = \[([^\]]+)\]/) || [, ''])[1]
   .split(',').map(s => s.trim().replace(/'/g, '')).filter(Boolean);
@@ -98,11 +98,11 @@ T('fiecare stare de pe server are un cuvânt pe ecran',
   stariServer.length === 4 && stariServer.every(s => new RegExp('\\b' + s + ':\\s*\\{').test(PAL)),
   stariServer.join(','));
 
-sect('4. „Expirată" se socotește, nu se ține în bază');
+sect('4. „Expirată” se socotește, nu se ține în bază');
 T('starea arătată se face dintr-o singură funcție', /function _ofStare\(o\)/.test(PAL));
-T('și „expirată" iese din termen, nu din coloană',
+T('și „expirată” iese din termen, nu din coloană',
   /s === 'trimisa' && o\.valid_until && Number\(o\.valid_until\) < Date\.now\(\)[\s\S]{0,40}'expirata'/.test(PAL));
-T('serverul NU cunoaște starea „expirata"', !/'expirata'/.test(RUTE) && !/expirata/.test(dbsrc));
+T('serverul NU cunoaște starea „expirata”', !/'expirata'/.test(RUTE) && !/expirata/.test(dbsrc));
 
 sect('5. Ce poți face cu o ofertă, după starea ei');
 T('butoanele se aleg din stare', /function _ofButoaneStare\(o\)/.test(PAL));
@@ -110,17 +110,17 @@ T('o ciornă nu se poate pierde — n-ai trimis-o', /if \(s === 'ciorna'\) retur
 T('una trimisă sau expirată se acceptă sau se pierde',
   /if \(s === 'trimisa' \|\| s === 'expirata'\) return b\('raxOfAcceptata'[\s\S]{0,120}raxOfPierduta/.test(PAL));
 T('una decisă se poate redeschide', /return b\('raxOfRedeschide'/.test(PAL));
-T('„Pierdută" cere un motiv', /window\.raxOfPierduta = function \(id\)[\s\S]{0,700}ra-of-dlg-motiv/.test(PAL));
+T('„Pierdută” cere un motiv', /window\.raxOfPierduta = function \(id\)[\s\S]{0,700}ra-of-dlg-motiv/.test(PAL));
 T('fereastra e una singură, refolosită', /function _ofFereastra\(titlu, ic, corp, onOk\)/.test(PAL)
   && (PAL.match(/_ofFereastra\(/g) || []).length >= 3);
 
-sect('5b. „Ce rămâne la noi" — profitul, fără să inventeze cifre');
-const PROF = bloc(html, '// ── începe „ce rămâne la noi"', '// ── sfârșit „ce rămâne la noi"');
-const COST = bloc(server, '// ── începe „costurile noastre"', '// ── sfârșit „costurile noastre"');
+sect('5b. „Ce rămâne la noi” — profitul, fără să inventeze cifre');
+const PROF = bloc(html, '// ── începe „ce rămâne la noi”', '// ── sfârșit „ce rămâne la noi”');
+const COST = bloc(server, '// ── începe „costurile noastre”', '// ── sfârșit „costurile noastre”');
 T('serverul ține cheile costurilor', /const COST_CHEI_EUR = \[/.test(COST) && /const COST_CHEI_LEI = \[/.test(COST));
-// Regula care contează: o cifră netrecută rămâne GOALĂ, nu zero. „Nu știm cât ne costă" și „ne costă
+// Regula care contează: o cifră netrecută rămâne GOALĂ, nu zero. „Nu știm cât ne costă” și „ne costă
 // zero" sunt două lucruri diferite — amestecate, un aparat fără preț ar arăta profit 100%.
-T('o cifră netrecută rămâne GOALĂ, nu zero', /o\[k\] = null;/.test(COST) && /=== ''[\s\S]{0,80}return;\s*\/\/ rămâne „nu știm"/.test(COST));
+T('o cifră netrecută rămâne GOALĂ, nu zero', /o\[k\] = null;/.test(COST) && /=== ''[\s\S]{0,80}return;\s*\/\/ rămâne „nu știm”/.test(COST));
 T('valorile se curăță la intrare', /function _costuriCurate\(b\)/.test(COST) && /n >= 0 && n <= 1000000/.test(COST));
 T('se salvează doar de super-admin',
   /app\.put\('\/api\/admin\/system-settings', requireAuth, requireSuperadmin/.test(server)
@@ -137,10 +137,10 @@ T('spune în cât timp ne scoatem banii', /recuperare:/.test(PROF));
 // SERVER (`renderOfertaPdf`), deci acolo se uită proba — plus la ce TRIMITE ecranul: dacă profitul
 // n-ajunge în pachet, n-are cum să apară pe hârtie.
 const PDFSRV = bloc(fs.readFileSync(P('report_export.js'), 'utf8'),
-  '// ─── începe „oferta, ca fișier descărcat"', '// ─── sfârșit „oferta, ca fișier descărcat"');
-const PDFOF = bloc(html, '// ── începe „Oferta pe hârtie"', '// ── sfârșit „Oferta pe hârtie"');
-// „Detaliere costuri unice" sunt costurile CLIENTULUI — alea au ce căuta pe hârtie. Se caută
-// exact ce NU trebuie să ajungă acolo: cifrele NOASTRE. (Prima variantă căuta doar „costuri" și
+  '// ─── începe „oferta, ca fișier descărcat”', '// ─── sfârșit „oferta, ca fișier descărcat”');
+const PDFOF = bloc(html, '// ── începe „Oferta pe hârtie”', '// ── sfârșit „Oferta pe hârtie”');
+// „Detaliere costuri unice” sunt costurile CLIENTULUI — alea au ce căuta pe hârtie. Se caută
+// exact ce NU trebuie să ajungă acolo: cifrele NOASTRE. (Prima variantă căuta doar „costuri” și
 // se împiedica de titlul de secțiune.)
 T('hârtia nu știe nimic despre costurile noastre',
   !/_costNoastre|costuri_noastre|cVehLuna|profit|rămâne la noi|ne costă/i.test(PDFSRV));
@@ -148,10 +148,10 @@ T('și ecranul nici nu i le trimite',
   !/costuri|profit|cVehLuna/i.test(PDFOF));
 
 sect('5c. Calculatorul: butonul cinstit, textele care se scriu singure, tarifele care rămân');
-const TXT = bloc(html, '// ── începe „textele care se scriu singure"', '// ── sfârșit „textele care se scriu singure"');
-const TAR = bloc(html, '// ── începe „tarifele de listă"', '// ── sfârșit „tarifele de listă"');
-const TARS = bloc(server, '// ── începe „tarifele de listă"', '// ── sfârșit „tarifele de listă"');
-// Butonul zicea „Trimite clientului (PDF)" și NU trimitea nimic nimănui — deschide o fereastră de
+const TXT = bloc(html, '// ── începe „textele care se scriu singure”', '// ── sfârșit „textele care se scriu singure”');
+const TAR = bloc(html, '// ── începe „tarifele de listă”', '// ── sfârșit „tarifele de listă”');
+const TARS = bloc(server, '// ── începe „tarifele de listă”', '// ── sfârșit „tarifele de listă”');
+// Butonul zicea „Trimite clientului (PDF)” și NU trimitea nimic nimănui — deschide o fereastră de
 // printare. Clientul nici nu există încă la noi (Alin, 21.09).
 T('butonul spune ce face: descarcă', /Descarcă oferta \(PDF\)/.test(html));
 T('și nu mai promite că trimite', !/Trimite clientului/.test(faraComentarii(html)));
@@ -167,15 +167,15 @@ T('pasul 2 explică CAN vs FMS', /priza standard de camion/.test(html) && /modul
 T('și de ce o mașină cu CAN are două linii de montaj', /mai are o linie de montaj deasupra — munca în plus/.test(html));
 T('serverul ține tarifele de listă', /const TARIF_CHEI = \[/.test(TARS) && /function _tarifeCurate\(b, existent\)/.test(TARS));
 // ⚠ Și le ÎMBINĂ, nu le rescrie: o cheie netrimisă își păstrează valoarea. Sunt două căi de salvare
-// (tabloul „Prețurile noastre" și butonul din cărți) cu chei diferite; rescrierea făcea ca a doua să
+// (tabloul „Prețurile noastre” și butonul din cărți) cu chei diferite; rescrierea făcea ca a doua să
 // șteargă pe tăcute ce salvase prima — de pildă grila RA Insight (23.09).
 T('și le ÎMBINĂ: o cheie netrimisă își păstrează valoarea',
   /if \(!\(k in b\)\) \{ out\[k\] = \(vechi\[k\] != null/.test(TARS));
-T('un tarif netrecut înseamnă „ia-l din cod", nu zero',
+T('un tarif netrecut înseamnă „ia-l din cod”, nu zero',
   /out\[k\] = null; return;/.test(TARS) && /: null;\s*\n\s*\}\);/.test(TARS));
 T('ecranul le cere și le îmbină peste cele din cod',
   /function _ofTarifeDeBaza\(\)[\s\S]{0,140}Object\.assign\(\{\}, _OF_PRETURI_DEF, _tarifeCurateLocal\(_tarifeLista\)\)/.test(TAR));
-T('„Ofertă nouă" pornește de la tarifele NOASTRE, nu de la cele din cod',
+T('„Ofertă nouă” pornește de la tarifele NOASTRE, nu de la cele din cod',
   /raxOfReset = function[\s\S]{0,140}_raxOf\.prices = _ofTarifeDeBaza\(\)/.test(html));
 T('există butonul care le face tarifele casei',
   /window\.raxOfSalveazaTarife = async function/.test(TAR) && /Salvează ca tarifele noastre/.test(html));
@@ -183,15 +183,15 @@ T('o ofertă deschisă din listă își ține prețurile ei negociate',
   /if \(_raxOf\.editingId == null\) _raxOf\.prices = _ofTarifeDeBaza\(\);/.test(html));
 
 sect('5d. Oferta se DESCARCĂ, ca un raport');
-// Se „descărca" deschizând o fereastră de printare din care salvai tu un PDF. Nu era o descărcare,
-// era o rugăminte către browser (Alin, 21.09: „asta înseamnă descărcare").
+// Se „descărca” deschizând o fereastră de printare din care salvai tu un PDF. Nu era o descărcare,
+// era o rugăminte către browser (Alin, 21.09: „asta înseamnă descărcare”).
 T('nu mai deschide o fereastră de printare', !/window\.open/.test(PDFOF) && !/window\.print/.test(PDFOF));
 T('cere fișierul de la server', /fetch\('\/api\/admin\/offers\/pdf'/.test(PDFOF));
 T('și îl salvează ca fișier', /a\.download = nume/.test(PDFOF) && /URL\.createObjectURL\(blob\)/.test(PDFOF));
 T('numele vine din antetul răspunsului, nu inventat în pagină', /_numeDinAntet\(resp, 'ofertă\.pdf'\)/.test(PDFOF));
 // Antetul poartă numele de două ori: unul curățat de diacritice (pentru browsere vechi) și cel
 // adevărat, `filename*=UTF-8''`. Regula veche prindea prima potrivire, deci fișierul se salva
-// „RA-Track - Oferta …" în loc de „Ofertă". Un singur cititor, folosit și de Inventar.
+// „RA-Track - Oferta …” în loc de „Ofertă”. Un singur cititor, folosit și de Inventar.
 T('și se citește cu UN singur cititor, care cere ÎNTÂI varianta cu diacritice',
   /function _numeDinAntet\(resp, implicit\)/.test(html)
   && /cd\.match\(\/filename\\\*=\\s\*UTF-8''\(\[\^;\]\+\)\/i\)/.test(html)
@@ -215,7 +215,7 @@ T('ruta e doar a noastră',
   /app\.post\('\/api\/admin\/offers\/pdf', requireAuth, requireSuperadmin/.test(server));
 T('termenul îl pune SERVERUL, din aceeași constantă', /o\.valabilZile = OFERTA_VALABIL_ZILE;/.test(server));
 
-sect('5d-bis. „Vezi hârtia": te uiți la ofertă fără s-o descarci (22.09)');
+sect('5d-bis. „Vezi hârtia”: te uiți la ofertă fără s-o descarci (22.09)');
 // Butonul de previzualizare din lista de oferte. Regula: previzualizarea NU are voie să deseneze
 // altceva decât fișierul care pleacă la client — deci trece prin ACEEAȘI funcție și aceeași rută.
 T('butonul e pe rândul ofertei', /onclick="raxOfPreview\(' \+ o\.id \+ '\)"/.test(html));
@@ -241,7 +241,7 @@ T('politica de securitate lasă hârtia să se vadă în pagină',
   /"frame-src 'self' blob:"/.test(server));
 T('dar nu ne face și pe noi încadrabili de alții', /"frame-ancestors 'none'"/.test(server));
 // Plasa, pentru browserele care nu desenează PDF-uri deloc: o ancoră obișnuită, nu o fereastră
-// deschisă din cod (regula „oferta se descarcă, nu se printează" rămâne în picioare).
+// deschisă din cod (regula „oferta se descarcă, nu se printează” rămâne în picioare).
 T('și, dacă tot nu se vede, un link către o filă nouă',
   /deschide-o într-o filă nouă/.test(PDFOF) && /target="_blank" rel="noopener"/.test(PDFOF));
 T('fereastra se închide și eliberează fișierul din memorie',
@@ -253,9 +253,9 @@ T('oferta îngheață ziua și sursa cursului, nu doar cifra',
 T('iar hârtia le ia din ofertă, nu de pe ecran',
   /fxDate: r\.cfg\.fxDate \|\| null, fxSursa: r\.cfg\.fxSursa \|\| null,/.test(PDFOF));
 
-sect('5d-ter. Pastila „AI" stă pe mijlocul numelui');
+sect('5d-ter. Pastila „AI” stă pe mijlocul numelui');
 // Cu `vertical-align:middle`, o pastilă de 9,5px cu chenar cade vizibil sub linia numelui: acel
-// „middle" e față de linia de bază plus jumătate din litera mică, nu față de mijlocul rândului.
+// „middle” e față de linia de bază plus jumătate din litera mică, nu față de mijlocul rândului.
 T('numele și pastila stau într-o cutie flex, aliniate pe mijloc',
   /display:inline-flex;align-items:center;gap:6px;"><b>' \+ esc\(o\.name/.test(html));
 T('pastila nu se mai sprijină pe `vertical-align`',
@@ -264,11 +264,11 @@ T('pastila nu se mai sprijină pe `vertical-align`',
 sect('5e. Tarifele se schimbă acolo unde se folosesc');
 T('cantitatea și prețul stau pe același rând', /function qp\(idQ, idP, pret, um, umPret\)/.test(html));
 T('montajul are prețul lângă cantitate', /row\('Instalare dispozitiv GPS', qp\('of-qGps', 'of-mGps'/.test(html));
-// Aparatele au rândul lor, `devRand` (25.09): cantitatea × UN preț pe același rând — vânzarea la „cumpără",
-// chiria la „închiriază". Regula e aceeași: prețul stă lângă cantitate.
+// Aparatele au rândul lor, `devRand` (25.09): cantitatea × UN preț pe același rând — vânzarea la „cumpără”,
+// chiria la „închiriază”. Regula e aceeași: prețul stă lângă cantitate.
 T('aparatele, la fel', /devRand\('Teltonika FMC650', 'of-dq650', 'of-dFmc650'/.test(html) &&
   /function devRand\(eticheta, idQ, idP, pret, idCh, chirie, hint\) \{\s*\n\s*return row\(eticheta,\s*\n\s*fNum\(idQ,[\s\S]{0,260}fNum\(idP, pret,/.test(html));
-T('prețurile primesc pas zecimal (altfel browserul refuză „12,50")',
+T('prețurile primesc pas zecimal (altfel browserul refuză „12,50”)',
   /fNum\(idP, pret, '', 78, 0\.01\)/.test(html));
 T('butonul de salvare e scris o dată și refolosit',
   /function butonTarife\(text\)/.test(html) && (html.match(/butonTarife\(deTarife\)/g) || []).length >= 3);
@@ -277,7 +277,7 @@ const deDouaOri = ['mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace'
   'dFmc130', 'dFmc150', 'dFmc650', 'dLvCan', 'pPlain', 'pCan', 'pFms']
   .filter(k => (html.match(new RegExp("'of-" + k + "'", 'g')) || []).length !== 1);
 T('niciun câmp de preț nu apare de două ori', deDouaOri.length === 0, deDouaOri.join(','));
-// ⚠ Prima variantă a probei căuta textul „Tarife lunare (editabile)" — care a rămas în comentariul
+// ⚠ Prima variantă a probei căuta textul „Tarife lunare (editabile)” — care a rămas în comentariul
 // care explică de ce panoul a fost scos. Trecea degeaba. Acum se verifică LOCUL fiecărui preț:
 // trebuie să fie în cartea lucrului pe care-l prețuiește, iar panoul pliat să nu mai existe deloc.
 // ⚠ Se caută ÎNCEPÂND de la cartea respectivă, nu de la capul fișierului: `of-pPachet` apare întâi
@@ -307,7 +307,7 @@ T('prețurile aparatelor stau la pasul 5', ['dFmc130', 'dFmc150', 'dFmc650', 'dL
 T('panoul pliat cu tarife a dispărut cu totul', /var priceCard = '';/.test(html) && !/<details[^>]*>[\s\S]{0,200}Tarife lunare/.test(html));
 
 sect('5f. Lista de oferte e SUS, și te duce la ea după salvare');
-// ⚠ `indexOf` întoarce -1 când nu găsește — iar -1 e „mai mic" decât orice. Prima variantă a probei
+// ⚠ `indexOf` întoarce -1 când nu găsește — iar -1 e „mai mic” decât orice. Prima variantă a probei
 // trecea liniștită și dacă lista dispărea cu totul. De-aia se cere ÎNTÂI ca amândouă să existe.
 const iLista = html.indexOf("'<div id=\"rax-of-list\" style=\"margin-bottom:22px;\"></div>' +");
 const iGrila = html.indexOf("'<div class=\"raof-grid\">' +");
@@ -315,7 +315,7 @@ T('lista se desenează înaintea calculatorului', iLista >= 0 && iGrila >= 0 && 
   'listă la ' + iLista + ', grilă la ' + iGrila);
 T('după salvare sare la ea', /raxOfLoadList\(\);[\s\S]{0,220}raxOfLaLista\(\);/.test(html));
 
-sect('5f-bis. „Prețurile noastre": tot ce cerem și tot ce ne costă, într-un tablou');
+sect('5f-bis. „Prețurile noastre”: tot ce cerem și tot ce ne costă, într-un tablou');
 // În ofertă schimbi un preț la locul lui (pașii 2–5). Dar când îți ACTUALIZEZI lista („am găsit
 // aparate mai ieftine"), vrei să le vezi pe toate deodată, cu ce ne costă alături (Alin, 21.09).
 T('lista de prețuri e scrisă într-un singur loc', /var _PRET_GRUPURI = \[/.test(PROF));
@@ -327,7 +327,7 @@ T('iar cursul stă PRIMUL, că mișcă toate celelalte cifre',
   && PROF.indexOf("{ t: 'Curs euro'") < PROF.indexOf("{ t: 'Abonament lunar, pe mașină'"));
 T('un rând e [cât cerem, eticheta, cât ne costă]', /\['pPlain', 'Vehicul fără CAN', null\]/.test(PROF)
   && /\['mGps', 'Instalare dispozitiv GPS', 'mGps'\]/.test(PROF));
-T('numele din „nu pot socoti profitul" vin din ACEEAȘI listă',
+T('numele din „nu pot socoti profitul” vin din ACEEAȘI listă',
   /function _costNume\(\)/.test(PROF) && /var nume = _costNume\(\);/.test(PROF));
 T('tabloul salvează prețurile, costurile ȘI cursul într-o singură apăsare',
   /body: JSON\.stringify\(\{ tarife_lista: tarife, costuri_noastre: costuri, curs_eur: cursNou \}\)/.test(PROF));
@@ -353,7 +353,7 @@ T('și coloana rămâne dreaptă, oricât de lung ar fi textul',
   /\.rax-pret-c\{[^}]*flex-direction:column/.test(fs.readFileSync(P('public/css/app.css'), 'utf8')));
 
 sect('5f-ter. Cursul: românește, și cinstit despre unde vine');
-// „1 € = 5.0000 lei" e scris greșit (punctul e separator de MII în română) ȘI e o cifră de
+// „1 € = 5.0000 lei” e scris greșit (punctul e separator de MII în română) ȘI e o cifră de
 // rezervă purtând numele BNR. Amândouă reparate (Alin, 21.09).
 T('ecranul știe de unde vine cursul', /var _fxSursa = localStorage\.getItem\('raFxSursa'\)/.test(html)
   && /_fxSursa = f\.source \|\| ''/.test(html));
@@ -368,7 +368,7 @@ T('și nicio celulă de bani nu mai scapă prin `toFixed\(0\)`',
   !/function _fmtLei\(v\) \{ return \(Number\(v\) \|\| 0\)\.toFixed\(0\)/.test(html)
   && !/var sus = \(Number\(v\) \|\| 0\)\.toFixed\(0\)/.test(html));
 // De pe 22.09 cursul poate fi AL NOSTRU: pus de mână, ținut minte pe server, rămâne până îl
-// schimbăm (Alin: „lasă BNR, nu poți pune un alt curs care să rămână?"). BNR rămâne rezerva.
+// schimbăm (Alin: „lasă BNR, nu poți pune un alt curs care să rămână?”). BNR rămâne rezerva.
 T('serverul ține minte cursul nostru, cu ziua în care l-am pus',
   /curs_eur: \(Number\(curs\) > 1 && Number\(curs\) < 100\)/.test(server)
   && /setSetting\('curs_eur_data'/.test(server));
@@ -383,16 +383,16 @@ T('și se pune din tabloul de prețuri, primul rând',
 T('cursul nu pleacă în `tarife_lista`, are cheia lui',
   /if \(r\[0\] === 'cursEur'\)[\s\S]{0,900}curs_eur: cursNou/.test(html)
   && !/tarife\[r\[0\]\][\s\S]{0,40}cursEur/.test(html));
-// ⚠ Rândul cursului a scris „NaN" o zi întreagă: un „+" rămas la capătul rândului de dinainte,
-// peste „+" -ul de la începutul ăstuia — adică `a + +('<div…>')`, plus UNAR pe un șir. Se prinde
-// căutând forma, nu locul: în pagină nu există rând care se termină cu „+" urmat de rând care începe cu „+".
-T('niciun „+" rămas peste altul (așa s-a născut „NaN"-ul de sub rezumat)',
+// ⚠ Rândul cursului a scris „NaN” o zi întreagă: un „+” rămas la capătul rândului de dinainte,
+// peste „+” -ul de la începutul ăstuia — adică `a + +('<div…>')`, plus UNAR pe un șir. Se prinde
+// căutând forma, nu locul: în pagină nu există rând care se termină cu „+” urmat de rând care începe cu „+”.
+T('niciun „+” rămas peste altul (așa s-a născut „NaN”-ul de sub rezumat)',
   !/\+[ \t]*\r?\n\s*\+[^+]/.test(html.replace(/^\s*\/\/.*$/gm, '')));
 
-sect('5f-quater. „Client nou din ofertă" chiar DESCHIDE formularul');
+sect('5f-quater. „Client nou din ofertă” chiar DESCHIDE formularul');
 // Butonul din lista de oferte te ducea în Companii și te lăsa acolo: pașii se desenau, cu datele
 // ofertei deja puse, dar într-o cutie cu `display:none`. Adică exact ce spunea Alin pe 22.09 —
-// „mă duce în companii, dar mai departe tot manual configurez".
+// „mă duce în companii, dar mai departe tot manual configurez”.
 T('fila Companii pornește cu cutia strânsă (așa e gândită)',
   /raxAdminTab = function[\s\S]{0,900}window\.raxCoNouToggle\(false\)/.test(html));
 T('deci traseul din ofertă o deschide DUPĂ ce a schimbat fila',
@@ -402,17 +402,17 @@ T('și nu mai ghicește un număr de milisecunde',
 T('iar formularul ajunge sub ochii tăi, fără să derulezi',
   /getElementById\('rax-conou-box'\);[\s\S]{0,200}scrollIntoView/.test(html));
 
-sect('5g. Marca de pe hârtie: scrie „RA Track"');
-// Fișierele de logo scriau „RA | traks", nu „RA Track" — și ele ajung pe FIECARE raport PDF, pe
+sect('5g. Marca de pe hârtie: scrie „RA Track”');
+// Fișierele de logo scriau „RA | traks", nu „RA Track” — și ele ajung pe FIECARE raport PDF, pe
 // fiecare Excel și pe oferta descărcată (găsit 21.09, uitându-mă la PDF-ul ofertei; hotărât atunci de Alin:
-// „«RA Tracks» trebuie să scrie"; din 09.10, Robert: „RA Track", ca domeniul). Refăcute cu `tools/make-logo.js`,
+// „«RA Tracks» trebuie să scrie”; din 09.10, Robert: „RA Track”, ca domeniul). Refăcute cu `tools/make-logo.js`,
 // din marcă + Nunito ExtraBold — fix fontul cu care aplicația scrie cuvântul în antet.
 T('unealta care le desenează există', fs.existsSync(P('tools/make-logo.js')));
 const MKLOGO = fs.readFileSync(P('tools/make-logo.js'), 'utf8');
-T('și scrie „Track", nu altceva', /const CUV[A-ZÂ]+ = 'Track';/.test(MKLOGO), (MKLOGO.match(/const CUV\S* = '[^']*'/) || [])[0]);
+T('și scrie „Track”, nu altceva', /const CUV[A-ZÂ]+ = 'Track';/.test(MKLOGO), (MKLOGO.match(/const CUV\S* = '[^']*'/) || [])[0]);
 T('cuvântul se scrie cu fontul casei (Nunito ExtraBold), ca în antetul aplicației',
   /Nunito-ExtraBold\.ttf/.test(MKLOGO) && fs.existsSync(P('fonts/Nunito-ExtraBold.ttf')));
-T('marca („RA" + bara verde) rămâne desenul original, nu se rescrie',
+T('marca („RA” + bara verde) rămâne desenul original, nu se rescrie',
   /logo-mark\.png/.test(MKLOGO) && /logo-mark-light\.png/.test(MKLOGO));
 // ⚠ Raportul 694×135 (5,14:1) NU e estetică: `xlPlaceLogo` pune imaginea în Excel cu mărime FIXĂ
 // (180×35). Alt raport = logo turtit în fiecare fișier Excel trimis unui client.
@@ -422,10 +422,10 @@ const pngDim = (f) => { const d = fs.readFileSync(P(f)).slice(16, 24); return [d
   T(f.replace('public/', '') + ' are 694×135, ca așezarea din Excel să rămână dreaptă', w === 694 && h === 135, w + '×' + h);
 });
 T('Excel-ul pune logo-ul la același raport', /ext: \{ width: 180, height: 35 \}/.test(fs.readFileSync(P('report_export.js'), 'utf8')));
-// Robert, 09.10: „schimbă peste tot pe unde avem logoul… am mai găsit Trak și este eronat", apoi „trebuia să fie ratrack
-// nu ratracks… așa avem și domeniul". Marca e „RA Track" (fișierele: „RA-Track - …"). Căutăm în tot ce vede omul — codul
-// fără comentarii (în comentarii stă istoria) — orice „RA Tracks" / „RA-Tracks" rămas și vechiul „traks".
-// Numele tehnice interne (ro.ratracks.app, ratracks-backup, User-Agent „RATracks") sunt cu litere mici / lipite: nu le prinde.
+// Robert, 09.10: „schimbă peste tot pe unde avem logoul… am mai găsit Trak și este eronat”, apoi „trebuia să fie ratrack
+// nu ratracks… așa avem și domeniul". Marca e „RA Track” (fișierele: „RA-Track - …”). Căutăm în tot ce vede omul — codul
+// fără comentarii (în comentarii stă istoria) — orice „RA Tracks” / „RA-Tracks” rămas și vechiul „traks”.
+// Numele tehnice interne (ro.ratracks.app, ratracks-backup, User-Agent „RATracks”) sunt cu litere mici / lipite: nu le prinde.
 T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate deschide de pe site)',
   !fs.existsSync(P('public/_logo-ref-fix.png')));
 (function () {
@@ -444,35 +444,35 @@ T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate des
   const rele = [];
   fisiere.filter((f) => fs.existsSync(P(f))).forEach((f) => {
     // Îngăduite doar două: numele de câteva ore al companiei demo, pe care pornirea îl caută ca să-l întoarcă, și
-    // semnătura webhook-urilor (`User-Agent`), nume tehnic pe care integrările clienților îl pot filtra (Robert: „2 da").
+    // semnătura webhook-urilor (`User-Agent`), nume tehnic pe care integrările clienților îl pot filtra (Robert: „2 da”).
     const s = faraComentarii(fs.readFileSync(P(f), 'utf8')).split("demo.name === 'RA Tracks Demo'").join('')
       .split("'User-Agent': 'RA-Tracks-Webhook/1.0'").join('');
-    // „RA%20Tracks" / „RA+Tracks": numele scris într-o adresă (subiectul unui email) — așa scăpase „Contactează-ne".
+    // „RA%20Tracks” / „RA+Tracks”: numele scris într-o adresă (subiectul unui email) — așa scăpase „Contactează-ne”.
     const m = s.match(/RA(?:[ -]|%20|%2D|\+)Tracks\b|\b[Tt]raks?\b|\bTRAKS?\b|>Tracks</gi);
     if (m) rele.push(f + ': ' + Array.from(new Set(m)).join(', '));
   });
-  T('numele se scrie „RA Track" peste tot ce vede omul (nici „RA Tracks", nici „traks")', rele.length === 0, rele.join(' · '));
+  T('numele se scrie „RA Track” peste tot ce vede omul (nici „RA Tracks”, nici „traks”)', rele.length === 0, rele.join(' · '));
 })();
-// Sigla OFICIALĂ peste tot unde apărea în alt desen (Robert, 09.10: „1 da"): monograma „RA |" (logo-mark*.png) + „Track".
+// Sigla OFICIALĂ peste tot unde apărea în alt desen (Robert, 09.10: „1 da”): monograma „RA |" (logo-mark*.png) + „Track”.
 (function () {
   const citeste = (f) => fs.existsSync(P(f)) ? fs.readFileSync(P(f), 'utf8') : '';
   const md5 = (f) => require('crypto').createHash('md5').update(fs.readFileSync(P(f))).digest('hex');
   const LOGIN = citeste('mobile/src/screens/Login.tsx'), APPT = citeste('mobile/src/App.tsx'), INTRO = citeste('mobile/index.html');
   const sigla = /class="ralogo"[^>]*>\s*<img class="ralm d" src="\/logo-mark\.png"[^>]*>\s*<img class="ralm l" src="\/logo-mark-light\.png"[^>]*>\s*<span class="raw"[^>]*>Track<\/span>/;
   T('telefon: ecranul de intrare și cel de încărcare au sigla oficială (ambele teme)', sigla.test(LOGIN) && sigla.test(APPT));
-  T('telefon: animația de pornire are monograma + „Track"', /class="ra-word"[^>]*><img src="\/logo-mark\.png"[^>]*><span>Track<\/span>/.test(INTRO));
+  T('telefon: animația de pornire are monograma + „Track”', /class="ra-word"[^>]*><img src="\/logo-mark\.png"[^>]*><span>Track<\/span>/.test(INTRO));
   const vechi = /<span[^>]*>RA<\/span>\s*Track/;
-  T('telefon: nicio siglă scrisă doar cu litere („RA" verde + „Track")', !vechi.test(LOGIN) && !vechi.test(APPT) && !vechi.test(INTRO));
+  T('telefon: nicio siglă scrisă doar cu litere („RA” verde + „Track”)', !vechi.test(LOGIN) && !vechi.test(APPT) && !vechi.test(INTRO));
   T('telefon: monogramele sunt copiile EXACTE din public/',
     ['logo-mark.png', 'logo-mark-light.png'].every((f) => fs.existsSync(P('mobile/public/' + f)) && md5('mobile/public/' + f) === md5('public/' + f)));
   const API = citeste('public/api-docs.html');
-  T('documentația API: sigla oficială, nu „RA" verde scris', (API.match(/<span class="ralogo"[^>]*><img src="\/logo-mark\.png"/g) || []).length === 2 && !/\.raw\{color:var\(--accent\)\}/.test(API));
+  T('documentația API: sigla oficială, nu „RA” verde scris', (API.match(/<span class="ralogo"[^>]*><img src="\/logo-mark\.png"/g) || []).length === 2 && !/\.raw\{color:var\(--accent\)\}/.test(API));
   const MAN = citeste('docs_manual/manual.html');
   T('manualul: sigla oficială pe copertă, în subsoluri și la final', (MAN.match(/class="ralogo"/g) || []).length >= 24 && !vechi.test(MAN));
   const FLY = citeste('docs_build/build_docs.js'), AIP = citeste('docs_build/build_ai_docs.js');
-  T('flyerul și statusul: imaginile siglei, nu pătratul verde cu „RA"',
+  T('flyerul și statusul: imaginile siglei, nu pătratul verde cu „RA”',
     /doc\.image\(LOGO_LIGHT/.test(FLY) && /doc\.image\(LOGO_DARK/.test(FLY) && !/text\('RA', M/.test(FLY));
-  T('PDF-ul Agenți AI nu mai promite „24/7" / „non-stop" și nu tipărește emailul care nu primește sau telefonul-șablon',
+  T('PDF-ul Agenți AI nu mai promite „24/7” / „non-stop” și nu tipărește emailul care nu primește sau telefonul-șablon',
     !/24\/7|non-stop|contact@ratrack\.ro|7XX/.test(AIP));
   const SRVE = citeste('server.js');
   T('emailul cu factura: sigla oficială atașată în corp (cid), nu doar text pe bandă verde',
@@ -480,7 +480,7 @@ T('imaginea veche cu „RA | traks" nu mai stă în public/ (nu se mai poate des
     /src="cid:' \+ EMAIL_LOGO\.cid \+ '"/.test(SRVE) && /atasate = \(atasate \|\| \[\]\)\.concat\(\[EMAIL_LOGO\]\)/.test(SRVE));
 })();
 const SRV_DEMO = fs.readFileSync(P('server.js'), 'utf8');
-T('compania demo se numește „RA Track Demo", iar numele de câteva ore („RA Tracks Demo") se întoarce o dată, la pornire',
+T('compania demo se numește „RA Track Demo”, iar numele de câteva ore („RA Tracks Demo”) se întoarce o dată, la pornire',
   /createCompany\(\{ name: 'RA Track Demo', slug: 'demo'/.test(SRV_DEMO) &&
   /if \(demo && demo\.name === 'RA Tracks Demo'\) \{[\s\S]{0,120}updateCompany\(demo\.id, \{ name: 'RA Track Demo' \}\)/.test(SRV_DEMO));
 
@@ -517,7 +517,7 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
   T('și banii de la început se scriu', Number(o1.once_total) === 7000, String(o1.once_total));
 
   const t1 = await (await PUT('/api/admin/offers/' + o1.id + '/stare', { status: 'trimisa' })).json();
-  T('„trimisă" pune singură un termen', !!t1.valid_until, String(t1.valid_until));
+  T('„trimisă” pune singură un termen', !!t1.valid_until, String(t1.valid_until));
   T('și data trimiterii o scrie SERVERUL', !!t1.sent_at, String(t1.sent_at));
   const zile = Math.round((Number(t1.valid_until) - Date.now()) / 86400000);
   T('termenul e cel din server, nu altul', zile === meta.valabilZile, zile + ' vs ' + meta.valabilZile);
@@ -532,18 +532,18 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
   const o2 = await mk('CI Ofertă B');
   await PUT('/api/admin/offers/' + o2.id + '/stare', { status: 'trimisa' });
   const a2 = await (await PUT('/api/admin/offers/' + o2.id + '/stare', { status: 'acceptata' })).json();
-  T('„acceptată" curăță motivul pierderii', a2.status === 'acceptata' && !a2.lost_reason, JSON.stringify(a2.lost_reason));
+  T('„acceptată” curăță motivul pierderii', a2.status === 'acceptata' && !a2.lost_reason, JSON.stringify(a2.lost_reason));
   const r2 = await (await PUT('/api/admin/offers/' + o2.id + '/stare', { status: 'ciorna' })).json();
-  T('„redeschide" o întoarce în ciornă, fără dată de decizie', r2.status === 'ciorna' && !r2.decided_at, JSON.stringify(r2.decided_at));
+  T('„redeschide” o întoarce în ciornă, fără dată de decizie', r2.status === 'ciorna' && !r2.decided_at, JSON.stringify(r2.decided_at));
 
   const rau = await PUT('/api/admin/offers/' + o2.id + '/stare', { status: 'expirata' });
   T('o stare inventată e refuzată', rau.status === 400, String(rau.status));
-  // „Expirată" nu se scrie NICIODATĂ în bază: o ofertă trimisă cu termen trecut rămâne „trimisa",
+  // „Expirată” nu se scrie NICIODATĂ în bază: o ofertă trimisă cu termen trecut rămâne „trimisa”,
   // iar ecranul o arată expirată. Altfel starea s-ar învechi dacă nu trece nimeni pe la ecran.
   const o3 = await mk('CI Ofertă C');
   const vechi = await (await PUT('/api/admin/offers/' + o3.id + '/stare',
     { status: 'trimisa', valid_until: Date.now() - 4 * 86400000 })).json();
-  T('o ofertă cu termen trecut rămâne „trimisa" în bază', vechi.status === 'trimisa', vechi.status);
+  T('o ofertă cu termen trecut rămâne „trimisa” în bază', vechi.status === 'trimisa', vechi.status);
   T('dar poartă termenul depășit', Number(vechi.valid_until) < Date.now());
 
   sect('7b. Costurile noastre, pe server pornit');
@@ -566,10 +566,10 @@ T('etichetele nu se strică la unu', /acceptate === 1 \? 'acceptată' : 'accepta
   await PUT('/api/admin/system-settings', { tarife_lista: { dFmc650: 133, mGps: 111, pPlain: '', pCan: 'abc' } });
   const tar1 = (await (await GET('/api/admin/system-settings')).json()).tarife_lista || {};
   T('ce am trecut rămâne', tar1.dFmc650 === 133 && tar1.mGps === 111, JSON.stringify({ d: tar1.dFmc650, m: tar1.mGps }));
-  T('ce am lăsat gol înseamnă „ia-l din cod", nu 0 lei', tar1.pPlain === null, JSON.stringify(tar1.pPlain));
+  T('ce am lăsat gol înseamnă „ia-l din cod”, nu 0 lei', tar1.pPlain === null, JSON.stringify(tar1.pPlain));
   T('și o cifră fără sens, la fel', tar1.pCan === null, JSON.stringify(tar1.pCan));
-  // Două căi de salvare, chei diferite: tabloul „Prețurile noastre" (cu prețurile pachetelor RA Insight) și butonul
-  // „Salvează ca tarifele noastre" din cărți (fără ele). A doua NU are voie să le șteargă pe primele.
+  // Două căi de salvare, chei diferite: tabloul „Prețurile noastre” (cu prețurile pachetelor RA Insight) și butonul
+  // „Salvează ca tarifele noastre” din cărți (fără ele). A doua NU are voie să le șteargă pe primele.
   await PUT('/api/admin/system-settings', { tarife_lista: { pkPro: 22, pkBusiness: 33 } });
   await PUT('/api/admin/system-settings', { tarife_lista: { pPlain: 31, mGps: 115 } });   // ca din cărți
   const tar2 = (await (await GET('/api/admin/system-settings')).json()).tarife_lista || {};

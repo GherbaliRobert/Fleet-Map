@@ -38,10 +38,10 @@ const PRO_SET = new Set(PRO);
 // Submulțime a lui PRO, nu sinonim — vezi comentariul de la Tb/Tv.
 const TACHO = CATEGORIES.filter(c => c.tacho).map(c => c.code);
 const TACHO_SET = new Set(TACHO);
-// Ordinea de pe permis, ca să afișăm mereu „B, C, CE", nu în ordinea în care s-a bifat.
+// Ordinea de pe permis, ca să afișăm mereu „B, C, CE”, nu în ordinea în care s-a bifat.
 const ORDER = new Map(CATEGORIES.map((c, i) => [c.code, i]));
 
-// Acceptă string („B,C,CE"), array sau null. Curăță, validează, deduplică și sortează.
+// Acceptă string („B,C,CE”), array sau null. Curăță, validează, deduplică și sortează.
 // Nu aruncă niciodată: o valoare stricată se transformă în listă goală, nu în eroare 500.
 function parse(v) {
   let arr;

@@ -1,6 +1,6 @@
-/* Localizare pe telefon: căutarea (mereu la vedere), pastila „N/T vehicule", banda „N vehicule alese"
+/* Localizare pe telefon: căutarea (mereu la vedere), pastila „N/T vehicule”, banda „N vehicule alese”
    și foaia cu bife. Aceleași roluri ca bara de sus de pe web (public/css/map-tools.css), croite pe deget:
-   ținte de cel puțin 44 px, nimic ascuns după „hover". */
+   ținte de cel puțin 44 px, nimic ascuns după „hover”. */
 
 .loc-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px 6px; }
 .loc-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; background: var(--bg-dark);
@@ -27,7 +27,7 @@
 .loc-selbar button { flex: 0 0 auto; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--accent);
   background: transparent; color: var(--accent); font-weight: 800; font-size: 13px; }
 
-/* ─── Foaia „Vehicule pe hartă" ─── */
+/* ─── Foaia „Vehicule pe hartă” ─── */
 .loc-sheet .sheet { max-height: 88vh; }
 .loc-sh-cnt { font-size: 13px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
 .loc-sh-tools { padding: 10px 16px 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
@@ -58,7 +58,7 @@
 .loc-grp-veh { padding-left: 22px; }
 .loc-grp-veh .loc-row:last-child { border-bottom: none; }
 
-/* ─── Foaia „Exportă" ─── */
+/* ─── Foaia „Exportă” ─── */
 .loc-exp { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 10px 12px; margin-bottom: 8px;
   border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); color: var(--text-primary); text-align: left; }
 .loc-exp > svg { color: var(--accent); flex: 0 0 auto; }
@@ -68,7 +68,7 @@
 .loc-exp .spin { margin-left: auto; width: 18px; height: 18px; border-width: 2px; }
 .loc-exp-note { font-size: 12px; color: var(--text-muted); line-height: 1.45; margin: 4px 2px 0; }
 
-/* ─── Bula „vehicule apropiate" pe hartă ─── */
+/* ─── Bula „vehicule apropiate” pe hartă ─── */
 .vmk-bubble { min-width: 38px; height: 38px; padding: 0 8px; border-radius: 19px; display: flex; align-items: center; justify-content: center;
   background: var(--accent); color: #06210F; font-weight: 800; font-size: 15px; border: 3px solid rgba(255,255,255,.9);
   box-shadow: 0 3px 12px rgba(0,0,0,.4); cursor: pointer; font-variant-numeric: tabular-nums; }

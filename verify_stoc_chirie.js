@@ -3,11 +3,11 @@
 //   node verify_stoc_chirie.js
 //
 // Alin (25.09): „dacă un client nu vrea să investească în echipamente și vrea doar să le închirieze de
-// la noi pe toată durata contractului" — iar pentru asta „trebuie să avem un stoc de echipamente". Hotărât:
+// la noi pe toată durata contractului" — iar pentru asta „trebuie să avem un stoc de echipamente”. Hotărât:
 // durata minimă 24 de luni, marja 50%, montajul la semnare, aparatele ne revin la final, chiria pe rând
 // separat pe factură, o singură alegere pe ofertă. Proba ține: regula chiriei (aceeași pe server și în
 // pagină), oferta (cumpără / închiriază), hârtia ofertei și a contractului, factura și registrul, stocul
-// (reguli, ecran, rute) și legătura automată stoc ↔ „Dispozitive" — pe server pornit.
+// (reguli, ecran, rute) și legătura automată stoc ↔ „Dispozitive” — pe server pornit.
 
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -43,8 +43,8 @@ let difera = [];
 }));
 T('pagina socotește EXACT ca serverul (54 de cazuri)', difera.length === 0, difera.slice(0, 3).join(' | '));
 T('fără regulile de la server, pagina nu propune nicio chirie', new Function('_ofMeta', srcCh + '\n; return _ofChirieLunara;')({})(225, 24) === null);
-T('cifrele vin de pe server (ruta „meta" a ofertelor)', /chirie: \{ luniMin: contracte\.CHIRIE_LUNI_MIN, marja: contracte\.CHIRIE_MARJA, zileRetur: contracte\.CHIRIE_ZILE_RETUR \}/.test(server));
-const blocInch = html.slice(html.indexOf('// ── începe „închirierea aparatelor"'), html.indexOf('// ── sfârșit „închirierea aparatelor" ──'));
+T('cifrele vin de pe server (ruta „meta” a ofertelor)', /chirie: \{ luniMin: contracte\.CHIRIE_LUNI_MIN, marja: contracte\.CHIRIE_MARJA, zileRetur: contracte\.CHIRIE_ZILE_RETUR \}/.test(server));
+const blocInch = html.slice(html.indexOf('// ── începe „închirierea aparatelor”'), html.indexOf('// ── sfârșit „închirierea aparatelor” ──'));
 const blocInchCod = blocInch.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
 T('pagina nu scrie 24 sau 50% de mână (în cod, nu în comentarii)', blocInch.length > 500 && !/luniMin:\s*24|marja:\s*0\.5|\b24 de luni\b|\b50%/.test(blocInchCod));
 const mOf = html.match(/var _OF_CHIRIE = \[([\s\S]*?)\];/);
@@ -56,7 +56,7 @@ T('cheile chiriei din pagină = cele din montaj.js (chirie / cantitate / preț)'
 // ─── 2. Oferta ─────────────────────────────────────────────────────────────────────────────────
 sect('2. Oferta: clientul cumpără sau închiriază');
 function decupez(nume) {
-  const a = html.indexOf('// ── începe „' + nume + '"'), b = html.indexOf('// ── sfârșit „' + nume + '" ──');
+  const a = html.indexOf('// ── începe „' + nume + '”'), b = html.indexOf('// ── sfârșit „' + nume + '” ──');
   return (a < 0 || b < 0) ? '' : html.slice(a, b);
 }
 const _rDe = new Function(html.slice(html.indexOf('function _rDe(n)'), html.indexOf('// Aceleași sume, dar pentru celule de tabel:')) + '\n; return _rDe;')();
@@ -83,17 +83,17 @@ T('ÎNCHIRIAZĂ: durata urcă singură la minimul de 24 de luni', inch.cfg.contr
 const faraCh = calcul({ 'of-echipMod': 'inchiriaza' });
 T('aparat închiriat fără chirie trecută: NU e socotit la 0 lei, ci semnalat', faraCh.chirieLipsa.indexOf('Teltonika FMC130') >= 0 && !faraCh.lines.some((l) => l.fel === 'chirie') && faraCh.monthly === 290);
 T('...iar salvarea și hârtia refuză o astfel de ofertă', /window\.raxOfSave = async function \(\) \{[\s\S]{0,400}if \(!_ofChirieOk\(r\)\) return;/.test(html) && /async function _ofHartie\(r, previzualizare\) \{\s*\n\s*if \(!_ofChirieOk\(r\)\) return;/.test(html));
-T('comutatorul „Clientul cumpără / Clientul închiriază" e în cartea 5', /id="of-echipMod" value="cumpara"/.test(html) && /raxOfEchipMod\(\\'inchiriaza\\'\)/.test(html) && /Clientul închiriază/.test(html));
+T('comutatorul „Clientul cumpără / Clientul închiriază” e în cartea 5', /id="of-echipMod" value="cumpara"/.test(html) && /raxOfEchipMod\(\\'inchiriaza\\'\)/.test(html) && /Clientul închiriază/.test(html));
 const carte5 = html.slice(html.indexOf('var deviceCard = card('), html.indexOf('var priceCard'));
 T('fiecare aparat are caseta lui de chirie (lei/lună), în cartea 5', ['of-chFmc130', 'of-chFmc150', 'of-chFmc650', 'of-chLvCan'].every((id) => carte5.indexOf("'" + id + "'") > 0));
-// Alin (25.09): „mă induce în eroare un pic, fă-o mai simplă" — un singur preț pe rând, după alegere.
-const comut = html.slice(html.indexOf('window.raxOfEchipMod = function'), html.indexOf('// ── sfârșit „închirierea aparatelor" ──'));
-T('pe un rând se vede UN preț: vânzare la „cumpără", chirie la „închiriază"', /\.of-chirie-f'\)\.forEach\(function \(x\) \{ x\.style\.display = inch \? 'inline-flex' : 'none'; \}\)/.test(comut) &&
+// Alin (25.09): „mă induce în eroare un pic, fă-o mai simplă” — un singur preț pe rând, după alegere.
+const comut = html.slice(html.indexOf('window.raxOfEchipMod = function'), html.indexOf('// ── sfârșit „închirierea aparatelor” ──'));
+T('pe un rând se vede UN preț: vânzare la „cumpără”, chirie la „închiriază”', /\.of-chirie-f'\)\.forEach\(function \(x\) \{ x\.style\.display = inch \? 'inline-flex' : 'none'; \}\)/.test(comut) &&
   /\.of-cump-f'\)\.forEach\(function \(x\) \{ x\.style\.display = inch \? 'none' : 'inline-flex'; \}\)/.test(comut));
 T('lângă chirie: cât ne costă aparatul, sau linkul să-l treci (altfel caseta goală nu spune de ce)', /ne costă ' \+ esc\(String\(costEur\)\) \+ ' €'/.test(html) && /trece cât ne costă<\/a>/.test(html));
 T('hârtia află că e închiriere', /inchiriere: !!r\.inchiriere/.test(html));
 T('oferta redeschisă revine pe cum s-a salvat', /raxOfEchipMod\(cfg\.echipMod === 'inchiriaza' \? 'inchiriaza' : 'cumpara'\)/.test(html));
-T('lista de oferte arată pastila „închiriere"', /areChirie \? '<span[^>]*>închiriere<\/span>'/.test(html));
+T('lista de oferte arată pastila „închiriere”', /areChirie \? '<span[^>]*>închiriere<\/span>'/.test(html));
 
 // ─── 3. Hârtia ofertei ─────────────────────────────────────────────────────────────────────────
 sect('3. Hârtia ofertei, la închiriere');
@@ -117,10 +117,10 @@ const bazaOf = { client: { name: 'Transport Zebra SRL' }, contractMonths: 24, fx
 const hCump = hartie(bazaOf);
 const hInch = hartie(Object.assign({}, bazaOf, { inchiriere: true, tarifDemontare: 60, deviceLines: [], hwTotal: 0, monthly: 430, contractTotal: 10320,
   lines: bazaOf.lines.concat([{ fel: 'chirie', label: 'Chirie Teltonika FMC130', qty: 10, unit: 14, total: 140 }]) }));
-// Din 29.09 aparatele cumpărate se plătesc în AVANS, pe proformă (decizie Alin, „1.A"); restul hârtiei e același.
+// Din 29.09 aparatele cumpărate se plătesc în AVANS, pe proformă (decizie Alin, „1.A”); restul hârtiei e același.
 T('CUMPĂRĂ: echipamente o singură dată, plătite în avans, pe proformă', /ECHIPAMENTE — O SINGURĂ DATĂ/.test(hCump) && /Echipamentele se plătesc integral în avans, pe proformă/.test(hCump) && !/proprietatea RA Track/.test(hCump));
 T('ÎNCHIRIAZĂ: fără avans pentru aparate (nu se cumpără)', !/se plătesc integral în avans/.test(hInch));
-T('ÎNCHIRIAZĂ: tabelul „Chiria echipamentelor — lunar"', /CHIRIA ECHIPAMENTELOR — LUNAR/.test(hInch) && /Chirie Teltonika FMC130/.test(hInch));
+T('ÎNCHIRIAZĂ: tabelul „Chiria echipamentelor — lunar”', /CHIRIA ECHIPAMENTELOR — LUNAR/.test(hInch) && /Chirie Teltonika FMC130/.test(hInch));
 T('ÎNCHIRIAZĂ: fără tabel de echipamente vândute', !/ECHIPAMENTE — O SINGURĂ DATĂ/.test(hInch));
 T('ÎNCHIRIAZĂ: costul unic e doar instalarea (1.000 lei)', /instalare \(aparatele sunt închiriate\)/.test(hInch) && /1\.000,00 lei/.test(hInch));
 T('ÎNCHIRIAZĂ: aparatele rămân proprietatea RA Track, chiria pe rând separat', /rămân proprietatea RA Track pe toată durata contractului/.test(hInch) && /pe rând separat/.test(hInch));
@@ -129,7 +129,7 @@ T('ÎNCHIRIAZĂ: plecarea mai devreme plătește și demontarea, cu cifra (60 le
 T('hârtia primește tariful de dezinstalare din ofertă', /tarifDemontare: Number\(r\.p\.mUninstall\) \|\| null/.test(html));
 T('ÎNCHIRIAZĂ: returul în 15 zile, nereturnatul se plătește', /demontare în cel mult 15 zile/.test(hInch) && /nereturnate sau deteriorate se plătesc/.test(hInch));
 T('ÎNCHIRIAZĂ: la sfârșitul contractului demontarea o facem noi, fără cost (Alin, 25.09)', /La sfârșitul contractului, demontarea o facem noi, fără cost/.test(hInch));
-T('ÎNCHIRIAZĂ: nu mai scrie „rămân în proprietatea Beneficiarului"', !/rămân în proprietatea Beneficiarului/.test(hInch));
+T('ÎNCHIRIAZĂ: nu mai scrie „rămân în proprietatea Beneficiarului”', !/rămân în proprietatea Beneficiarului/.test(hInch));
 T('termenele de pe hârtie le pune serverul (ruta PDF)', /o\.chirieLuniMin = contracte\.CHIRIE_LUNI_MIN; o\.chirieZileRetur = contracte\.CHIRIE_ZILE_RETUR;/.test(server));
 
 // ─── 4. Contractul ─────────────────────────────────────────────────────────────────────────────
@@ -177,14 +177,14 @@ T('VII: plecarea înainte de termen → chiria lunilor rămase', /datorează chi
 T('VII: ...și demontarea, pe care o plătește el, la tariful din contract (Alin, 25.09)', /precum și demontarea lor, la tariful de 60,00 RON pe aparat, fără TVA/.test(ctInch));
 T('VII: returul în 15 zile, nerestituitul se plătește la valoarea din anexă', /demontare în cel mult 15 zile/.test(ctInch) && /la valoarea din Anexa nr\. 1/.test(ctInch));
 T('VII: la termen, demontarea o face Prestatorul, fără cost (Alin, 25.09)', /La încetarea contractului la termen, demontarea se face de Prestator, fără cost pentru Beneficiar/.test(ctInch));
-T('Anexa nr. 1: „Aparate închiriate — proprietatea Prestatorului", cu valoarea', /Aparate închiriate — proprietatea Prestatorului/.test(ctInch) && /275,00 RON/.test(ctInch));
-T('Anexa nr. 2 fără aparate vândute se numește „Montaj (costuri unice)"', /ANEXA nr\. 2 — Montaj \(costuri unice\)/.test(ctInch) && !/Echipamentele rămân în proprietatea Beneficiarului/.test(ctInch));
+T('Anexa nr. 1: „Aparate închiriate — proprietatea Prestatorului”, cu valoarea', /Aparate închiriate — proprietatea Prestatorului/.test(ctInch) && /275,00 RON/.test(ctInch));
+T('Anexa nr. 2 fără aparate vândute se numește „Montaj (costuri unice)”', /ANEXA nr\. 2 — Montaj \(costuri unice\)/.test(ctInch) && !/Echipamentele rămân în proprietatea Beneficiarului/.test(ctInch));
 T('contractul de CUMPĂRARE nu pomenește închirierea', !/închiriate|Durata minimă/.test(ctCump));
 
 // ─── 5. Stocul: regulile ───────────────────────────────────────────────────────────────────────
 sect('5. Stocul: pe unde poate merge o bucată și ce trebuie făcut');
 T('depozit → instalator → montat → returnat → depozit', S.poateTrece('depozit', 'instalator') && S.poateTrece('instalator', 'montat') && S.poateTrece('montat', 'retur') && S.poateTrece('retur', 'depozit'));
-T('ce nu se poate: casatul nu mai iese, instalatorul nu „returnează", montatul nu sare în depozit', !S.poateTrece('casat', 'depozit') && !S.poateTrece('instalator', 'retur') && !S.poateTrece('montat', 'depozit') && !S.poateTrece('depozit', 'depozit'));
+T('ce nu se poate: casatul nu mai iese, instalatorul nu „returnează”, montatul nu sare în depozit', !S.poateTrece('casat', 'depozit') && !S.poateTrece('instalator', 'retur') && !S.poateTrece('montat', 'depozit') && !S.poateTrece('depozit', 'depozit'));
 const bucati = [
   { id: 1, tip: 'fmc130', stare: 'depozit', proprietar: 'ra' },
   { id: 2, tip: 'fmc130', stare: 'instalator', proprietar: 'ra', stare_din: Date.now() - 20 * 86400000 },
@@ -196,25 +196,25 @@ const bucati = [
 const sm = S.sumar(bucati);
 T('sumarul desparte închiriatele de vândute; casatele nu se numără', sm.fmc130.depozit === 1 && sm.fmc130.instalator === 1 && sm.fmc130.inchiriate === 1 && sm.fmc130.vandute === 1 && sm.lvcan200.depozit === 1, JSON.stringify(sm));
 const al = S.alerte(bucati, { minim: { fmc130: 3, lvcan200: 1 }, zileInstalator: 14 }, [7]);
-T('sub stocul minim → „e timpul să comanzi" (doar unde chiar e sub)', al.subMinim.length === 1 && al.subMinim[0].tip === 'fmc130' && al.subMinim[0].depozit === 1);
+T('sub stocul minim → „e timpul să comanzi” (doar unde chiar e sub)', al.subMinim.length === 1 && al.subMinim[0].tip === 'fmc130' && al.subMinim[0].depozit === 1);
 T('la instalator de peste 14 zile → semnalat', al.laInstalator.length === 1 && al.laInstalator[0].id === 2 && al.laInstalator[0].zile === 20);
 T('aparat AL NOSTRU la o firmă cu contractul încheiat → de recuperat (cel vândut, nu)', al.deRecuperat.length === 1 && al.deRecuperat[0].id === 3);
 T('seriile: una pe rând, fără goluri și fără dubluri', JSON.stringify(S.serii(' 111\n222,333;111\n\n')) === JSON.stringify(['111', '222', '333']));
 
 // ─── 6. Ecranul ────────────────────────────────────────────────────────────────────────────────
-sect('6. Ecranul „Stoc echipamente" și locul lui');
-T('rând în meniul Gestiune, sub „Inventar dispozitive", doar pentru noi', /goSistem\('inventar'\); \}\)"><i class="fas fa-clipboard-list"><\/i><span>Inventar dispozitive<\/span><\/button>\s*\n\s*<button class="nav-item nav-sub" data-super onclick="navGo\(this, function\(\)\{ goSistem\('stoc'\); \}\)"><i class="fas fa-boxes-stacked"><\/i><span>Stoc echipamente<\/span>/.test(html));
+sect('6. Ecranul „Stoc echipamente” și locul lui');
+T('rând în meniul Gestiune, sub „Inventar dispozitive”, doar pentru noi', /goSistem\('inventar'\); \}\)"><i class="fas fa-clipboard-list"><\/i><span>Inventar dispozitive<\/span><\/button>\s*\n\s*<button class="nav-item nav-sub" data-super onclick="navGo\(this, function\(\)\{ goSistem\('stoc'\); \}\)"><i class="fas fa-boxes-stacked"><\/i><span>Stoc echipamente<\/span>/.test(html));
 T('numele secțiunii = numele rândului, containerul și încărcarea', /stoc: 'Stoc echipamente'/.test(html) && /stoc: 'admin-tab-stoc'/.test(html) && /<div id="admin-tab-stoc" class="ra-camp" style="display:none;"><\/div>/.test(html) && /name === 'stoc'\) \{\s*\n\s*if \(window\.raxLoadStoc\)/.test(html));
 T('e strict a fondatorilor (și pe ecran)', /name === 'montaj' \|\| name === 'stoc'\) && !can\('manageCompanies'\)/.test(html));
 ['/api/stoc', '/api/stoc/intrare', '/api/stoc/muta', '/api/stoc/praguri', '/api/stoc/:id'].forEach((r) => {
   T('ruta ' + r + ' e doar a noastră', new RegExp("app\\.(get|post|put|delete)\\('" + r.replace(/\//g, '\\/') + "', requireAuth, requireSuperadmin").test(server));
 });
-T('„/api/stoc/praguri" stă înaintea „/api/stoc/:id" (altfel „praguri" ar fi citit ca id)', server.indexOf("app.put('/api/stoc/praguri'") > 0 && server.indexOf("app.put('/api/stoc/praguri'") < server.indexOf("app.put('/api/stoc/:id'"));
+T('„/api/stoc/praguri” stă înaintea „/api/stoc/:id” (altfel „praguri” ar fi citit ca id)', server.indexOf("app.put('/api/stoc/praguri'") > 0 && server.indexOf("app.put('/api/stoc/praguri'") < server.indexOf("app.put('/api/stoc/:id'"));
 const cauta = html.slice(html.indexOf('window.raxStocCauta = function'), html.indexOf('window.raxStocAlege = function'));
 T('căutarea redesenează DOAR tabelul (caseta nu-și pierde cursorul)', /stoc-tabel/.test(cauta) && !/_stocDeseneaza\(\)/.test(cauta));
 T('stocul intră în copia de siguranță', require('./backup.js').BUSINESS_TABLES.indexOf('stoc_echipamente') >= 0);
-// Al patrulea loc (29.10): „Schimbă aparatul" — aparatul nou ia locul celui vechi pe mașina firmei.
-T('aparatul legat de o firmă în „Dispozitive" mută stocul singur (adopție + înregistrare + „Schimbă aparatul")', (server.match(/await _stocLaFirma\(/g) || []).length === 4);
+// Al patrulea loc (29.10): „Schimbă aparatul” — aparatul nou ia locul celui vechi pe mașina firmei.
+T('aparatul legat de o firmă în „Dispozitive” mută stocul singur (adopție + înregistrare + „Schimbă aparatul”)', (server.match(/await _stocLaFirma\(/g) || []).length === 4);
 T('fișa firmei arată chiria (doar de citit)', /html \+= _raxChirieHtml\(s\);/.test(html) && /chirie: contracte\.chirieFirma\(company\.settings\)/.test(server));
 
 // ─── 7. Pe server pornit ───────────────────────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ function gata() {
   };
   await R('PUT', '/api/admin/system-settings', { invoice_issuer: { name: 'RA TRACKS SRL', cui: 'RO999', vat_rate: 19 } });
   const meta = (await R('GET', '/api/admin/offers/meta')).j || {};
-  T('ruta „meta" dă regulile închirierii', meta.chirie && meta.chirie.luniMin === 24 && meta.chirie.marja === 0.5 && meta.chirie.zileRetur === 15, JSON.stringify(meta.chirie));
+  T('ruta „meta” dă regulile închirierii', meta.chirie && meta.chirie.luniMin === 24 && meta.chirie.marja === 0.5 && meta.chirie.zileRetur === 15, JSON.stringify(meta.chirie));
 
   // Stocul
   T('intrare fără model → refuzată', (await R('POST', '/api/stoc/intrare', { serii: '111' })).s === 400);
@@ -264,14 +264,14 @@ function gata() {
   T('fiecare bucată își ține istoricul de la intrare', (st.aparate || []).every((x) => (x.istoric || []).length === 1 && x.istoric[0].stare === 'depozit'));
   await R('PUT', '/api/stoc/praguri', { minim: { fmc130: 5 }, zileInstalator: 14 });
   st = (await R('GET', '/api/stoc')).j || {};
-  T('stoc minim 5 la FMC130 → „e timpul să comanzi"', (st.alerte.subMinim || []).some((x) => x.tip === 'fmc130' && x.depozit === 3), JSON.stringify(st.alerte));
+  T('stoc minim 5 la FMC130 → „e timpul să comanzi”', (st.alerte.subMinim || []).some((x) => x.tip === 'fmc130' && x.depozit === 3), JSON.stringify(st.alerte));
   const buc = (serie) => (st.aparate || []).filter((x) => x.serie === serie)[0] || {};
   const p = (await R('POST', '/api/montaj/parteneri', { name: 'Instal GPS Vest SRL' })).j;
-  T('mutare „la instalator" fără instalator → refuzată', (await R('POST', '/api/stoc/muta', { ids: [buc('860000000000101').id], stare: 'instalator' })).s === 400);
+  T('mutare „la instalator” fără instalator → refuzată', (await R('POST', '/api/stoc/muta', { ids: [buc('860000000000101').id], stare: 'instalator' })).s === 400);
   const laInst = await R('POST', '/api/stoc/muta', { ids: [buc('860000000000101').id], stare: 'instalator', partener_id: p.id, nota: 'proces-verbal 12' });
   T('predată la instalator', laInst.s === 200 && laInst.j.mutate === 1, JSON.stringify(laInst.j));
   const gresit = await R('POST', '/api/stoc/muta', { ids: [buc('860000000000101').id], stare: 'retur' });
-  T('de la instalator nu poate ajunge „returnat" (n-a fost la client) — spus pe nume', gresit.s === 400 && /la instalator/.test(gresit.j.error || ''), JSON.stringify(gresit.j));
+  T('de la instalator nu poate ajunge „returnat” (n-a fost la client) — spus pe nume', gresit.s === 400 && /la instalator/.test(gresit.j.error || ''), JSON.stringify(gresit.j));
 
   // Oferta cu închiriere → contract → firmă → factură
   const cfg = { echipMod: 'inchiriaza', nVeh: 3, nCan: 0, nFms: 0, contractMonths: 24, fxRate: 5, retTier: '12',
@@ -303,7 +303,7 @@ function gata() {
   await R('PUT', '/api/devices/860000000000777/abonament', { de_la: _trec.getFullYear() + '-' + String(_trec.getMonth() + 1).padStart(2, '0') + '-01' });
   const fa = (await R('POST', '/api/invoices/draft', { companyId: co.id })).j || {};
   const rf = (fa.lines || []).filter((l) => /^Chirie echipament — Teltonika FMC130/.test(l.desc))[0];
-  T('factura: rând separat „Chirie echipament", 3 × 14 lei', rf && rf.qty === 3 && rf.net === 42, JSON.stringify(fa.lines));
+  T('factura: rând separat „Chirie echipament”, 3 × 14 lei', rf && rf.qty === 3 && rf.net === 42, JSON.stringify(fa.lines));
   const mrr = (await R('GET', '/api/companies/mrr')).j || {};
   const venit = mrr.firme ? mrr.firme[co.id] : undefined;
   const sumaFact = (fa.lines || []).reduce((t, l) => t + l.net, 0);
@@ -314,17 +314,17 @@ function gata() {
     body: JSON.stringify(Object.assign({}, bazaOf, { inchiriere: true, deviceLines: [], hwTotal: 0 })) });
   T('oferta cu închiriere se descarcă (PDF)', ofPdf.status === 200 && /application\/pdf/.test(ofPdf.headers.get('content-type') || ''));
 
-  // Legătura automată stoc ↔ „Dispozitive"
+  // Legătura automată stoc ↔ „Dispozitive”
   const reg = await R('POST', '/api/devices', { imei: '860000000000102', company_id: co.id, name: 'Camion 1' });
   T('aparatul se înregistrează pe firmă', reg.s === 200, JSON.stringify(reg.j));
   st = (await R('GET', '/api/stoc')).j || {};
   const b2 = buc('860000000000102');
-  T('...și în stoc trece SINGUR pe „montat la client", al NOSTRU (firma închiriază)', b2.stare === 'montat' && b2.proprietar === 'ra' && b2.company_id === co.id, JSON.stringify(b2));
+  T('...și în stoc trece SINGUR pe „montat la client”, al NOSTRU (firma închiriază)', b2.stare === 'montat' && b2.proprietar === 'ra' && b2.company_id === co.id, JSON.stringify(b2));
   T('...cu rândul lui în istoric', (b2.istoric || []).length === 2 && /Dispozitive/.test(b2.istoric[1].nota || ''));
   const co2 = (await R('POST', '/api/companies', { name: 'Cumpărător SRL' })).j;
   await R('POST', '/api/devices', { imei: '860000000000103', company_id: co2.id, name: 'Duba 1' });
   st = (await R('GET', '/api/stoc')).j || {};
-  T('la o firmă care CUMPĂRĂ, aparatul trece „vândut clientului"', buc('860000000000103').stare === 'montat' && buc('860000000000103').proprietar === 'client');
+  T('la o firmă care CUMPĂRĂ, aparatul trece „vândut clientului”', buc('860000000000103').stare === 'montat' && buc('860000000000103').proprietar === 'client');
   await R('POST', '/api/devices', { imei: '860000000000999', company_id: co2.id, name: 'Fără stoc' });
   T('un aparat necunoscut stocului se înregistrează normal (stocul nu e poartă)', (await R('GET', '/api/stoc')).j.aparate.length === 5);
   st = (await R('GET', '/api/stoc')).j || {};

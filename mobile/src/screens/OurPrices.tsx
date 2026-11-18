@@ -6,13 +6,13 @@ import { Icon } from '../components/Icon';
 import './admin.css';
 import './oferte.css';
 
-// Super-admin: „Prețurile noastre" — tot ce CEREM și tot ce ne COSTĂ, într-un singur tablou (ca pe web,
-// Ofertare Live → „Prețurile noastre"). Rândurile, cheile și valorile de acum NU sunt scrise aici: vin de la
+// Super-admin: „Prețurile noastre” — tot ce CEREM și tot ce ne COSTĂ, într-un singur tablou (ca pe web,
+// Ofertare Live → „Prețurile noastre”). Rândurile, cheile și valorile de acum NU sunt scrise aici: vin de la
 // server, din chiar pagina web (`_PRET_GRUPURI` + ce ar pune ea în câmpuri), prin `/api/admin/offers/calc`.
 //
 // Pe telefon se socotesc doar două lucruri de PRIVIT, ca pe web (`raxOfPretMarja`), care nu se țin minte
-// nicăieri: echivalentul în cealaltă monedă sub fiecare cifră și „rămâne" = cerem − ne costă, pe rând.
-// Ce lași gol rămâne GOL: „nu știm cât ne costă" nu e „ne costă zero".
+// nicăieri: echivalentul în cealaltă monedă sub fiecare cifră și „rămâne” = cerem − ne costă, pe rând.
+// Ce lași gol rămâne GOL: „nu știm cât ne costă” nu e „ne costă zero”.
 //
 // Salvarea trimite TOATE cheile (tarife, costuri, cursul): serverul rescrie costurile de la zero la fiecare
 // salvare, deci o cheie netrimisă s-ar șterge.
@@ -58,7 +58,7 @@ export function OurPrices(props: { peste?: boolean; onInchide?: () => void; onSa
     try {
       await Api.saveSystemSettings({ tarife_lista: tarife, costuri_noastre: costuri, curs_eur: curs });
       showToast('Prețurile noastre, salvate ✓');
-      // Ca la calculator: după salvare, lista înlocuiește ecranul în istoric („Înapoi" nu mai redeschide prețurile).
+      // Ca la calculator: după salvare, lista înlocuiește ecranul în istoric („Înapoi” nu mai redeschide prețurile).
       if (props.onSalvat) props.onSalvat(); else loc.route('/admin/offers', true);
     } catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { setBusy(false); }
@@ -70,7 +70,7 @@ export function OurPrices(props: { peste?: boolean; onInchide?: () => void; onSa
     if (!Number.isFinite(n) || n <= 0 || !(fx > 0)) return '';
     return um === '€' ? '≈ ' + (n * fx).toFixed(n < 20 ? 1 : 0) + ' lei' : '≈ ' + (n / fx).toFixed(n < 100 ? 1 : 0) + ' €';
   }
-  // „Rămâne" pe rând, cât scrii: + / − și procentul din ce cerem. Gol dacă lipsește una din cifre.
+  // „Rămâne” pe rând, cât scrii: + / − și procentul din ce cerem. Gol dacă lipsește una din cifre.
   function ramane(kP: string | null, kC: string | null): { t: string; c: string } {
     const vp = kP && tp[kP] !== '' && tp[kP] != null ? parseFloat(tp[kP]) : null;
     const vc = kC && tc[kC] !== '' && tc[kC] != null ? parseFloat(tc[kC]) : null;
@@ -93,7 +93,7 @@ export function OurPrices(props: { peste?: boolean; onInchide?: () => void; onSa
     <div class={'content' + (props.peste ? '' : ' has-tabbar')} style={'padding-top:14px;padding-left:16px;padding-right:16px' + (props.peste ? ';padding-bottom:calc(24px + var(--sab))' : '')}>
       <div style="font-size:13px;color:var(--text-muted);line-height:1.55;margin-bottom:12px">
         Prețurile de listă ale casei. De la ele pornește fiecare ofertă nouă — ofertele deja salvate își păstrează
-        prețurile lor. Ce lași gol la „ne costă" rămâne <b>necunoscut</b>, nu zero.
+        prețurile lor. Ce lași gol la „ne costă” rămâne <b>necunoscut</b>, nu zero.
       </div>
       {err && <div class="adm-empty" style="color:var(--red)">{err}</div>}
       {grupuri == null && !err && <div class="adm-empty"><div class="spin" style="margin:0 auto" /></div>}

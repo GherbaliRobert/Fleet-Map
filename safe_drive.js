@@ -1,7 +1,7 @@
-// safe_drive.js — „Safe Drive & costuri" (ramura din RA Insight), partea cu baza de date.
+// safe_drive.js — „Safe Drive & costuri” (ramura din RA Insight), partea cu baza de date.
 //
 // Regulile (pragurile, scorul, litrii, leii, recomandările) stau în condus.js, curate. Aici:
-//   • ce zile trebuie (re)socotite (`deSocotit`): nesocotite, socotite înainte să se încheie ziua, sau „azi" mai vechi de
+//   • ce zile trebuie (re)socotite (`deSocotit`): nesocotite, socotite înainte să se încheie ziua, sau „azi” mai vechi de
 //     15 minute;
 //   • socoteala unei mașini pe un șir de zile (`socotesteMasina`): pozițiile citite pe pagini, cu ACELEAȘI funcții ca
 //     rapoartele (reports.js → _ajutor), rândurile pe zi și șofer scrise peste cele vechi;
@@ -15,7 +15,7 @@ const R = require('./reports')._ajutor;
 
 const PROASPAT_AZI_MS = 15 * 60000;   // ziua de azi se reface cel mult o dată la 15 minute
 const INAINTE_MS = 10 * 60000;        // se citesc și ultimele 10 minute de dinainte: drumul de peste miezul nopții se leagă
-const ZILE_DISCUTIE = 30;             // „înainte" și „după" o discuție: cel mult 30 de zile de fiecare parte
+const ZILE_DISCUTIE = 30;             // „înainte” și „după” o discuție: cel mult 30 de zile de fiecare parte
 
 // ─── Zilele, pe ora României ('AAAA-LL-ZZ') ──────────────────────────────────────────────────────────────
 function _p(z) { return String(z).split('-').map(Number); }
@@ -59,7 +59,7 @@ function siruri(zile) {
 }
 
 // ─── Mașina: consumul, prețul, clasa, cine a condus-o ────────────────────────────────────────────────────
-// Aceleași reguli ca rapoartele: consumul = cel „pe drum" din fișă, apoi cel „în oraș", apoi cel pe tipul mașinii
+// Aceleași reguli ca rapoartele: consumul = cel „pe drum” din fișă, apoi cel „în oraș”, apoi cel pe tipul mașinii
 // (raportul de consum); L/h la ralanti = din fișă, apoi pe tip (raportul Ralanti); prețul = al mașinii, al firmei, media
 // națională (rapoartele de costuri).
 function masina(d, preturiFirma) {
@@ -87,7 +87,7 @@ async function socotesteMasina(db, imei, de, pana, intervale) {
 
 // ─── Luna, pentru pagină ─────────────────────────────────────────────────────────────────────────────────
 // Rândurile lunii alese (doar mașinile omului) și zonele cu cele mai multe manevre — serverul le caută adresa înainte să
-// alcătuiască luna, ca recomandarea „un loc unde se frânează des" să spună strada, nu coordonatele.
+// alcătuiască luna, ca recomandarea „un loc unde se frânează des” să spună strada, nu coordonatele.
 function _randuriLunii(o) {
   const L = luna(o.luna), pe = {}; o.masini.forEach(function (m) { pe[m.imei] = true; });
   return (o.zile || []).filter(function (r) { return pe[r.imei] && r.zi >= L.de && r.zi <= L.pana; });
@@ -123,7 +123,7 @@ function _rezumat(lista) {
     scor: scor, nota: scor == null ? null : condus.notaDin(scor), cost: cost,
     costLaSuta: t.km > 1 ? rot(cost.total / t.km * 100, 2) : null, costPeMasina: cuDrum ? Math.round(cost.total / cuDrum) : null,
     ralantiOre: rot(t.ralantiEpSec / 3600, 1), pesteMin: Math.round(t.pesteSec / 60), vmax: Math.round(t.vmax), masini: cuScor.length, cuDrum: cuDrum,
-    ore: t.ore,   // manevrele bruște pe ore (0–23), pentru graficul „pe ore"
+    ore: t.ore,   // manevrele bruște pe ore (0–23), pentru graficul „pe ore”
   };
 }
 // Șoferii: rândurile lor, pe mașini (consumul și prețul mașinii pe care au condus).
@@ -147,7 +147,7 @@ function alcatuieste(o) {
   const L = luna(o.luna), Li = luna(lunaDinainte(o.luna));
   const peImei = {}; o.masini.forEach(function (m) { peImei[m.imei] = m; });
   // Luna de acum (până azi) se compară cu ACELEAȘI zile din luna dinainte (1–6 cu 1–6), nu cu o lună întreagă — altfel
-  // orice lună începută ar părea „mai ieftină".
+  // orice lună începută ar părea „mai ieftină”.
   const azi = condus.zi(o.acum), panaAzi = L.pana >= azi, ziN = Number(azi.slice(8, 10));
   const pIn = _p(Li.de);
   const etInainte = panaAzi ? (ziN === 1 ? '1 ' : '1–' + Math.min(ziN, Number(Li.pana.slice(8, 10))) + ' ') + insight.LUNI[pIn[1] - 1] : insight.LUNI[pIn[1] - 1];
@@ -180,7 +180,7 @@ function alcatuieste(o) {
 
   // Șoferii: rândurile lor, pe mașini (consumul și prețul mașinii pe care au condus).
   const peSoferi = function (randuri) { return _peSoferi(o, peImei, randuri); };
-  // „Am vorbit cu el": ultima discuție a fiecărui șofer, cu înainte / după din zilele pe care le avem (luna și cea dinainte).
+  // „Am vorbit cu el”: ultima discuție a fiecărui șofer, cu înainte / după din zilele pe care le avem (luna și cea dinainte).
   const discutiePe = {};
   (o.discutii || []).forEach(function (d) { const k = d.driver_id ? 'd' + d.driver_id : 'm' + d.imei; if (!discutiePe[k]) discutiePe[k] = d; });
   const toate = randuriIL.concat(randuriL);
@@ -192,7 +192,7 @@ function alcatuieste(o) {
   }
   function discutia(d) {
     if (!d) return null;
-    const ziD = inceput(condus.zi(d.la));   // ziua discuției intră la „după"
+    const ziD = inceput(condus.zi(d.la));   // ziua discuției intră la „după”
     const ina = condus.insumeaza(inFereastra(d.driver_id, d.imei, ziD - ZILE_DISCUTIE * 86400000, ziD));
     const dup = condus.insumeaza(inFereastra(d.driver_id, d.imei, ziD, Math.min(o.acum, ziD + ZILE_DISCUTIE * 86400000) + 1));
     return { id: d.id, la: d.la, zi: condus.zi(d.la), nota: d.nota || '', comparatie: ziD >= inceput(Li.de) ? condus.comparatie(ina, dup) : null };
@@ -231,7 +231,7 @@ function alcatuieste(o) {
     explicatii: condus.explicatii(),
   };
 }
-// „Față de luna dinainte", scris o dată (pagina și telefonul doar îl arată). Costul mai mare e „atenție", mai mic e „bine".
+// „Față de luna dinainte”, scris o dată (pagina și telefonul doar îl arată). Costul mai mare e „atenție”, mai mic e „bine”.
 function _fata(a, b, panaAzi) {
   if (!b) return null;
   const d = Math.round(a.cost.total - b.cost.total), pr = b.cost.total >= 1 ? Math.round(d / b.cost.total * 100) : null;

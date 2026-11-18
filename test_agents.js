@@ -13,7 +13,7 @@ async function care(base) { return agents.runAgent('care', base); }
 function has(r, prefix) { return (r.findings || []).some(f => f.fkey && f.fkey.startsWith(prefix)); }
 
 (async () => {
-  // Fixăm „acum" ca testele să fie deterministe (agenții folosesc Date.now()).
+  // Fixăm „acum” ca testele să fie deterministe (agenții folosesc Date.now()).
   Date.now = () => NOW;
 
   console.log('\n— RA Watch: offline —');
@@ -81,29 +81,29 @@ function has(r, prefix) { return (r.findings || []).some(f => f.fkey && f.fkey.s
     ok(!has(r, 'care_service_'), 'service departe (50.000 km) → FĂRĂ finding');
   }
 
-  console.log('\n— Cifrele din textele agenților, românește (17.11: RA Client scria „Azi: 1240 km") —');
+  console.log('\n— Cifrele din textele agenților, românește (17.11: RA Client scria „Azi: 1240 km”) —');
   {
     ok(agents.nrRo(1240) === '1.240' && agents.nrRo(123456.7) === '123.457' && agents.nrRo(999) === '999' && agents.nrRo(-1500) === '-1.500',
-      'nrRo: punctul miilor („1.240", „123.457", „-1.500")');
-    ok(agents.nrRo(12.46, 1) === '12,5' && agents.nrRo(-0.04, 1) === '0,0' && agents.nrRo(1234567.89, 1) === '1.234.567,9', 'nrRo: virgula zecimalelor („12,5")');
+      'nrRo: punctul miilor („1.240”, „123.457”, „-1.500”)');
+    ok(agents.nrRo(12.46, 1) === '12,5' && agents.nrRo(-0.04, 1) === '0,0' && agents.nrRo(1234567.89, 1) === '1.234.567,9', 'nrRo: virgula zecimalelor („12,5”)');
     const live = new Map([['SRV3', { name: 'B 77 TIR', timestamp: new Date(NOW).toISOString(), io: { can_distance_to_service: -1240 } }]]);
     const base = { imeis: ['SRV3'], livePositions: live, companyId: 1, db: { getDeviceHistory: async () => [], getDeviceFull: async () => ({ vehicle_type: 'Camion' }) } };
     const r = await care(base);
     const f = (r.findings || []).find(x => x.fkey && x.fkey.startsWith('care_service_'));
-    ok(f && f.title === 'B 77 TIR: service DEPĂȘIT cu 1.240 km', 'RA Care: „service DEPĂȘIT cu 1.240 km"', f && f.title);
+    ok(f && f.title === 'B 77 TIR: service DEPĂȘIT cu 1.240 km', 'RA Care: „service DEPĂȘIT cu 1.240 km”', f && f.title);
     // Nicio cifră lipită direct în text fără nrRo (Math.round(...) + ' km' / ' L' / ' min' / ' lei', toFixed(...) + ' L').
     const SRC = require('fs').readFileSync(require('path').join(__dirname, 'agents.js'), 'utf8');
     const lipite = SRC.match(/(Math\.round\([^;]*?\)|toFixed\(\d\)) \+ ' (km|L|min|lei|h)\b/g) || [];
     ok(lipite.length === 0, 'textele agenților trec cifrele prin nrRo' + (lipite.length ? ': ' + lipite.join(' | ') : ''));
   }
 
-  console.log('\n— Un număr lângă cuvântul lui (17.11: „expiră în 25 zile", „1 critice") —');
+  console.log('\n— Un număr lângă cuvântul lui (17.11: „expiră în 25 zile”, „1 critice”) —');
   {
     const c = (n) => agents.cate(n, 'zi', 'zile');
-    ok(c(1) === '1 zi' && c(0) === '0 zile' && c(12) === '12 zile' && c(19) === '19 zile', 'cate: „1 zi", „12 zile", „19 zile", „0 zile"', [c(1), c(0), c(12), c(19)].join(' | '));
+    ok(c(1) === '1 zi' && c(0) === '0 zile' && c(12) === '12 zile' && c(19) === '19 zile', 'cate: „1 zi”, „12 zile”, „19 zile”, „0 zile”', [c(1), c(0), c(12), c(19)].join(' | '));
     ok(c(20) === '20 de zile' && c(25) === '25 de zile' && c(100) === '100 de zile' && c(101) === '101 zile' && c(119) === '119 zile' && c(120) === '120 de zile',
-      'cate: „de" de la 20, fără „de" la 101–119', [c(20), c(25), c(100), c(101), c(119), c(120)].join(' | '));
-    ok(c(1000) === '1.000 de zile' && c(1012) === '1.012 zile', 'cate: cifra cu punctul miilor („1.000 de zile")', c(1000) + ' | ' + c(1012));
+      'cate: „de” de la 20, fără „de” la 101–119', [c(20), c(25), c(100), c(101), c(119), c(120)].join(' | '));
+    ok(c(1000) === '1.000 de zile' && c(1012) === '1.012 zile', 'cate: cifra cu punctul miilor („1.000 de zile”)', c(1000) + ' | ' + c(1012));
     // RA Care pe acte: 25 de zile până la ITP, o zi până la RCA, CASCO expirat de 25 de zile
     const zi = 86400000;
     const docs = [{ imei: 'DOC1', doc_type: 'itp', expiry_date: new Date(NOW + 25 * zi - 3600000).toISOString(), id: 1 },
@@ -112,35 +112,35 @@ function has(r, prefix) { return (r.findings || []).some(f => f.fkey && f.fkey.s
     const live = new Map([['DOC1', { name: 'B 31 LOG', timestamp: new Date(NOW).toISOString(), io: {} }]]);
     const r = await care({ imeis: ['DOC1'], livePositions: live, companyId: 1, db: { getVehicleDocuments: async () => docs, getDeviceHistory: async () => [], getDeviceFull: async () => ({ vehicle_type: 'Auto' }) } });
     const t = (r.findings || []).map((f) => f.title);
-    ok(t.includes('B 31 LOG: ITP expiră în 25 de zile'), 'RA Care: „ITP expiră în 25 de zile"', t.join(' | '));
-    ok(t.includes('B 31 LOG: RCA expiră în 1 zi'), 'RA Care: „RCA expiră în 1 zi"', t.join(' | '));
-    ok(t.includes('B 31 LOG: CASCO EXPIRAT de 25 de zile'), 'RA Care: „CASCO EXPIRAT de 25 de zile"', t.join(' | '));
+    ok(t.includes('B 31 LOG: ITP expiră în 25 de zile'), 'RA Care: „ITP expiră în 25 de zile”', t.join(' | '));
+    ok(t.includes('B 31 LOG: RCA expiră în 1 zi'), 'RA Care: „RCA expiră în 1 zi”', t.join(' | '));
+    ok(t.includes('B 31 LOG: CASCO EXPIRAT de 25 de zile'), 'RA Care: „CASCO EXPIRAT de 25 de zile”', t.join(' | '));
     // Singularul și pluralul nu se mai scriu de mână lângă o cifră (n === 1 ? ' zi' : ' zile'): trec prin cate.
     const SRC = require('fs').readFileSync(require('path').join(__dirname, 'agents.js'), 'utf8');
     const deMana = SRC.match(/=== 1 \? ' [a-zăâîșț]+/g) || [];
-    ok(deMana.length === 0, 'singularul și „de" lângă cifre trec prin cate' + (deMana.length ? ': ' + deMana.join(' | ') : ''));
-    ok(!/24\/7|non-stop|Paznic/.test(SRC.replace(/\/\/[^\n]*/g, '')), 'RA Watch nu promite „24/7" / „non-stop" (verifică din oră în oră)');
-    ok(agents.AGENTS.watch.role === 'Supraveghere', 'rolul lui RA Watch: „Supraveghere"', agents.AGENTS.watch.role);
+    ok(deMana.length === 0, 'singularul și „de” lângă cifre trec prin cate' + (deMana.length ? ': ' + deMana.join(' | ') : ''));
+    ok(!/24\/7|non-stop|Paznic/.test(SRC.replace(/\/\/[^\n]*/g, '')), 'RA Watch nu promite „24/7” / „non-stop” (verifică din oră în oră)');
+    ok(agents.AGENTS.watch.role === 'Supraveghere', 'rolul lui RA Watch: „Supraveghere”', agents.AGENTS.watch.role);
   }
 
-  console.log('\n— Numărul mașinii în titlu și cuvintele pe românește (17.11: „7. hai să rezolvăm acum", „5. da") —');
+  console.log('\n— Numărul mașinii în titlu și cuvintele pe românește (17.11: „7. hai să rezolvăm acum”, „5. da”) —');
   {
     const zi = 86400000;
-    // RA Care: o mașină numită „VW Caddy" → titlul spune și numărul (într-o flotă cu 10 Caddy știi care e)
+    // RA Care: o mașină numită „VW Caddy” → titlul spune și numărul (într-o flotă cu 10 Caddy știi care e)
     const live = new Map([['CAD1', { name: 'VW Caddy', plate: 'B 204 RAT', timestamp: new Date(NOW).toISOString(), io: {} }]]);
     const docs = [{ imei: 'CAD1', doc_type: 'itp', expiry_date: new Date(NOW + 12 * zi - 3600000).toISOString(), id: 9 }];
     const r = await care({ imeis: ['CAD1'], livePositions: live, companyId: 1, db: { getVehicleDocuments: async () => docs, getDeviceHistory: async () => [], getDeviceFull: async () => ({ vehicle_type: 'Dubă' }) } });
     const t = (r.findings || []).map((f) => f.title);
-    ok(t.includes('VW Caddy (B 204 RAT): ITP expiră în 12 zile'), 'RA Care: „VW Caddy (B 204 RAT): ITP expiră în 12 zile"', t.join(' | '));
-    // RA Watch: fără semnal de 3 h 10 min (nu „offline de 3h 10m")
+    ok(t.includes('VW Caddy (B 204 RAT): ITP expiră în 12 zile'), 'RA Care: „VW Caddy (B 204 RAT): ITP expiră în 12 zile”', t.join(' | '));
+    // RA Watch: fără semnal de 3 h 10 min (nu „offline de 3h 10m”)
     const vechi = new Map([['CAD2', { name: 'Iveco Stralis', plate: 'B 77 TIR', timestamp: new Date(NOW - 190 * 60000).toISOString(), io: {} }]]);
     const w = await agents.AGENTS.watch.run({ imeis: ['CAD2'], livePositions: vechi, companyId: 1, db: {}, alertThresholds: {} });
     const tw = (w.findings || []).map((f) => f.title);
-    ok(tw.includes('Iveco Stralis (B 77 TIR): fără semnal de 3 h 10 min'), 'RA Watch: „Iveco Stralis (B 77 TIR): fără semnal de 3 h 10 min"', tw.join(' | '));
+    ok(tw.includes('Iveco Stralis (B 77 TIR): fără semnal de 3 h 10 min'), 'RA Watch: „Iveco Stralis (B 77 TIR): fără semnal de 3 h 10 min”', tw.join(' | '));
     const SRC = require('fs').readFileSync(require('path').join(__dirname, 'agents.js'), 'utf8').replace(/\/\/[^\n]*/g, '');
-    ok(!/'h ' \+ m \+ 'm'|\+ 'h ' \+ mins \+ 'm'|\boffline de\b|Online și staționate|'Eco-driving'|Offline, furt/.test(SRC), 'fără „3h 10m", „offline", „Online", „Eco-driving" în textele agenților');
+    ok(!/'h ' \+ m \+ 'm'|\+ 'h ' \+ mins \+ 'm'|\boffline de\b|Online și staționate|'Eco-driving'|Offline, furt/.test(SRC), 'fără „3h 10m”, „offline”, „Online”, „Eco-driving” în textele agenților');
     ok(!/nameOf\(/.test(SRC), 'titlurile trec prin labelOf (numele + numărul), nu doar numele');
-    ok(agents.AGENTS.optimize.role === 'Condus economic', 'rolul lui RA Optimize: „Condus economic"', agents.AGENTS.optimize.role);
+    ok(agents.AGENTS.optimize.role === 'Condus economic', 'rolul lui RA Optimize: „Condus economic”', agents.AGENTS.optimize.role);
   }
 
   Date.now = realNow;

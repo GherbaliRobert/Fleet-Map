@@ -1,6 +1,6 @@
 // preaviz.js — cu cât timp înainte se anunță un termen și în ce stare e. O SINGURĂ sursă pentru listele Mentenanță /
-// Documente, anunțurile (push), agentul RA Care, raportul „Scadențe" și ramura Mentenanță & acte din RA Insight.
-// 07.10: RA Care anunța actele cu 14 zile înainte (listele și telefonul cu 30), iar raportul „Scadențe" avea pragurile lui
+// Documente, anunțurile (push), agentul RA Care, raportul „Scadențe” și ramura Mentenanță & acte din RA Insight.
+// 07.10: RA Care anunța actele cu 14 zile înainte (listele și telefonul cu 30), iar raportul „Scadențe” avea pragurile lui
 // (7 / 30 de zile, 500 / 2.000 km) — fiecare cu cifra lui.
 //
 // Valorile de aici sunt punctul de plecare; fiecare firmă și le poate schimba (alert_thresholds: careDaysLead /

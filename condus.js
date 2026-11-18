@@ -1,4 +1,4 @@
-// condus.js — „Safe Drive & costuri" (ramura din RA Insight; Alin, 02.10: „SAFE DRIVE, CU COSTURI").
+// condus.js — „Safe Drive & costuri” (ramura din RA Insight; Alin, 02.10: „SAFE DRIVE, CU COSTURI”).
 //
 // Cum conduce fiecare mașină și fiecare șofer și cât costă asta în lei, pe luni, cu luna dinainte alături, unde și când se
 // repetă manevrele bruște și ce s-a schimbat după ce șeful a vorbit cu șoferul. Totul pe REGULI, fără model: se probează
@@ -8,11 +8,11 @@
 //     Drive și raportul să nu se contrazică pe aceeași lună.
 //   • `agregator` trece o dată prin pozițiile unei mașini (în ordinea timpului, pe pagini) și scoate câte un rând pe
 //     ZI (ora României) și pe ȘOFER: km, timp de mers, manevre bruște, timp și km peste 90 km/h, ralanti, plus ORELE și
-//     LOCURILE manevrelor (pe celule de ~500 m — destul ca să spui „în zona X", fără să păstrezi fiecare punct).
-//     Rândul ține doar ce s-a MĂSURAT (litrii din contorul CAN, orele de ralanti fără contor, „cât de repede" peste 90);
+//     LOCURILE manevrelor (pe celule de ~500 m — destul ca să spui „în zona X”, fără să păstrezi fiecare punct).
+//     Rândul ține doar ce s-a MĂSURAT (litrii din contorul CAN, orele de ralanti fără contor, „cât de repede” peste 90);
 //     litrii estimați și leii se socotesc la citire (`litri`, `costuri`), cu consumul și prețul de AZI ale mașinii — o
 //     corectură în fișa mașinii se vede pe loc, fără să refacem zilele.
-//   • `insumeaza` / `scor` / `costuri` fac din zile o lună (sau orice fereastră: „înainte" și „după" o discuție).
+//   • `insumeaza` / `scor` / `costuri` fac din zile o lună (sau orice fereastră: „înainte” și „după” o discuție).
 'use strict';
 const { nr, cant } = require('./ai_raport');
 
@@ -24,7 +24,7 @@ const PAUZA_MAX_S = 300;     // două puncte la mai mult de 5 minute nu se leag�
 const BRUSC_MAX_S = 30;      // o manevră bruscă se vede doar între puncte apropiate
 const VITEZA_VIRAJ = 25;     // virajele bruște contează doar peste 25 km/h
 const RALANTI_MIN_S = 180;   // ralanti = cel puțin 3 minute pe loc cu motorul pornit (ca raportul Ralanti)
-const CELULA_GRADE = 0.005;  // ~500 m: „unde se repetă" spune zona, nu punctul
+const CELULA_GRADE = 0.005;  // ~500 m: „unde se repetă” spune zona, nu punctul
 const CELULE_MAX_ZI = 40;    // pe o zi se țin cel mult atâtea zone (cele cu cele mai multe manevre)
 // Combustibilul pus în plus de viteză: la 90 km/h cam o TREIME din consum se duce pe învingerea aerului, iar aerul crește
 // cu pătratul vitezei. Rezultă cifrele cunoscute: la 120 km/h cam +26%, la 130 cam +36% față de 90. Estimare, spusă pe față.
@@ -48,7 +48,7 @@ function scor(t) {
 function notaDin(s) { return s >= 90 ? 'A' : s >= 75 ? 'B' : s >= 60 ? 'C' : s >= 40 ? 'D' : 'E'; }
 // O mașină / un șofer care abia a mers nu primește scor (ca în raport: sub 0,5 km și sub un minut de mers).
 function areScor(t) { return !((t.km || 0) < 0.5 && (t.condusSec || 0) < 60); }
-// Scorul flotei: media scorurilor, cântărită cu km (cel puțin 1) — „Scor flotă" din raportul EcoDrive.
+// Scorul flotei: media scorurilor, cântărită cu km (cel puțin 1) — „Scor flotă” din raportul EcoDrive.
 // lista = [{ scor, km }], doar cele care AU scor.
 function scorFlota(lista) {
   let sw = 0, w = 0;
@@ -62,7 +62,7 @@ function _parti(ms) { const o = {}; _fmt.formatToParts(new Date(ms)).forEach(fun
 function zi(ms) { const p = _parti(ms); return p.year + '-' + p.month + '-' + p.day; }
 function ora(ms) { return Number(_parti(ms).hour) % 24; }
 const ZILE_SAPT = ['luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă', 'duminică'];
-// 0 = luni … 6 = duminică, pentru o zi „AAAA-LL-ZZ" (data calendaristică, fără oră).
+// 0 = luni … 6 = duminică, pentru o zi „AAAA-LL-ZZ” (data calendaristică, fără oră).
 function ziSapt(ziStr) { const d = new Date(ziStr + 'T12:00:00Z').getUTCDay(); return (d + 6) % 7; }
 // Șoferul unei mașini la o clipă, din istoricul ei (de_la ≤ clipa < pana_la). 0 = nimeni.
 function soferLa(intervale) {
@@ -248,7 +248,7 @@ function litri(t, m) {
   };
 }
 // Leii: m = { l100, lph, pretL (lei pe litru) }, pretEv = prețurile pe eveniment ale clasei mașinii.
-// Manevrele, pe cele două feluri de pe pagină: „Combustibil" (accelerările bruște) și „Frâne și anvelope" (frânările și
+// Manevrele, pe cele două feluri de pe pagină: „Combustibil” (accelerările bruște) și „Frâne și anvelope” (frânările și
 // virajele bruște); `manevre` = amândouă.
 function costuri(t, m, pretEv) {
   const l = litri(t, m), pretL = (m && m.pretL) || 0;
@@ -278,7 +278,7 @@ function locuri(celule, n, min) {
     .sort(function (a, b) { return b[1] - a[1]; }).slice(0, n || 3)
     .map(function (x) { const p = x[0].split(','); return { lat: Number(p[0]), lng: Number(p[1]), n: x[1] }; });
 }
-// Ferestrele de 3 ore, pe zi a săptămânii, cu cele mai multe manevre: „vineri, 16–19: 14 manevre".
+// Ferestrele de 3 ore, pe zi a săptămânii, cu cele mai multe manevre: „vineri, 16–19: 14 manevre”.
 function ferestre(randuri, n, min) {
   const m = []; for (let d = 0; d < 7; d++) m.push(new Array(24).fill(0));
   (randuri || []).forEach(function (r) { const d = ziSapt(r.zi); ((r.date || r).ore || []).forEach(function (v, h) { m[d][h] += Number(v) || 0; }); });
@@ -294,8 +294,8 @@ function ferestre(randuri, n, min) {
   return ales.map(function (c) { return { zi: ZILE_SAPT[c.zi], de: c.de, pana: c.de + 3, n: c.n, text: ZILE_SAPT[c.zi] + ', ' + c.de + '–' + (c.de + 3) }; });
 }
 
-// ─── Înainte și după o discuție („Am vorbit cu el") ─────────────────────────────────────────────────────
-// a = sumele dinainte, b = de după. Comparăm la 100 km (altfel o lună cu mai puțin drum ar părea „mai bună").
+// ─── Înainte și după o discuție („Am vorbit cu el”) ─────────────────────────────────────────────────────
+// a = sumele dinainte, b = de după. Comparăm la 100 km (altfel o lună cu mai puțin drum ar părea „mai bună”).
 function comparatie(a, b) {
   const ka = laSuta(manevre(a), a.km), kb = laSuta(manevre(b), b.km);
   if (ka == null || kb == null || (b.km || 0) < 20) return { fel: 'info', text: 'Prea puțin drum de atunci (' + cant(Math.round(b.km || 0), 'km', 'km') + ') — revino peste câteva zile.' };
@@ -307,7 +307,7 @@ function comparatie(a, b) {
     text: cum + ': manevre bruște la 100 km ' + nr(ka, 1) + ' → ' + nr(kb, 1) + (pr ? ' (' + (pr > 0 ? '+' : '') + pr + '%)' : '') + ' · scor ' + sa + ' → ' + sb + '.' };
 }
 
-// ─── „Cum se socotește" — scris o dată, aici; pagina și telefonul doar îl arată ──────────────────────────
+// ─── „Cum se socotește” — scris o dată, aici; pagina și telefonul doar îl arată ──────────────────────────
 function explicatii() {
   return [
     { titlu: 'Manevrele bruște', text: 'Aceleași praguri ca raportul EcoDrive: accelerare cu peste ' + PRAGURI.accel + ' km/h într-o secundă, frânare cu peste ' +
@@ -333,7 +333,7 @@ function recomandari(m, s, f) {
   const medie = laSuta(flotaMan, flotaKm);
   // 1. Cel mai scump ralanti
   const ral = m.filter(function (x) { return x.cost.ralanti >= 30; }).sort(function (a, b) { return b.cost.ralanti - a.cost.ralanti; })[0];
-  if (ral) out.push({ fel: 'atentie', text: ral.eticheta + ' a stat cu motorul pornit, pe loc, ' + nr(ral.t.ralantiEpSec / 3600, 1) + ' ore — cam ' + lei(ral.cost.ralanti) + ' arși degeaba. O regulă simplă („motorul se oprește după 5 minute de stat") îi recuperează pe cei mai mulți.' });
+  if (ral) out.push({ fel: 'atentie', text: ral.eticheta + ' a stat cu motorul pornit, pe loc, ' + nr(ral.t.ralantiEpSec / 3600, 1) + ' ore — cam ' + lei(ral.cost.ralanti) + ' arși degeaba. O regulă simplă („motorul se oprește după 5 minute de stat”) îi recuperează pe cei mai mulți.' });
   // 2. Viteza
   const vit = m.filter(function (x) { return x.cost.viteza >= 20 || (x.t.pesteSec || 0) >= 3600; }).sort(function (a, b) { return b.cost.viteza - a.cost.viteza; })[0];
   if (vit) out.push({ fel: 'atentie', text: vit.eticheta + ' a mers ' + cant(Math.round((vit.t.pesteSec || 0) / 60), 'minut', 'minute') + ' peste ' + PRAGURI.limita + ' km/h (cel mai repede ' + nr(vit.t.vmax) + ' km/h) — cam ' + lei(vit.cost.viteza) + ' de combustibil în plus, pe lângă risc.' });
@@ -341,11 +341,11 @@ function recomandari(m, s, f) {
   if (medie != null) {
     const sof = s.filter(function (x) { const k = laSuta(manevre(x.t), x.t.km); return x.id && k != null && (x.t.km || 0) >= 50 && k >= Math.max(5, medie * 2); })
       .sort(function (a, b) { return laSuta(manevre(b.t), b.t.km) - laSuta(manevre(a.t), a.t.km); })[0];
-    if (sof) out.push({ fel: 'atentie', sofer: { id: sof.id, nume: sof.nume }, text: sof.nume + ' are ' + nr(laSuta(manevre(sof.t), sof.t.km), 1) + ' manevre bruște la 100 km, față de ' + nr(medie, 1) + ' media flotei. O discuție ajută des; după ea, apasă „Am vorbit cu el" și vezi aici, luna viitoare, dacă s-a schimbat ceva.' });
+    if (sof) out.push({ fel: 'atentie', sofer: { id: sof.id, nume: sof.nume }, text: sof.nume + ' are ' + nr(laSuta(manevre(sof.t), sof.t.km), 1) + ' manevre bruște la 100 km, față de ' + nr(medie, 1) + ' media flotei. O discuție ajută des; după ea, apasă „Am vorbit cu el” și vezi aici, luna viitoare, dacă s-a schimbat ceva.' });
   }
   // 4. Când și unde se repetă
   if (f && f.ferestre && f.ferestre[0]) {
-    // „Ora de vârf" doar când chiar e: zi de lucru, dimineața (7–10) sau după-amiaza (16–19).
+    // „Ora de vârf” doar când chiar e: zi de lucru, dimineața (7–10) sau după-amiaza (16–19).
     const x = f.ferestre[0], lucru = ZILE_SAPT.indexOf(x.zi) >= 0 && ZILE_SAPT.indexOf(x.zi) < 5, varf = lucru && ((x.de < 10 && x.pana > 7) || (x.de < 19 && x.pana > 16));
     out.push({ fel: 'info', text: 'Cele mai multe manevre bruște: ' + x.text + ' (' + x.n + '). ' + (varf ? 'E ora de vârf — un drum plecat cu 15 minute mai devreme scade graba.' : 'Merită aflat ce se întâmplă atunci: o cursă grăbită, un drum anume.') });
   }

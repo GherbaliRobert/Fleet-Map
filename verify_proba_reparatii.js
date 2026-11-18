@@ -1,16 +1,16 @@
 // verify_proba_reparatii.js — cele 10 reparații găsite în proba modelelor (Robert a rulat-o pe ratrack.ro pe 21.10; Alin, 22.10:
-// „DA" la reparații) și contorul corecturilor (garanția B; Alin: „hai să mergem pe B, A ne costă").
+// „DA” la reparații) și contorul corecturilor (garanția B; Alin: „hai să mergem pe B, A ne costă”).
 //
 //   node verify_proba_reparatii.js
 //
 // Ce păzește:
-//   1. cele mai mari valori din TOATE rândurile unui raport (modelul vedea doar 25: „cea mai lungă cursă" a rămas fără răspuns);
-//   2. RA Insight nu mai citește raportul „Analitic" (lista de 5.000 de poziții: viteza maximă a lunii ieșea 153 în loc de 170);
-//   3. combustibilul: unde consumul nu e măsurat, alimentările și scăderile „nu se pot vedea" și norma nu mai e reper;
-//   4. pragul vitezei: din fișa mașinii (130 la autoturisme, 90 la camioane) și spus pe față, nu „limita legală";
-//   5. verificarea cifrelor acceptă procentul din întrebare („cam 65 de lei" = 10% din 651);
-//   6. vorbele despre echipament cer o rescriere (și „De verificat" nu mai trimite clientul la senzor);
-//   7. „Salvează"; 8. luna de acum se compară cu aceleași zile din luna dinainte; 9. sumele românești în „RA Insight · control";
+//   1. cele mai mari valori din TOATE rândurile unui raport (modelul vedea doar 25: „cea mai lungă cursă” a rămas fără răspuns);
+//   2. RA Insight nu mai citește raportul „Analitic” (lista de 5.000 de poziții: viteza maximă a lunii ieșea 153 în loc de 170);
+//   3. combustibilul: unde consumul nu e măsurat, alimentările și scăderile „nu se pot vedea” și norma nu mai e reper;
+//   4. pragul vitezei: din fișa mașinii (130 la autoturisme, 90 la camioane) și spus pe față, nu „limita legală”;
+//   5. verificarea cifrelor acceptă procentul din întrebare („cam 65 de lei” = 10% din 651);
+//   6. vorbele despre echipament cer o rescriere (și „De verificat” nu mai trimite clientul la senzor);
+//   7. „Salvează”; 8. luna de acum se compară cu aceleași zile din luna dinainte; 9. sumele românești în „RA Insight · control”;
 //   10. adresa de suport e una pe care o primim (contact@), iar mesajele către echipă chiar ne ajung (din 23.10, ca cereri);
 //   B. contorul corecturilor: câte răspunsuri a rescris aplicația, doar numere, pe pagina noastră.
 // Serverul pornește cu modelul SIMULAT (nu se cheltuie nimic) și cu un Brevo fals (nu pleacă niciun email adevărat).
@@ -32,49 +32,49 @@ const COL = ['Vehicul', 'Plecare', 'Sosire', 'Distanță (km)', 'Durată', 'Vit.
 const RAND = Array.from({ length: 119 }, (_, k) => ['B 154 UIP', '0' + (k % 9 + 1) + '.09.2026 08:00', 'Olteni', (10 + (k * 7) % 39).toFixed(2), '30 min', String(60 + (k * 11) % 80)]);
 RAND[73][3] = '49.17'; RAND[73][1] = '22.09.2026 17:02'; RAND[73][2] = 'București, Bulevardul Basarabia 28';
 const mari = I.celeMaiMari(COL, RAND, 5);
-T('din 119 curse: cea mai lungă (49,17 km, 22.09) e prima la „Distanță (km)", cu tot rândul ei', mari && mari['Distanță (km)'].length === 5 &&
+T('din 119 curse: cea mai lungă (49,17 km, 22.09) e prima la „Distanță (km)”, cu tot rândul ei', mari && mari['Distanță (km)'].length === 5 &&
   mari['Distanță (km)'][0]['Distanță (km)'] === '49.17' && /22\.09\.2026/.test(mari['Distanță (km)'][0].Plecare) && /Basarabia/.test(mari['Distanță (km)'][0].Sosire), JSON.stringify(mari && mari['Distanță (km)'][0]));
-T('…și cea mai mare viteză (139 km/h) la „Vit. max"; durata (text) nu e coloană cu cifre', mari && mari['Vit. max (km/h)'][0]['Vit. max (km/h)'] === '139' && !mari['Durată']);
+T('…și cea mai mare viteză (139 km/h) la „Vit. max”; durata (text) nu e coloană cu cifre', mari && mari['Vit. max (km/h)'][0]['Vit. max (km/h)'] === '139' && !mari['Durată']);
 T('cu 25 de rânduri sau mai puține, nimic în plus (modelul le vede pe toate)', I.celeMaiMari(COL, RAND.slice(0, 25), 5) === null);
 
 const E = I.vorbeDespreEchipament;
-T('prinse: „Mașina nu trimite date despre nivelul din rezervor" (Haiku, întrebarea 16)', E('Atenție: consumul nu este măsurat. Mașina nu trimite date despre nivelul din rezervor, așa că litrii sunt socotiți.').length === 1);
-T('prinse: „Mașina nu trimite nivelul din rezervor destul de precis" și „întreabă RA Track cum se trece consumul măsurat" (întrebarea 11)',
+T('prinse: „Mașina nu trimite date despre nivelul din rezervor” (Haiku, întrebarea 16)', E('Atenție: consumul nu este măsurat. Mașina nu trimite date despre nivelul din rezervor, așa că litrii sunt socotiți.').length === 1);
+T('prinse: „Mașina nu trimite nivelul din rezervor destul de precis” și „întreabă RA Track cum se trece consumul măsurat” (întrebarea 11)',
   E('Mașina nu trimite nivelul din rezervor destul de precis.').length === 1 && E('Dacă vrei cifre măsurate, întreabă RA Track cum se trece consumul măsurat.').length === 1);
-T('prinse: „senzorul e blocat", „verifică aparatul", „verifică dacă are senzor", „montează un senzor"',
+T('prinse: „senzorul e blocat”, „verifică aparatul”, „verifică dacă are senzor”, „montează un senzor”',
   E('Senzorul e blocat pe 25 L.').length && E('Verifică aparatul din mașină.').length && E('Verifică dacă are senzor de combustibil.').length && E('Montează un senzor de nivel.').length);
-T('NU prinse faptele și ce face omul singur: „nu transmite de 3 zile", „sună șoferul", „verifică consumul din fișă", „completează fișa"',
+T('NU prinse faptele și ce face omul singur: „nu transmite de 3 zile”, „sună șoferul”, „verifică consumul din fișă”, „completează fișa”',
   !E('B 268 ROY nu transmite de 3 zile. Dacă ar trebui să fie pe drum, sună șoferul.').length && !E('Verifică consumul trecut în fișa mașinii.').length &&
   !E('Completează în fișa mașinii consumul real.').length && !E('Consumul e socotit din fișă, nu măsurat.').length);
 
 const date651 = { masini: [{ masina: 'B 154 UIP', cost_lei: 651, litri: 138.3, km: 1617 }] };
 const R20 = 'Zece la sută din cei 651 de lei de combustibil înseamnă cam 65 de lei.';
-T('„cam 65 de lei" = 10% din 651 de lei: bun când întrebarea cere 10%', C.negasite(R20, date651, 'Vreau să reduc costurile cu 10%. De unde să încep?').length === 0, JSON.stringify(C.negasite(R20, date651, 'Vreau să reduc costurile cu 10%.')));
+T('„cam 65 de lei” = 10% din 651 de lei: bun când întrebarea cere 10%', C.negasite(R20, date651, 'Vreau să reduc costurile cu 10%. De unde să încep?').length === 0, JSON.stringify(C.negasite(R20, date651, 'Vreau să reduc costurile cu 10%.')));
 T('…dar negăsit fără procentul din întrebare (verificarea rămâne strictă)', C.negasite(R20, date651, 'Ce costuri am?').join() === '65 de lei', JSON.stringify(C.negasite(R20, date651, 'Ce costuri am?')));
-T('…și restul: „ai rămâne cu cam 586 de lei" (651 − 10%)', C.negasite('Ai rămâne cu cam 586 de lei.', date651, 'reduc costurile cu 10 la sută').length === 0);
+T('…și restul: „ai rămâne cu cam 586 de lei” (651 − 10%)', C.negasite('Ai rămâne cu cam 586 de lei.', date651, 'reduc costurile cu 10 la sută').length === 0);
 const dv = C.consumDeVerificat({ l100: 55, km: 600 });
-T('„De verificat" la un consum ciudat: fără „senzorul" — doar ce face omul singur (fișa)', dv.length === 1 && !/senzor|contor/i.test(dv[0]) && /fișa mașinii/.test(dv[0]), dv[0]);
+T('„De verificat” la un consum ciudat: fără „senzorul” — doar ce face omul singur (fișa)', dv.length === 1 && !/senzor|contor/i.test(dv[0]) && /fișa mașinii/.test(dv[0]), dv[0]);
 
 // ─── 2. Pagina, ghidul, adresele ─────────────────────────────────────────────────────────────────────
 console.log('\n2. Pagina, ghidul și adresele');
-T('„Editare vehicul": butonul scrie „Salvează" (era „Salveaza")', /<i class="fas fa-save"><\/i> Salvează\n/.test(html) && !/<i class="fas fa-save"><\/i> Salveaza\b/.test(html));
-T('…și ghidul lui RA Insight îl citează la fel', /apasă „Salvează"/.test(fs.readFileSync(path.join(__dirname, 'insight_ghid.js'), 'utf8')));
+T('„Editare vehicul”: butonul scrie „Salvează” (era „Salveaza”)', /<i class="fas fa-save"><\/i> Salvează\n/.test(html) && !/<i class="fas fa-save"><\/i> Salveaza\b/.test(html));
+T('…și ghidul lui RA Insight îl citează la fel', /apasă „Salvează”/.test(fs.readFileSync(path.join(__dirname, 'insight_ghid.js'), 'utf8')));
 const mt = fs.readFileSync(path.join(__dirname, 'public', 'js', 'map-tools.js'), 'utf8');
-// Din 23.10 fereastra „Suport clienți" a plecat: iconița cu căști deschide „Anunță echipa RA Track" (cererea ne vine la contact@,
+// Din 23.10 fereastra „Suport clienți” a plecat: iconița cu căști deschide „Anunță echipa RA Track” (cererea ne vine la contact@,
 // probată pe server mai jos și în verify_cereri_echipa.js). Regula rămâne: nicio adresă suport@ (nu ne vine) nicăieri.
-T('„Anunță echipa RA Track" în locul ferestrei „Suport clienți": nicio adresă suport@ (nu ne vine) — în pagină, la integratori, pe telefon',
+T('„Anunță echipa RA Track” în locul ferestrei „Suport clienți”: nicio adresă suport@ (nu ne vine) — în pagină, la integratori, pe telefon',
   !/window\.openSupport\s*=/.test(mt) && !/suport@ratrack\.ro/.test(mt + html) && !/suport@ratrack\.ro/.test(fs.readFileSync(path.join(__dirname, 'public', 'api-docs.html'), 'utf8')) &&
   !/suport@ratrack\.ro/.test(fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'screens', 'Menu.tsx'), 'utf8')));
 const blocNr = (html.match(/function _aiuNr\(v\) \{[\s\S]*?\n    \}/) || [''])[0];
 const ctxNr = {}; vm.createContext(ctxNr); vm.runInContext(blocNr, ctxNr);
-T('„RA Insight · control": sumele românești — „0,01", „9,99", „1.234", „45", „-950"',
+T('„RA Insight · control”: sumele românești — „0,01”, „9,99”, „1.234”, „45”, „-950”',
   ctxNr._aiuNr(0.01) === '0,01' && ctxNr._aiuNr(9.99) === '9,99' && ctxNr._aiuNr(1234) === '1.234' && ctxNr._aiuNr(45) === '45' && ctxNr._aiuNr(-950) === '-950' && ctxNr._aiuNr(1e6) === '1.000.000',
   [0.01, 9.99, 1234, 45, -950, 1e6].map((v) => ctxNr._aiuNr && ctxNr._aiuNr(v)).join(' | '));
-T('RA Insight nu primește raportul „Analitic": nici în listă, nici în unealtă', /const RAPOARTE_FARA_MODEL = \['analytic'\];/.test(SRV) &&
+T('RA Insight nu primește raportul „Analitic”: nici în listă, nici în unealtă', /const RAPOARTE_FARA_MODEL = \['analytic'\];/.test(SRV) &&
   /Object\.entries\(reports\.REPORTS\)\.filter\(\(\[k\]\) => RAPOARTE_FARA_MODEL\.indexOf\(k\) < 0\)/.test(SRV) &&
   /enum: Object\.keys\(reports\.REPORTS\)\.filter\(function \(k\) \{ return RAPOARTE_FARA_MODEL\.indexOf\(k\) < 0; \}\)/.test(SRV));
 T('verificarea cifrelor primește întrebarea (procentele)', (SRV.match(/cifre\.negasite\([^)]*, dateCitite, message\)/g) || []).length === 2);
-T('pagina noastră: rândul „Corectate singure luna asta", doar numere', /Corectate singure luna asta: /.test(html) && /Textul lor nu-l vedem — doar câte\./.test(html));
+T('pagina noastră: rândul „Corectate singure luna asta”, doar numere', /Corectate singure luna asta: /.test(html) && /Textul lor nu-l vedem — doar câte\./.test(html));
 
 // ─── 3. Pe server pornit ─────────────────────────────────────────────────────────────────────────────
 const PORT = 3353, TCP = 5353, DIR = path.join(os.tmpdir(), 'rax_reparatii_' + Date.now());
@@ -169,20 +169,20 @@ function rezultatUnealta(c) {
     }
     T('pregătire: firma pe Pro, B 154 UIP cu un drum ieri, administratorul cu RA Insight', !!(co.id && ck));
 
-    // 4 + 2: vitezele (pragul din fișă) și „Analitic" refuzat
+    // 4 + 2: vitezele (pragul din fișă) și „Analitic” refuzat
     const n0 = cereri().length;
     coada([unealta('run_report', { type: 'speeding', vehicle: 'B 154 UIP', period: 'yesterday' }), text('B 154 UIP n-a trecut ieri de 130 km/h.')]);
     await json('POST', '/api/insight/intreaba', ck, { message: 'A depășit B 154 UIP viteza ieri?', nou: true });
     const c1 = cereri().slice(n0);
     const enumTip = (((c1[0] || {}).tools || []).find((t) => t.name === 'run_report') || {}).input_schema;
-    T('unealta run_report nu mai oferă „analytic"', enumTip && Array.isArray(enumTip.properties.type.enum) && enumTip.properties.type.enum.indexOf('analytic') < 0 && enumTip.properties.type.enum.indexOf('speeding') >= 0);
+    T('unealta run_report nu mai oferă „analytic”', enumTip && Array.isArray(enumTip.properties.type.enum) && enumTip.properties.type.enum.indexOf('analytic') < 0 && enumTip.properties.type.enum.indexOf('speeding') >= 0);
     const r1 = rezultatUnealta(c1[1]);
-    T('vitezele la un autoturism: pragul din fișă, 130 km/h, spus pe față („nu e limita legală")', r1 && /^Pragul raportului: 130 km\/h, același pe orice drum/.test(r1.prag_raport || '') && /NU e limita legală/.test(r1.prag_raport || ''), JSON.stringify(r1 && r1.prag_raport));
+    T('vitezele la un autoturism: pragul din fișă, 130 km/h, spus pe față („nu e limita legală”)', r1 && /^Pragul raportului: 130 km\/h, același pe orice drum/.test(r1.prag_raport || '') && /NU e limita legală/.test(r1.prag_raport || ''), JSON.stringify(r1 && r1.prag_raport));
     const n1 = cereri().length;
     coada([unealta('run_report', { type: 'analytic', vehicle: 'B 154 UIP', period: 'last_30_days' }), text('Am citit alt raport.')]);
     await json('POST', '/api/insight/intreaba', ck, { message: 'Care a fost viteza maximă luna asta?' });
     const r2 = rezultatUnealta(cereri()[n1 + 1]);
-    T('cerut totuși de model, „analytic" e refuzat, cu raportul potrivit spus', r2 && /lista poziție cu poziție/.test(r2.error || '') && /speeding/.test(r2.error || ''), JSON.stringify(r2).slice(0, 200));
+    T('cerut totuși de model, „analytic” e refuzat, cu raportul potrivit spus', r2 && /lista poziție cu poziție/.test(r2.error || '') && /speeding/.test(r2.error || ''), JSON.stringify(r2).slice(0, 200));
 
     // 3 + 8: combustibilul — ce nu se vede; luna de acum față de aceleași zile ale lunii dinainte
     const zi = (ms) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Europe/Bucharest' });
@@ -194,7 +194,7 @@ function rezultatUnealta(c) {
     await json('POST', '/api/insight/intreaba', ck, { message: 'Ce consum am avut luna asta?' });
     const r3 = rezultatUnealta(cereri()[n2 + 1]) || {};
     const m3 = (r3.masini || [])[0] || {};
-    T('consumul nemăsurat: „alimentările și scăderile nu se pot vedea", fără normă de comparat', m3.consum_masurat === false && /nu se pot vedea/.test(m3.alimentari_si_scaderi || '') &&
+    T('consumul nemăsurat: „alimentările și scăderile nu se pot vedea”, fără normă de comparat', m3.consum_masurat === false && /nu se pot vedea/.test(m3.alimentari_si_scaderi || '') &&
       m3.norma_din_fisa === undefined && (r3.alimentari_si_scaderi_nu_se_vad_la || []).length === 1 && /nu se pot vedea/.test(r3.atentie || ''), JSON.stringify(r3).slice(0, 400));
     const L = I.LUNI, lunaI = (Number(azi.slice(5, 7)) + 10) % 12;
     const etI = (r3.perioada_dinainte || {}).eticheta || '';
@@ -212,13 +212,13 @@ function rezultatUnealta(c) {
     T('contorul corecturilor (doar numere): 1 rescris, din cauza aparatului, 0 ajunse la client cu o cifră negăsită', cor.rescrise === 1 && cor.echipament === 1 && cor.ramase === 0 && cor.cifre === 0, JSON.stringify(cor));
 
     // 10: mesajul de pe telefonul vechi (/api/support) chiar ne ajunge, la contact@, cu răspunsul spre om — din 23.10 ca o cerere
-    // „Anunță echipa RA Track" ca oricare alta („Cerere N · firma · O întrebare pentru echipă").
+    // „Anunță echipa RA Track” ca oricare alta („Cerere N · firma · O întrebare pentru echipă”).
     brevoPrimeste = true;
     const ne = emailuri.length;
     const sp = await json('POST', '/api/support', ck, { message: 'Nu-mi vine raportul pe email.' });
     for (let i = 0; i < 20 && emailuri.length === ne; i++) await sleep(150);
     const em = emailuri.slice(ne).find((x) => /^Cerere \d+ · /.test(x.subject || '')) || {};
-    T('mesajul către echipă pleacă la contact@ratrack.ro, cu „Răspuns la" = omul care a scris', sp.status === 200 && (em.to || [])[0] && em.to[0].email === 'contact@ratrack.ro' &&
+    T('mesajul către echipă pleacă la contact@ratrack.ro, cu „Răspuns la” = omul care a scris', sp.status === 200 && (em.to || [])[0] && em.to[0].email === 'contact@ratrack.ro' &&
       em.replyTo && em.replyTo.email === 'sef@reparatii.ro' && /Nu-mi vine raportul/.test(em.textContent || '') && / · O întrebare pentru echipă$/.test(em.subject || ''), JSON.stringify(em).slice(0, 300));
   } catch (e) { rele++; console.log('  ✗ proba a căzut: ' + (e && e.stack || e)); }
   console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');

@@ -3,7 +3,7 @@ import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { Icon } from './Icon';
 
-// Vehiculele (și grupele) pe care le vede un cont care NU are „Vede toată flota": dispecerul, viewer-ul
+// Vehiculele (și grupele) pe care le vede un cont care NU are „Vede toată flota”: dispecerul, viewer-ul
 // sau un rol căruia firma i-a tăiat dreptul ăsta. Aceeași rută ca pe web (GET/PUT /api/users/:id/access).
 // ATENȚIE: serverul ÎNLOCUIEȘTE lista întreagă la salvare → trimitem mereu ambele liste, complete.
 // (/access-until e altceva: termenul unui cont demo, doar super-admin.)
@@ -64,7 +64,7 @@ export function UserVehicleAccess(props: { user: AccessTarget; isSuper: boolean;
   function toggleGrp(id: number) {
     setSelGrp((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
-  // „Toate" / „Niciunul" respectă căutarea, ca pe web.
+  // „Toate” / „Niciunul” respectă căutarea, ca pe web.
   function setShown(val: boolean) {
     setSelDev((p) => { const n = new Set(p); shown.forEach((d) => { const k = String(d.imei); if (val) n.add(k); else n.delete(k); }); return n; });
   }

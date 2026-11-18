@@ -37,7 +37,7 @@ export function PlatformDashboard() {
     Api.backupStatus().then(setBk).catch(() => {});
     Api.adminHealth().then(setHl).catch(() => {});
     // Venitul lunar exact, cu motorul facturii (aceeași cifră ca registrul de clienți de pe web).
-    // Cifra din /overview e o estimare (toate mașinile socotite „fără CAN") — rămâne doar ca rezervă.
+    // Cifra din /overview e o estimare (toate mașinile socotite „fără CAN”) — rămâne doar ca rezervă.
     Api.companiesMrr().then(setMrr).catch(() => setMrr(null));
   }
   useEffect(reload, []);
@@ -139,8 +139,8 @@ export function PlatformDashboard() {
                 {(() => {
                   const nCrit = hl.checks.filter((c: any) => c.level === 'crit').length;
                   const nWarn = hl.checks.filter((c: any) => c.level === 'warn').length;
-                  // Aceleași cuvinte ca pe web (raxRenderHealth), cu acordul numerelor: „1 lucru de verificat",
-                  // nu „1 lucruri" — cât timp POSITION_RETENTION_DAYS a rămas în Railway, rândul ei e adesea singurul.
+                  // Aceleași cuvinte ca pe web (raxRenderHealth), cu acordul numerelor: „1 lucru de verificat”,
+                  // nu „1 lucruri” — cât timp POSITION_RETENTION_DAYS a rămas în Railway, rândul ei e adesea singurul.
                   const deVerificat = nrDe(nWarn, 'lucru', 'lucruri') + ' de verificat';
                   const txt = nCrit ? (nrDe(nCrit, 'problemă critică', 'probleme critice') + ' de rezolvat înainte de lansare' + (nWarn ? ' · ' + deVerificat : ''))
                     : (nWarn ? deVerificat : 'Totul e configurat pentru producție');

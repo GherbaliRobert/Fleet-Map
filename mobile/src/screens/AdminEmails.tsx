@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { FmMsg, FmScreen, poartaFirma, type FmMesaj } from '../components/FirmaUi';
 import './admin.css'; // .frm, .fld
 
-// „Adrese de email" (web: Setări → Notificări), pentru adminul firmei: agenda firmei — dispecerat@,
+// „Adrese de email” (web: Setări → Notificări), pentru adminul firmei: agenda firmei — dispecerat@,
 // contabilitate@ — care primește alerte și rapoarte pe lângă conturile oamenilor. O adresă NU primește nimic
 // până nu e confirmată din inbox: altfel oricine își face cont ar trimite emailuri de pe serverul nostru
 // oriunde. Limita de 20 de adrese, cele 5 confirmări pe oră și adresa dublă sunt ale serverului; telefonul
@@ -28,7 +28,7 @@ function AdminEmailsEcran() {
   const [email, setEmail] = useState('');
   const [eticheta, setEticheta] = useState('');
   const [adaug, setAdaug] = useState(false);
-  const [busy, setBusy] = useState<string>(''); // „id:camp" sau „id:retrimite" / „id:sterge"
+  const [busy, setBusy] = useState<string>(''); // „id:camp” sau „id:retrimite” / „id:sterge”
 
   async function load() {
     setErr('');

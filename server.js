@@ -26,7 +26,7 @@ const TANK_CAL_TTL = 60000; // 1 minut
 
 // ─── Citiri de configurație eșuate: ținem ultima valoare bună, NU memorăm eroarea ─────────────────────
 // Cele trei cache-uri de mai jos (calibrare rezervor, interfață CAN, sonde de combustibil) memorau până
-// acum și EȘECUL de citire, sub forma „vehiculul n-are configurație", pentru tot minutul de expirare.
+// acum și EȘECUL de citire, sub forma „vehiculul n-are configurație”, pentru tot minutul de expirare.
 // Efectul: la un hop al bazei de date, pachetele se decodau după schema implicită, iar valorile greșite de
 // CAN și de carburant rămâneau DEFINITIV în istoric. Acum, la eroare, folosim ultima configurație
 // cunoscută și reîncercăm peste câteva secunde.
@@ -61,7 +61,7 @@ async function getTankCalibration(imei) {
       return cal;
     }
   } catch (e) {
-    // O eroare de citire NU înseamnă „vehiculul n-are calibrare".
+    // O eroare de citire NU înseamnă „vehiculul n-are calibrare”.
     _cfgFail('calibrare rezervor', imei, e);
     if (tankCalibrationCache.has(imei)) {
       tankCalibrationTimestamp.set(imei, now - TANK_CAL_TTL + CFG_FAIL_RETRY_MS); // reîncearcă repede
@@ -84,7 +84,7 @@ async function getDeviceIface(imei) {
   let iface = null;
   try { iface = await db.getDeviceCanInterface(imei); }
   catch (err) {
-    // Același defect, dar mai scump: memorat ca „fără interfață CAN", un camion FMS e decodat un minut
+    // Același defect, dar mai scump: memorat ca „fără interfață CAN”, un camion FMS e decodat un minut
     // întreg cu schema implicită (LV-CAN), iar valorile greșite rămân în istoric. Ținem ce știam.
     _cfgFail('interfață CAN', imei, err);
     if (e) { _ifaceCache.set(imei, { ts: Date.now() - IFACE_TTL + CFG_FAIL_RETRY_MS, iface: e.iface }); return e.iface; }
@@ -190,7 +190,7 @@ const neplata = require('./neplata');               // ce se întâmplă când n
 const abonament = require('./abonament');           // de la ce zi plătește clientul o mașină: pe zile, din prima transmisie (reguli curate)
 const montaj = require('./montaj');                 // montajul la client: ce-i facturăm lui, cât ne costă pe noi
 const stocMod = require('./stoc');                  // stocul nostru de echipamente: unde e fiecare, al cui e (reguli curate)
-const aparatSchimbat = require('./aparat_schimbat'); // „Schimbă aparatul": aparatul nou preia mașina (29.10, reguli curate)
+const aparatSchimbat = require('./aparat_schimbat'); // „Schimbă aparatul”: aparatul nou preia mașina (29.10, reguli curate)
 const compat = require('./compatibilitate');        // ce aparat merge pe ce mașină, după listele Teltonika (reguli curate)
 const anafFirme = require('./anaf_firme');          // datele firmei după CUI, de la ANAF (serviciu public)
 let contractPdf = null; try { contractPdf = require('./contract_pdf'); } catch (e) { /* opțional: fără pdfkit nu se generează ciorna */ }
@@ -200,13 +200,13 @@ const etr = require('./etransport');   // regulile e-Transport (termen UIT, tăc
 const incarcare = require('./incarcare');   // simulatorul de încărcare: tipurile de remorci, cifrele obișnuite, ce se poate scrie (12.10)
 let efactura = null; try { efactura = require('./efactura'); } catch (e) { /* opțional */ }
 let mailer = null; try { mailer = require('./mailer'); } catch (e) { /* opțional */ }
-// Panoul Mail, fila „Trimise" (12.10): fiecare email NOSTRU (trimis cu `jurnal`) se scrie în bază, reușit sau nu.
+// Panoul Mail, fila „Trimise” (12.10): fiecare email NOSTRU (trimis cu `jurnal`) se scrie în bază, reușit sau nu.
 if (mailer && mailer.setJurnal) mailer.setJurnal(function (r) { return db.noteazaMailTrimis(r); });
-// Emailul care n-a plecat nu mai tace (22.10): vezi _dupaEmail, lângă „Stare producție". Din 28.10 și cel care a plecat, dar n-a
+// Emailul care n-a plecat nu mai tace (22.10): vezi _dupaEmail, lângă „Stare producție”. Din 28.10 și cel care a plecat, dar n-a
 // ajuns: Brevo e întrebat mai târziu ce s-a întâmplat cu el (_noteazaLivrarea → livrareEmailTick).
 const livrare = require('./livrare');   // ce s-a întâmplat cu un email după ce l-a primit Brevo (reguli și texte curate, 28.10)
 if (mailer && mailer.setLaRezultat) mailer.setLaRezultat(function (r, m) { _dupaEmail(r); _noteazaLivrarea(r, m); });
-const mailPrimit = require('./mail_primit');   // fila „Primite" (etapa 2): emailul venit de la Cloudflare, citit (reguli curate)
+const mailPrimit = require('./mail_primit');   // fila „Primite” (etapa 2): emailul venit de la Cloudflare, citit (reguli curate)
 let workSched = null; try { workSched = require('./workschedule'); } catch (e) { /* opțional */ }
 const fueltheft = require('./fueltheft');   // decizia "chiar a disparut combustibil?" - modul pur, verificabil
 const tollro = require('./tollro');           // taxa rutiera pe km (TollRo) - grila + calcul, modul pur
@@ -216,28 +216,28 @@ const COMMIT_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA ||
 // + MARJĂ peste limită (toleranță). Alertă DOAR dacă speed > max(BASE, limita configurată) + MARGIN.
 const SPEED_ALERT_BASE = Number(process.env.SPEED_ALERT_BASE) > 0 ? Number(process.env.SPEED_ALERT_BASE) : 50;
 const SPEED_ALERT_MARGIN = Number(process.env.SPEED_ALERT_MARGIN) >= 0 ? Number(process.env.SPEED_ALERT_MARGIN) : 10;
-// Histerezis „în mișcare": dacă vehiculul a avut viteză reală (>3) în ultimele MOVE_MEMORY_MS și are contactul pornit,
-// rămâne „În mișcare" chiar dacă pachetul curent arată ~0 (trafic bară-la-bară). O mașină chiar parcată expiră → „Staționat/Oprit".
+// Histerezis „în mișcare”: dacă vehiculul a avut viteză reală (>3) în ultimele MOVE_MEMORY_MS și are contactul pornit,
+// rămâne „În mișcare” chiar dacă pachetul curent arată ~0 (trafic bară-la-bară). O mașină chiar parcată expiră → „Staționat/Oprit”.
 const MOVE_MEMORY_MS = Number(process.env.MOVE_MEMORY_MS) > 0 ? Number(process.env.MOVE_MEMORY_MS) : 150000; // 2.5 min
 const reports = require('./reports');
 const channels = require('./channels');
 const ai = require('./ai');
 const insight = require('./insight');   // RA Insight: fișa flotei (număr, nume, șofer, grupă), perioadele pe ora României, memoria
-const insightGhid = require('./insight_ghid');   // „Ghidul aplicației": pașii adevărați, citiți gratuit sau prin RA Insight
-const aiRaport = require('./ai_raport');         // „AI Raport" din Rapoarte: întrebări pe reguli, din rapoarte, gratuit
+const insightGhid = require('./insight_ghid');   // „Ghidul aplicației”: pașii adevărați, citiți gratuit sau prin RA Insight
+const aiRaport = require('./ai_raport');         // „AI Raport” din Rapoarte: întrebări pe reguli, din rapoarte, gratuit
 const pachete = require('./pachete');            // pachetele RA Insight (14.10): Start / Basic / Pro / Business, plasa, conturile
-const sursaExterna = require('./sursa_externa'); // „Sursă externă" în RA Insight (28.10): căutarea pe internet, regulile și textele
+const sursaExterna = require('./sursa_externa'); // „Sursă externă” în RA Insight (28.10): căutarea pe internet, regulile și textele
 const fisaInsight = require('./fisa_insight'); // fișa lui RA Insight despre fiecare om (11.11): scrisă noaptea, citită la fiecare întrebare
 const soldAi = require('./sold_ai');             // banii pentru AI, la zi (04.11): soldul Anthropic, anunțurile, alarma refuzului
-const prenumeMod = require('./prenume');         // prenumele din salut (05.11): „Tilvar Alin" → „Alin"; fără nume, din email
-const meniuNou = require('./meniu_nou');         // „NOU" din meniu (05.11): 15 zile de la publicare, apoi pleacă singur
+const prenumeMod = require('./prenume');         // prenumele din salut (05.11): „Tilvar Alin” → „Alin”; fără nume, din email
+const meniuNou = require('./meniu_nou');         // „NOU” din meniu (05.11): 15 zile de la publicare, apoi pleacă singur
 const condus = require('./condus');              // Safe Drive: pragurile și scorul EcoDrive, litrii și leii, recomandările
 const safeDrive = require('./safe_drive');       // Safe Drive: zilele socotite din poziții și luna pentru pagină
 const ramuri = require('./ramuri');              // ramurile din pasul 4: regulile și textele (Mentenanță & acte, …)
-const cifre = require('./cifre');                // cifrele în care omul trebuie să aibă încredere: verificarea răspunsurilor RA Insight, perioada, „de verificat"
-const probleme = require('./probleme');          // „Am găsit o problemă" (15.10): viteza reală sau eroare de GPS, senzorul blocat, consumul din fișă
-const cereriEchipa = require('./cereri_echipa');   // „Anunță echipa RA Track" (capitolul 4, 22.10): regulile și textele cererilor către noi
-const locatieDistribuita = require('./locatie_distribuita'); // „Distribuie locația" (21.10): linkul public al unei mașini, ca pe WhatsApp
+const cifre = require('./cifre');                // cifrele în care omul trebuie să aibă încredere: verificarea răspunsurilor RA Insight, perioada, „de verificat”
+const probleme = require('./probleme');          // „Am găsit o problemă” (15.10): viteza reală sau eroare de GPS, senzorul blocat, consumul din fișă
+const cereriEchipa = require('./cereri_echipa');   // „Anunță echipa RA Track” (capitolul 4, 22.10): regulile și textele cererilor către noi
+const locatieDistribuita = require('./locatie_distribuita'); // „Distribuie locația” (21.10): linkul public al unei mașini, ca pe WhatsApp
 const preaviz = require('./preaviz');            // cu cât timp înainte se anunță un termen (liste, anunțuri, RA Care, Scadențe)
 const demoSim = require('./demo-sim');
 const tacho = require('./tacho');
@@ -284,7 +284,7 @@ let demoCompanyId = null;
 // ─── Simulatorul demo merge DOAR când are pentru cine ───
 // Înainte scria non-stop ~86.000 de poziții pe zi și 100 de actualizări pe minut pe WebSocket, chiar și când
 // nu exista niciun cont demo — cost de bază pur, plătit ca să se învârtă cinci camioane inventate pe o hartă
-// pe care n-o vedea nimeni. Acum starea lui e o funcție de „câte conturi demo sunt valabile acum".
+// pe care n-o vedea nimeni. Acum starea lui e o funcție de „câte conturi demo sunt valabile acum”.
 // Excepția e deliberată: super-adminul poate forța pornirea pentru o demonstrație live, cu termen scurt.
 let _demoSimForcedUntil = 0;
 let _demoSimState = { running: false, active: 0, forced: false, reason: 'neinițializat', at: null };
@@ -333,9 +333,9 @@ function _pastrareRezumat() {
     + (r.sarite ? ' · ' + r.sarite + ' mașini sărite: setările firmei nu se pot citi' : '')
     + (r.epuizat ? ' · buget de timp epuizat — continuă la următoarea' : '');
 }
-// Agenți „live-only": stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
+// Agenți „live-only”: stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
 // istoric. dispatch = disponibilitate acum; care = scadențe curente; optimize = scor eco de azi.
-// (Alertele „reale" de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
+// (Alertele „reale” de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
 const LIVE_AGENTS = new Set(['dispatch', 'care', 'optimize', 'compliance', 'client']);
 const webpush = require('web-push');
 const https = require('https');
@@ -379,14 +379,14 @@ const archivedImeis = new Set();
 // Ultimele valori CAN cunoscute per imei — pentru carry-forward când motorul e oprit (pachet fără date CAN).
 const lastCanIo = new Map(); // imei -> { io: {sticky...}, ts }
 
-// Override „contact din DIN1": IMEI-urile pentru care starea de contact se ia din DIN1 (IO 1), nu din
+// Override „contact din DIN1”: IMEI-urile pentru care starea de contact se ia din DIN1 (IO 1), nu din
 // IO 239 (calculat de device) — pentru trackere cu sursa de ignition configurată greșit. Doar excepțiile.
 const _din1Set = new Set();
 async function refreshDin1Set() {
   try { const list = await db.getDin1Imeis(); _din1Set.clear(); list.forEach((i) => _din1Set.add(i)); } catch (e) {}
 }
 // Aplică override-ul pe TOATE recordurile (înainte de stocare + live) → contactul e corect peste tot
-// (status, hartă, alerte, „motor pornit/oprit de", rapoarte).
+// (status, hartă, alerte, „motor pornit/oprit de”, rapoarte).
 function _applyIgnitionSource(imei, records) {
   if (!_din1Set.has(imei) || !Array.isArray(records)) return;
   for (const r of records) {
@@ -394,7 +394,7 @@ function _applyIgnitionSource(imei, records) {
   }
 }
 
-// Reconciliere periodică „arhivat": sursa de adevăr e DB (status='archived'). Re-sincronizează setul în
+// Reconciliere periodică „arhivat”: sursa de adevăr e DB (status='archived'). Re-sincronizează setul în
 // memorie ȘI scoate orice vehicul arhivat care a rămas în harta live (din boot-seed sau drift) → nu mai
 // poate apărea pe hartă. Auto-vindecare, independent de cum a ajuns acolo.
 async function reconcileArchived() {
@@ -469,14 +469,14 @@ function _verificaReceptia() {
 
 // ── MOD STRICT de înregistrare device-uri (securitate, ca Traccar) ───────────────────────────────────────
 // Acceptăm la handshake DOAR IMEI-uri PRE-ÎNREGISTRATE (allow-list) + neARHIVATE. Un tracker necunoscut sau
-// RESPINS e refuzat FĂRĂ să se creeze rând sau să se stocheze poziții — doar reținut într-un jurnal de „încercări"
+// RESPINS e refuzat FĂRĂ să se creeze rând sau să se stocheze poziții — doar reținut într-un jurnal de „încercări”
 // (în memorie) ca super-adminul să-l poată aproba dacă e legitim. Dezactivabil cu STRICT_DEVICES=false. Implicit ACTIV.
 const STRICT_DEVICES = process.env.STRICT_DEVICES !== 'false' && process.env.STRICT_DEVICES !== '0';
 const registeredImeis = new Set(); // allow-list: IMEI-uri pre-înregistrate + neARHIVATE
 // A doua jumătate a listei (Alin, 30.09: aparatul intră în aplicație O SINGURĂ DATĂ, în Stoc): trackerele din stocul
 // nostru, cu IMEI-ul ca serie. Nu mai trebuie scrise și în Dispozitive: la prima conectare se face singur rândul lui,
 // fără firmă, și apare la Dispozitive → Neasignate. Un IMEI străin (nici în Dispozitive, nici în Stoc) e refuzat ca
-// până acum. Se ține în pas cu stocul la fiecare intrare, corectură, mutare pe „casat" și ștergere.
+// până acum. Se ține în pas cu stocul la fiecare intrare, corectură, mutare pe „casat” și ștergere.
 const stocImeis = new Set();
 let registeredLoaded = false;
 async function loadRegisteredImeis() {
@@ -485,7 +485,7 @@ async function loadRegisteredImeis() {
     const s = await db.stocImeiuri(montaj.ECHIPAMENTE.filter(function (e) { return e.transmite; }).map(function (e) { return e.k; }), stocMod.PRIMITE_LA_CONECTARE);
     registeredImeis.clear(); r.rows.forEach((x) => registeredImeis.add(x.imei));
     stocImeis.clear(); s.filter(montaj.esteImei).forEach(function (x) { stocImeis.add(x); });
-    await _aparateReincarca();   // „Schimbă aparatul": ce aparat scrie pe ce mașină — ÎNAINTE ca serverul TCP să primească pe cineva
+    await _aparateReincarca();   // „Schimbă aparatul”: ce aparat scrie pe ce mașină — ÎNAINTE ca serverul TCP să primească pe cineva
     registeredLoaded = true;
     console.log(`[STRICT] ${registeredImeis.size} IMEI-uri înregistrate + ${stocImeis.size} în stoc (mod strict ${STRICT_DEVICES ? 'ACTIV' : 'oprit'})`);
   } catch (e) { console.error('[STRICT] loadRegisteredImeis:', e.message); }
@@ -498,7 +498,7 @@ async function _flotaGreaReincarca() {
   catch (e) { console.error('[FLOTA] firmele cu marfă:', e.message); }
 }
 function _imeiPrimit(imei) { return registeredImeis.has(imei) || stocImeis.has(imei); }
-// ─── „Schimbă aparatul" (Robert, 29.10) — regulile în aparat_schimbat.js ───
+// ─── „Schimbă aparatul” (Robert, 29.10) — regulile în aparat_schimbat.js ───
 // Harta de la conectare: aparatul nou → mașina pe care scrie (cheia ei rămâne IMEI-ul de la montaj); aparatul scos nu mai
 // e primit. Plus contoarele de km care continuă pe aparatul nou. Se reîncarcă odată cu lista de aparate (la pornire, la 2
 // minute) și pe loc, la orice schimbare de aparat, arhivare, restaurare sau ștergere.
@@ -524,7 +524,7 @@ async function _aparateReincarca() {
 // demo, nearhivat) — adică după montaj, când aparatul chiar merge. Un aparat trecut pe firmă, dar nemontat,
 // nu transmite, deci nu pornește și nu intră pe factură. Regula facturii stă în abonament.js.
 // Ca să nu întrebăm baza la fiecare pachet: mulțimea celor deja porniți (încărcată la pornire) + o pauză de
-// un minut pentru aparatele care n-au încă firmă (în „Neasignate" transmit, dar nu pornesc nimic).
+// un minut pentru aparatele care n-au încă firmă (în „Neasignate” transmit, dar nu pornesc nimic).
 const _aboPornit = new Set();
 const _aboVerificat = new Map();   // imei → când am întrebat ultima oară, fără rezultat
 let _aboIncarcat = false;
@@ -556,21 +556,21 @@ function logDeviceAttempt(imei, address) {
   deviceAttempts.set(imei, { first: now, last: now, count: 1, address });
 }
 
-// Valori CAN „sticky": rămân valabile când un pachet nu le include — carburant + kilometraj + RPM + limita de viteză (semn).
-// RPM se cară pt. vehiculele care îl trimit INTERMITENT (ex. Dacia LV-CAN200) → nu mai apare „-" cu motorul pornit.
+// Valori CAN „sticky”: rămân valabile când un pachet nu le include — carburant + kilometraj + RPM + limita de viteză (semn).
+// RPM se cară pt. vehiculele care îl trimit INTERMITENT (ex. Dacia LV-CAN200) → nu mai apare „-” cu motorul pornit.
 // speed_limit_sign (cameră ADAS, IO 1116): camera raportează semnul DOAR la schimbare → între semne pachetul nu-l include
-// și badge-ul de limită dispărea. Îl cărăm ca „ultima limită văzută" (volatil, expiră ca RPM — e limita drumului CURENT, nu permanent).
+// și badge-ul de limită dispărea. Îl cărăm ca „ultima limită văzută” (volatil, expiră ca RPM — e limita drumului CURENT, nu permanent).
 // Sigur: RPM/limita sunt doar afișaj (ascunse cu contactul oprit / expirate) și NU intră în nicio logică de alertă.
-// NU includem TEMP MOTORULUI — alimentează alertele de supraîncălzire (o temp „sticky" ar da alerte FALSE după răcire).
-// NU includem viteza — aceea TREBUIE instantanee (o viteză „sticky" ar arăta mașina în mișcare deși stă).
+// NU includem TEMP MOTORULUI — alimentează alertele de supraîncălzire (o temp „sticky” ar da alerte FALSE după răcire).
+// NU includem viteza — aceea TREBUIE instantanee (o viteză „sticky” ar arăta mașina în mișcare deși stă).
 const STICKY_CAN = ['fuel_level_liters', 'can_fuel_level_liters', 'can_fuel_level_pct', 'can_total_mileage', 'can_total_mileage_counted', 'total_odometer', 'can_engine_rpm', 'speed_limit_sign'];
-// Valori „volatile" (live): NU le mai cărăm dacă snapshot-ul e mai vechi de X — altfel RPM-ul ultimei tură apare ca instant deși motorul e oprit/offline.
+// Valori „volatile” (live): NU le mai cărăm dacă snapshot-ul e mai vechi de X — altfel RPM-ul ultimei tură apare ca instant deși motorul e oprit/offline.
 // (Carburant/odometru rămân sticky oricât — nu se schimbă cât stă mașina parcată. RPM + limita de viteză = volatile, expiră.)
 const STICKY_VOLATILE = new Set(['can_engine_rpm', 'speed_limit_sign']);
 const STICKY_VOLATILE_MAX_MS = 15 * 60 * 1000;
 const lastCanPersistTs = new Map(); // imei -> ts ultimului snapshot persistat în DB (throttle scrieri)
 // Momentul snapshotului trebuie să fie MEREU un număr. La ingest vine ca obiect Date, dar în baza de
-// date ajunge text ISO (JSON), iar la repornire era citit înapoi tot ca text. „Acum − text" = NaN,
+// date ajunge text ISO (JSON), iar la repornire era citit înapoi tot ca text. „Acum − text” = NaN,
 // iar NaN nu e mai mare decât nimic: după ORICE restart, `devices.last_can` nu se mai actualiza
 // niciodată pentru vehiculul acela, iar valorile cu expirare (turația) se cărau la nesfârșit.
 function _ms(x) {
@@ -580,10 +580,10 @@ function _ms(x) {
   return Number.isFinite(n) ? n : 0;
 }
 // Doar valori REALE (> 0). Un camion fără date CAN reale trimite 0/lipsă → NU intră în snapshot (altfel apărea
-// „0.0 km (ultima)" / „- (ultima)" fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire".
+// „0.0 km (ultima)” / „- (ultima)” fals). Carburant/odometru/AdBlue/ore = 0 înseamnă practic „fără citire”.
 function _stickyOf(io) { const o = {}; if (!io) return o; for (const k of STICKY_CAN) { const v = io[k]; if (v !== undefined && v !== null && Number(v) > 0) o[k] = v; } return o; }
 // Completează în targetIo cheile sticky LIPSĂ cu ultima valoare reală din snapshot. Întoarce true dacă a completat ceva.
-// Întoarce LISTA cheilor completate, nu doar „am completat ceva". Detectoarele au nevoie să știe
+// Întoarce LISTA cheilor completate, nu doar „am completat ceva”. Detectoarele au nevoie să știe
 // exact care valoare e veche: un pachet poate avea carburant proaspăt și odometru cărat, iar un
 // singur steag pe toată poziția nu spune care e care.
 function _fillSticky(targetIo, snapIo, snapTs) { const carate = []; const volStale = (Date.now() - _ms(snapTs)) > STICKY_VOLATILE_MAX_MS; for (const k of STICKY_CAN) { if (volStale && STICKY_VOLATILE.has(k)) continue; const sv = snapIo[k]; if (targetIo[k] === undefined && sv !== undefined && sv !== null && Number(sv) > 0) { targetIo[k] = sv; carate.push(k); } } return carate; }
@@ -827,11 +827,11 @@ const tcpServer = net.createServer((socket) => {
         imei = buffer.slice(2, 2 + imeiLength).toString('ascii');
         buffer = buffer.slice(2 + imeiLength);
 
-        // IMEI valid = DOAR cifre (Teltonika trimite 15; acceptăm 10–20). Un „IMEI" ne-numeric NU vine de la un
+        // IMEI valid = DOAR cifre (Teltonika trimite 15; acceptăm 10–20). Un „IMEI” ne-numeric NU vine de la un
         // tracker real → îl respingem ÎNAINTE de orice scriere/ACK/notificare. Astfel un payload injectat prin
         // handshake (ex. „<img onerror=…>") nu mai ajunge în DB / în feed-ul de notificări al super-adminului.
         if (!/^\d{10,20}$/.test(imei)) {
-          console.warn(`[TCP] IMEI invalid de la ${clientAddr}: „${imei.slice(0, 40)}" — conexiune respinsă`);
+          console.warn(`[TCP] IMEI invalid de la ${clientAddr}: „${imei.slice(0, 40)}” — conexiune respinsă`);
           ingestStats.rejects++;
           addDebugEntry({ event: 'reject', address: clientAddr, reason: 'imei_invalid' });
           socket.destroy();
@@ -839,9 +839,9 @@ const tcpServer = net.createServer((socket) => {
           return;
         }
 
-        // „Schimbă aparatul" (29.10): de aici înainte `imei` e cheia MAȘINII. Un aparat montat în locul altuia scrie pe mașina
+        // „Schimbă aparatul” (29.10): de aici înainte `imei` e cheia MAȘINII. Un aparat montat în locul altuia scrie pe mașina
         // lui (aparat_schimbat.vehiculPentru); aparatul scos nu mai e primit — în orice mod, nu doar în cel strict: altfel ar
-        // scrie pe mașină în același timp cu cel nou. Nu intră în „încercări": nu e un aparat necunoscut de aprobat.
+        // scrie pe mașină în același timp cu cel nou. Nu intră în „încercări”: nu e un aparat necunoscut de aprobat.
         const imeiAparat = imei;
         const vehicul = aparatSchimbat.vehiculPentru(imeiAparat, _aparate);
         if (vehicul == null) {
@@ -874,12 +874,12 @@ const tcpServer = net.createServer((socket) => {
         // ATENȚIE: când se serializează activeConnections în /api/debug/connections, EXCLUDE câmpul `socket`
         // ca să nu rupă JSON.stringify pe circular reference.
         // Reconectare: dacă există un socket vechi (zombie half-open) pentru același IMEI, închide-l ÎNTÂI, ca să
-        // nu rămână în paralel și apoi, la close-ul lui, să șteargă/„deconecteze" din greșeală conexiunea nouă.
+        // nu rămână în paralel și apoi, la close-ul lui, să șteargă/„deconecteze” din greșeală conexiunea nouă.
         { const _old = activeConnections.get(imei); if (_old && _old.socket && _old.socket !== socket) { try { _old.socket.destroy(); } catch (_) {} } }
         activeConnections.set(imei, {
           address: clientAddr,
           connectedAt: new Date(),
-          aparat: imeiAparat,   // aparatul care a sunat (altul decât cheia mașinii, după „Schimbă aparatul")
+          aparat: imeiAparat,   // aparatul care a sunat (altul decât cheia mașinii, după „Schimbă aparatul”)
           socket
         });
 
@@ -1025,15 +1025,15 @@ const tcpServer = net.createServer((socket) => {
         }
       }
 
-      // „Schimbă aparatul": contorul de km al aparatului nou continuă de unde a rămas cel vechi (aparat_schimbat.js) —
-      // ÎNAINTE de stocare și live, ca reviziile la km, „km la bord" și rapoartele să vadă aceeași mașină, fără salt.
+      // „Schimbă aparatul”: contorul de km al aparatului nou continuă de unde a rămas cel vechi (aparat_schimbat.js) —
+      // ÎNAINTE de stocare și live, ca reviziile la km, „km la bord” și rapoartele să vadă aceeași mașină, fără salt.
       { const _st = _contoare.get(imei);
         if (_st && aparatSchimbat.continuaContorul(parsed.records, _st).nou) {
           db.salveazaAjustareContor(imei, _st.ajustare).catch(function (e) { console.warn('[APARAT] contorul ' + imei + ':', e.message); });
         } }
 
-      // Override „contact din DIN1" (dacă e configurat pe vehicul) — ÎNAINTE de stocare + live, ca toate
-      // consumatoarele (status, alerte, „motor pornit/oprit de", rapoarte) să vadă contactul corect.
+      // Override „contact din DIN1” (dacă e configurat pe vehicul) — ÎNAINTE de stocare + live, ca toate
+      // consumatoarele (status, alerte, „motor pornit/oprit de”, rapoarte) să vadă contactul corect.
       _applyIgnitionSource(imei, parsed.records);
 
       // Salvează în baza de date — cu re-încercări scurte. ACK-ul s-a trimis deja (rapid, pt. Teltonika), dar
@@ -1076,7 +1076,7 @@ const tcpServer = net.createServer((socket) => {
         const existing = livePositions.get(imei) || {};
         // GUARD monotonic: NU retrograda poziția LIVE cu un record OUT-OF-ORDER mai vechi decât ce avem deja
         // (buffer flush / ceas device defazat). E salvat în istoric (mai sus); live rămâne pe cel mai NOU —
-        // altfel ora „ultimei transmisii" oscilează („ba acum 6 min, ba acum 10h"). Excepție: dacă live-ul
+        // altfel ora „ultimei transmisii” oscilează („ba acum 6 min, ba acum 10h”). Excepție: dacă live-ul
         // curent e în VIITOR (ceas defazat în față), permitem update-ul ca să ieșim din blocaj.
         const _toMs = t => (t == null ? 0 : (typeof t === 'number' ? t : new Date(t).getTime()));
         const _exTs = _toMs(existing.timestamp), _newTs = _toMs(liveRec.timestamp);
@@ -1089,7 +1089,7 @@ const tcpServer = net.createServer((socket) => {
         const mergedIo = {};
         for (const _r of parsed.records) if (_r.io) Object.assign(mergedIo, _r.io);
         // Identitatea (nume/nr/categorie) din registrul de vehicule (DB, cache 20s) — NU doar din snapshot-ul
-        // anterior. Altfel, la un vehicul înregistrat după pornire, plăcuța rămânea null și „se reseta".
+        // anterior. Altfel, la un vehicul înregistrat după pornire, plăcuța rămânea null și „se reseta”.
         // Dacă baza tace, mergem mai departe FĂRĂ identitate. Înainte, excepția de aici sărea peste harta
         // live, peste trimiterea pe WebSocket și peste TOATE detectoarele (alerte, furt de carburant,
         // program de lucru): poziția intra în istoric, dar dispecerul nu vedea nimic și nimic nu pornea.
@@ -1109,7 +1109,7 @@ const tcpServer = net.createServer((socket) => {
           vehicle_type: devInfo.vehicle_type || existing.vehicle_type || null,
           plate: devInfo.plate || existing.plate || null
         };
-        // ── Carry-forward CAN „sticky": carburant/odometru + RPM rămân la ultima valoare REALĂ când lipsesc dintr-un pachet ──
+        // ── Carry-forward CAN „sticky”: carburant/odometru + RPM rămân la ultima valoare REALĂ când lipsesc dintr-un pachet ──
         // (NU cărăm viteza, nici temp motorului — temp alimentează alertele de supraîncălzire). Persistăm în DB → supraviețuiește restartului. _stickyOf ignoră 0/spurious.
         const _freshSticky = _stickyOf(liveData.io);
         if (Object.keys(_freshSticky).length > 0) {
@@ -1120,19 +1120,19 @@ const tcpServer = net.createServer((socket) => {
           if (_ms(liveRec.timestamp) - _ms(lastCanPersistTs.get(imei)) > 5 * 60 * 1000) _persistLastCan(imei, _merged, liveRec.timestamp);
         }
         // Completează cheile sticky LIPSĂ din pachetul curent (indiferent dacă pachetul are alte chei can_*).
-        // can_stale = true DOAR dacă chiar am completat o valoare reală → fără „(ultima)" fals pe camioane fără CAN.
+        // can_stale = true DOAR dacă chiar am completat o valoare reală → fără „(ultima)” fals pe camioane fără CAN.
         const _snap = lastCanIo.get(imei);
         const _carried = _snap ? _fillSticky(liveData.io, _snap.io, _snap.ts) : [];
         liveData.can_stale = _carried.length > 0;
-        // CARE chei sunt vechi, nu doar „sunt". Detectorul de scădere de carburant le ignoră, ca să
+        // CARE chei sunt vechi, nu doar „sunt”. Detectorul de scădere de carburant le ignoră, ca să
         // nu compare nivelul de dinainte de parcare cu prima citire de după pornire.
         liveData.can_stale_keys = _carried;
         if (_carried.length) {
           liveData.can_snapshot_ts = _ms(_snap.ts);
-          // capturează valoarea „de parcare" în DB o singură dată (prima dată când rămâne fără CAN proaspăt)
+          // capturează valoarea „de parcare” în DB o singură dată (prima dată când rămâne fără CAN proaspăt)
           if (_ms(lastCanPersistTs.get(imei)) < _ms(_snap.ts)) _persistLastCan(imei, _snap.io, _snap.ts);
         }
-        // Memorie „s-a mișcat recent" (histerezis anti-fals-„staționat" în trafic): reține momentul ultimei viteze reale;
+        // Memorie „s-a mișcat recent” (histerezis anti-fals-„staționat” în trafic): reține momentul ultimei viteze reale;
         // se propagă din intrarea live anterioară când viteza curentă e ≤3, ca să nu resetăm memoria la fiecare oprire scurtă.
         try { const _plp = livePositions.get(imei); liveData.moved_at = ((Number(liveData.speed) || 0) > 3) ? new Date(liveData.timestamp).getTime() : ((_plp && _plp.moved_at) || null); } catch (e) {}
         livePositions.set(imei, liveData);
@@ -1158,7 +1158,7 @@ const tcpServer = net.createServer((socket) => {
             evaluateUserEvents(imei, liveData, existing).catch(() => {});
           });
 
-        // Alertă „mișcare în afara programului de lucru" (supraveghere flotă)
+        // Alertă „mișcare în afara programului de lucru” (supraveghere flotă)
         checkAfterHoursMovement(imei, liveData).catch(() => {});
 
         // Track tare automat pentru camioane
@@ -1176,8 +1176,8 @@ const tcpServer = net.createServer((socket) => {
     console.log(`[TCP] Deconectat: ${imei || clientAddr}`);
     addDebugEntry({ event: 'disconnect', imei: imei || null, address: clientAddr });
     if (imei) {
-      // Doar dacă socketul care se închide e CHIAR cel curent — un zombie care moare nu mai dărâmă/„deconectează"
-      // conexiunea nouă, validă, a aceluiași IMEI (evită un „disconnect" fals pe un vehicul de fapt online).
+      // Doar dacă socketul care se închide e CHIAR cel curent — un zombie care moare nu mai dărâmă/„deconectează”
+      // conexiunea nouă, validă, a aceluiași IMEI (evită un „disconnect” fals pe un vehicul de fapt online).
       const _e = activeConnections.get(imei);
       if (_e && _e.socket === socket) {
         activeConnections.delete(imei);
@@ -1211,7 +1211,7 @@ const tcpServer = net.createServer((socket) => {
 const app = express();
 // Căile se potrivesc EXACT, cu tot cu litere mici. Implicit Express le potrivește fără să țină cont de majuscule, iar
 // verificările de la fiecare cerere (cont dezactivat sau șters, termen expirat, rol reîmprospătat, poarta de abonament,
-// limitarea de rată) se uită dacă adresa începe cu „/api". Pe „/API/..." ele erau sărite, dar rutele răspundeau — cu
+// limitarea de rată) se uită dacă adresa începe cu „/api”. Pe „/API/...” ele erau sărite, dar rutele răspundeau — cu
 // rolul vechi, ținut minte în sesiune. Trebuie setat ÎNAINTE de primul app.use / app.get.
 app.set('case sensitive routing', true);
 app.set('trust proxy', 1); // necesar pentru cookie secure în spatele proxy-ului (Railway)
@@ -1386,8 +1386,8 @@ const NO_CACHE = 'no-cache, no-store, must-revalidate';
 // Adresa se ia din SITE_URL (sau din antetul cererii), ca sitemap-ul să nu trimită spre alt domeniu
 // când rulăm pe alt mediu (probe, VPS nou).
 //
-// PAGINI_PUBLICE e SINGURA listă a site-ului public: din ea ies sitemap-ul, adresele „frumoase" și
-// redirecționarea de la vechea adresă cu „.html" (mai jos). O pagină nouă = un rând aici.
+// PAGINI_PUBLICE e SINGURA listă a site-ului public: din ea ies sitemap-ul, adresele „frumoase” și
+// redirecționarea de la vechea adresă cu „.html” (mai jos). O pagină nouă = un rând aici.
 // `modificat` = ziua în care s-a schimbat ULTIMA oară TEXTUL paginii; e `lastmod` din sitemap. Până
 // pe 02.10 acolo stătea ziua de azi, la fiecare citire — iar o dată care se schimbă mereu e o dată pe
 // care Google învață s-o ignore. `amprenta` n-o citește serverul: e amprenta textului, verificată de
@@ -1437,9 +1437,9 @@ app.get('/sitemap.xml', (req, res) => {
   bucati.push('</urlset>', '');
   res.type('application/xml').send(bucati.join('\n'));
 });
-// Adresele „frumoase" ale paginilor publice, din aceeași listă ca sitemap-ul. Fără ele, un link din
+// Adresele „frumoase” ale paginilor publice, din aceeași listă ca sitemap-ul. Fără ele, un link din
 // sitemap ar da 404, iar Google ar raporta erori exact pentru paginile pe care i le-am arătat noi.
-// Adresa cu „.html" a aceluiași fișier (o servea și `express.static`, mai jos) duce PERMANENT (301) la
+// Adresa cu „.html” a aceluiași fișier (o servea și `express.static`, mai jos) duce PERMANENT (301) la
 // cea frumoasă: aceeași pagină sub două adrese e conținut dublu, iar Google alege singur una dintre
 // ele — nu neapărat pe a noastră (02.10). Linkurile vechi (aplicația de telefon, bannerul de cookie-uri)
 // merg mai departe, doar că trec prin redirecționare. Stă ÎNAINTEA lui `express.static`, altfel n-ar ajunge aici.
@@ -1452,7 +1452,7 @@ for (const p of PAGINI_PUBLICE) {
   });
 }
 
-// Pagina pleacă cu amprenta ei scrisă înăuntru (banda „A apărut o versiune nouă", 14.10 — vezi `amprentaPaginii`).
+// Pagina pleacă cu amprenta ei scrisă înăuntru (banda „A apărut o versiune nouă”, 14.10 — vezi `amprentaPaginii`).
 app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('html'); res.send(_paginaCuAmprenta()); });
 // Documentație API pentru clienți (publică, fără secrete)
 app.get(['/api-docs', '/docs'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'api-docs.html')));
@@ -1460,13 +1460,13 @@ app.get('/sw.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('
 // Stylesheet extras: fără cache (la fel ca /app și /sw.js), altfel Cloudflare/edge servește CSS vechi după actualizări.
 app.get('/css/app.css', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('text/css'); res.sendFile(path.join(__dirname, 'public', 'css', 'app.css')); });
 // Categoriile de permis, generate din license_cats.js — interfața NU ține o listă proprie. Dacă adaugi
-// o categorie sau muți una la „profesionist", se schimbă în același timp și în formular, și în raport.
+// o categorie sau muți una la „profesionist”, se schimbă în același timp și în formular, și în raport.
 const _LICENSE_JS = 'window.RA_LICENSE=' + JSON.stringify({
   categories: licenseCats.CATEGORIES, groups: licenseCats.GROUPS, pro: licenseCats.PRO, tacho: licenseCats.TACHO
 }) + ';';
 app.get('/js/license-cats.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_LICENSE_JS); });
 // Aceleași categorii pentru telefon, în JSON. Ca la steagurile CAN: o sursă, două transporturi —
-// dacă mutăm o categorie la „profesionist" sau la „cu tahograf", se schimbă în amândouă odată.
+// dacă mutăm o categorie la „profesionist” sau la „cu tahograf”, se schimbă în amândouă odată.
 const _LICENSE_JSON = { categories: licenseCats.CATEGORIES, groups: licenseCats.GROUPS, pro: licenseCats.PRO, tacho: licenseCats.TACHO };
 app.get('/api/license-cats', (req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(_LICENSE_JSON); });
 
@@ -1502,10 +1502,10 @@ const _IOFMT_JS = 'window.RA_IOFMT=(function(){' +
   '\nreturn {formatIoValue:formatIoValue,formatIoLabel:formatIoLabel};})();';
 app.get('/js/io-format.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.send(_IOFMT_JS); });
 
-// ─── Versiunea paginii: banda „A apărut o versiune nouă" (14.10, Robert: „vreau doar banda") ───
+// ─── Versiunea paginii: banda „A apărut o versiune nouă” (14.10, Robert: „vreau doar banda”) ───
 // Amprenta a tot ce încarcă aplicația web: pagina, stilurile, scripturile — și cele făcute mai sus din module. O publicare
 // care schimbă DOAR serverul n-o mișcă, deci banda apare doar când pagina pe care omul o ține deschisă e alta decât cea de
-// pe server. `/app` o scrie în pagină (meta „ra-pagina"), `/api/health` o dă la cerere. Se refăce doar când un fișier și-a
+// pe server. `/app` o scrie în pagină (meta „ra-pagina”), `/api/health` o dă la cerere. Se refăce doar când un fișier și-a
 // schimbat mărimea sau ora (local, în lucru); pe Railway fișierele nu se mai schimbă după pornire.
 const _PAGINA_META = '<meta name="ra-pagina" content="">';
 const _pagina = { semn: null, amprenta: '', html: null, htmlSemn: null };
@@ -1552,7 +1552,7 @@ app.get('/api/health', async (req, res) => {
     mode: process.env.DATABASE_URL ? 'postgres' : 'pglite',
     uptime_s: Math.round((Date.now() - _startedAt) / 1000),
     version: (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_SHA || 'dev').slice(0, 7),
-    pagina: (function () { try { return amprentaPaginii(); } catch (e) { return null; } })(), // banda „versiune nouă"
+    pagina: (function () { try { return amprentaPaginii(); } catch (e) { return null; } })(), // banda „versiune nouă”
     fcm: !!_fcm, // push nativ (FCM) activ = FIREBASE_SA_JSON setat + init reușit
     fcm_status: _fcmStatus // 'active' | 'unset' | 'error: <mesaj>'
   });
@@ -1575,13 +1575,13 @@ const ROLE_PERMISSIONS = {
 const VALID_ROLES = Object.keys(ROLE_PERMISSIONS);
 // Rolurile pe care ADMINUL UNEI FIRME le poate atribui, în firma lui.
 //
-// „Client" a fost scos: avea EXACT aceleași drepturi ca „Viewer", iar două nume pentru același lucru
+// „Client” a fost scos: avea EXACT aceleași drepturi ca „Viewer”, iar două nume pentru același lucru
 // îl pun pe om să ghicească. Decizia lui Alin: rămâne Viewer. Rolul NU se șterge din ROLE_PERMISSIONS
 // — conturile vechi care îl au merg mai departe, cu drepturi identice cu ale unui viewer.
 //
 // `company_admin` E ÎN LISTĂ din 16.09 (decizia lui Alin). Adminul unei firme poate face sau promova
 // alt administrator ÎN FIRMA LUI. Nu e o escaladare, e o DELEGARE: un admin are deja tot ce se poate
-// avea într-o firmă, iar diferența față de un manager e doar „gestionează oamenii" + „vede jurnalul
+// avea într-o firmă, iar diferența față de un manager e doar „gestionează oamenii” + „vede jurnalul
 // firmei" — amândouă lucruri pe care le are deja. Înainte, pentru al doilea administrator firma
 // trebuia să ne sune pe noi, ceea ce nu apăra nimic real: doar ne băga în gospodăria clientului.
 //
@@ -1592,7 +1592,7 @@ function permsFor(role) { return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.view
 function hasPerm(role, perm) { return !!permsFor(role)[perm]; }
 function isSuper(role) { return role === 'superadmin'; }
 
-// ── începe „roluri de firmă" (REPER pentru probe: verify_roluri.js decupează bucata dintre reperul
+// ── începe „roluri de firmă” (REPER pentru probe: verify_roluri.js decupează bucata dintre reperul
 // ăsta și cel de la sfârșit. Nu insera funcții noi între ele.) ──
 // O firmă își poate RENUMI rolurile și le poate TĂIA din drepturi. Nu poate adăuga nimic: drepturile
 // de bază stau în ROLE_PERMISSIONS, iar în bază se ține doar ce s-a tăiat. Așa, orice greșeală (a
@@ -1601,7 +1601,7 @@ function isSuper(role) { return role === 'superadmin'; }
 // administrator, dacă l-ar putea și AJUSTA și-ar putea tăia singură dreptul de administrare — și ar
 // rămâne pe dinafară din propriul cont, fără cale de întoarcere.
 const ROLURI_AJUSTABILE = ['manager', 'dispatcher', 'viewer'];
-// Numele standard, ca ecranul să arate „Dispecer (standard)" lângă numele ales de firmă.
+// Numele standard, ca ecranul să arate „Dispecer (standard)” lângă numele ales de firmă.
 const ROLE_LABELS_RO = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer' };
 // Adminul firmei NU e ajustabil: dacă și-ar tăia dreptul de administrare, ar rămâne pe dinafară din
 // propriul cont, fără cale de întoarcere. Nici rolurile de platformă, evident.
@@ -1612,7 +1612,7 @@ const ROLE_LABELS_RO = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispec
 //   viewAll     → filtrează lista de mașini (fără el: doar cele atribuite)
 // `sendCommands`, `ackAlerts` și `viewAudit` există în tabela de roluri, dar NU păzesc nicio rută:
 // trimiterea de comenzi nu e încă implementată, confirmarea notificărilor e deschisă oricui e logat,
-// iar jurnalul e păzit de „super-admin", nu de viewAudit. Le-am scos de pe ecran ANUME: o bifă care
+// iar jurnalul e păzit de „super-admin”, nu de viewAudit. Le-am scos de pe ecran ANUME: o bifă care
 // se salvează frumos și nu schimbă nimic e mai rea decât lipsa ei — adminul ar crede că a închis o
 // ușă care de fapt e deschisă. Se pun la loc în clipa în care dreptul chiar păzește ceva.
 const DREPTURI_ETICHETE = {
@@ -1623,7 +1623,7 @@ const DREPTURI_ETICHETE = {
 };
 function rolAjustabil(rol) { return ROLURI_AJUSTABILE.indexOf(rol) >= 0; }
 
-// ── Ajustările FINE, ca la fila „Funcționalități / Management date / Rapoarte" ──
+// ── Ajustările FINE, ca la fila „Funcționalități / Management date / Rapoarte” ──
 // Trei liste, aceeași regulă ca la drepturile mari: se poate doar TĂIA. Fiecare intrare de aici
 // păzește ceva real (rute, în server) — dacă adaugi una nouă, leag-o de rute în aceeași trecere,
 // altfel ajunge o bifă care nu face nimic.
@@ -1648,7 +1648,7 @@ const ECRANE = [
   { cheie: 'tollro',      et: 'Taxa de drum (TollRo)',   grup: 'Module',     cai: ['/api/tollro'] },
   { cheie: 'insight',     et: 'RA Insight și agenți AI', grup: 'Module',     cai: ['/api/insight', '/api/agents', '/api/ai'] },
 ];
-// EDITARE = ce are voie să SCHIMBE. Se aplică peste dreptul mare „modifică flota": cine nu-l are,
+// EDITARE = ce are voie să SCHIMBE. Se aplică peste dreptul mare „modifică flota”: cine nu-l are,
 // n-ajunge oricum aici.
 const EDITARI = [
   { cheie: 'vehicule',   et: 'Editare vehicule (fișă, config, senzori)' },
@@ -1697,7 +1697,7 @@ async function roluriCompaniei(companyId) {
     const cheiEditari = EDITARI.map(function (x) { return x.cheie; });
     const cheiRap = rapoarteCatalog().map(function (x) { return x.cheie; });
     randuri.forEach(function (r) {
-      // Rolul de bază trebuie să fie unul ajustabil. Un rând scris de mână cu „admin" se ignoră.
+      // Rolul de bază trebuie să fie unul ajustabil. Un rând scris de mână cu „admin” se ignoră.
       const baza = rolAjustabil(r.baza) ? r.baza : (rolAjustabil(r.role_key) ? r.role_key : null);
       if (!baza) return;
       const taiabile = drepturiTaiabile(baza);
@@ -1750,7 +1750,7 @@ function numeRol(rol, ajustari, slug) {
   return (aj && aj.nume) || null;
 }
 // ── Ajustările FINE, aplicate pe cerere ──
-// Ecranele au rute: dacă ecranul e tăiat, ruta lui răspunde „acces interzis". Așa, ascunderea din
+// Ecranele au rute: dacă ecranul e tăiat, ruta lui răspunde „acces interzis”. Așa, ascunderea din
 // meniu nu e o perdea — e o ușă închisă și pe server.
 function poateEcran(req, cheie) { return !_taiat(req, 'ecrane', cheie); }
 function _listaTaiata(req, camp) {
@@ -1768,7 +1768,7 @@ function pazaEcrane(req, res, next) {
   } catch (err) { /* o eroare aici nu are voie să blocheze aplicația */ }
   next();
 }
-// Editarea, peste dreptul mare „modifică flota": cine nu-l are nici nu ajunge aici.
+// Editarea, peste dreptul mare „modifică flota”: cine nu-l are nici nu ajunge aici.
 function requireEdit(entitate) {
   return (req, res, next) => {
     const a = getAuth(req);
@@ -1777,13 +1777,13 @@ function requireEdit(entitate) {
     req.auth = a; next();
   };
 }
-// ── sfârșit „roluri de firmă" ──
+// ── sfârșit „roluri de firmă” ──
 
 // IP-ul REAL al clientului. NU citim primul element din X-Forwarded-For — acela e scris de client și e
 // spoofabil (rotindu-l, un atacator ocolea complet rate-limit-ul de login și polua jurnalul de audit).
 // Ordine: CF-Connecting-IP (Cloudflare, în fața noastră) → req.ip (Express, cu `trust proxy` setat) → socket.
 // Antetul CF-Connecting-IP e pus de Cloudflare, dar ORICINE îl poate trimite. Dacă aplicația nu stă
-// chiar în spatele Cloudflare, oricine își alege singur „IP-ul" și scapă de TOATE limitările pe IP:
+// chiar în spatele Cloudflare, oricine își alege singur „IP-ul” și scapă de TOATE limitările pe IP:
 // forța brută la login, limita de cereri, capcana formularului de demo. Îl acceptăm doar când spunem
 // explicit că suntem în spatele proxy-ului (TRUST_CF_IP=true).
 const _TRUST_CF = String(process.env.TRUST_CF_IP || '').toLowerCase() === 'true';
@@ -1798,7 +1798,7 @@ function clientIp(req) {
 
 // ─── Politica de parole — O SINGURĂ regulă, în toate cele patru locuri unde se pune o parolă ───
 // Erau praguri diferite (4, 4, 4 și 6 caractere), fără nicio verificare de conținut: un client își
-// putea face cont cu „1234". Contul deschide date de localizare ale angajaților și facturi.
+// putea face cont cu „1234”. Contul deschide date de localizare ale angajaților și facturi.
 const PAROLE_UZUALE = new Set(['parola', 'parola123', 'password', 'password1', '12345678', '123456789',
   '1234567890', 'qwerty123', 'admin123', 'administrator', 'ratracks', 'ratrack', 'welcome1', 'iloveyou',
   'qwertyuiop', 'abcd1234', 'p@ssw0rd', 'passw0rd', 'test1234', 'schimba123']);
@@ -1932,11 +1932,11 @@ async function getAllowedImeiSet(userId, role, companyId) {
   const cached = accessCache.get(userId);
   if (cached && (Date.now() - cached.ts) < ACCESS_TTL) return cached.imeis;
   let set;
-  // „Vede toată flota" e un drept ca oricare: dacă firma l-a tăiat din rol, omul vede doar mașinile
+  // „Vede toată flota” e un drept ca oricare: dacă firma l-a tăiat din rol, omul vede doar mașinile
   // care i-au fost atribuite. Fără linia asta, tăierea ar apărea pe ecran, dar n-ar face nimic.
   const _aj = await roluriCompaniei(companyId);
   // Tăierea se caută pe rolul PROPRIU al omului (dacă are unul), apoi pe cel standard — exact ca în drepturiEfective.
-  // Înainte se căuta doar pe cel standard: un rol propriu fără „Vede toată flota" apărea limitat pe ecran, dar omul
+  // Înainte se căuta doar pe cel standard: un rol propriu fără „Vede toată flota” apărea limitat pe ecran, dar omul
   // vedea toată flota (hartă, rapoarte, acte, legătura live). Dacă rolul nu se poate citi, rezultatul nu se ține minte.
   let _slug = null, _necitit = false;
   // (O firmă fără roluri ajustate n-are ce tăia: fără citire în plus la fiecare reîmprospătare a accesului.)
@@ -2047,12 +2047,12 @@ function canAccessImei(req, imei) {
 // Verifică dacă un utilizator țintă aparține companiei celui care face cererea (super-adminul trece peste tot)
 // ─── Identitatea contului: utilizatorul ESTE adresa de email ────────────────────────────────────────
 // Regulă pentru conturile NOI: username = email (o singură identitate de reținut, iar recuperarea parolei
-// și invitațiile au întotdeauna unde să ajungă). Conturile VECHI cu username clasic („admin") continuă să
+// și invitațiile au întotdeauna unde să ajungă). Conturile VECHI cu username clasic („admin”) continuă să
 // funcționeze neschimbat — nu forțăm o migrare care ar bloca oameni în afara aplicației.
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 function normUsername(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
-// Căutare tolerantă la MAJUSCULE: cineva care tastează „Ion@Firma.ro" trebuie să intre în contul
-// „ion@firma.ro". Întâi potrivire exactă (comportamentul vechi, intact), apoi varianta cu litere mici.
+// Căutare tolerantă la MAJUSCULE: cineva care tastează „Ion@Firma.ro” trebuie să intre în contul
+// „ion@firma.ro”. Întâi potrivire exactă (comportamentul vechi, intact), apoi varianta cu litere mici.
 async function findUserForLogin(username) {
   const raw = String(username == null ? '' : username).trim();
   let u = await db.getUserByUsername(raw);
@@ -2076,7 +2076,7 @@ function _demoDurationHours(body) {
   if (h == null || !(h > 0)) h = 24 * 7; // implicit: o săptămână
   return Math.min(Math.max(Math.round(h), 1), DEMO_MAX_HOURS);
 }
-// Text pentru om: „6 ore" / „7 zile" / „2 zile și 6 ore".
+// Text pentru om: „6 ore” / „7 zile” / „2 zile și 6 ore”.
 function _demoDurationLabel(h) {
   const d = Math.floor(h / 24), r = h % 24;
   if (!d) return h + (h === 1 ? ' oră' : ' ore');
@@ -2086,7 +2086,7 @@ function _demoDurationLabel(h) {
 const DEMO_EXPIRED_MSG = 'Accesul demo a expirat. Scrie-ne dacă vrei o prelungire sau o ofertă.';
 
 // Gardă anti-blocare: platforma trebuie să rămână MEREU cu cel puțin un super-admin activ.
-// Fără asta, doi super-admini se pot „stinge" reciproc (protecția existentă acoperă doar propriul cont)
+// Fără asta, doi super-admini se pot „stinge” reciproc (protecția existentă acoperă doar propriul cont)
 // și rămâi fără niciun cont care poate administra companiile — recuperabil doar din baza de date.
 async function _isLastActiveSuperadmin(targetId) {
   try {
@@ -2102,8 +2102,8 @@ async function _isLastActiveSuperadmin(targetId) {
 // firmă singurul administrator, iar firma rămânea fără nimeni — cu toate mărunțișurile ei („mi-a
 // venit un șofer nou") pe telefonul nostru. Aici se închide.
 const _ROLURI_ADMIN_FIRMA = ['admin', 'company_admin'];
-// Administratorul unei firme a purtat DOUĂ nume, după calea pe care a fost făcut: „company_admin"
-// (Companii → Client nou) și „admin" (formularul din Utilizatori). Drepturile erau identice, dar în
+// Administratorul unei firme a purtat DOUĂ nume, după calea pe care a fost făcut: „company_admin”
+// (Companii → Client nou) și „admin” (formularul din Utilizatori). Drepturile erau identice, dar în
 // aceeași listă apăreau două etichete pentru aceeași putere. Numele de acum e UNUL: `company_admin`.
 // `admin` rămâne acceptat la intrare (aplicația de telefon și rândurile vechi îl trimit încă), dar
 // se preface în cel bun înainte de a ajunge în bază — vezi și migrarea de la pornire.
@@ -2153,7 +2153,7 @@ function requireFeature(key) {
 // ─── Accesul unei firme: se taie DOAR în două cazuri (decizie Alin, 28.09) ───
 //   1. o factură neplătită, la 15 zile după scadență (regula din 09.09, `neplata.js`);
 //   2. oprirea pusă de noi, de mână, cu motiv scris.
-// Până pe 28.09 mai era un al treilea ceas, „acces până la": orice factură marcată „Plătită" punea firmei
+// Până pe 28.09 mai era un al treilea ceas, „acces până la”: orice factură marcată „Plătită” punea firmei
 // data de sfârșit a perioadei de pe factură, iar la 15 zile după ea accesul se tăia. Adică un client care
 // PLĂTISE TOT era blocat (factura pe o lună trecută, plătită → blocat pe loc), iar lună de lună ceasul cerea
 // plata cu o zi ÎNAINTEA scadenței facturii. Coloana `companies.access_until` a rămas în bază, dar nu mai
@@ -2163,7 +2163,7 @@ function requireFeature(key) {
 //   grace   = o factură a trecut de scadență, dar suntem încă în cele 15 zile (se vede numărătoarea);
 //   expired = oprit (neplată sau de mână) — restul aplicației verifică exact cuvântul ăsta.
 // FĂRĂ motivul scris de noi la o oprire de mână (`suspend_reason`): starea pleacă și la oamenii firmei (/api/me,
-// „Facturile mele"), iar motivul e o notă internă (lista lui Robert, 01.10, pct. 3). Ecranele noastre îl citesc din
+// „Facturile mele”), iar motivul e o notă internă (lista lui Robert, 01.10, pct. 3). Ecranele noastre îl citesc din
 // fișa firmei (`company.suspend_reason`).
 function stareAcces(co, facturi, acum) {
   const np = neplata.stareNeplata(facturi || [], acum || Date.now());
@@ -2190,7 +2190,7 @@ function _addBusinessDaysMs(ms, n) {
   return d.getTime();
 }
 // ─── Control costuri: status + KPI calculate în JS (nu stocate) ───
-const COST_DUE_SOON_MS = 14 * 86400000; // „scadent curând" = ≤14 zile
+const COST_DUE_SOON_MS = 14 * 86400000; // „scadent curând” = ≤14 zile
 function costStatus(c) {
   if (c.active === false) return 'inactive';
   const due = (c.next_due != null) ? Number(c.next_due) : null;
@@ -2335,10 +2335,10 @@ async function _anuntaSuperadmini(supers, tip, gravitate, titlu, corp, date) {
   return n;
 }
 
-// ─── Emailul care n-a plecat nu mai tace (22.10, Alin: „raportul… am primit după zile, a funcționat, apoi nu a mai mers") ───
+// ─── Emailul care n-a plecat nu mai tace (22.10, Alin: „raportul… am primit după zile, a funcționat, apoi nu a mai mers”) ───
 // Brevo refuza serverul după o publicare (Railway îi schimbă adresa; Brevo blochează din oficiu adresele necunoscute) și nimeni
-// nu afla: rapoartele programate înghițeau eroarea, iar „Stare producție" era verde. Acum fiecare trimitere (mailer.js) ajunge
-// aici: ultima reușită și ultima eroare se scriu în bază (le citește „Stare producție" și după o repornire), iar o eroare ne
+// nu afla: rapoartele programate înghițeau eroarea, iar „Stare producție” era verde. Acum fiecare trimitere (mailer.js) ajunge
+// aici: ultima reușită și ultima eroare se scriu în bază (le citește „Stare producție” și după o repornire), iar o eroare ne
 // anunță pe noi, fondatorii — în aplicație și pe telefon, NICIODATĂ pe email (ar pica la fel) —, cel mult o dată la 6 ore.
 // Clientul nu vede amănuntele: află doar că emailul n-a plecat și că am fost anunțați (report_schedules.textStare).
 const EMAIL_ALARMA_PAUZA = 6 * 3600 * 1000;
@@ -2353,7 +2353,7 @@ async function _emailStareAcum() {
   const e = nou('esuatLa');
   return { reusitLa: Number(nou('reusitLa').reusitLa) || 0, esuatLa: Number(e.esuatLa) || 0, eroare: e.eroare || null };
 }
-// Emailul pleacă? O SINGURĂ socoteală (scoasă din „Stare producție" pe 30.10), citită și de „Azi la noi" (asistentul
+// Emailul pleacă? O SINGURĂ socoteală (scoasă din „Stare producție” pe 30.10), citită și de „Azi la noi” (asistentul
 // fondatorilor): `pus` = are cale (Brevo / SMTP); `picat` = ultimul email n-a plecat; `vfPicat` = la verificarea fără email
 // Brevo a refuzat serverul (rețeaua picată nu se socotește); `m` = motivul pe înțeles (mailer.motiv).
 async function _emailVerdict() {
@@ -2386,7 +2386,7 @@ async function _dupaEmail(r) {
 
 // ─── Emailul care a plecat, dar n-a ajuns (28.10; Alin, cu o captură: „programarea e încă activă, eu nu primesc nimic. Și nici nu
 // văd motivul și nici nu știu unde să mă uit") ───
-// Aplicația îl preda lui Brevo și scria „a plecat pe email"; ce urma (livrat la Yahoo, refuzat, adresa blocată la Brevo, spam) nu știa
+// Aplicația îl preda lui Brevo și scria „a plecat pe email”; ce urma (livrat la Yahoo, refuzat, adresa blocată la Brevo, spam) nu știa
 // nimeni. Acum, pentru emailurile pe care le urmărim — rapoartele programate (`livrare`) și emailurile NOASTRE (`jurnal`: facturi,
 // contracte, invitații, linkuri de parolă, panoul Mail) —, id-ul dat de Brevo se scrie în `email_livrari` (fără subiect, fără conținut),
 // iar livrareEmailTick întreabă Brevo ce s-a întâmplat (doar citește). Alertele și notificările unei firme NU se urmăresc: nu ne uităm la
@@ -2439,7 +2439,7 @@ async function livrareEmailTick(acum) {
         try {
           const sc = await db.getReportScheduleById(m[1]); if (!sc || !sc.user_id) continue;
           await notify({ type: 'report_email_nelivrat', severity: 'warning', title: 'Emailul cu raportul n-a ajuns',
-            body: '„' + (sc.name || sc.report_type) + '": ' + livrare.textPentruClient(x) + '. Raportul e în Istoric rapoarte.',
+            body: '„' + (sc.name || sc.report_type) + '”: ' + livrare.textPentruClient(x) + '. Raportul e în Istoric rapoarte.',
             data: { reportType: sc.report_type, key: 'report_nelivrat_' + x.id }, userId: sc.user_id, companyId: sc.company_id });
         } catch (e) {}
       }
@@ -2449,9 +2449,9 @@ async function livrareEmailTick(acum) {
   return rezultat;
 }
 
-// ─── Brevo primește serverul? Întrebat la pornire și apoi din oră în oră, FĂRĂ să trimită vreun email (28.10, Alin: „rezolvă") ───
+// ─── Brevo primește serverul? Întrebat la pornire și apoi din oră în oră, FĂRĂ să trimită vreun email (28.10, Alin: „rezolvă”) ───
 // Până acum aflam că Brevo refuză adresa nouă a serverului (după o publicare) abia la primul email — de obicei a doua zi dimineață, la
-// raportul programat. Răspunsul se scrie în `email_stare.verificare` (îl arată „Stare producție"); un refuz al adresei sau al cheii ne
+// raportul programat. Răspunsul se scrie în `email_stare.verificare` (îl arată „Stare producție”); un refuz al adresei sau al cheii ne
 // anunță pe loc, pe aceeași pauză de 6 ore ca emailul căzut. O rețea care nu răspunde nu anunță (trece singură).
 async function _verificaEmailServer() {
   if (!mailer || !mailer.enabled()) return { sarit: true };
@@ -2509,7 +2509,7 @@ async function contractExpiryTick() {
         (dPreaviz ? (a.preavizTrecut
           ? ' Termenul de preaviz (' + dPreaviz + ') a trecut deja.'
           : ' Ultima zi de preaviz: ' + dPreaviz + '.') : '') +
-        ' Deschide Contracte și apasă „Reînnoiește" pe rândul lui: se face actul adițional de prelungire.';
+        ' Deschide Contracte și apasă „Reînnoiește” pe rândul lui: se face actul adițional de prelungire.';
       const n = await db.createNotification({
         type: 'contract_expira', severity: a.trecut ? 'critical' : 'warning',
         companyId: null, userId: null, imei: null,
@@ -2548,8 +2548,8 @@ async function contractExpiryTick() {
   return raport;
 }
 // Termenele de montaj de văzut (curând / depășit) ale contractelor date: O socoteală, a anunțului zilnic de mai sus și a lui
-// „Azi la noi" (asistentul fondatorilor, 30.10). Întoarce [{ c, t }] — t de la contracte.termenMontaj. Stă ÎNAINTEA reperului
-// „Escape HTML minimal": verify_drum.js rulează anunțul zilnic decupat până acolo, cu ea cu tot.
+// „Azi la noi” (asistentul fondatorilor, 30.10). Întoarce [{ c, t }] — t de la contracte.termenMontaj. Stă ÎNAINTEA reperului
+// „Escape HTML minimal”: verify_drum.js rulează anunțul zilnic decupat până acolo, cu ea cu tot.
 async function _termeneMontaj(lista, acum) {
   const dd = await db.drumDateToate(contracte.MONTAJ_EXECUTAT);
   const out = [];
@@ -2566,7 +2566,7 @@ async function _termeneMontaj(lista, acum) {
 function _he(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 // Corpul de email pentru o factură emisă (rezumat + instrucțiuni plată).
 // Sigla din antetul emailului: același fișier ca pe rapoarte (`logo.png` = varianta ALBĂ, pentru fundal închis), atașat
-// „în corpul" emailului și chemat din HTML prin `cid:`.
+// „în corpul” emailului și chemat din HTML prin `cid:`.
 const EMAIL_LOGO = { filename: 'logo.png', path: path.join(__dirname, 'public', 'logo.png'), cid: 'logo@ratrack.ro', contentType: 'image/png' };
 function _invoiceEmailHtml(inv, iss) {
   const money = function (n) { return (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
@@ -2578,9 +2578,9 @@ function _invoiceEmailHtml(inv, iss) {
     : platita ? 'Vă trimitem factura fiscală pentru plata primită. Pe ea nu mai e nimic de plată.'
     : inv.fel === 'abonament' ? 'Am emis factura pentru abonamentul de monitorizare GPS.'
     : 'Am emis factura de mai jos.';
-  // Antetul: sigla OFICIALĂ (Robert, 09.10: „1 da"), imaginea albă pe bandă închisă, ca în aplicație. Pe verde, A-ul verde
+  // Antetul: sigla OFICIALĂ (Robert, 09.10: „1 da”), imaginea albă pe bandă închisă, ca în aplicație. Pe verde, A-ul verde
   // al siglei abia se vedea (1,9:1). Sigla vine ATAȘATĂ în email (`cid`, vezi EMAIL_LOGO): o imagine de pe site o blochează
-  // multe programe de email până apasă omul „arată imaginile". Textul alternativ scrie „RA Track", pentru cine n-o vede.
+  // multe programe de email până apasă omul „arată imaginile”. Textul alternativ scrie „RA Track”, pentru cine n-o vede.
   return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a2235;">' +
     '<div style="background:#0B0E11;color:#fff;padding:18px 20px 16px;border-radius:10px 10px 0 0;border-bottom:3px solid #3FE07D;">' +
       '<img src="cid:' + EMAIL_LOGO.cid + '" width="180" height="35" alt="RA Track" style="display:block;border:0;color:#fff;font:bold 20px Arial,Helvetica,sans-serif;">' +
@@ -2593,15 +2593,15 @@ function _invoiceEmailHtml(inv, iss) {
         (due && !platita ? '<tr><td style="padding:5px 0;color:#475569;">Scadență</td><td style="text-align:right;">' + _he(due) + '</td></tr>' : '') +
       '</table>' +
       (iss.iban && !platita ? '<p style="font-size:13px;color:#475569;">Plată prin transfer în contul <b>' + _he(iss.iban) + '</b>' + (iss.bank ? ' (' + _he(iss.bank) + ')' : '') + ', beneficiar <b>' + _he(iss.name || '') + '</b>.</p>' : '') +
-      '<p style="font-size:12px;color:#94a3b8;margin-top:16px;">Documentul e atașat (PDF) și îl găsiți și în platformă, la „Facturile mele". Vă mulțumim!</p>' +
+      '<p style="font-size:12px;color:#94a3b8;margin-top:16px;">Documentul e atașat (PDF) și îl găsiți și în platformă, la „Facturile mele”. Vă mulțumim!</p>' +
     '</div></div>';
 }
-// ─── Ce se întâmplă după ce se naște o factură sau o proformă (Alin, 30.09: „de acord, apucă-te") ───
-// Clientul e anunțat în aplicație („Factură nouă"), îi pleacă pe email cu hârtia PDF atașată, iar o factură FISCALĂ
+// ─── Ce se întâmplă după ce se naște o factură sau o proformă (Alin, 30.09: „de acord, apucă-te”) ───
+// Clientul e anunțat în aplicație („Factură nouă”), îi pleacă pe email cu hârtia PDF atașată, iar o factură FISCALĂ
 // pleacă și la ANAF (e-Factura). O SINGURĂ funcție pentru toate felurile de documente: abonamentul automat de pe 1 a
 // lunii, factura făcută de mână (aparate, montaj, abonamentul unei luni), proforma și factura născută dintr-o
 // proformă încasată. Până pe 30.09 asta o făcea DOAR factura automată; celelalte stăteau în aplicație până le
-// trimitea cineva de mână, iar la ANAF — până apăsa cineva „Trimite la ANAF", pe fiecare.
+// trimitea cineva de mână, iar la ANAF — până apăsa cineva „Trimite la ANAF”, pe fiecare.
 // Întoarce ce a plecat, ca ecranul s-o spună pe față:
 //   { notificare, email: true|false, emailMotiv, anaf: 'uploaded'|'error'|'nu_se_trimite'|'fara_token', anafEroare }
 async function _trimiteFactura(inv, co, iss) {
@@ -2638,7 +2638,7 @@ async function _trimiteFactura(inv, co, iss) {
       await db.updateInvoice(inv.id, { efacturaStatus: 'error', efacturaError: rez.anafEroare }).catch(function () {});
     }
   }
-  // Emailul, cu hârtia atașată — același PDF ca la „Descarcă" (factura_pdf.js).
+  // Emailul, cu hârtia atașată — același PDF ca la „Descarcă” (factura_pdf.js).
   if (!(mailer && mailer.enabled())) rez.emailMotiv = 'serverul n-are email';
   else if (!co.contact_email) rez.emailMotiv = 'firma n-are adresă de email';
   else {
@@ -2663,7 +2663,7 @@ async function _trimiteFactura(inv, co, iss) {
 // ─── Facturare AUTOMATĂ lunară: pe ziua de facturare a companiei (auto_invoice=true) emite factura lunii, o notifică,
 //     o trimite la ANAF (dacă e activ) și pe email (dacă SMTP e setat). IDEMPOTENT: o singură factură de ABONAMENT
 //     pe firmă și lună. ───
-// Până pe 28.09 „e deja facturată luna?" se socotea după ORICE factură emisă în lună: o factură pentru un aparat
+// Până pe 28.09 „e deja facturată luna?” se socotea după ORICE factură emisă în lună: o factură pentru un aparat
 // vândut (5 martie, ziua de facturare 10) oprea în tăcere abonamentul lunii. Acum contează DOAR factura de
 // abonament a lunii (`fel = 'abonament'`, `luna`), iar ce se pune pe ea vine din regula pe zile (abonament.js):
 // aparatele nemontate nu plătesc, cele pornite luna trecută plătesc zilele lor.
@@ -2682,7 +2682,7 @@ async function billingAutoInvoiceTick() {
       if (co.is_demo || co.auto_invoice !== true) { out.skipped++; continue; }
       const billDay = Math.max(1, Math.min(parseInt(co.billing_day) || 1, 28));
       if (day < billDay) continue;               // încă nu a venit ziua de facturare
-      if (!canIssue) continue;                    // fără „Date emitent" (nume+CUI) nu putem emite
+      if (!canIssue) continue;                    // fără „Date emitent” (nume+CUI) nu putem emite
       if (await db.abonamentLuna(co.id, luna, false)) continue;   // abonamentul lunii e deja facturat (sau anulat de noi)
       // Luna în care am trecut la regula nouă: o factură VECHE (fără `fel`) emisă luna asta ține loc de abonament,
       // ca să nu facturăm luna de două ori. De luna viitoare nu mai există facturi vechi, deci regula dispare singură.
@@ -2710,7 +2710,7 @@ async function billingAutoInvoiceTick() {
   }
   return out;
 }
-// ─── Program de lucru + alertă „mișcare în afara programului" (supraveghere flotă) ───
+// ─── Program de lucru + alertă „mișcare în afara programului” (supraveghere flotă) ───
 // Program per companie (settings.work_schedule) + override pe grup / vehicul. Detecție la ingest, cooldown per vehicul.
 const WORK_SCHED_COOLDOWN_MS = Math.max(60000, (parseInt(process.env.WORK_SCHED_COOLDOWN_MIN) || 30) * 60000);
 let _wsCompany = new Map(), _wsGroup = new Map(), _wsDevice = new Map(), _wsDevMeta = new Map();
@@ -2764,7 +2764,7 @@ const _accessCache = new Map();
 function _invalidateAccessCache(companyId) { _accessCache.delete(companyId); }
 // Un singur mesaj pentru toate felurile de suspendare, ales de Alin (09.09). Motivul exact
 // (neplată / oprit de noi) merge separat, în câmpul `motiv`, pentru ecranul care-l arată.
-// Din 01.10 (lista lui Robert, pct. 26) cu vorbele benzii de sus: „Abonament suspendat pentru neplată" se spunea și la o
+// Din 01.10 (lista lui Robert, pct. 26) cu vorbele benzii de sus: „Abonament suspendat pentru neplată” se spunea și la o
 // oprire făcută de noi, iar banda spunea altceva pentru aceeași stare.
 const MESAJ_SUSPENDAT = 'Accesul este suspendat. Contactați furnizorul pentru reactivare.';
 // Accesul unei firme se poate tăia din DOUĂ motive (regula stă în `stareAcces`, mai sus), verificate
@@ -2772,7 +2772,7 @@ const MESAJ_SUSPENDAT = 'Accesul este suspendat. Contactați furnizorul pentru r
 //   1. suspendare MANUALĂ, pusă de noi (un caz aparte, cu motiv scris);
 //   2. NEPLATĂ: o factură emisă, neachitată, mai veche de 15 zile peste scadență (regula lui Alin).
 // Amândouă întorc `status: 'expired'`, fiindcă asta verifică restul aplicației în vreo zece locuri.
-// Al treilea motiv, „acces până la" (perioada plătită + 15 zile), a fost SCOS pe 28.09: bloca
+// Al treilea motiv, „acces până la” (perioada plătită + 15 zile), a fost SCOS pe 28.09: bloca
 // clienți care plătiseră tot. Vezi `stareAcces`.
 async function _accessStatusCached(companyId) {
   let e = _accessCache.get(companyId);
@@ -2958,7 +2958,7 @@ app.post('/api/login', async (req, res) => {
 
     db.setUserLastLogin(user.id).catch(() => {});
     // Compania TREBUIE trecută: istoricul firmei se filtrează pe ea, iar fără ea autentificările
-    // nu apăreau deloc în „Istoric activitate" — se vedea ce s-a modificat, dar nu și cine a intrat.
+    // nu apăreau deloc în „Istoric activitate” — se vedea ce s-a modificat, dar nu și cine a intrat.
     db.logAudit({ userId: user.id, username: user.username, action: 'login', entity: 'session', ip,
       companyId: user.company_id != null ? user.company_id : null });
 
@@ -3026,17 +3026,17 @@ app.post('/api/logout', (req, res) => {
 
 // ─── Setări sistem (cheie-valoare în settings) cu cache scurt ───
 let _sysCache = null, _sysTs = 0;
-// ── începe „costurile noastre" ───────────────────────────────────────────────────────────────────
-// Cât ne costă PE NOI un aparat și o instalare. Fără ele, „profitul" de pe o ofertă ar fi inventat:
+// ── începe „costurile noastre” ───────────────────────────────────────────────────────────────────
+// Cât ne costă PE NOI un aparat și o instalare. Fără ele, „profitul” de pe o ofertă ar fi inventat:
 // calculatorul știe doar prețurile de VÂNZARE (Alin, 21.09 — „pregătește infrastructura, cifrele le
 // trecem noi când le știm").
 //
-// Regula de aur: o valoare nescrisă rămâne **null**, nu 0. „Nu știm cât ne costă" și „ne costă zero"
+// Regula de aur: o valoare nescrisă rămâne **null**, nu 0. „Nu știm cât ne costă” și „ne costă zero”
 // sunt două lucruri diferite; dacă le-am amesteca, un aparat fără preț trecut ar arăta profit 100%.
 // Ecranul refuză să socotească până n-are toate cifrele de care are nevoie.
 //
 // Cheile OGLINDESC prețurile de vânzare din calculator (`dFmc130`, `mGps`, …), ca perechea
-// „cât cerem / cât ne costă" să se citească dintr-o privire.
+// „cât cerem / cât ne costă” să se citească dintr-o privire.
 const COST_CHEI_EUR = ['dFmc130', 'dFmc150', 'dFmc650', 'dLvCan'];                                   // aparate, € bucata
 const COST_CHEI_LEI = ['mGps', 'mLvCan', 'mCanInc', 'mFms', 'mUninstall', 'mReplace', 'mTravel',     // montaj, lei operațiunea
                        'cVehLuna'];                                                                  // ce ne costă lunar o mașină (SIM + servere)
@@ -3048,24 +3048,24 @@ function _costuriGoale() {
 function _costuriCurate(b) {
   const out = _costuriGoale();
   COST_CHEI_EUR.concat(COST_CHEI_LEI).forEach(k => {
-    if (b[k] === '' || b[k] === null || b[k] === undefined) return;   // rămâne „nu știm"
+    if (b[k] === '' || b[k] === null || b[k] === undefined) return;   // rămâne „nu știm”
     const n = parseFloat(b[k]);
     if (Number.isFinite(n) && n >= 0 && n <= 1000000) out[k] = Math.round(n * 100) / 100;
   });
   return out;
 }
-// ── sfârșit „costurile noastre" ──
+// ── sfârșit „costurile noastre” ──
 
-// ── începe „tarifele de listă" ───────────────────────────────────────────────────────────────────
+// ── începe „tarifele de listă” ───────────────────────────────────────────────────────────────────
 // Cât CEREM. Erau scrise în codul paginii (`_OF_PRETURI_DEF`): le puteai schimba într-o ofertă, dar
-// la „Ofertă nouă" sau la reîncărcarea paginii reveneau cifrele din cod. Dacă Teltonika scumpea, se
+// la „Ofertă nouă” sau la reîncărcarea paginii reveneau cifrele din cod. Dacă Teltonika scumpea, se
 // umbla în cod (Alin, 21.09). Acum se trec o dată, lângă costurile noastre, și rămân.
 //
-// O cheie NETRECUTĂ rămâne `null` și înseamnă „folosește implicitul din pagină" — NU zero. Altfel un
+// O cheie NETRECUTĂ rămâne `null` și înseamnă „folosește implicitul din pagină” — NU zero. Altfel un
 // tarif uitat ar face un abonament de 0 lei fără ca nimeni să bage de seamă.
-// ⚠ `pAiA` NU mai e aici (23.09). Era „prețul unui cont de RA Insight" ca tarif de listă, dar
+// ⚠ `pAiA` NU mai e aici (23.09). Era „prețul unui cont de RA Insight” ca tarif de listă, dar
 // prețul contului îl dă GRILA pe mărimea flotei (`AIQ_PRET_LOC` din pagină), care călca pe tăcute
-// orice cifră salvată aici: Alin putea scrie 22 de lei în „Prețurile noastre" și oferta tot 14
+// orice cifră salvată aici: Alin putea scrie 22 de lei în „Prețurile noastre” și oferta tot 14
 // propunea. Acum se salvează chiar treptele grilei — cele cinci chei `aiq…` de mai jos.
 // Pachetele RA Insight (14.10, pasul 5): prețurile de listă ale pachetelor (pkBasic / pkPro / pkBusiness) au luat locul
 // grilei pe cont (aiqPana10 … aiqPeste100, scoasă: cade singură la prima salvare). Le citește pachete.preturiLista.
@@ -3079,7 +3079,7 @@ const TARIF_CHEI = ['pPlain', 'pCan', 'pFms', 'pAiAg', 'pTahograf', 'pEtransport
 //
 // ⚠ Înainte, fiecare salvare RESCRIA toată lista: orice cheie netrimisă devenea `null` („ia-o din
 // cod"). Cât timp o singură fereastră salva totul, n-a contat. Dar sunt DOUĂ căi de salvare —
-// tabloul „Prețurile noastre" și butonul „Salvează ca tarifele noastre" din cărțile ofertei — și
+// tabloul „Prețurile noastre” și butonul „Salvează ca tarifele noastre” din cărțile ofertei — și
 // fiecare trimite alte chei. Butonul din cărți ar fi șters grila RA Insight din tablou, pe tăcute.
 // Acum: trimisă cu valoare → se scrie; trimisă goală → `null` (ia-o din cod); netrimisă → rămâne.
 function _tarifeCurate(b, existent) {
@@ -3093,7 +3093,7 @@ function _tarifeCurate(b, existent) {
   });
   return out;   // doar cheile din TARIF_CHEI: una scoasă (ca `pAiA`) cade singură la prima salvare
 }
-// ── sfârșit „tarifele de listă" ──
+// ── sfârșit „tarifele de listă” ──
 
 async function getSystemSettings() {
   if (_sysCache && (Date.now() - _sysTs) < 15000) return _sysCache;
@@ -3104,7 +3104,7 @@ async function getSystemSettings() {
   let tarifObj = {}; try { if (tarife) tarifObj = _tarifeCurate(JSON.parse(tarife)); } catch (e) { tarifObj = {}; }
   _sysCache = { announcement: ann || '', agents_auto: auto !== 'off', offline_minutes: (Number(off) > 0 ? Number(off) : 65), default_speed_limit: (Number(spd) > 0 ? Number(spd) : 90), invoice_issuer: issuerObj, costuri_noastre: costObj, tarife_lista: tarifObj,
     // Cursul NOSTRU, pus de mana, cu ziua in care l-am pus. Ramane pana il schimbam (Alin, 21.09:
-    // „lasa BNR, nu poti pune un alt curs care sa ramana?"). Gol = il luam de la BNR.
+    // „lasa BNR, nu poti pune un alt curs care sa ramana?”). Gol = il luam de la BNR.
     curs_eur: (Number(curs) > 1 && Number(curs) < 100) ? Number(curs) : null, curs_eur_data: cursD || null };
   _sysTs = Date.now();
   return _sysCache;
@@ -3128,27 +3128,27 @@ app.get('/api/me', async (req, res) => {
   let fullName = null, phone = null, functie = null, aiSeat = false;
   try { if (a.userId) { const _u = await db.getUserById(a.userId); if (_u) { fullName = _u.full_name || null; phone = _u.phone || null; functie = _u.functie || null; aiSeat = !!_u.ai_seat; } } } catch (e) {}
   res.json({
-    phone, // pentru „Preferințe → Contul meu", unde omul își schimbă singur datele de contact
+    phone, // pentru „Preferințe → Contul meu”, unde omul își schimbă singur datele de contact
     functie, // 13.10: funcția (apare în semnătura emailurilor din panoul Mail)
     // Drepturile trimise interfeței sunt cele EFECTIVE (rol minus ce a tăiat firma). Altfel ecranul
     // ar arăta butoane pe care serverul le refuză — adică ar părea stricat.
     username: a.username, full_name: fullName, role: a.role,
-    // Prenumele din „Salut, Alin!" (05.11): O regulă, pe server (prenume.js) — pagina și telefonul doar îl scriu.
+    // Prenumele din „Salut, Alin!” (05.11): O regulă, pe server (prenume.js) — pagina și telefonul doar îl scriu.
     prenume: prenumeMod.prenumeDin(fullName, a.username),
-    // „NOU" din meniu (05.11): cheile rândurilor încă noi (meniu_nou.js, 15 zile de la publicare); pagina și telefonul doar le arată.
+    // „NOU” din meniu (05.11): cheile rândurilor încă noi (meniu_nou.js, 15 zile de la publicare); pagina și telefonul doar le arată.
     meniuNou: meniuNou.noi(Date.now()),
     permissions: drepturiEfective(a.role, req._rolAjust, req._freshAuth && req._freshAuth.roleSlug),
     roleLabel: numeRol(a.role, req._rolAjust, req._freshAuth && req._freshAuth.roleSlug),
     // Ce ecrane și ce rapoarte are voie să vadă — interfața ascunde restul din meniu, ca omul să nu
-    // apese pe butoane care apoi îi răspund „acces interzis".
+    // apese pe butoane care apoi îi răspund „acces interzis”.
     ecraneAscunse: _listaTaiata(req, 'ecrane'), rapoarteAscunse: _listaTaiata(req, 'rapoarte'),
     editariTaiate: _listaTaiata(req, 'editari'), viaApiKey: !!a.viaApiKey,
     accessUntil: (req._freshAuth && req._freshAuth.accessUntil != null) ? Number(req._freshAuth.accessUntil) : null,
     isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access,
-    // Are omul cont RA Insight? (Capitolul 2, pasul 1) Cine are, vede agenții în „Azi la tine" și nu mai are „Agenți AI" în meniu.
-    // Noi (super-admin) n-avem o flotă pentru „Azi la tine": păstrăm pagina agenților în meniu (acolo punem pragurile platformei).
+    // Are omul cont RA Insight? (Capitolul 2, pasul 1) Cine are, vede agenții în „Azi la tine” și nu mai are „Agenți AI” în meniu.
+    // Noi (super-admin) n-avem o flotă pentru „Azi la tine”: păstrăm pagina agenților în meniu (acolo punem pragurile platformei).
     aiCont: !isSuper(a.role) && features.ai_assistant !== false && aiSeat,
-    // „Distribuie locația" (21.10): butonul din fișa mașinii apare doar cui îl poate folosi (aceeași regulă ca pe server).
+    // „Distribuie locația” (21.10): butonul din fișa mașinii apare doar cui îl poate folosi (aceeași regulă ca pe server).
     poateDistribuiLocatia: _poateDistribuiLocatia(req),
     announcement: sys.announcement, offline_minutes: sys.offline_minutes
   });
@@ -3170,8 +3170,8 @@ app.get('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) =
     // company_admin vede doar userii companiei lui; super-admin vede tot (sau filtrat după ?company)
     const scope = req.isSuper ? (req.query.company ? parseInt(req.query.company) : null) : req.companyId;
     const rows = await db.getUsers(scope);
-    // „Vede toată flota", socotit AICI cu tăierile firmei omului (inclusiv pe rolul lui propriu), exact ca la acces.
-    // Super-adminul n-are firmă, deci ecranele lui nu aflau tăierile altor firme și arătau „toată flota" unde nu era.
+    // „Vede toată flota”, socotit AICI cu tăierile firmei omului (inclusiv pe rolul lui propriu), exact ca la acces.
+    // Super-adminul n-are firmă, deci ecranele lui nu aflau tăierile altor firme și arătau „toată flota” unde nu era.
     const _ajPeFirma = {};
     for (const u of rows) {
       if (isSuper(u.role)) { u.sees_all = true; continue; }
@@ -3198,7 +3198,7 @@ app.get('/api/users/lite', requireAuth, requireAdmin, withCompany, async (req, r
 
 app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
-    // Parola nu se mai scrie (16.09). Aplicația de telefon veche o trimite și spune „cont creat" — dar parola aia nu
+    // Parola nu se mai scrie (16.09). Aplicația de telefon veche o trimite și spune „cont creat” — dar parola aia nu
     // există nicăieri, iar linkul de parolă nu i-l arată. Mai bine un refuz cu explicație decât un cont blocat.
     if (req.auth && req.auth.viaApiKey && req.body && req.body.password) return res.status(409).json({ error: 'Parola nu se mai scrie de aici. Actualizează aplicația — omul primește un link și își pune singur parola.' });
     const { role, email, phone } = req.body;
@@ -3225,7 +3225,7 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     if (req.isSuper) companyId = (req.body.company_id != null ? parseInt(req.body.company_id) : null);
     // Un rol PROPRIU al firmei vine ca slug, la fel ca la modificare: în users.role intră rolul standard din care
     // derivă, iar slug-ul se ține alături. Înainte, formularul de pe web oferea rolurile proprii, dar serverul
-    // le făcea tăcut „viewer" — omul primea alt rol decât cel ales.
+    // le făcea tăcut „viewer” — omul primea alt rol decât cel ales.
     let rolCerut = role, slugNou = null;
     if (role && !VALID_ROLES.includes(role) && companyId != null) {
       const propriu = ((await roluriCompaniei(companyId)) || {})[role];
@@ -3246,7 +3246,7 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     }
 
     // Parola din bază e una aleatoare pe care n-o știe NIMENI — contul se deschide doar prin link.
-    // Fără asta, un cont „fără parolă" ar fi un cont cu parolă goală.
+    // Fără asta, un cont „fără parolă” ar fi un cont cu parolă goală.
     const hash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
     // Emailul contului = username-ul. Îl salvăm explicit ca recuperarea parolei și invitațiile să aibă
     // întotdeauna o adresă, fără să depindă de un al doilea câmp completat de mână.
@@ -3259,7 +3259,7 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
     const rez = demoFaraEmail
       ? { trimis: false, link: await linkDeParola(req, user, { hours: 24 * 7 }), motiv: 'Din contul demo nu pleacă emailuri.' }
       : await trimiteLinkParola(req, user, { invite: true, company: co });
-    if (!rez.trimis) console.warn('[INVITAȚIE] Nu a plecat pentru „' + username + '": ' + (rez.motiv || 'trimitere eșuată'));
+    if (!rez.trimis) console.warn('[INVITAȚIE] Nu a plecat pentru „' + username + '”: ' + (rez.motiv || 'trimitere eșuată'));
     auditReq(req, 'create', 'user', user.id, { username, role: finalRole, rolPropriu: slugNou || undefined, company_id: companyId, invitat: rez.trimis });
     res.json(Object.assign({}, user, { invitat: rez.trimis, link: rez.link || undefined, motiv: rez.trimis ? undefined : rez.motiv }));
   } catch (err) {
@@ -3298,7 +3298,7 @@ app.put('/api/users/:id/ai-seat', requireAuth, requireAdmin, withCompany, async 
 });
 // Câte întrebări pe lună are un om (Basic, Pro și Business; Basic din 13.11). null / gol = fără cifră: colegul are doar răspunsurile pe
 // loc, administratorul folosește restul (16.11). Le dă administratorul firmei; cifra ține cât ține pachetul (cheia lui). Când nu
-// încape: cât mai încape (`maxim`) și, la administratorul care poate schimba pachetul, pachetul în care ar încăpea („Treci la Pro").
+// încape: cât mai încape (`maxim`) și, la administratorul care poate schimba pachetul, pachetul în care ar încăpea („Treci la Pro”).
 app.put('/api/users/:id/ai-limita', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -3341,10 +3341,10 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     if (!(await sameCompanyUser(req, id))) return res.status(403).json({ error: 'Acces interzis' });
     let { role, full_name, email, phone, active } = req.body;
     // Un singur nume pentru administratorul firmei. Se preface AICI, înainte de orice comparație:
-    // altfel un telefon care trimite „admin" peste un cont salvat ca „company_admin" ar arăta ca o
+    // altfel un telefon care trimite „admin” peste un cont salvat ca „company_admin” ar arăta ca o
     // schimbare de rol și i-ar scoate omului rolul propriu, fără ca cineva să fi cerut asta.
     if (role !== undefined && role !== null) role = rolUnic(role);
-    // Doar `false` exact tăia sesiunile, dar baza accepta și 0 sau "false" ca „dezactivat": contul se dezactiva fără ca
+    // Doar `false` exact tăia sesiunile, dar baza accepta și 0 sau "false" ca „dezactivat”: contul se dezactiva fără ca
     // sesiunile și legăturile lui să se închidă, iar gărzile (auto-dezactivare, ultimul super-admin) erau ocolite.
     if (active !== undefined && active !== null) active = !(active === false || active === 0 || active === '0' || String(active).toLowerCase() === 'false');
     const tinta = await db.getUserById(id);
@@ -3363,7 +3363,7 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
     const cereSlug = Object.prototype.hasOwnProperty.call(body, 'role_slug');
     // Rolul propriu pe care omul îl are DEJA, dar care nu mai există în firma lui (a fost mutat din altă
     // firmă înainte ca mutarea să-l scoată). Nu are niciun efect — drepturile vin din rolul standard — așa
-    // că o salvare care îl trimite înapoi nu e „Rol invalid": îl curățăm și omul rămâne pe rolul standard.
+    // că o salvare care îl trimite înapoi nu e „Rol invalid”: îl curățăm și omul rămâne pe rolul standard.
     const slugRamas = function (s) { return !!tinta.role_slug && s === tinta.role_slug; };
     if (role !== undefined && role !== null && !VALID_ROLES.includes(role)) {
       const propriu = await _rolPropriu(role);
@@ -3408,7 +3408,7 @@ app.put('/api/users/:id', requireAuth, requireAdmin, withCompany, async (req, re
       return res.status(400).json({ error: MSG_ULTIMUL_ADMIN });
     }
     await db.updateUserProfile(id, { role, full_name, email, phone, active });
-    // Funcția (13.10): scrisă doar când vine; trimisă goală se golește (ca în „Contul meu").
+    // Funcția (13.10): scrisă doar când vine; trimisă goală se golește (ca în „Contul meu”).
     if (Object.prototype.hasOwnProperty.call(body, 'functie')) await db.setUserContact(id, { functie: String(body.functie == null ? '' : body.functie).trim().slice(0, 120) });
     // Un super-admin e cont de PLATFORMĂ: nu rămâne legat de firma din care a fost promovat — la fel ca la creare
     // și la mutarea între firme. (Mutarea scoate și rolul propriu și accesul pe vehicule ale firmei vechi.)
@@ -3457,11 +3457,11 @@ app.post('/api/users/:id/link-parola', requireAuth, requireAdmin, withCompany, a
     res.status(500).json({ error: err.message });
   }
 });
-// Piatră de hotar pentru APK-urile vechi (1.0.1 are încă „Parolă nouă"): ruta de scris parola altcuiva NU
+// Piatră de hotar pentru APK-urile vechi (1.0.1 are încă „Parolă nouă”): ruta de scris parola altcuiva NU
 // mai există și nu setează NIMIC — doar răspunde 404 cu o explicație, ca adminul să afle că trebuie să
-// actualizeze aplicația, în loc de un „Eroare 404" gol. Scrisă ca regex ca să nu reapară drumul vechi în cod.
+// actualizeze aplicația, în loc de un „Eroare 404” gol. Scrisă ca regex ca să nu reapară drumul vechi în cod.
 app.post(/^\/api\/users\/\d+\/password\/?$/, requireAuth, (req, res) => {
-  res.status(404).json({ error: 'Parola nu se mai scrie de aici. Actualizează aplicația — fiecare om are butonul „Trimite link de parolă".' });
+  res.status(404).json({ error: 'Parola nu se mai scrie de aici. Actualizează aplicația — fiecare om are butonul „Trimite link de parolă”.' });
 });
 
 app.get('/api/users/:id/access', requireAuth, requireAdmin, withCompany, async (req, res) => {
@@ -3562,7 +3562,7 @@ app.get('/api/company-roles', requireAuth, requireAdmin, withCompany, async (req
           return { cheie: k, eticheta: DREPTURI_ETICHETE[k], are: bif('taiate', k) };
         }),
         // Ecranele și editările se oferă doar dacă rolul are dreptul mare din spate — altfel am pune
-        // pe ecran bife care oricum nu schimbă nimic (un viewer n-are ce „edita").
+        // pe ecran bife care oricum nu schimbă nimic (un viewer n-are ce „edita”).
         ecrane: ECRANE.map(function (e) { return { cheie: e.cheie, eticheta: e.et, grup: e.grup, are: bif('ecrane', e.cheie) }; }),
         editari: hasPerm(baza, 'manageFleet')
           ? EDITARI.map(function (e) { return { cheie: e.cheie, eticheta: e.et, are: bif('editari', e.cheie) }; })
@@ -3574,8 +3574,8 @@ app.get('/api/company-roles', requireAuth, requireAdmin, withCompany, async (req
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// „ROL NOU" — pornește de la un rol standard (șablon) și primește un nume al firmei. Nu e un rol
-// „gol": moștenește exact drepturile șablonului și de acolo se poate DOAR tăia. Așa, un rol propriu
+// „ROL NOU” — pornește de la un rol standard (șablon) și primește un nume al firmei. Nu e un rol
+// „gol”: moștenește exact drepturile șablonului și de acolo se poate DOAR tăia. Așa, un rol propriu
 // nu poate depăși niciodată ce poate șablonul din care a pornit.
 app.post('/api/company-roles', requireAuth, requireAdmin, withCompany, async (req, res) => {
   try {
@@ -3618,7 +3618,7 @@ app.put('/api/company-roles/:rol', requireAuth, requireAdmin, withCompany, async
     const r = await db.setCompanyRole(req.companyId, rol, {
       nume: b.nume, baza: baza, taiate: taiate, ecrane: ecrane, editari: editari, rapoarte: rapoarte });
     invalideazaRoluriCo(req.companyId);
-    invalidateAccessCache(); // „vede toată flota" poate fi tocmai ce s-a tăiat
+    invalidateAccessCache(); // „vede toată flota” poate fi tocmai ce s-a tăiat
     auditReq(req, 'update', 'company_role', rol, { nume: r.nume, taiate: taiate, ecrane: ecrane, editari: editari, rapoarte: rapoarte });
     res.json({ ok: true, rol: rol, baza: baza, nume: r.nume, taiate: taiate, ecrane: ecrane, editari: editari, rapoarte: rapoarte });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -3819,7 +3819,7 @@ app.delete('/api/apikeys/:id', requireAuth, requireAdmin, withCompany, async (re
 // ─── AI: asistent flotă + rezumate rapoarte (Claude) ───
 // Câte vehicule intră într-un răspuns despre TOATĂ flota. Plafonul are rostul lui — o listă fără
 // capăt umflă răspunsul și costul — dar până acum era 80 și TĂCEA: o firmă cu 200 de mașini primea
-// „Total: 80 vehicule", un număr pur și simplu greșit, fără niciun semn că s-a tăiat ceva.
+// „Total: 80 vehicule”, un număr pur și simplu greșit, fără niciun semn că s-a tăiat ceva.
 // Acum plafonul e mai mare ȘI numărul adevărat merge mai departe, prin `totalFlota`.
 const FLOTA_IN_RASPUNS = parseInt(process.env.AI_FLEET_MAX) || 200;
 function _fleetSnapshot(req, limit) {
@@ -3846,17 +3846,17 @@ function _fleetSnapshot(req, limit) {
 }
 
 // ─── Tokenii și modelul AI rămân între fondatori ─────────────────────────────────────────────────
-// Hotărât pe 13.08 (pagina „Asistenți AI" scoasă din meniul web): câți tokeni consumă o firmă și ce
-// model folosim NU se arată clienților. Web-ul are nevoie aici doar de „e pornit sau nu" (butonul
+// Hotărât pe 13.08 (pagina „Asistenți AI” scoasă din meniul web): câți tokeni consumă o firmă și ce
+// model folosim NU se arată clienților. Web-ul are nevoie aici doar de „e pornit sau nu” (butonul
 // rotund), deci atât primește oricine; modelul îl vede doar super-adminul.
 app.get('/api/ai/status', requireAuth, (req, res) => {
   const out = { enabled: ai.aiEnabled() };
   if (isSuper((req.auth || {}).role)) out.model = ai.AI_MODEL;
   res.json(out);
 });
-// Utilizare AI per asistent (kind) — pentru panoul „Asistenți AI". DOAR super-adminul primește cifrele.
+// Utilizare AI per asistent (kind) — pentru panoul „Asistenți AI”. DOAR super-adminul primește cifrele.
 // Un client (inclusiv aplicația de telefon veche, care încă are ecranul în meniu) primește o listă GOALĂ,
-// nu o eroare: pe ecranul acela stă și singurul buton spre „Agenți AI", iar cu o eroare l-ar pierde.
+// nu o eroare: pe ecranul acela stă și singurul buton spre „Agenți AI”, iar cu o eroare l-ar pierde.
 app.get('/api/ai/usage-stats', requireAuth, withScope, async (req, res) => {
   try {
     const days = Math.min(Math.max(parseInt(req.query.days) || 30, 0), 3650);
@@ -3871,7 +3871,7 @@ app.get('/api/ai/usage-stats', requireAuth, withScope, async (req, res) => {
 app.post('/api/ai/config', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const key = (req.body.key || '').toString().trim();
-    if (key && !/^sk-ant-/.test(key)) return res.status(400).json({ error: 'Cheie invalidă (trebuie să înceapă cu „sk-ant-")' });
+    if (key && !/^sk-ant-/.test(key)) return res.status(400).json({ error: 'Cheie invalidă (trebuie să înceapă cu „sk-ant-”)' });
     await db.setSetting('anthropic_api_key', key);
     ai.setKey(key);
     auditReq(req, 'update', 'ai_config', null, { configured: !!key });
@@ -3885,7 +3885,7 @@ async function aiLimitReached(companyId) {
 }
 // ─── S-au terminat întrebările: se oprește, dar SE EXPLICĂ ───────────────────────────────────────
 // Pachetele (14.10): pe Start nu se pune nicio întrebare liberă (fără AI); la celelalte, cota, limita omului și plasa. Textele
-// stau în pachete.js. Regula veche, „pe cont", a fost scoasă de tot pe 11.11 (Alin: „nu avem nicio firmă pe ea… Scoate").
+// stau în pachete.js. Regula veche, „pe cont”, a fost scoasă de tot pe 11.11 (Alin: „nu avem nicio firmă pe ea… Scoate”).
 async function _fondEpuizat(req) {
   if (req.companyId == null) return null;
   const sp = await _starePachet(req.companyId, req.auth && req.auth.userId, { strict: true });
@@ -3894,7 +3894,7 @@ async function _fondEpuizat(req) {
   if (sp.st.blocat) return { limited: true, pachet: sp.st.cod, motiv: sp.st.motiv, fondEpuizat: { fond: sp.st.intrebari, motiv: sp.st.motiv }, reply: pachete.textBlocat(sp.st, Date.now()) };
   return null;
 }
-// „10 întrebări", dar „50 de întrebări": de la 20 în sus româna cere „de" (la fel ca nDe() din aplicația de telefon).
+// „10 întrebări”, dar „50 de întrebări”: de la 20 în sus româna cere „de” (la fel ca nDe() din aplicația de telefon).
 function _deNr(n) { const r = Math.abs(Number(n) || 0) % 100; return (r === 0 && Number(n)) || r >= 20 ? ' de ' : ' '; }
 // Starea contorului = starea pachetului firmei (pachete.js), FĂRĂ bani. `strict` e pentru POARTA întrebărilor (_fondEpuizat): o
 // citire eșuată merge mai departe ca eroare, iar întrebarea nu pleacă. Bara din aplicație rămâne îngăduitoare.
@@ -3916,7 +3916,7 @@ function _pachetCo(co) { return co && plans ? plans.pachetAi(co) : null; }   // 
 // întrebările"): fiecare cifră poartă cheia pachetului în care s-a dat (pachete.cheiePachet); alta = cifra nu mai contează.
 function _cheieCo(co, acum) { return pachete.cheiePachet(co && co.settings, acum || Date.now()); }
 function _cifraValida(u, cheie) { return u && u.ai_limita != null && u.ai_limita_pachet === cheie ? Number(u.ai_limita) : null; }
-// PRIMUL administrator al firmei (16.11, Alin: „primul cont de administrator… dă întrebările și celui de-al doilea"): cel mai vechi
+// PRIMUL administrator al firmei (16.11, Alin: „primul cont de administrator… dă întrebările și celui de-al doilea”): cel mai vechi
 // cont de administrator cu RA Insight (`oameni` = db.getAiSeatHolders, ordonați după id). El ține ce nu e dat colegilor; cifra lui
 // (dacă a rămas una scrisă) nu contează. null = niciun administrator cu RA Insight.
 function _principalDin(oameni) { const x = (oameni || []).filter(function (h) { return pachete.esteAdmin(h.role); })[0]; return x ? x.id : null; }
@@ -3929,7 +3929,7 @@ async function _cuCifre(co) {
     return oameni.filter(function (h) { return _cifraOm(h, cheie, pr) != null; }).length;
   } catch (e) { return 0; }
 }
-// Luna de acum, „AAAA-LL" (UTC, ca rândurile din ai_usage și din ai_corecturi): „RA Insight · control" (corecturile, estimarea lunii).
+// Luna de acum, „AAAA-LL” (UTC, ca rândurile din ai_usage și din ai_corecturi): „RA Insight · control” (corecturile, estimarea lunii).
 function _lunaAcum() { return new Date().toISOString().slice(0, 7); }
 // Are firma RA Insight cu AI (Basic în sus)? Start e fără AI.
 function _firmaAreAi(co) { if (!(co && plans && plans.featuresFor(co).ai_assistant)) return false; const p = _pachetCo(co); return !!(p && p.ai); }
@@ -3988,7 +3988,7 @@ function _cotaDinPachet(st, periodEnd) {
   };
 }
 // Firma pe un pachet fără niciun cont dat: administratorul care deschide RA Insight primește singur primul loc
-// (Alin, 14.10: „orice firmă începe cu Start — administratorul"). Întoarce true dacă omul are acum loc.
+// (Alin, 14.10: „orice firmă începe cu Start — administratorul”). Întoarce true dacă omul are acum loc.
 async function _asiguraLocAdmin(u) {
   if (!u || u.ai_seat) return !!(u && u.ai_seat);
   if (!pachete.esteAdmin(u.role) || u.company_id == null) return false;
@@ -4006,16 +4006,16 @@ const PLASA_ANUNT_PROCENT = 60;
 // ─── Banii pentru AI, la zi (04.11; Alin: „aveți sold de x bani, la zi, cât avem și când ajung clienții să consume 80% din plafon…
 // să avem control total pe tokeni și bani, după ce schimbă Robert cheile") ───
 // Regulile și TEXTELE stau în sold_ai.js (curat); aici se adună cifrele. Soldul îl scriem noi, de mână, într-un SINGUR loc
-// („RA Insight · control" → PUT /api/admin/insight/sold; setarea `anthropic_sold` = { usd, la }), iar aplicația scade singură ce s-a
+// („RA Insight · control” → PUT /api/admin/insight/sold; setarea `anthropic_sold` = { usd, la }), iar aplicația scade singură ce s-a
 // cheltuit de atunci: pe zilele încheiate cea mai mare dintre cifra Anthropic (cheia de administrare, Admin API) și socoteala
 // aplicației, azi socoteala aplicației. Reîncărcarea automată de la Anthropic, dacă e pornită: setarea `anthropic_reincarcare`.
-// O socoteală pentru „Azi la noi" (banda), „RA Insight · control", „Control costuri", anunțuri și „Stare producție".
+// O socoteală pentru „Azi la noi” (banda), „RA Insight · control”, „Control costuri”, anunțuri și „Stare producție”.
 const SOLD_RITM_ZILE = soldAi.RITM_ZILE;
 async function _leiPeDolar() { return (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum()); }
 async function _reincarcareAnthropic() {
   try { const v = JSON.parse((await db.getSetting('anthropic_reincarcare')) || 'null'); return v && Number(v.cumpara) > 0 ? { sub: Math.max(0, Number(v.sub) || 0), cumpara: Number(v.cumpara) } : null; } catch (e) { return null; }
 }
-let _soldEroareA = null;   // ultima eroare a cifrei Anthropic (pentru „De unde vin cifrele")
+let _soldEroareA = null;   // ultima eroare a cifrei Anthropic (pentru „De unde vin cifrele”)
 async function _soldAnthropic() {
   let s = null; try { s = JSON.parse((await db.getSetting('anthropic_sold')) || 'null'); } catch (e) { s = null; }
   if (!s || !(Number(s.usd) >= 0)) return null;
@@ -4042,7 +4042,7 @@ async function _soldAnthropic() {
 // Anthropic refuză? ai.js spune ce s-a întâmplat la fiecare cerere (ai.setLaStare); aici se ține starea — în memorie și în setarea
 // `ai_refuz` ({ fel, la, ultimaLa, refuzate, status, eroare, anuntatLa }), ca o repornire s-o păstreze —, ne anunță pe noi (în aplicație
 // și pe telefon, cel mult o dată la 6 ore pe același fel; un fel nou anunță pe loc) și se stinge la primul răspuns bun, cu un anunț
-// „RA Insight răspunde din nou cu AI". Lista modelelor (verificarea cheii) stinge doar alarma cheii: merge și fără credit.
+// „RA Insight răspunde din nou cu AI”. Lista modelelor (verificarea cheii) stinge doar alarma cheii: merge și fără credit.
 let _aiRefuz = null, _aiRefuzCitit = false, _aiRefuzScrisLa = 0, _aiOkLa = 0, _aiRefuzAnunt = false;
 async function _aiRefuzAcum() {
   if (!_aiRefuzCitit) { try { const v = await db.getSetting('ai_refuz'); _aiRefuz = v ? JSON.parse(v) : null; } catch (e) { _aiRefuz = null; } _aiRefuzCitit = true; }
@@ -4082,11 +4082,11 @@ async function _dupaAnthropic(ev) {
 async function _superadmini() { try { return (await db.getAllActiveUsers()).filter(function (u) { return u.role === 'superadmin'; }); } catch (e) { return []; } }
 // Cheia, verificată la pornire și din oră în oră (în probe doar cu AI_VERIFICARE_LA_MS: modelul simulat răspunde la orice cerere).
 async function _verificaCheiaAnthropic() { if (!ai || !ai.aiEnabled()) return { ok: null }; return ai.verificaCheia(); }
-// Întrebările lunii pe firmele cu pachet cu AI — O socoteală pentru anunțul de la 80% / 100%, banda de pe „Acasă" și „Ce cere
-// atenție": aceleași cifre ca bara din „RA Insight · control" (întrebările pachetului; rândurile lunii din ai_usage, felurile numărate).
+// Întrebările lunii pe firmele cu pachet cu AI — O socoteală pentru anunțul de la 80% / 100%, banda de pe „Acasă” și „Ce cere
+// atenție": aceleași cifre ca bara din „RA Insight · control” (întrebările pachetului; rândurile lunii din ai_usage, felurile numărate).
 async function _intrebariFirmeAi() { return (await _folositeFirme()).filter(function (f) { return f.ai; }); }
 // Cât a folosit luna asta fiecare firmă cu RA Insight pornit (fără demo): de la Basic, întrebările (rândurile lunii din ai_usage, ca
-// bara din control și `_starePachet`); pe Start, răspunsurile pe butoane (ai_reguli, ca „Pachet și conturi"). O socoteală: pentru
+// bara din control și `_starePachet`); pe Start, răspunsurile pe butoane (ai_reguli, ca „Pachet și conturi”). O socoteală: pentru
 // noi (`_intrebariFirmeAi`, doar cele cu AI) și pentru anunțul administratorului firmei (`anuntAdminiAproapeTick`, toate).
 async function _folositeFirme() {
   const r = await Promise.all([db.getCompanies(), db.getAiMonthUsageByCompany(), db.raspunsuriReguliLunaToate()]);
@@ -4097,11 +4097,11 @@ async function _folositeFirme() {
     return { id: c.id, name: c.name, nume: p.nume, cod: p.cod, ai: !!p.ai, folosite: p.ai ? (pe[c.id] || 0) : (Number(reg[c.id]) || 0), intrebari: p.intrebari };
   }).filter(Boolean);
 }
-// Anunțurile pentru administratorii FIRMEI (13.11, Alin: „1. DA", apoi „6. DA"): la 80% din întrebările lunii și când s-au terminat de
+// Anunțurile pentru administratorii FIRMEI (13.11, Alin: „1. DA”, apoi „6. DA”): la 80% din întrebările lunii și când s-au terminat de
 // tot (100%) — până atunci clientul afla abia la capăt, de la cel care întreba. Fiecare o dată pe firmă și pe lună (cheile „firma|lună|
 // prag" în setarea `ai_anunturi_admini`, ca o repornire să nu le repete; cele de pe 13.11 dimineața, „firma|lună", sunt pragul 80).
-// Firma care sare direct la capăt primește doar anunțul de capăt. Doar administratorii activi ai firmei (company_admin; „admin" = numele
-// vechi); clic → „Pachet și conturi" (`data.pachet`). Textele: pachete.anuntAproape. Chemat la 15 minute, din soldAnuntTick.
+// Firma care sare direct la capăt primește doar anunțul de capăt. Doar administratorii activi ai firmei (company_admin; „admin” = numele
+// vechi); clic → „Pachet și conturi” (`data.pachet`). Textele: pachete.anuntAproape. Chemat la 15 minute, din soldAnuntTick.
 async function anuntAdminiAproapeTick(acum) {
   acum = Number(acum) || Date.now();
   const out = [];
@@ -4122,7 +4122,7 @@ async function anuntAdminiAproapeTick(acum) {
     let admini = []; try { admini = (await db.getActiveUsersForCompany(f.id)).filter(function (u) { return pachete.esteAdmin(u.role); }); } catch (e) { admini = []; }
     if (!admini.length) continue;   // firma fără administrator activ: se reîncearcă la trecerea următoare
     const a = pachete.anuntAproape(f, acum);
-    // „Treci la Pro" (16.11, Alin: „4. DA"): pachetul următor cu mai multe întrebări, ca buton lângă anunț (web) — fără preț aici.
+    // „Treci la Pro” (16.11, Alin: „4. DA”): pachetul următor cu mai multe întrebări, ca buton lângă anunț (web) — fără preț aici.
     const rec = pachete.recomanda(pachete.dupaCod(f.cod), { intrebari: (Number(f.intrebari) || 0) + 1 });
     const date = { pachet: true, procent: pct };
     if (rec) date.recomandat = { cod: rec.cod, nume: rec.nume, buton: 'Treci la ' + rec.nume };
@@ -4173,7 +4173,7 @@ async function soldAnuntTick() {
 // ─── Pachetul s-a schimbat: cifrele se împart din nou (16.11, Alin: „de fiecare dată când își schimbă planul, el trebuie să
 // distribuie din nou întrebările către userii săi, ca să excludem orice variante") ──────────────────────────────────────────
 // Cifrele vechi nu mai contează din clipa schimbării (citirea le cere cheia pachetului — _cifraValida). Aici, la 15 minute: se și
-// șterg din bază, iar administratorii firmei primesc o dată anunțul „de azi aveți pachetul …" (pachetele cu împărțire, modulul
+// șterg din bază, iar administratorii firmei primesc o dată anunțul „de azi aveți pachetul …” (pachetele cu împărțire, modulul
 // pornit; nu demo). Cheile văzute stau în setarea `ai_impartire_chei`; prima trecere de după publicare doar și le notează.
 async function impartireTick(acum) {
   acum = Number(acum) || Date.now();
@@ -4212,8 +4212,8 @@ async function _cheiCifreVechi() {
     return rows.length;
   } catch (e) { return 0; }
 }
-// O dată (04.11): soldul scris până acum în „Control costuri" (credite + ziua, de pe 16.10) trece în locul unic, dacă e mai nou decât
-// cel din „RA Insight · control". După asta, „Control costuri" citește tot de aici.
+// O dată (04.11): soldul scris până acum în „Control costuri” (credite + ziua, de pe 16.10) trece în locul unic, dacă e mai nou decât
+// cel din „RA Insight · control”. După asta, „Control costuri” citește tot de aici.
 async function _soldUnLoc() {
   try {
     if (await db.getSetting('sold_un_loc')) return;
@@ -4257,9 +4257,9 @@ async function plasaAnuntTick() {
   try { await db.setSetting('ai_plasa_anuntat', JSON.stringify(facute)); } catch (e) {}
   return { anuntate: noi.map(function (x) { return x.cheie; }) };
 }
-// Prețurile de listă ale pachetelor, azi: cele din cod, peste care se pun cele din „Prețurile noastre".
+// Prețurile de listă ale pachetelor, azi: cele din cod, peste care se pun cele din „Prețurile noastre”.
 async function _preturiPachete() { let t = {}; try { t = (await getSystemSettings()).tarife_lista || {}; } catch (e) {} return pachete.preturiLista(t); }
-// (Analiza aprofundată pe Sonnet a ieșit pe 28.10 — Alin: „nu o mai vreau… avem Haiku", apoi „1 da" la analiza atentă pe Haiku:
+// (Analiza aprofundată pe Sonnet a ieșit pe 28.10 — Alin: „nu o mai vreau… avem Haiku”, apoi „1 da” la analiza atentă pe Haiku:
 // vezi `analiza` în _raInsight și insight.ANALIZA_ATENTA.)
 // Ramurile (Safe Drive, Combustibil, Ore de condus, Mentenanță & acte) sunt de la Basic în sus.
 async function requireRamuri(req, res, next) {
@@ -4300,7 +4300,7 @@ async function fxEurRon() {
 //      un alt curs care să rămână?");
 //   2. cursul BNR, dacă l-am putut lua;
 //   3. valoarea de rezervă din setarea serverului.
-// `source` spune CARE dintre ele e — ecranul și hârtia n-au voie să-l numească „BNR" pe al nostru.
+// `source` spune CARE dintre ele e — ecranul și hârtia n-au voie să-l numească „BNR” pe al nostru.
 // `bnr` merge alături ca REPER, ca să se vadă pe ecran dacă cursul nostru a rămas în urmă.
 // O singură socoteală a cursului, folosită de `/api/fx` ȘI de calculatorul de ofertă de pe server
 // (`/api/admin/offers/calc`) — ca telefonul să vadă exact cursul pe care îl vede web-ul. `res` e
@@ -4319,9 +4319,9 @@ app.get('/api/fx', requireAuth, async (req, res) => {
     await _fxPentruEcran(res);
   } catch (e) { res.json(FX_REZERVA()); }
 });
-// ── începe „Socoteala RA Insight pe o firmă" ─────────────────────────────────────────────────────
-// Rândul unei firme în „RA Insight · control": pachetul (Start în lipsă), întrebările lunii, plasa, cine are cont. Regula veche,
-// „pe cont", a fost scoasă pe 11.11 (Alin: „Scoate").
+// ── începe „Socoteala RA Insight pe o firmă” ─────────────────────────────────────────────────────
+// Rândul unei firme în „RA Insight · control”: pachetul (Start în lipsă), întrebările lunii, plasa, cine are cont. Regula veche,
+// „pe cont”, a fost scoasă pe 11.11 (Alin: „Scoate”).
 //
 // Funcția e CURATĂ (fără bază de date, fără await): primește firma, consumul ei, oamenii ei și cine
 // cât a întrebat, și întoarce rândul gata socotit. Așa poate fi probată cu cifre inventate.
@@ -4382,22 +4382,22 @@ function _insightFirma(c, uz, oameni, pePersoana, opt) {
     oameni: oameniRow
   };
 }
-// ── sfârșit „Socoteala RA Insight pe o firmă" ──
-// ── începe „Istoricul RA Insight" ────────────────────────────────────────────────────────────────
-// Cartonașele arată luna curentă. Întrebarea următoare e mereu „dar luna trecută?" — și răspunsul
+// ── sfârșit „Socoteala RA Insight pe o firmă” ──
+// ── începe „Istoricul RA Insight” ────────────────────────────────────────────────────────────────
+// Cartonașele arată luna curentă. Întrebarea următoare e mereu „dar luna trecută?” — și răspunsul
 // nu se poate recalcula, fiindcă prețurile și conturile se schimbă. Așa că istoricul se citește din
 // FACTURI: ce am facturat chiar am facturat, indiferent ce s-a schimbat între timp. Ciornele și
 // facturile anulate nu intră (nu sunt venit); storno-urile scad.
-//   „facturat" = suma NETĂ (fără TVA) a rândurilor RA Insight — aia e partea noastră.
-//   „încasat"  = aceleași rânduri, dar numai de pe facturile marcate PLĂTITE.
-const RA_RAND_FACTURA = /^\s*RA Insight/i;   // rândul pachetului („RA Insight Pro", „RA Insight — trecerea la pachetul …")
+//   „facturat” = suma NETĂ (fără TVA) a rândurilor RA Insight — aia e partea noastră.
+//   „încasat”  = aceleași rânduri, dar numai de pe facturile marcate PLĂTITE.
+const RA_RAND_FACTURA = /^\s*RA Insight/i;   // rândul pachetului („RA Insight Pro”, „RA Insight — trecerea la pachetul …”)
 function _lunaDin(ms) { const d = new Date(Number(ms) || 0); return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 7) : null; }
 function _insightIstoric(uzPeLuna, facturi, opt) {
   const o = opt || {}, luni = Math.max(1, Math.min(Number(o.luni) || 12, 36));
   const cost = o.cost || function () { return 0; };
   const acum = new Date();
   // Scheletul: ultimele N luni, în ordine, chiar dacă unele sunt goale. O lună lipsă din listă se
-  // citește ca „n-a fost", nu ca „n-am avut date" — mai bine un rând cu zerouri.
+  // citește ca „n-a fost”, nu ca „n-am avut date” — mai bine un rând cu zerouri.
   const chei = [];
   for (let i = luni - 1; i >= 0; i--) {
     const d = new Date(Date.UTC(acum.getUTCFullYear(), acum.getUTCMonth() - i, 1));
@@ -4461,7 +4461,7 @@ function _insightPeFirme(facturi) {
   });
   return out;
 }
-// ── sfârșit „Istoricul RA Insight" ──
+// ── sfârșit „Istoricul RA Insight” ──
 // Privire de ansamblu (super-admin): cine folosește RA Insight, pe câte conturi, cât din fond a
 // consumat, ce încasăm și cât ne costă. Aceleași cifre după care se face factura.
 app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) => {
@@ -4487,13 +4487,13 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     });
     const pePersoana = {}; peOm.forEach(function (r) { pePersoana[r.user_id] = r; });
     const reguliPeFirma = await db.raspunsuriReguliLunaToate().catch(function () { return {}; });   // pachetul Start: răspunsurile pe butoane
-    const josPeFirma = await db.aiJosPeFirma(7).catch(function () { return {}; });   // „RA Insight · control": 👎 în ultimele 7 zile (doar numărul)
+    const josPeFirma = await db.aiJosPeFirma(7).catch(function () { return {}; });   // „RA Insight · control”: 👎 în ultimele 7 zile (doar numărul)
     // Plasa pachetelor: costul real al lunii, cu scrisoarea de luni (ca în _starePachet), în lei, la cursul de azi.
     const kLei = (ai ? ai.USD_EUR : 0.92) * (await _eurRonAcum());
     const plasaPeFirma = {}; ((await db.getAiMonthUsageByCompany(db.AI_KINDS_COST_FIRMA).catch(function () { return []; })) || []).forEach(function (x) {
       if (x.company_id != null) plasaPeFirma[x.company_id] = { lei: (Number(x.cost_usd) || 0) * kLei };
     });
-    // „Sursă externă" (28.10): pe firmă, întrebările cu căutare pe internet, căutările și costul lor (intră în „Ne costă" și în plasă).
+    // „Sursă externă” (28.10): pe firmă, întrebările cu căutare pe internet, căutările și costul lor (intră în „Ne costă” și în plasă).
     const sursaPeFirma = await db.sursaExternaLunaToate().catch(function () { return {}; });
     const rows = companies.filter(function (c) { return !c.is_demo; }).map(function (c) {
       const u = byId[c.id] || {};
@@ -4527,22 +4527,22 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
         .map(function (r) { return { id: r.id, name: r.name, cod: r.pachet.cod, nume: r.pachet.nume, procent: r.plasa.procent, plafonLei: r.plasa.plafonLei }; })
         .sort(function (a, b) { return b.procent - a.procent; }),
       sold: await _soldAnthropic(),
-      // Firmele între 80% și 99% din întrebările lunii (04.11) — aceeași socoteală ca anunțul și banda de pe „Acasă" (_intrebariFirmeAi).
+      // Firmele între 80% și 99% din întrebările lunii (04.11) — aceeași socoteală ca anunțul și banda de pe „Acasă” (_intrebariFirmeAi).
       aproape: soldAi.atentieIntrebari(await _intrebariFirmeAi().catch(function () { return []; })),
-      // „Ce cere atenție" (15.10): 👎 pe toată platforma în ultimele 7 zile și partea răspunsurilor instant din luna asta.
+      // „Ce cere atenție” (15.10): 👎 pe toată platforma în ultimele 7 zile și partea răspunsurilor instant din luna asta.
       jos7: Object.keys(josPeFirma).reduce(function (s, k) { return s + josPeFirma[k]; }, 0),
       instant: Object.keys(reguliPeFirma).reduce(function (s, k) { return s + reguliPeFirma[k]; }, 0),
       intrebariAi: rows.reduce(function (s, r) { return s + (r.used || 0); }, 0),
       // Contorul corecturilor (garanția B, 22.10): câte răspunsuri a rescris aplicația luna asta și de ce — doar numere.
       corecturi: await db.corecturiLuna(_lunaAcum()).catch(function () { return null; })
     };
-    // „Sursă externă" (28.10): comutatorul nostru, ce a spus Anthropic despre model, ultima eroare, cifrele lunii (cu noi).
+    // „Sursă externă” (28.10): comutatorul nostru, ce a spus Anthropic despre model, ultima eroare, cifrele lunii (cu noi).
     const plat = await _sursaPlatforma(), modS = await _sursaModelCitit();
     const seTot = Object.keys(sursaPeFirma).reduce(function (a, k) { const x = sursaPeFirma[k]; a.intrebari += x.intrebari; a.cautari += x.cautari; a.usd += x.cost_usd; return a; }, { intrebari: 0, cautari: 0, usd: 0 });
     const sursaSum = { stare: plat.stare, la: plat.la, stari: sursaExterna.STARI.map(function (k) { return { k: k, t: sursaExterna.TEXT_STARI[k], d: sursaExterna.DESCRIERE_STARI[k] }; }),
       model: sursaExterna.textModel(modS), modelOk: modS ? modS.ok : null, eroare: _sursaEroare && Date.now() - _sursaEroare.la < 86400000 ? _sursaEroare.eroare : null,
       intrebari: seTot.intrebari, cautari: seTot.cautari, costLei: Math.round(seTot.usd * kLei * 100) / 100, peLuna: sursaExterna.PE_PACHET };
-    // „Anthropic, la zi" (04.11): soldul, de unde vin cifrele, luna după Anthropic și după aplicație, tokenii, cheia, alarma refuzului.
+    // „Anthropic, la zi” (04.11): soldul, de unde vin cifrele, luna după Anthropic și după aplicație, tokenii, cheia, alarma refuzului.
     const lunaA = process.env.ANTHROPIC_ADMIN_KEY ? await fetchAnthropicSpend().catch(function () { return null; }) : null;
     let ultimAnunt = null; try { ultimAnunt = (JSON.parse((await db.getSetting('ai_anunturi')) || '{}') || {}).ultim || null; } catch (e) {}
     const bani = soldAi.panou({ sold: pacheteSum.sold, refuz: await _aiRefuzAcum(), cheie: !!(ai && ai.aiEnabled()), okLa: _aiOkLa || null,
@@ -4582,7 +4582,7 @@ app.get('/api/admin/ai-usage', requireAuth, requireSuperadmin, async (req, res) 
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Sursă externă" pe toată platforma (28.10): oprită / doar pentru noi / pornită pentru firme. La pornire, aplicația întreabă pe loc
+// „Sursă externă” pe toată platforma (28.10): oprită / doar pentru noi / pornită pentru firme. La pornire, aplicația întreabă pe loc
 // Anthropic dacă modelul primește căutarea (gratuit) și o spune în răspuns.
 app.put('/api/admin/insight/sursa-externa', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -4607,7 +4607,7 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
     let loc = true;
     try { if (a.companyId != null && a.userId != null && !isSuper(a.role)) { const u = await db.getUserById(a.userId); loc = !!(u && u.ai_seat) || await _asiguraLocAdmin(u); } } catch (e) {}
     const st2 = loc && st.pachet ? await aiQuotaState(a.companyId, a.userId) : st;   // locul tocmai dat → seats corect
-    // „Sursă externă" (28.10): butonul din casetă — ce scrie pe el, fraza de sub casetă. Fără voie (noi, firma, pachetul, modelul),
+    // „Sursă externă” (28.10): butonul din casetă — ce scrie pe el, fraza de sub casetă. Fără voie (noi, firma, pachetul, modelul),
     // nimic (null): butonul nu apare. Fără bani.
     let sursa = null;
     try { const stS = await _stareSursa({ isSuper: isSuper(a.role), companyId: a.companyId }); sursa = stS.vede ? sursaExterna.pentruPagina(stS, Date.now()) : null; } catch (e) { sursa = null; }
@@ -4617,8 +4617,8 @@ app.get('/api/ai/quota', requireAuth, async (req, res) => {
 
 // ─── Locul de RA Insight ─────────────────────────────────────────────────────────────────────────
 // Adminul firmei alege cine primește RA Insight, în limita pachetului; super-adminul (fără companie) rămâne neîngrădit.
-// Mesajul spune ADEVĂRUL: firma are modulul, contul omului nu are acces — și drumul: conturile se dau doar din „Pachet și conturi"
-// (15.10, Alin: „3. da, 5. da").
+// Mesajul spune ADEVĂRUL: firma are modulul, contul omului nu are acces — și drumul: conturile se dau doar din „Pachet și conturi”
+// (15.10, Alin: „3. da, 5. da”).
 const MESAJ_FARA_LOC_PACHET = 'Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei ți-l poate da din RA Insight → „Pachet și conturi”, așa că cere-i acces.';
 async function _mesajFaraLoc() { return MESAJ_FARA_LOC_PACHET; }
 function requireAiSeat(req, res, next) {
@@ -4629,14 +4629,14 @@ function requireAiSeat(req, res, next) {
     const mesaj = await _mesajFaraLoc(req.companyId);
     const corp = { error: 'ai_seat_missing', message: mesaj, reply: mesaj, seatMissing: true };
     // Aplicația de telefon VECHE (autentificare cu cheie) transformă orice 403 într-un text fix și greșit
-    // („modulul nu e activ pe plan") și citește doar câmpul `reply`. Ca să vadă motivul real, primește
+    // („modulul nu e activ pe plan”) și citește doar câmpul `reply`. Ca să vadă motivul real, primește
     // răspunsul ca text. Nimic nu ajunge la model și nimic nu se numără — e tot un refuz.
     if (req.auth && req.auth.viaApiKey) return res.json(corp);
     res.status(403).json(corp);
   }).catch(function (e) { res.status(500).json({ error: e.message }); });
 }
 // ─── Regulile fondului, O SINGURĂ DATĂ, pentru toate întrebările libere ──────────────────────────
-// RA Insight (web + telefon) și „Asistent AI" (chat-ul vechi al telefonului) trec prin exact aceleași
+// RA Insight (web + telefon) și „Asistent AI” (chat-ul vechi al telefonului) trec prin exact aceleași
 // reguli: fond epuizat → oprire cu explicație; firmă care poate depăși → acord explicit înainte de
 // orice cost. Înainte, chat-ul telefonului le ocolea și întrebările peste fond treceau pe factură
 // fără casetă de acord. Întoarce răspunsul trimis (adevărat) sau null dacă întrebarea poate pleca.
@@ -4646,19 +4646,19 @@ async function _regulileFonduluiAi(req, res) {
     if (_stop) return res.json(_stop);
     return null;
   } catch (e) {
-    // Fondul nu s-a putut citi: întrebarea NU pleacă. Mai bine un „încearcă din nou" decât o
+    // Fondul nu s-a putut citi: întrebarea NU pleacă. Mai bine un „încearcă din nou” decât o
     // întrebare care scapă neverificată din fondul lunii.
     const m = 'Nu am putut verifica câte întrebări mai are firma. Încearcă din nou peste un minut.';
     return res.status(503).json({ error: m, reply: m });
   }
 }
-// „Asistent AI" — chat-ul vechi al telefonului (până la APK-ul cu RA Insight). Din 02.10 nu mai e un al doilea
+// „Asistent AI” — chat-ul vechi al telefonului (până la APK-ul cu RA Insight). Din 02.10 nu mai e un al doilea
 // asistent: trece prin RA Insight, cu memoria discuției și cu rapoartele (doar pentru cine are dreptul la ele).
 // Istoricul trimis de telefon (`history`) nu mai contează: discuția o ține serverul (ultima conversație de curând).
 app.post('/api/ai/chat', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, (req, res) => _raInsight(req, res, { usa: 'chat_vechi' }));
 
 // Poarta contului (requireAiSeat), ca la ușile lui RA Insight: rezumatul se numără din întrebările firmei, deci un om fără
-// cont nu-l poate cere (până pe 14.10 putea, din ce plăteau colegii; Alin, 14.10: „rezolvăm").
+// cont nu-l poate cere (până pe 14.10 putea, din ce plăteau colegii; Alin, 14.10: „rezolvăm”).
 app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
   try {
     // Pachetele (14.10): pe Start (fără AI) și când luna s-a oprit, rezumatul se face pe reguli, din cifrele tabelului.
@@ -4694,62 +4694,62 @@ app.post('/api/ai/report-summary', requireAuth, requirePerm('viewReports'), with
   }
 });
 
-// ─── RA Insight — UN SINGUR asistent: web, telefon și „Asistent AI" de pe telefonul vechi (02.10) ───
-// Alin, 02.10, cu două capturi: „Câți km a făcut B 154 UIP săptămâna trecută?" → „B 154 UIP nu apare în flotă".
-// Apoi „Dacia Logan 3" → „ce vrei să afli despre ea?". Două defecte de instalație, nu de inteligență:
+// ─── RA Insight — UN SINGUR asistent: web, telefon și „Asistent AI” de pe telefonul vechi (02.10) ───
+// Alin, 02.10, cu două capturi: „Câți km a făcut B 154 UIP săptămâna trecută?” → „B 154 UIP nu apare în flotă”.
+// Apoi „Dacia Logan 3” → „ce vrei să afli despre ea?”. Două defecte de instalație, nu de inteligență:
 //   1. modelul primea mașinile doar cu NUMELE. Acum primește fișa flotei (număr, nume, șofer, grupă), iar
 //      uneltele recunosc mașina oricum i-ar spune omul (insight.js → rezolva), fără niciun cost;
 //   2. fiecare mesaj pleca singur. Acum discuția se păstrează (ai_conversatii / ai_mesaje) și modelul vede
-//      ultimele mesaje. „Asistent AI" de pe telefonul vechi trece prin ACEEAȘI funcție — un singur RA Insight.
+//      ultimele mesaje. „Asistent AI” de pe telefonul vechi trece prin ACEEAȘI funcție — un singur RA Insight.
 // Hotărât cu Alin: RA Insight e singurul care costă; conversațiile le vede doar omul lor și se țin 12 luni.
 const INSIGHT_ISTORIC_MESAJE = 12;   // câte mesaje din discuție vede modelul (6 schimburi)
 const INSIGHT_CONTINUARE_MIN = 30;   // fără id de conversație: se continuă ultima, dacă s-a scris în ea de curând
 const INSIGHT_MAX_RAPOARTE = 5;      // rapoarte pe întrebare (plafonul de cost de dinainte)
 const INSIGHT_LISTA_MAX = 300;       // câte mașini încap în list_vehicles
-// Rapoartele pe care RA Insight NU le citește (22.10, proba modelelor): „Analitic" e lista poziție cu poziție, pentru ecran și
+// Rapoartele pe care RA Insight NU le citește (22.10, proba modelelor): „Analitic” e lista poziție cu poziție, pentru ecran și
 // Excel, și se oprește la 5.000 de poziții — din el, viteza maximă a lunii ieșea din primele zile (153 km/h în loc de 170).
-// Cerut în cuvinte de om („fă-mi raportul Analitic"), se face mai departe, ca orice raport.
+// Cerut în cuvinte de om („fă-mi raportul Analitic”), se face mai departe, ca orice raport.
 const RAPOARTE_FARA_MODEL = ['analytic'];
 
 // Partea FIXĂ a instrucțiunilor: aceeași pentru toți oamenii cu același drept, deci rămâne în cache între întrebări.
 function _insightInstructiuni(cuRapoarte) {
   const lista = Object.entries(reports.REPORTS).filter(([k]) => RAPOARTE_FARA_MODEL.indexOf(k) < 0).map(([k, v]) => '- ' + k + ': ' + v.label).join('\n');
   return [
-    'Ești „RA Insight", asistentul AI al platformei RA Track (monitorizare GPS pentru flote). Răspunzi în limba română.',
+    'Ești „RA Insight”, asistentul AI al platformei RA Track (monitorizare GPS pentru flote). Răspunzi în limba română.',
     'Rolul tău: omul află de la tine orice despre flota lui, fără să genereze singur rapoarte. Aduni datele din unelte și răspunzi clar.',
     'UNELTE:\n• fleet_status — starea LIVE acum (unde e fiecare mașină, în mișcare / ralanti / oprită / fără semnal, combustibilul).\n' +
       '• fleet_alerts — înștiințările active ale agenților (fără semnal, posibil furt de combustibil, ralanti prelungit).\n' +
       '• mentenanta_acte — ce a trecut de termen și ce urmează: actele mașinilor (ITP, RCA, rovinietă…), reviziile și permisele șoferilor.\n' +
       '• combustibil — litri și lei pe o lună, consumul față de normă, alimentările și scăderile suspecte (aceleași cifre ca rapoartele de consum).\n' +
-      '• ore_condus — orele de condus ale fiecărui șofer pe o săptămână și încălcările Reg. 561 (aceleași cifre ca raportul „Condus & repaus").\n' +
+      '• ore_condus — orele de condus ale fiecărui șofer pe o săptămână și încălcările Reg. 561 (aceleași cifre ca raportul „Condus & repaus”).\n' +
       '• list_vehicles — toate mașinile: număr de înmatriculare, nume, șofer, grupă și fișa mașinii (marcă, model, an de fabricație, combustibil, rezervor, consumul trecut în fișă).\n• list_zones — zonele (hotspot) definite.\n' +
       '• cauta_in_ghid — ghidul aplicației RA Track: pașii exacți pentru „cum fac…?” (unde e un buton, cum programezi un raport, cum adaugi un șofer).\n' +
-      '• safe_drive — RA Drive (condus & costuri; fostul „Safe Drive") pe o lună: cât a costat condusul (manevre bruște, viteză, ralanti), pe mașină și pe șofer, unde și când se repetă, discuțiile cu șoferii.' +
+      '• safe_drive — RA Drive (condus & costuri; fostul „Safe Drive”) pe o lună: cât a costat condusul (manevre bruște, viteză, ralanti), pe mașină și pe șofer, unde și când se repetă, discuțiile cu șoferii.' +
       (cuRapoarte ? '\n• run_report — date pe o perioadă (maximum ' + INSIGHT_MAX_RAPOARTE + ' rapoarte pe întrebare).' : ''),
-    'MAȘINILE: omul le numește după numărul de înmatriculare (cu sau fără spații: „B 154 UIP", „b154uip"), după nume („Dacia Logan 3"), ' +
-      'după șofer („mașina lui Ion") sau după grupă. În unelte scrie exact ce a spus omul — aplicația recunoaște mașina. Dacă unealta ' +
-      'răspunde că se potrivesc mai multe mașini, întreabă-l scurt pe care o vrea și nu alege tu. Nu spune că o mașină „nu apare" ' +
+    'MAȘINILE: omul le numește după numărul de înmatriculare (cu sau fără spații: „B 154 UIP”, „b154uip”), după nume („Dacia Logan 3”), ' +
+      'după șofer („mașina lui Ion”) sau după grupă. În unelte scrie exact ce a spus omul — aplicația recunoaște mașina. Dacă unealta ' +
+      'răspunde că se potrivesc mai multe mașini, întreabă-l scurt pe care o vrea și nu alege tu. Nu spune că o mașină „nu apare” ' +
       'înainte să fi încercat cu ce a scris omul (număr, nume sau șofer).',
-    'CORECTURILE: dacă omul îți spune că ai greșit („ți-am zis doar Loganul B 204"), recunoaște scurt și cere-ți scuze („Ai dreptate, scuze."), ' +
+    'CORECTURILE: dacă omul îți spune că ai greșit („ți-am zis doar Loganul B 204”), recunoaște scurt și cere-ți scuze („Ai dreptate, scuze.”), ' +
       'apoi răspunde exact la ce a cerut, fără altă explicație. Ce ți-a spus atunci ține-l până la capătul discuției. Despre om ai și o FIȘĂ ' +
       '(mai jos, dacă există), scrisă de tine din discuțiile trecute: folosește-o ca să-l înțelegi (ce mașină înseamnă un nume, cum vrea ' +
       'răspunsul), niciodată ca sursă de cifre.',
-    'DISCUȚIA: vezi mesajele de mai înainte. O întrebare scurtă care continuă discuția („și săptămâna dinainte?", „dar celălalt?", ' +
+    'DISCUȚIA: vezi mesajele de mai înainte. O întrebare scurtă care continuă discuția („și săptămâna dinainte?”, „dar celălalt?”, ' +
       'sau doar numele unei mașini) se leagă de ce s-a vorbit: aceeași mașină, aceeași perioadă, același subiect, dacă omul nu spune ' +
       'altceva. Dacă o întrebare de mai înainte a rămas fără răspuns (de pildă lipsea mașina), răspunde acum la ea — nu-l întreba din nou ce vrea. ' +
-      'Mesajele tale de forma „Am făcut raportul…" sunt rapoarte făcute de APLICAȚIE în discuție, cu cifrele lor de sus: sunt reale. Nu spune ' +
-      'niciodată că nu le-ai generat și nu le „corecta"; dacă îți trebuie amănunte (pe mașină, pe cursă), rulează același raport pe aceeași perioadă.',
+      'Mesajele tale de forma „Am făcut raportul…” sunt rapoarte făcute de APLICAȚIE în discuție, cu cifrele lor de sus: sunt reale. Nu spune ' +
+      'niciodată că nu le-ai generat și nu le „corecta”; dacă îți trebuie amănunte (pe mașină, pe cursă), rulează același raport pe aceeași perioadă.',
     cuRapoarte
       ? 'PERIOADE: pentru run_report (și pentru combustibil) folosește `period` (today, yesterday, this_week, last_week, this_month, last_month, ' +
-        'last_7_days, last_30_days), `month` („2026-09") pentru o lună întreagă, sau `from`/`to` ca zile („2026-10-01" și „2026-10-07" — ' +
+        'last_7_days, last_30_days), `month` („2026-09”) pentru o lună întreagă, sau `from`/`to` ca zile („2026-10-01” și „2026-10-07” — ' +
         'ultima zi intră întreagă) pentru o perioadă anume. Fără perioadă spusă: ultimele 7 zile, și spune asta. Când compari două perioade, ' +
         'rulează raportul pentru fiecare.'
       : 'Omul nu are acces la rapoarte: pentru perioade trecute spune-i că rapoartele i le poate da administratorul firmei.',
-    'ALEGEREA UNELTEI: despre ACUM → fleet_status; „ce probleme are flota / ce e de făcut" → fleet_alerts (și mentenanta_acte); ' +
-      '„ce expiră / ITP / RCA / rovinietă / revizie / permis" → mentenanta_acte; ' +
-      '„cât combustibil / cât ne-a costat motorina luna asta / cine consumă prea mult / scăderi de combustibil" → combustibil; ' +
-      '„câte ore a condus X săptămâna asta / cine a încălcat orele de condus / pauze / Reg. 561 / tahograf" → ore_condus; ' +
-      '„cât ne-a costat condusul / cine conduce cel mai urât / a mers discuția cu X / RA Drive / Safe Drive" → safe_drive' +
+    'ALEGEREA UNELTEI: despre ACUM → fleet_status; „ce probleme are flota / ce e de făcut” → fleet_alerts (și mentenanta_acte); ' +
+      '„ce expiră / ITP / RCA / rovinietă / revizie / permis” → mentenanta_acte; ' +
+      '„cât combustibil / cât ne-a costat motorina luna asta / cine consumă prea mult / scăderi de combustibil” → combustibil; ' +
+      '„câte ore a condus X săptămâna asta / cine a încălcat orele de condus / pauze / Reg. 561 / tahograf” → ore_condus; ' +
+      '„cât ne-a costat condusul / cine conduce cel mai urât / a mers discuția cu X / RA Drive / Safe Drive” → safe_drive' +
       (cuRapoarte ? '; analize pe perioadă (km, ore, consum, opriri, viteze, ralanti, scor de condus, zone) → run_report' : '') + '. Poți combina.',
     cuRapoarte ? 'Tipuri de raport pentru run_report (cheia din stânga):\n' + lista : '',
     'FIȘA MAȘINII: anul de fabricație, marca, modelul, combustibilul, rezervorul și consumul din fișă le ai în list_vehicles. Ce nu e completat ' +
@@ -4758,9 +4758,9 @@ function _insightInstructiuni(cuRapoarte) {
     'PROBLEMELE ȘI SUMELE: aplicația verifică datele înaintea ta. Când o unealtă întoarce probleme_gasite (viteza reală sau eroare de GPS, ' +
       'consumul care nu se poate măsura, consumul greu de crezut), spune-le ca fapte, pe scurt — omul le vede și în chenare cu butoane ' +
       'spre locul exact, sub răspuns. Sumele pe mașină și pe zi le ai gata în pe_masina / pe_masina_si_zi: folosește-le, nu aduna rândurile. ' +
-      'De unde vine o cifră de consum scrie în cum_s_a_socotit. Nu-i cere omului să verifice cifre („merită verificate", „verifică în raport"): ' +
+      'De unde vine o cifră de consum scrie în cum_s_a_socotit. Nu-i cere omului să verifice cifre („merită verificate”, „verifică în raport”): ' +
       'dacă ceva e îndoielnic, spune clar ce și de ce.',
-    // Alin, 19.10: „Dacă vrei consum real și la Logan, verifică dacă are senzor…" — clientul ar zice „păi voi nu ați verificat
+    // Alin, 19.10: „Dacă vrei consum real și la Logan, verifică dacă are senzor…” — clientul ar zice „păi voi nu ați verificat
     // dacă are, eu vă plătesc". Echipamentul e treaba NOASTRĂ: RA Insight nu-l trimite pe client la el și nu-l pune pe seama lui.
     insight.ECHIPAMENTUL,
     'CONCLUZIA: când analizezi (compari, explici, cauți cauza), termină cu **Concluzie:** (o propoziție) și, dacă e ceva de făcut, ' +
@@ -4769,10 +4769,10 @@ function _insightInstructiuni(cuRapoarte) {
     'GHIDUL: la întrebări despre CUM se folosește aplicația, cheamă cauta_in_ghid și răspunde DOAR cu pașii de acolo, cu numele butoanelor. Dacă ghidul nu are răspunsul, spune că nu știi sigur și trimite omul la suport (iconița căști din bara de sus) — nu ghici meniuri.',
     'REGULI: (1) Doar pe baza datelor din unelte — nu inventa cifre. (2) Dacă o valoare lipsește (de pildă un consum care nu e măsurat), ' +
       'spune sincer că nu e disponibilă, fără să-i ceri omului să verifice echipamentul. (3) Fără coordonate GPS: folosește adrese, numere și nume. (4) Scrie mașina cu numărul ei, de pildă ' +
-      '„B 154 UIP (Dacia Logan 3)". (5) Concis: un titlu scurt cu **bold**, apoi puncte cu „• " și cifrele-cheie; alertele critice primele. ' +
+      '„B 154 UIP (Dacia Logan 3)”. (5) Concis: un titlu scurt cu **bold**, apoi puncte cu „• ” și cifrele-cheie; alertele critice primele. ' +
       '(6) Numerele, românește: 1.234,5 km. (7) Nu enumera la final uneltele folosite. (8) Perioada: citește EXACT perioada cerută ' +
-      '(„1–7 octombrie" = from 2026-10-01, to 2026-10-07). RA Drive e pe luni întregi și Ore de condus pe săptămâni întregi: dacă omul ' +
-      'cere altă perioadă, spune ce perioadă ai citit. În titlu scrie perioada CITITĂ. (9) O cifră cu „de_verificat" o spui lângă cifra ' +
+      '(„1–7 octombrie” = from 2026-10-01, to 2026-10-07). RA Drive e pe luni întregi și Ore de condus pe săptămâni întregi: dacă omul ' +
+      'cere altă perioadă, spune ce perioadă ai citit. În titlu scrie perioada CITITĂ. (9) O cifră cu „de_verificat” o spui lângă cifra ' +
       'ei: că e greu de crezut și de ce. (10) Nu socoti cifre pe care uneltele nu ți le-au dat; aplicația verifică fiecare cifră.',
     insight.SCRISUL
   ].filter(Boolean).join('\n\n');
@@ -4784,33 +4784,33 @@ function _insightContext(fisa, gasite, ctx, peImei, notite, fisaOm) {
     const parti = [];
     if (v.sofer) parti.push('șofer ' + v.sofer);
     if (v.grupa) parti.push('grupa ' + v.grupa);
-    return (v.nr ? v.nr + ' = „' + v.nume + '"' : '„' + v.nume + '"') + (parti.length ? ' (' + parti.join(', ') + ')' : '');
+    return (v.nr ? v.nr + ' = „' + v.nume + '”' : '„' + v.nume + '”') + (parti.length ? ' (' + parti.join(', ') + ')' : '');
   };
   const r = ['Acum: ' + z + ' (ora României). Flota la care are acces omul: ' + fisa.length + (fisa.length === 1 ? ' mașină.' : ' mașini.')];
   if (gasite.masini.length) r.push('Mașini recunoscute în întrebare: ' + gasite.masini.map(descrie).join('; ') + '.');
   if (gasite.grupe.length) r.push('Grupe recunoscute în întrebare: ' + gasite.grupe.map(function (g) { return g.nume + ' (' + g.masini.length + ' mașini)'; }).join('; ') + '.');
-  for (const a of gasite.ambigue) r.push('Pentru „' + a.cheie + '" se potrivesc mai multe mașini: ' + a.variante.map(insight.eticheta).join('; ') + '. Dacă discuția nu lămurește care, întreabă.');
+  for (const a of gasite.ambigue) r.push('Pentru „' + a.cheie + '” se potrivesc mai multe mașini: ' + a.variante.map(insight.eticheta).join('; ') + '. Dacă discuția nu lămurește care, întreabă.');
   const disc = [];
   const masiniCtx = (ctx.masini || []).map(function (i) { return peImei[i]; }).filter(Boolean);
   if (masiniCtx.length) disc.push('mașina: ' + masiniCtx.map(insight.eticheta).join(', '));
   if (ctx.perioada && ctx.perioada.from) disc.push('perioada: ' + insight.etichetaPerioadei(ctx.perioada.from, ctx.perioada.to));
   if (Array.isArray(ctx.rapoarte) && ctx.rapoarte.length) disc.push('rapoarte: ' + ctx.rapoarte.map(function (t) { return (reports.REPORTS[t] || {}).label || t; }).join(', '));
   if (disc.length) r.push('Din discuția de până acum — ' + disc.join('; ') + '.');
-  // Regulile casei, scrise o dată de administratorul firmei („motorina e 7,30 lei", „la noi săptămâna e luni–sâmbătă").
+  // Regulile casei, scrise o dată de administratorul firmei („motorina e 7,30 lei”, „la noi săptămâna e luni–sâmbătă”).
   if (notite) r.push('Notițele firmei (scrise de administratorul ei — ține cont de ele ca de regulile casei):\n' + notite);
   // Fișa omului (11.11): a lui, scrisă noaptea din discuțiile lui; aici, nu în partea fixă (e a fiecărui om și se schimbă zilnic).
   const fo = fisaInsight.pentruModel(fisaOm);
   if (fo) r.push(fo);
   return r.join('\n');
 }
-// „Am înțeles": ce a căutat RA Insight cu adevărat (din uneltele rulate), ca omul să vadă dacă l-a înțeles bine.
-// `mem` = mașina vine din discuție, nu din mesajul de acum („ținut minte").
-// Verificarea răspunsului lui RA Insight, fără tokeni (Alin, 08.10: „să aibă grijă cumva să nu dea greșit"; 15.10: „ce să
+// „Am înțeles”: ce a căutat RA Insight cu adevărat (din uneltele rulate), ca omul să vadă dacă l-a înțeles bine.
+// `mem` = mașina vine din discuție, nu din mesajul de acum („ținut minte”).
+// Verificarea răspunsului lui RA Insight, fără tokeni (Alin, 08.10: „să aibă grijă cumva să nu dea greșit”; 15.10: „ce să
 // verific? Am AI… îmi zice clar dacă e greșit ceva"): perioada citită față de cea cerută (o notă scurtă), cifrele care nu se
 // regăsesc în datele citite (după rescriere — `lipsa`, socotită de _raInsight) și `confirmat` = răspunsul are cifre ale
-// flotei și toate se regăsesc (rândul mic „✓ Cifrele le-am luat din rapoarte"). Cifrele greu de crezut nu mai stau aici: sunt
+// flotei și toate se regăsesc (rândul mic „✓ Cifrele le-am luat din rapoarte”). Cifrele greu de crezut nu mai stau aici: sunt
 // probleme (probleme.js), cu butoanele lor. null = nimic de spus. O SINGURĂ funcție — o cheamă _raInsight.
-// `surse` = { aplicatie, sursa } (30.10): ce au întors uneltele aplicației și ce a găsit „Sursă externă", ca rândul „✓" să spună
+// `surse` = { aplicatie, sursa } (30.10): ce au întors uneltele aplicației și ce a găsit „Sursă externă”, ca rândul „✓” să spună
 // de unde au venit chiar cifrele (`dinAplicatie` / `dinSursa`; o cifră găsită doar în amândouă la un loc = din amândouă).
 function _verificaRaspunsul(reply, message, dateCitite, citite, lipsa, surse) {
   const out = {};
@@ -4854,8 +4854,8 @@ function _insightInteles(sources, folosite, gasite, areIstoric, inPlus) {
 
 // ─── RA Insight pe reguli (pachetele, 14.10) ─────────────────────────────────────────────────────────────────────────
 // Pe Start și când luna s-a oprit (cota, limita omului, plasa): răspunde motorul pe reguli (`_aiRaportCore`, același ca
-// fila „AI Raport"), în aceeași discuție, cu același „Am înțeles", aceleași butoane și „Deschide raportul". Ce s-a
-// discutat pe reguli stă în contextul conversației (`ctx.ar`), ca „și luna trecută?" să meargă. Pe Start se numără doar
+// fila „AI Raport”), în aceeași discuție, cu același „Am înțeles”, aceleași butoane și „Deschide raportul”. Ce s-a
+// discutat pe reguli stă în contextul conversației (`ctx.ar`), ca „și luna trecută?” să meargă. Pe Start se numără doar
 // răspunsurile date (o întrebare neînțeleasă nu se numără). Cu `incearca` (un buton pe Basic / Pro / Business, unde
 // butoanele n-au limită): ce nu înțeleg regulile nu primește răspuns aici (întoarce false) și merge la RA Insight.
 // `faraModel` (04.11) = textul pentru client când Anthropic refuză (creditul, limita, cheia — sold_ai.TEXT_CLIENT): răspunsul vine tot pe
@@ -4867,7 +4867,7 @@ async function _insightPeReguli(req, res, x) {
   let pachetInfo = st ? _pachetPeEcran(st) : undefined;
   // `limita` = tot răspunsul e mesajul pachetului; `pachetMesaj` = mesajul pachetului pus înaintea răspunsului. Ecranul le
   // arată în caseta de avertizare; telefonul vechi citește doar `reply`, în care sunt deja.
-  // „Treci la Pro" (16.11, Alin: „4. DA"): în caseta de la capătul întrebărilor, la administratorul care poate schimba pachetul —
+  // „Treci la Pro” (16.11, Alin: „4. DA”): în caseta de la capătul întrebărilor, la administratorul care poate schimba pachetul —
   // pachetul următor, cu prețul pentru firma lui. Nu la plasă și nu la refuzul lui Anthropic (nu se rezolvă cu alt pachet).
   let recomandat;
   try {
@@ -4880,7 +4880,7 @@ async function _insightPeReguli(req, res, x) {
     const e = Object.assign({ inteles: [], alege: [], urmari: [], sources: [] }, extra || {});
     const ins = e.limita ? undefined : pachete.insigna('instant', { numarat: start });
     const rec = (e.limita || e.pachetMesaj) ? recomandat : undefined;
-    // `faraModel` (04.11): mesajul e al refuzului lui Anthropic, nu al pachetului — caseta nu arată „Vezi pachetele" (nu e vina clientului).
+    // `faraModel` (04.11): mesajul e al refuzului lui Anthropic, nu al pachetului — caseta nu arată „Vezi pachetele” (nu e vina clientului).
     const sv = await x.salveaza(reply, { source: 'reguli', sources: e.sources, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: st ? st.cod : undefined,
       limita: e.limita || undefined, pachetMesaj: e.pachetMesaj || undefined, insigna: ins, faraModel: x.faraModel ? true : undefined, recomandat: rec }, ctxNou || x.ctx);
     return res.json({ reply: reply, sources: e.sources, source: 'reguli', conversatieId: sv.convId, mesajId: sv.mesajId, inteles: e.inteles, alege: e.alege, urmari: e.urmari, pachet: pachetInfo,
@@ -4899,7 +4899,7 @@ async function _insightPeReguli(req, res, x) {
   };
   if (out.neinteles) {
     if (x.incearca) return false;   // un buton pe Basic / Pro / Business pe care regulile nu-l știu: merge la RA Insight
-    // O întrebare liberă („de ce", „compară", „ce să fac") nu se poate pe reguli: pe Start spunem de la ce pachet merge,
+    // O întrebare liberă („de ce”, „compară”, „ce să fac”) nu se poate pe reguli: pe Start spunem de la ce pachet merge,
     // iar când luna s-a oprit, de ce și până când.
     const pi = out.motiv === 'pentru_insight';
     // Anthropic refuză (04.11): o întrebare pe care regulile n-o înțeleg primește tot textul pentru client, deasupra (de ce nu răspund acum).
@@ -4922,7 +4922,7 @@ async function _insightPeReguli(req, res, x) {
 // ─── Rapoartele cerute în cuvinte (Capitolul 2, pasul 1 — Alin, 15.10) ──────────────────────────────────────────────────
 // Cifrele de sus: aceeași socoteală ca emailul raportului programat (reports.kpiRaport).
 function _kpiRaport(report) { return reports.kpiRaport(report); }
-// „Am găsit o problemă" (Alin, 15.10): ce găsește aplicația, singură, în datele unui raport — viteza mare (reală sau eroare
+// „Am găsit o problemă” (Alin, 15.10): ce găsește aplicația, singură, în datele unui raport — viteza mare (reală sau eroare
 // de GPS, din pozițiile din jurul celui mai rapid punct), senzorul de combustibil care nu se mișcă, consumul greu de crezut.
 // Regulile și textele stau în probleme.js; aici doar se citesc datele. O SINGURĂ funcție, chemată de rapoartele cerute în
 // cuvinte (_insightComanda) și de unealta run_report a lui RA Insight. cx = { fisa, peDev } (mașinile omului, cu fișa lor).
@@ -4976,24 +4976,24 @@ function _raportPentruModel(type, report, extra, o) {
   });
   const tot = insight.totaluriPeMasina(report.columns, rows);
   if (tot) Object.assign(out, tot);
-  // Cele mai mari valori, din TOATE rândurile (22.10: „cea mai lungă cursă" — modelul vedea doar primele 25 din 119).
+  // Cele mai mari valori, din TOATE rândurile (22.10: „cea mai lungă cursă” — modelul vedea doar primele 25 din 119).
   const mari = insight.celeMaiMari(report.columns, rows, 5);
   if (mari) { out.cele_mai_mari = mari; out.atentie_randuri = 'rows are doar primele 25 de rânduri; cele_mai_mari = cele mai mari 5 valori pe fiecare coloană, din TOATE cele ' + rows.length + ' de rânduri.'; }
   // Pragul vitezei, spus pe față: nu e limita legală a drumului (raportul nu știe pe ce drum era mașina).
   if (o.prag) out.prag_raport = 'Pragul raportului: ' + o.prag + ' km/h, același pe orice drum' + (o.pragDiferit ? ' (cel mai mic dintre pragurile mașinilor; la autoturisme limita cea mai mare e 130 km/h)' : '') +
-    '. NU e limita legală a fiecărui drum (50 în localitate, 90–100 pe drumuri naționale, 130 pe autostradă). Scrie „a trecut de ' + o.prag + ' km/h", nu „a depășit limita legală".';
+    '. NU e limita legală a fiecărui drum (50 în localitate, 90–100 pe drumuri naționale, 130 pe autostradă). Scrie „a trecut de ' + o.prag + ' km/h”, nu „a depășit limita legală”.';
   if (Array.isArray(report.valori) && report.valori.some(function (v) { return v && v.sursa; })) {
     out.cum_s_a_socotit = report.valori.slice(0, 25).map(function (v) { const s = probleme.sursaConsum(v); return { vehicul: v.vehicul, masurat: s.masurat, sursa: s.text }; });
-    out.atentie_consum = 'De unde vine fiecare cifră de consum e în cum_s_a_socotit: spune-o cu vorbele de acolo. Unde scrie „NU e măsurat", nu prezenta litrii ca măsurați.';
+    out.atentie_consum = 'De unde vine fiecare cifră de consum e în cum_s_a_socotit: spune-o cu vorbele de acolo. Unde scrie „NU e măsurat”, nu prezenta litrii ca măsurați.';
   }
   return out;
 }
-// „Fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută": înțelegerea pe reguli (aiRaport.comanda), raportul întreg —
+// „Fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută”: înțelegerea pe reguli (aiRaport.comanda), raportul întreg —
 // aceleași opțiuni ca pagina Rapoarte (_optiuniRaport), aceleași drepturi (viewReports + poateRaport) — pus în Istoric
-// rapoarte (_istoricRaport, 7 zile), iar în discuție cartonașul lui: cifrele de sus, „Deschide raportul", „Descarcă Excel".
+// rapoarte (_istoricRaport, 7 zile), iar în discuție cartonașul lui: cifrele de sus, „Deschide raportul”, „Descarcă Excel”.
 // Fără model: pe Basic / Pro / Business nu se numără; pe Start, un raport făcut se numără din cele 50 (_numaraRaspunsReguli).
 // Întoarce false când mesajul nu e o cerere de raport (merge mai departe la întrebări), true când a răspuns, sau
-// { dupa } când cererea vrea și o judecată („compară", „de ce" — Alin, 15.10): rapoartele sunt făcute, iar _raInsight le dă
+// { dupa } când cererea vrea și o judecată („compară”, „de ce” — Alin, 15.10): rapoartele sunt făcute, iar _raInsight le dă
 // lui RA Insight să facă restul (o întrebare). Mai multe zile într-o cerere = câte un raport pe zi.
 async function _insightComanda(req, res, x) {
   const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
@@ -5016,7 +5016,7 @@ async function _insightComanda(req, res, x) {
       pachet: pachetInfo, limita: e.limita || undefined });
   }
   const cuCmd = function (c) { return Object.assign({}, x.ctx, { cmd: c }); };
-  if (!permReq(req, 'viewReports')) { await gata('Nu ai acces la rapoarte, deci nu pot face raportul. Cere-i administratorului firmei acces la „Rapoarte".'); return true; }
+  if (!permReq(req, 'viewReports')) { await gata('Nu ai acces la rapoarte, deci nu pot face raportul. Cere-i administratorului firmei acces la „Rapoarte”.'); return true; }
   if (!u.ok) {
     if (u.motiv === 'ambiguu') {
       await gata('Se potrivesc mai multe mașini. Pentru care fac raportul' + (u.raport ? ' „' + etRaport(u.raport) + '”' : '') + '?',
@@ -5033,7 +5033,7 @@ async function _insightComanda(req, res, x) {
     const m = u.context && Array.isArray(u.context.masini) && u.context.masini.length === 1 ? peImei[u.context.masini[0]] : null;
     const alege = aiRaport.RAPOARTE_PROPUSE.filter(function (k) { return poateRaport(req, k); })
       .map(function (k) { return { text: etRaport(k), trimite: 'Fă-mi raportul „' + etRaport(k) + '”' + (m ? ' pentru ' + (m.nr || m.nume) : '') }; });
-    await gata('Ce raport vrei? Alege mai jos sau scrie-i numele (de exemplu „foaia de parcurs"), mașina și perioada.', { alege: alege }, cuCmd(u.context && (u.context.masini || u.context.perioada) ? u.context : null));
+    await gata('Ce raport vrei? Alege mai jos sau scrie-i numele (de exemplu „foaia de parcurs”), mașina și perioada.', { alege: alege }, cuCmd(u.context && (u.context.masini || u.context.perioada) ? u.context : null));
     return true;
   }
   const label = etRaport(u.raport);
@@ -5077,7 +5077,7 @@ async function _insightComanda(req, res, x) {
     (await _problemeDinRaport(u.raport, report, from, to, { fisa: x.fisa, peDev: x.peDev })).forEach(function (p) { probl.push(p); });
   }
   // Textul răspunsului (îl citește RA Insight în discuția de după și telefonul vechi): numele, mașina, perioada și CIFRELE de sus
-  // — până pe 15.10 doar „Am făcut raportul…", iar RA Insight, fără cifre, credea că nu le generase („o corecție…").
+  // — până pe 15.10 doar „Am făcut raportul…”, iar RA Insight, fără cifre, credea că nu le generase („o corecție…”).
   const kpiTxt = function (c) { return (c.kpi || []).map(function (k) { return k.et + ': ' + k.val; }).join(' · ') || (c.gol ? 'fără rânduri' : ''); };
   let reply;
   if (carduri.length === 1) {
@@ -5092,7 +5092,7 @@ async function _insightComanda(req, res, x) {
   const inteles = aiRaport.inteles(Object.assign({}, u, { et: label, perioada: Object.assign({}, perioade[0], { eticheta: carduri.map(function (c) { return c.perioada; }).join(' · '), implicita: perioade[0].implicita }) }), x.fisa);
   const p0 = perioade[0];
   const urmari = carduri.length === 1 ? aiRaport.urmariComanda(Object.assign({}, u, { perioada: { from: p0.from, to: p0.to, acum: p0.acum, inainte: p0.inainte } })) : [];
-  // Discuția: cererea (pentru continuările ei), plus mașina, perioada și subiectul pentru întrebările de după („și consumul?").
+  // Discuția: cererea (pentru continuările ei), plus mașina, perioada și subiectul pentru întrebările de după („și consumul?”).
   const subR = aiRaport.SUBIECTE.find(function (s) { return s.raport === u.raport; });
   const ctxNou = Object.assign({}, x.ctx, { cmd: aiRaport.contextulComenzii(Object.assign({}, u, { perioada: p0 }), p0.from, p0.to), rapoarte: [u.raport] });
   if (u.masini) ctxNou.masini = u.masini.slice(0, 50); else delete ctxNou.masini;
@@ -5100,7 +5100,7 @@ async function _insightComanda(req, res, x) {
   if (subR) ctxNou.ar = aiRaport.contextul(Object.assign({}, u, { subiect: subR.k, perioada: p0 }), p0.from, p0.to); else delete ctxNou.ar;
   auditReq(req, 'ai_raport_cerut', 'report', carduri[0] && carduri[0].id, { tip: u.raport, masini: imeis.length, perioade: carduri.length, analiza: !!u.analiza, via: x.usa || 'insight' });
   const probl2 = probleme.ordoneaza(probl);
-  // „…și fă-mi o comparație": rapoartele sunt gata; judecata o face RA Insight, în _raInsight (o întrebare).
+  // „…și fă-mi o comparație”: rapoartele sunt gata; judecata o face RA Insight, în _raInsight (o întrebare).
   if (u.analiza) return { dupa: { carduri: carduri, pentruModel: pentruModel, probleme: probl2, citite: citite, ctxNou: ctxNou, inteles: inteles, reply: reply, sp: sp, subiect: 'raport_' + u.raport } };
   if (sp) pachetInfo = await _numaraRaspunsReguli(req, sp, 'raport_' + u.raport, x.usa || 'insight');
   await gata(reply, carduri.length === 1 ? { raport: carduri[0], inteles: inteles, urmari: urmari, probleme: probl2 } : { rapoarte: carduri, inteles: inteles, probleme: probl2 }, ctxNou);
@@ -5137,14 +5137,14 @@ async function _poartaReguliPachet(req) {
   if (!sp.pachet.ai && sp.st.blocat) return { gata: { neinteles: true, motiv: 'pachet_epuizat', text: pachete.textBlocat(sp.st, Date.now()), pachet: _pachetPeEcran(sp.st) } };
   return { sp: sp };
 }
-// ─── „Sursă externă" (28.10; Alin: „da — dar nu-l numim internet, îl numim sursă externă, și explicăm că caută pe internet") ───
+// ─── „Sursă externă” (28.10; Alin: „da — dar nu-l numim internet, îl numim sursă externă, și explicăm că caută pe internet”) ───
 // Regulile și textele stau în sursa_externa.js. Aici: comutatorul nostru pe toată platforma (setarea `sursa_externa`), ce a spus
 // Anthropic despre model (`sursa_model`, din Models API — gratuit, fără nimic din aplicație), starea pentru omul care întreabă,
 // apelul de căutare SEPARAT (primește doar căutarea) și consumul lui: un rând 'sursa_externa' pe întrebare — nu e o întrebare
 // în plus, dar intră în costul firmei (plasa) și se numără la cota lunii doar dacă s-a căutat chiar.
-let _sursaPlat = null;     // { stare, la, de } — se schimbă doar din „RA Insight · control"
+let _sursaPlat = null;     // { stare, la, de } — se schimbă doar din „RA Insight · control”
 let _sursaModel = null;    // { model, nume, ok, la, eroare } — al modelului de căutare de acum (AI_MODEL_SURSA)
-let _sursaEroare = null;   // ultima căutare cu eroare: { la, eroare } (în „Stare producție" și în control)
+let _sursaEroare = null;   // ultima căutare cu eroare: { la, eroare } (în „Stare producție” și în control)
 async function _sursaPlatforma() {
   if (_sursaPlat) return _sursaPlat;
   let v = null; try { v = JSON.parse((await db.getSetting('sursa_externa')) || 'null'); } catch (e) { v = null; }
@@ -5169,7 +5169,7 @@ async function _verificaModelSursa() {
   return m;
 }
 function _setariObj(s) { if (!s) return {}; if (typeof s === 'string') { try { return JSON.parse(s) || {}; } catch (e) { return {}; } } return s; }
-// Starea „Sursei externe" pentru un om: cine = { isSuper, companyId }; `faraFirma` = fără comutatorul firmei (rândul din „Pachet
+// Starea „Sursei externe” pentru un om: cine = { isSuper, companyId }; `faraFirma` = fără comutatorul firmei (rândul din „Pachet
 // și conturi" îl arată și când e oprit). Întoarce sursaExterna.stare(...).
 async function _stareSursa(cine, faraFirma) {
   const plat = await _sursaPlatforma();
@@ -5223,7 +5223,7 @@ async function _raInsight(req, res, opts) {
     try { (await db.getDriversLite(companyScope === -1 ? -1 : companyScope)).forEach(function (s) { soferi[s.id] = s.name; }); } catch (e) { /* fără șoferi: rămân numărul și numele */ }
     const fisa = insight.fisaFlotei(devices, soferi);
     const peImei = {}; fisa.forEach(function (v) { peImei[v.imei] = v; });
-    const peDev = {}; devices.forEach(function (d) { peDev[d.imei] = d; });   // limita de viteză și felul mașinii, pentru „Am găsit o problemă"
+    const peDev = {}; devices.forEach(function (d) { peDev[d.imei] = d; });   // limita de viteză și felul mașinii, pentru „Am găsit o problemă”
     const allImeis = fisa.map(function (v) { return v.imei; });
 
     // Conversația: cea cerută (doar dacă e a omului), ultima de curând, sau una nouă (creată la salvare).
@@ -5238,7 +5238,7 @@ async function _raInsight(req, res, opts) {
     const mesaje = conv ? await db.mesajeConversatie(conv.id, userId, INSIGHT_ISTORIC_MESAJE + 2) : [];
     let ctx = (conv && conv.context) || {};
     // Fișa omului (11.11; fisa_insight.js): ce a învățat RA Insight despre el din discuțiile trecute. Cum numește el mașinile
-    // („Loganul" = B 204 UIP) intră în textul cu care lucrează aplicația, doar când textul nu numește deja limpede o mașină.
+    // („Loganul” = B 204 UIP) intră în textul cu care lucrează aplicația, doar când textul nu numește deja limpede o mașină.
     let fisaOm = null;
     if (userId != null && !o.proba) { try { fisaOm = await db.getFisaAi(userId); } catch (e) { fisaOm = null; } }
     const gasiteOm = insight.gasesteInText(mesajOm, fisa);
@@ -5258,10 +5258,10 @@ async function _raInsight(req, res, opts) {
       } catch (e) { console.warn('[RA Insight] conversația nu s-a salvat:', e.message); return { convId: conv ? conv.id : null, mesajId: null }; }
     }
 
-    // Fișa, cerută în discuție (11.11): „ce știi despre mine?" o arată; „uită că …" scoate doar ce se potrivește; „uită tot" NU
+    // Fișa, cerută în discuție (11.11): „ce știi despre mine?” o arată; „uită că …” scoate doar ce se potrivește; „uită tot” NU
     // șterge nimic — ștergerea totală e doar în Setări → Preferințe (Alin: omul se poate referi doar la discuția de acum); „uită
     // asta" îi spune cum șterge discuția. Pe reguli, pe loc, nu se numără.
-    // Pe Start (fără AI) RA Insight nu-și face fișă (Alin, 11.11): „ce știi despre mine?" merge mai departe, ca orice întrebare liberă.
+    // Pe Start (fără AI) RA Insight nu-și face fișă (Alin, 11.11): „ce știi despre mine?” merge mai departe, ca orice întrebare liberă.
     let cf = (!o.proba && userId != null) ? fisaInsight.cerere(mesajOm) : null;
     if (cf && !(await _fisaActiva(req.companyId, fisaOm))) cf = null;
     if (cf) {
@@ -5282,28 +5282,28 @@ async function _raInsight(req, res, opts) {
       return res.json({ reply: replyF, source: 'fisa', conversatieId: svF.convId, mesajId: svF.mesajId, alege: [], urmari: [], sources: [], insigna: insF });
     }
 
-    // 0) Un raport cerut în cuvinte („fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută"): pe reguli, întreg, în
+    // 0) Un raport cerut în cuvinte („fă-mi foaia de parcurs pentru B 154 UIP, săptămâna trecută”): pe reguli, întreg, în
     //    Istoric rapoarte (Capitolul 2, pasul 1). Proba modelelor pune doar întrebări.
-    //    „…și fă-mi o comparație" (Alin, 15.10): rapoartele se fac aici, pe reguli, iar judecata o face RA Insight mai jos
+    //    „…și fă-mi o comparație” (Alin, 15.10): rapoartele se fac aici, pe reguli, iar judecata o face RA Insight mai jos
     //    (`gata` = rapoartele, cifrele lor pentru model, problemele găsite).
     let gata = null;
     if (!o.proba) {
-      // Pasul 2: cartonașul cu „Da", pe reguli — întâi revizia, actul și raportul programat (26.10; „trimite-mi în fiecare luni
-      // raportul…" nu e un raport pe loc), apoi alerta și „Am vorbit cu el" (23.10), apoi șoferii (22.10).
+      // Pasul 2: cartonașul cu „Da”, pe reguli — întâi revizia, actul și raportul programat (26.10; „trimite-mi în fiecare luni
+      // raportul…" nu e un raport pe loc), apoi alerta și „Am vorbit cu el” (23.10), apoi șoferii (22.10).
       if (await _insightProgramari(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
       if (await _insightPropuneri(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
       if (await _insightSoferi(req, res, { message: message, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa })) return;
-      // Propunerea neapăsată și „Îți pregătesc și schimbarea asta?" nu mai sunt „în discuție" după o altă întrebare.
+      // Propunerea neapăsată și „Îți pregătesc și schimbarea asta?” nu mai sunt „în discuție” după o altă întrebare.
       if (ctx.propunere || ctx.urmatoare) { ctx = Object.assign({}, ctx); delete ctx.propunere; delete ctx.urmatoare; }
       const rc = await _insightComanda(req, res, { message: message, ctx: ctx, fisa: fisa, peDev: peDev, salveaza: salveaza, usa: o.usa });
       if (rc === true) return;
       if (rc && rc.dupa) gata = rc.dupa;
     }
     if (gata) ctx = gata.ctxNou;
-    // Cererea de dinainte nu mai e „în discuție" după o întrebare: „și săptămâna dinainte?" privește întrebarea.
+    // Cererea de dinainte nu mai e „în discuție” după o întrebare: „și săptămâna dinainte?” privește întrebarea.
     else if (ctx.cmd) { ctx = Object.assign({}, ctx); delete ctx.cmd; }
     // Rapoartele făcute deja, fără RA Insight (Start, luna oprită, cheia lipsă): cartonașele, plus de ce nu vine și judecata.
-    // `faraModel` (04.11) = motivul e refuzul lui Anthropic (nu pachetul): nu se numără nimic și caseta nu arată „Vezi pachetele".
+    // `faraModel` (04.11) = motivul e refuzul lui Anthropic (nu pachetul): nu se numără nimic și caseta nu arată „Vezi pachetele”.
     async function doarRapoartele(motiv, faraModel) {
       const ins = pachete.insigna('instant', { numarat: !faraModel && !!(gata.sp && !gata.sp.pachet.ai) });
       let pachetInfo;
@@ -5314,14 +5314,14 @@ async function _raInsight(req, res, opts) {
         rapoarte: gata.carduri, probleme: gata.probleme.length ? gata.probleme : undefined, insigna: ins, pachet: pachetInfo, pachetMesaj: motiv, faraModel: faraModel ? true : undefined });
     }
 
-    // 1) Răspuns rapid, LOCAL și GRATUIT — doar la întrebări despre ACUM („unde e", „care sunt oprite", „câți km azi").
-    //    Înainte se aprindea pe un singur cuvânt: „câți kilometri a făcut B 154 UIP săptămâna trecută" primea km-ii
+    // 1) Răspuns rapid, LOCAL și GRATUIT — doar la întrebări despre ACUM („unde e”, „care sunt oprite”, „câți km azi”).
+    //    Înainte se aprindea pe un singur cuvânt: „câți kilometri a făcut B 154 UIP săptămâna trecută” primea km-ii
     //    de AZI ai întregii flote. Acum: altă perioadă, alt subiect sau o continuare a discuției → RA Insight.
     try {
       const intent = fleetQuick ? fleetQuick.detectIntent(message) : null;
-      // Mașina din discuție (Alin, 10.11): „Câți km a făcut azi?" după „Unde e B 204 UIP?" e despre ea, nu despre toată flota — aceeași
-      // regulă ca la rapoartele cerute („mașina rămâne în discuție"), cât întrebarea nu vorbește de flotă („toate", „care mașină", „cine").
-      // Doar la „unde e" / „câți km a făcut" la singular (`peMasinaDinDiscutie`): „Care sunt oprite?" rămâne despre toată flota.
+      // Mașina din discuție (Alin, 10.11): „Câți km a făcut azi?” după „Unde e B 204 UIP?” e despre ea, nu despre toată flota — aceeași
+      // regulă ca la rapoartele cerute („mașina rămâne în discuție”), cât întrebarea nu vorbește de flotă („toate”, „care mașină”, „cine”).
+      // Doar la „unde e” / „câți km a făcut” la singular (`peMasinaDinDiscutie`): „Care sunt oprite?” rămâne despre toată flota.
       const dinDiscutie = (!gasite.masini.length && mesaje.length && Array.isArray(ctx.masini) && ctx.masini.length
           && insight.peMasinaDinDiscutie(message, intent) && !aiRaport.despreFlota(message))
         ? ctx.masini.map(function (i) { return peImei[i]; }).filter(Boolean) : [];
@@ -5349,14 +5349,14 @@ async function _raInsight(req, res, opts) {
     } catch (e) { /* dacă răspunsul rapid pică, merge întrebarea la RA Insight */ }
 
     // 2) Pachetele (14.10): pe Start (fără AI) sau când RA Insight s-a oprit pe lună (s-au terminat întrebările, limita
-    //    omului, plasa), răspunde motorul pe reguli — același ca „AI Raport". Pe Start, din cele 50 de răspunsuri.
+    //    omului, plasa), răspunde motorul pe reguli — același ca „AI Raport”. Pe Start, din cele 50 de răspunsuri.
     if (!o.proba && req.companyId != null) {
       const sp = await _starePachet(req.companyId, userId, { strict: true });
       if (gata && sp && !sp.pachet.ai) return await doarRapoartele(pachete.textDoarButoane());
       if (gata && sp && sp.st.blocat) return await doarRapoartele(pachete.textBlocat(sp.st, Date.now()));
       if (sp && (!sp.pachet.ai || sp.st.blocat)) return await _insightPeReguli(req, res, { message: message, sp: sp, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa });
       // Pe Basic, Pro și Business, butoanele (întrebările gata scrise, continuările, alegerile) răspund pe reguli, fără
-      // limită (macheta din 14.10: „Răspunsurile pe butoane, fără limită"); ce nu știu regulile merge la RA Insight.
+      // limită (macheta din 14.10: „Răspunsurile pe butoane, fără limită”); ce nu știu regulile merge la RA Insight.
       if (sp && !gata && b.buton === true && await _insightPeReguli(req, res, { message: message, sp: sp, ctx: ctx, fisa: fisa, salveaza: salveaza, usa: o.usa, incearca: true })) return;
     }
     if (!ai.aiEnabled()) {
@@ -5370,7 +5370,7 @@ async function _raInsight(req, res, opts) {
 
     let zones = [];
     try { zones = (await db.getGeofences(companyScope)).map(g => ({ id: g.id, name: g.name || ('Zonă ' + g.id) })); } catch (e) {}
-    // „Sursă externă" (28.10): unealta de căutare pe internet intră doar cu butonul pornit în discuția omului (`sursa: true`) și cu
+    // „Sursă externă” (28.10): unealta de căutare pe internet intră doar cu butonul pornit în discuția omului (`sursa: true`) și cu
     // voie de la noi, de la firmă, de la pachet și de la model, cât mai sunt întrebări cu sursă externă luna asta. Proba modelelor
     // nu caută.
     let stSursa = null;
@@ -5380,22 +5380,22 @@ async function _raInsight(req, res, opts) {
 
     let reportCalls = 0, sdVazut = null, cbVazut = null, hcVazut = null;
     const citite = gata ? gata.citite.slice() : [];      // perioadele chiar citite (rapoarte, ramuri) — pentru verificarea perioadei cerute
-    const gasiteProbleme = gata ? gata.probleme.slice() : [];   // „Am găsit o problemă" — din rapoartele făcute și din unelte
-    let listaVazuta = null;   // fișele întoarse de list_vehicles (pentru „Nu e completat în fișa mașinii")
+    const gasiteProbleme = gata ? gata.probleme.slice() : [];   // „Am găsit o problemă” — din rapoartele făcute și din unelte
+    let listaVazuta = null;   // fișele întoarse de list_vehicles (pentru „Nu e completat în fișa mașinii”)
     const sources = [];
     const folosite = new Set();
-    const ambiguitati = [];   // variantele întoarse de unelte când „Logan" se potrivește cu trei mașini
+    const ambiguitati = [];   // variantele întoarse de unelte când „Logan” se potrivește cu trei mașini
 
     const tools = [
       { name: 'list_vehicles', description: 'Toate mașinile la care are acces omul: număr de înmatriculare, nume, șofer, grupă, tip.', input_schema: { type: 'object', properties: {} } },
-      { name: 'list_zones', description: 'Zonele (hotspot/geofence) definite. Necesare pentru raportul „hotspot".', input_schema: { type: 'object', properties: {} } },
-      { name: 'fleet_status', description: 'Starea LIVE a flotei ACUM: pentru fiecare mașină — unde e (adresă), în mișcare / ralanti / oprită / fără semnal, viteza, combustibilul (dacă există senzor), ultima transmisie. Pentru „unde e X acum", „care sunt oprite", „cine se mișcă".', input_schema: { type: 'object', properties: {} } },
-      { name: 'fleet_alerts', description: 'Înștiințările ACTIVE ale agenților pentru flotă: fără semnal, posibil furt sau scădere de combustibil, ralanti prelungit. Pentru „ce probleme are flota", „ce trebuie să știu". (Actele și reviziile care expiră sunt în mentenanta_acte.)', input_schema: { type: 'object', properties: {} } },
-      { name: 'combustibil', description: 'Combustibil pe o perioadă: litri și lei, pe mașină și pe flotă, cu perioada de aceeași lungime de dinainte; consumul la 100 km față de cel trecut în fișă (peste normă); alimentările și scăderile suspecte; cifrele „de_verificat" (greu de crezut). Perioada: o lună întreagă (month) SAU exact ce a cerut omul (period, sau from + to — de pildă 1–7 octombrie). Aceleași cifre ca pagina „Combustibil" și ca rapoartele Consum / Costuri.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'O lună întreagă, „AAAA-LL". Omite pentru luna de acum.' }, period: { type: 'string', enum: insight.PERIOADE, description: 'Scurtătură de perioadă (azi, ieri, săptămâna asta / trecută…). Alternativă la month.' }, from: { type: 'string', description: 'Prima zi, „AAAA-LL-ZZ" (sau ISO 8601). Cu to — pentru o perioadă anume.' }, to: { type: 'string', description: 'Ultima zi, „AAAA-LL-ZZ" — intră întreagă (sau ISO 8601, capăt exclus).' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } },
-      { name: 'ore_condus', description: 'Ore de condus, pe o săptămână (luni–duminică): cât a condus fiecare șofer, cea mai lungă zi, cel mai lung condus fără pauză, încălcările Regulamentului 561 (doar camioane și autobuze), din tahograf sau estimate din GPS, cu săptămâna dinainte alături. Aceleași cifre ca pagina „Ore de condus" și ca raportul „Condus & repaus".', input_schema: { type: 'object', properties: { week: { type: 'string', enum: ['this_week', 'last_week'], description: 'Săptămâna: this_week (implicit) sau last_week.' }, group: { type: 'string', description: 'O grupă de mașini (numele grupei). Omite pentru toată flota.' } } } },
-      { name: 'mentenanta_acte', description: 'Mentenanță & acte: ce a trecut de termen și ce urmează — actele mașinilor (ITP, RCA, rovinietă…), reviziile (pe dată și pe kilometraj) și permisele șoferilor, cu preavizul firmei. Pentru „ce expiră", „ce revizii urmează", „are ITP valabil B 154 UIP?". Aceleași cifre ca pagina „Mentenanță & acte" și ca listele din Mentenanță / Documente.', input_schema: { type: 'object', properties: {} } },
-      { name: 'cauta_in_ghid', description: 'Ghidul aplicației RA Track: întoarce pașii exacți (meniu, butoane) pentru o întrebare de tipul „cum fac…?", „unde găsesc…?".', input_schema: { type: 'object', properties: { intrebare: { type: 'string', description: 'Ce vrea omul să facă în aplicație, în cuvintele lui.' } }, required: ['intrebare'] } },
-      { name: 'safe_drive', description: 'RA Drive (condus & costuri), pe o lună: cât a costat în plus condusul (accelerări, frânări și viraje bruște, viteză peste 90 km/h, ralanti), în lei, pe mașină și pe șofer, cu luna dinainte alături, unde și când se repetă manevrele, discuțiile „Am vorbit cu el" și rezultatul lor, recomandările. Aceleași cifre ca pagina RA Drive.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'Luna, „AAAA-LL". Omite pentru luna de acum.' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } }
+      { name: 'list_zones', description: 'Zonele (hotspot/geofence) definite. Necesare pentru raportul „hotspot”.', input_schema: { type: 'object', properties: {} } },
+      { name: 'fleet_status', description: 'Starea LIVE a flotei ACUM: pentru fiecare mașină — unde e (adresă), în mișcare / ralanti / oprită / fără semnal, viteza, combustibilul (dacă există senzor), ultima transmisie. Pentru „unde e X acum”, „care sunt oprite”, „cine se mișcă”.', input_schema: { type: 'object', properties: {} } },
+      { name: 'fleet_alerts', description: 'Înștiințările ACTIVE ale agenților pentru flotă: fără semnal, posibil furt sau scădere de combustibil, ralanti prelungit. Pentru „ce probleme are flota”, „ce trebuie să știu”. (Actele și reviziile care expiră sunt în mentenanta_acte.)', input_schema: { type: 'object', properties: {} } },
+      { name: 'combustibil', description: 'Combustibil pe o perioadă: litri și lei, pe mașină și pe flotă, cu perioada de aceeași lungime de dinainte; consumul la 100 km față de cel trecut în fișă (peste normă); alimentările și scăderile suspecte; cifrele „de_verificat” (greu de crezut). Perioada: o lună întreagă (month) SAU exact ce a cerut omul (period, sau from + to — de pildă 1–7 octombrie). Aceleași cifre ca pagina „Combustibil” și ca rapoartele Consum / Costuri.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'O lună întreagă, „AAAA-LL”. Omite pentru luna de acum.' }, period: { type: 'string', enum: insight.PERIOADE, description: 'Scurtătură de perioadă (azi, ieri, săptămâna asta / trecută…). Alternativă la month.' }, from: { type: 'string', description: 'Prima zi, „AAAA-LL-ZZ” (sau ISO 8601). Cu to — pentru o perioadă anume.' }, to: { type: 'string', description: 'Ultima zi, „AAAA-LL-ZZ” — intră întreagă (sau ISO 8601, capăt exclus).' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } },
+      { name: 'ore_condus', description: 'Ore de condus, pe o săptămână (luni–duminică): cât a condus fiecare șofer, cea mai lungă zi, cel mai lung condus fără pauză, încălcările Regulamentului 561 (doar camioane și autobuze), din tahograf sau estimate din GPS, cu săptămâna dinainte alături. Aceleași cifre ca pagina „Ore de condus” și ca raportul „Condus & repaus”.', input_schema: { type: 'object', properties: { week: { type: 'string', enum: ['this_week', 'last_week'], description: 'Săptămâna: this_week (implicit) sau last_week.' }, group: { type: 'string', description: 'O grupă de mașini (numele grupei). Omite pentru toată flota.' } } } },
+      { name: 'mentenanta_acte', description: 'Mentenanță & acte: ce a trecut de termen și ce urmează — actele mașinilor (ITP, RCA, rovinietă…), reviziile (pe dată și pe kilometraj) și permisele șoferilor, cu preavizul firmei. Pentru „ce expiră”, „ce revizii urmează”, „are ITP valabil B 154 UIP?”. Aceleași cifre ca pagina „Mentenanță & acte” și ca listele din Mentenanță / Documente.', input_schema: { type: 'object', properties: {} } },
+      { name: 'cauta_in_ghid', description: 'Ghidul aplicației RA Track: întoarce pașii exacți (meniu, butoane) pentru o întrebare de tipul „cum fac…?”, „unde găsesc…?”.', input_schema: { type: 'object', properties: { intrebare: { type: 'string', description: 'Ce vrea omul să facă în aplicație, în cuvintele lui.' } }, required: ['intrebare'] } },
+      { name: 'safe_drive', description: 'RA Drive (condus & costuri), pe o lună: cât a costat în plus condusul (accelerări, frânări și viraje bruște, viteză peste 90 km/h, ralanti), în lei, pe mașină și pe șofer, cu luna dinainte alături, unde și când se repetă manevrele, discuțiile „Am vorbit cu el” și rezultatul lor, recomandările. Aceleași cifre ca pagina RA Drive.', input_schema: { type: 'object', properties: { month: { type: 'string', description: 'Luna, „AAAA-LL”. Omite pentru luna de acum.' }, group: { type: 'string', description: 'O grupă de mașini (numele ei). Omite pentru toată flota.' } } } }
     ];
     if (cuRapoarte) tools.push({
       name: 'run_report',
@@ -5408,7 +5408,7 @@ async function _raInsight(req, res, opts) {
           group: { type: 'string', description: 'O grupă de mașini (numele grupei). Omite pentru toată flota.' },
           zone: { type: 'string', description: 'Numele zonei (obligatoriu doar pentru type="hotspot").' },
           period: { type: 'string', description: 'Scurtătură de perioadă.', enum: insight.PERIOADE },
-          month: { type: 'string', description: 'O lună anume, „AAAA-LL" (de pildă „2026-09"). Alternativă la period.' },
+          month: { type: 'string', description: 'O lună anume, „AAAA-LL” (de pildă „2026-09”). Alternativă la period.' },
           from: { type: 'string', description: 'Început interval ISO 8601 (alternativă la period).' },
           to: { type: 'string', description: 'Sfârșit interval ISO 8601 (alternativă la period).' }
         },
@@ -5420,7 +5420,7 @@ async function _raInsight(req, res, opts) {
     const toolHandlers = {
       list_vehicles: async () => {
         folosite.add('list_vehicles');
-        // Fișa mașinii (Alin, 15.10: „anii de înmatriculare" → „nu sunt disponibili în RA Track" — anul stă în fișă, dar RA Insight
+        // Fișa mașinii (Alin, 15.10: „anii de înmatriculare” → „nu sunt disponibili în RA Track” — anul stă în fișă, dar RA Insight
         // primea doar numărul, numele și șoferul). Ce nu e completat se spune pe nume, în `necompletat`.
         const out = { total: fisa.length, vehicles: fisa.slice(0, INSIGHT_LISTA_MAX).map(function (v) {
           const d = peDev[v.imei] || {}, nec = [];
@@ -5440,11 +5440,11 @@ async function _raInsight(req, res, opts) {
       combustibil: async (input) => {
         folosite.add('combustibil');
         const i = input || {};
-        // Perioada exactă cerută (period sau from + to) — altfel luna. Până pe 08.10 doar luna: „1–7 octombrie" citea toată luna.
+        // Perioada exactă cerută (period sau from + to) — altfel luna. Până pe 08.10 doar luna: „1–7 octombrie” citea toată luna.
         const interval = (i.period || (i.from && i.to)) ? { period: i.period, from: i.from, to: i.to } : null;
         const r = await _ramCombustibil(req, { luna: i.month, interval: interval, grupaNume: i.group, asteptaMs: 20000 });
         if (r.gol) return { mesaj: 'Omul nu are nicio mașină la care să aibă acces.' };
-        if (r.pregatire) return { mesaj: 'Cifrele se pregătesc încă. Spune-i omului să deschidă ramura „Combustibil" peste un minut — apar acolo.' };
+        if (r.pregatire) return { mesaj: 'Cifrele se pregătesc încă. Spune-i omului să deschidă ramura „Combustibil” peste un minut — apar acolo.' };
         cbVazut = r.eticheta;
         if (r.de != null && r.pana != null) citite.push({ from: r.de, to: r.pana, eticheta: r.eticheta });
         // De unde vine cifra (probleme.js — aceeași regulă ca rapoartele de consum) și senzorii care nu se mișcă.
@@ -5456,7 +5456,7 @@ async function _raInsight(req, res, opts) {
         });
         return {
           perioada: r.eticheta, flota: r.flota, fata_de_perioada_dinainte: r.fata ? r.fata.cost : null, perioada_dinainte: r.inainte,
-          // Unde consumul NU e măsurat (22.10, proba modelelor: „Nu au fost scăderi suspecte", „consumul e sub normă"): alimentările și
+          // Unde consumul NU e măsurat (22.10, proba modelelor: „Nu au fost scăderi suspecte”, „consumul e sub normă”): alimentările și
           // scăderile nu se pot vedea, iar norma din fișă nu e reper — consumul e socotit chiar din fișă.
           masini: r.masini.slice(0, 15).map(function (m) {
             const mas = probleme.sursaConsum(m).masurat;
@@ -5468,8 +5468,8 @@ async function _raInsight(req, res, opts) {
           alimentari_si_scaderi_nu_se_vad_la: r.masini.filter(function (m) { return !probleme.sursaConsum(m).masurat; }).map(function (m) { return m.eticheta; }),
           scaderi_suspecte: r.scaderi.slice(0, 10).map(function (x) { return { masina: x.eticheta, cand: x.cand, litri: x.litri, de_la: x.de, la: x.la, motor: x.motorPornit ? 'pornit' : 'oprit', unde: /^-?\d+\.\d+, -?\d+\.\d+$/.test(x.loc) ? null : x.loc }; }),
           alimentari: r.evenimente, recomandari: r.recomandari.map(function (x) { return x.text; }),
-          atentie: 'Litrii estimați sunt aproximativi; spune asta când dai cifrele. La o mașină cu „de_verificat", spune-o lângă cifra ei, cu motivul. ' +
-            'La mașinile din alimentari_si_scaderi_nu_se_vad_la NU scrie „nu au fost alimentări / scăderi": spune că la ele nu se pot vedea. Unde consumul e socotit din fișă, nu-l compara cu norma.',
+          atentie: 'Litrii estimați sunt aproximativi; spune asta când dai cifrele. La o mașină cu „de_verificat”, spune-o lângă cifra ei, cu motivul. ' +
+            'La mașinile din alimentari_si_scaderi_nu_se_vad_la NU scrie „nu au fost alimentări / scăderi”: spune că la ele nu se pot vedea. Unde consumul e socotit din fișă, nu-l compara cu norma.',
         };
       },
       // Ore de condus: aceeași funcție ca pagina (_ramOreCondus).
@@ -5477,7 +5477,7 @@ async function _raInsight(req, res, opts) {
         folosite.add('ore_condus');
         const r = await _ramOreCondus(req, { saptamanaTrecuta: input && input.week === 'last_week', grupaNume: input && input.group, asteptaMs: 20000 });
         if (r.gol) return { mesaj: 'Omul nu are nicio mașină la care să aibă acces.' };
-        if (r.pregatire) return { mesaj: 'Orele săptămânii se pregătesc încă. Spune-i omului să deschidă ramura „Ore de condus" peste un minut — apar acolo.' };
+        if (r.pregatire) return { mesaj: 'Orele săptămânii se pregătesc încă. Spune-i omului să deschidă ramura „Ore de condus” peste un minut — apar acolo.' };
         hcVazut = r.eticheta;
         if (r.de != null && r.pana != null) citite.push({ from: r.de, to: r.pana, eticheta: r.eticheta });
         return {
@@ -5485,7 +5485,7 @@ async function _raInsight(req, res, opts) {
           soferi: r.soferi.slice(0, 20).map(function (x) { return { sofer: x.faraSofer ? null : x.nume, masina_fara_sofer: x.faraSofer ? x.nume : undefined, masini: x.masini, zile: x.zile, condus: x.text.condus, azi: x.text.azi || undefined, cea_mai_lunga_zi: x.text.ziMax + (x.text.ziMaxZi ? ' (' + x.text.ziMaxZi + ')' : ''), condus_continuu_maxim: x.text.continuuMax + (x.text.continuuMaxZi ? ' (' + x.text.continuuMaxZi + ')' : ''), incalcari: x.incalcari, reg561_se_aplica: x.supus, sursa: x.text.sursa }; }),
           incalcari: r.incalcari.slice(0, 20).map(function (x) { return { sofer: x.nume, zi: x.ziText, ce: x.ce, sursa: x.sursa === 'tahograf' ? 'tahograf' : 'estimat din GPS' }; }),
           recomandari: r.recomandari.map(function (x) { return x.text; }), atentie_perioada: r.atentie || undefined,
-          atentie: 'Unde sursa e „estimat din GPS", spune că e o estimare și că pentru control contează tahograful. Reg. 561 nu se aplică la autoturisme.',
+          atentie: 'Unde sursa e „estimat din GPS”, spune că e o estimare și că pentru control contează tahograful. Reg. 561 nu se aplică la autoturisme.',
         };
       },
       // Mentenanță & acte: aceeași funcție ca pagina (_ramMentenanta).
@@ -5506,7 +5506,7 @@ async function _raInsight(req, res, opts) {
         folosite.add('safe_drive');
         const r = await _sdLuna(req, { luna: input && input.month, grupaNume: input && input.group, asteptaMs: 15000 });
         if (r.gol) return { mesaj: 'Omul nu are nicio mașină la care să aibă acces.' };
-        if (r.pregatire) return { mesaj: 'Luna se pregătește încă (' + r.pregatire.procent + '%). Spune-i omului să deschidă ramura „RA Drive" peste un minut — cifrele apar acolo.' };
+        if (r.pregatire) return { mesaj: 'Luna se pregătește încă (' + r.pregatire.procent + '%). Spune-i omului să deschidă ramura „RA Drive” peste un minut — cifrele apar acolo.' };
         sdVazut = r.eticheta;
         if (r.de != null && r.pana != null) citite.push({ from: r.de, to: r.pana, eticheta: r.eticheta });
         const c = r.flota.cost;
@@ -5523,7 +5523,7 @@ async function _raInsight(req, res, opts) {
             atentie: 'Costurile sunt o estimare. Când omul întreabă de prețuri sau cifrele i se par prea mari ori prea mici, spune-i că le poate pune pe ale firmei și unde (unde_se_schimba).' },
           cand: r.ferestre.map(function (x) { return x.text + ': ' + x.n + ' manevre bruște'; }),
           recomandari: r.recomandari.map(function (x) { return x.text; }),
-          atentie: 'Costurile sunt ESTIMATE (combustibil × prețul lui + un preț pe manevră, pus de firmă). Spune asta când dai cifrele. Omul le vede și pe pagina „RA Drive" din RA Insight.',
+          atentie: 'Costurile sunt ESTIMATE (combustibil × prețul lui + un preț pe manevră, pus de firmă). Spune asta când dai cifrele. Omul le vede și pe pagina „RA Drive” din RA Insight.',
         };
       },
       cauta_in_ghid: async (input) => {
@@ -5537,10 +5537,10 @@ async function _raInsight(req, res, opts) {
         if (reportCalls >= INSIGHT_MAX_RAPOARTE) return { error: 'Ai atins limita de ' + INSIGHT_MAX_RAPOARTE + ' rapoarte pe întrebare. Răspunde cu datele deja adunate.' };
         const type = String(input.type || '');
         if (!reports.REPORTS[type]) return { error: 'Tip necunoscut: ' + type + '. Valide: ' + Object.keys(reports.REPORTS).filter(function (k) { return RAPOARTE_FARA_MODEL.indexOf(k) < 0; }).join(', ') };
-        if (RAPOARTE_FARA_MODEL.indexOf(type) >= 0) return { error: 'Raportul „' + reports.REPORTS[type].label + '" e lista poziție cu poziție (cel mult 5.000 de poziții) — nu e pentru totaluri sau pentru viteza maximă. Folosește trips (foaia de parcurs), speeding (vitezele) sau utilization.' };
+        if (RAPOARTE_FARA_MODEL.indexOf(type) >= 0) return { error: 'Raportul „' + reports.REPORTS[type].label + '” e lista poziție cu poziție (cel mult 5.000 de poziții) — nu e pentru totaluri sau pentru viteza maximă. Folosește trips (foaia de parcurs), speeding (vitezele) sau utilization.' };
         // Aceleași drepturi ca ecranul Rapoarte: un raport tăiat din rolul omului nu se scoate nici prin RA Insight
         // (găsit pe drum, 02.10 — înainte RA Insight le rula oricum).
-        if (!poateRaport(req, type)) return { error: 'Omul nu are acces la raportul „' + reports.REPORTS[type].label + '" (l-a tăiat firma din rolul lui). Spune-i asta, fără cifre din alt raport.' };
+        if (!poateRaport(req, type)) return { error: 'Omul nu are acces la raportul „' + reports.REPORTS[type].label + '” (l-a tăiat firma din rolul lui). Spune-i asta, fără cifre din alt raport.' };
         let imeis = allImeis, eticheta = null, imei = null;
         const cine = input.vehicle || input.group;
         if (cine) {
@@ -5550,13 +5550,13 @@ async function _raInsight(req, res, opts) {
           else if (r.tip === 'grupa') { imeis = r.vs.map(v => v.imei); eticheta = 'grupa ' + r.grupa; }
           else if (r.tip === 'ambiguu') {
             r.variante.forEach(function (v) { ambiguitati.push(v); });
-            return { ambiguu: true, variante: r.variante.map(insight.eticheta), mesaj: 'Mai multe mașini se potrivesc cu „' + cine + '". Întreabă omul pe care o vrea (scrie-i variantele) și nu rula raportul până nu răspunde.' };
+            return { ambiguu: true, variante: r.variante.map(insight.eticheta), mesaj: 'Mai multe mașini se potrivesc cu „' + cine + '”. Întreabă omul pe care o vrea (scrie-i variantele) și nu rula raportul până nu răspunde.' };
           }
-          else return { error: 'Nicio mașină sau grupă nu se potrivește cu „' + cine + '". Cheamă list_vehicles și caută după număr, nume sau șofer.' };
+          else return { error: 'Nicio mașină sau grupă nu se potrivește cu „' + cine + '”. Cheamă list_vehicles și caută după număr, nume sau șofer.' };
         }
         const ropts = { stopMin: 5, limit: 90, refuelMin: 10, dropMin: 10, geofenceId: null };
-        // Vitezele (22.10, proba modelelor: „3 depășiri la limita de 90 km/h", una pe autostradă): pragul vine din fișa mașinii, ca la
-        // „Am găsit o problemă" (limita din fișă; altfel 130 la autoturisme, 90 la camioane). Mai multe mașini cu praguri diferite →
+        // Vitezele (22.10, proba modelelor: „3 depășiri la limita de 90 km/h”, una pe autostradă): pragul vine din fișa mașinii, ca la
+        // „Am găsit o problemă” (limita din fișă; altfel 130 la autoturisme, 90 la camioane). Mai multe mașini cu praguri diferite →
         // cel mai mic, iar modelul află asta din `prag_raport`.
         if (type === 'speeding') {
           const praguri = imeis.map(function (i) {
@@ -5567,10 +5567,10 @@ async function _raInsight(req, res, opts) {
           ropts._pragDiferit = praguri.some(function (p) { return p !== ropts.limit; });
         }
         if (type === 'hotspot') {
-          if (!input.zone) return { error: 'Pentru „hotspot" trebuie numele zonei (parametrul „zone"). Cheamă list_zones.' };
+          if (!input.zone) return { error: 'Pentru „hotspot” trebuie numele zonei (parametrul „zone”). Cheamă list_zones.' };
           const zq = insight.norm(input.zone);
           const z = zones.find(x => insight.norm(x.name) === zq) || zones.find(x => insight.norm(x.name).includes(zq));
-          if (!z) return { error: 'Zonă negăsită: „' + input.zone + '". Cheamă list_zones.' };
+          if (!z) return { error: 'Zonă negăsită: „' + input.zone + '”. Cheamă list_zones.' };
           ropts.geofenceId = z.id;
         }
         const { from, to } = insight.perioada(input);
@@ -5588,7 +5588,7 @@ async function _raInsight(req, res, opts) {
           if (pr.length) { pr.forEach(function (x) { gasiteProbleme.push(x); }); out.probleme_gasite = pr.map(function (x) { return x.titlu + ': ' + x.dovada; }); }
           // Cifre greu de crezut (consum, preț pe litru): marcate de raport, spuse de RA Insight lângă cifra lor.
           if (Array.isArray(report.deVerificat) && report.deVerificat.length) out.de_verificat = report.deVerificat.slice(0, 10).map(function (x) { return x.vehicul + ': ' + x.texte.join('; '); });
-          // Raportul s-a oprit la plafonul de poziții (reports.js, „Citirea pozițiilor") → cifrele NU acoperă toată perioada.
+          // Raportul s-a oprit la plafonul de poziții (reports.js, „Citirea pozițiilor”) → cifrele NU acoperă toată perioada.
           if (Array.isArray(report.trunchiat) && report.trunchiat.length) {
             out.atentie = 'Perioada are prea multe poziții: raportul s-a oprit înainte de capăt (' + report.trunchiat.map(function (x) { return x.vehicul + ' — citit până pe ' + new Date(x.panaLa).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }); }).join('; ') + '). Spune-i omului că cifrele NU acoperă toată perioada și propune o perioadă mai scurtă.';
           }
@@ -5613,8 +5613,8 @@ async function _raInsight(req, res, opts) {
           if (v.combustibil_l != null) r.combustibil_l = v.combustibil_l;
           return r;
         });
-        // Mașinile care nu transmit (22.10, macheta E1): caseta lor, cu „Pe hartă" și „Anunță echipa RA Track" — aceeași regulă ca
-        // RA Watch și „Azi la tine" (agents.esteFaraSemnal, pragul firmei, sub 7 zile), fără vină pe aparat. Doar la clienți (noi
+        // Mașinile care nu transmit (22.10, macheta E1): caseta lor, cu „Pe hartă” și „Anunță echipa RA Track” — aceeași regulă ca
+        // RA Watch și „Azi la tine” (agents.esteFaraSemnal, pragul firmei, sub 7 zile), fără vină pe aparat. Doar la clienți (noi
         // n-avem o flotă și nu trimitem cereri).
         if (!req.isSuper && req.companyId != null) {
           try {
@@ -5642,7 +5642,7 @@ async function _raInsight(req, res, opts) {
         let rows = [];
         try { rows = await db.getAgentFindings(companyScope, 100); } catch (e) {}
         const allow = new Set(allImeis);
-        const fullAccess = req.isSuper || req.allowedImeis == null; // constatări „pe flotă" (fără mașină) doar la acces complet
+        const fullAccess = req.isSuper || req.allowedImeis == null; // constatări „pe flotă” (fără mașină) doar la acces complet
         const sevRank = { critical: 0, warning: 1, info: 2 };
         const alerts = rows
           .filter(f => (f.imei == null ? fullAccess : allow.has(f.imei)))
@@ -5653,7 +5653,7 @@ async function _raInsight(req, res, opts) {
       }
     };
 
-    // „Sursă externă": o singură căutare pe întrebare; ce n-are voie să plece (numere de înmatriculare, numele oamenilor firmei,
+    // „Sursă externă”: o singură căutare pe întrebare; ce n-are voie să plece (numere de înmatriculare, numele oamenilor firmei,
     // adrese, telefoane…) o oprește sursaExterna.verifica, iar modelul află de ce. Rezultatul intră și în verificarea cifrelor.
     if (cuSursa) toolHandlers.sursa_externa = async (input) => {
       folosite.add('sursa_externa');
@@ -5676,7 +5676,7 @@ async function _raInsight(req, res, opts) {
 
     // Tot ce au întors uneltele, ținut pentru verificarea cifrelor din răspuns (cifre.negasite) — și rapoartele făcute deja.
     const dateCitite = gata ? gata.pentruModel.slice() : [];
-    // Aceleași date, despărțite: ale aplicației și ce a găsit „Sursă externă" — pentru rândul „✓" de sub răspuns (30.10).
+    // Aceleași date, despărțite: ale aplicației și ce a găsit „Sursă externă” — pentru rândul „✓” de sub răspuns (30.10).
     const dateAplicatie = dateCitite.slice(), dateSursa = [];
     Object.keys(toolHandlers).forEach(function (k) {
       const f = toolHandlers[k];
@@ -5696,8 +5696,8 @@ async function _raInsight(req, res, opts) {
     const istoric = insight.istoricPentruModel(mesaje, INSIGHT_ISTORIC_MESAJE, 1500);
     const _agg = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
     const model = (o.proba && o.proba.model) || ai.AI_AGENT_MODEL;
-    // Analiza atentă (28.10; Alin: „1 da"): la „de ce", „compară", „ce să fac", la toate pachetele cu AI (și la „Proba modelelor",
-    // ca s-o putem măsura) — același model, mai mult timp de gândire (efortul „medium") și forma fixă: Ce s-a întâmplat → De ce →
+    // Analiza atentă (28.10; Alin: „1 da”): la „de ce”, „compară”, „ce să fac”, la toate pachetele cu AI (și la „Proba modelelor”,
+    // ca s-o putem măsura) — același model, mai mult timp de gândire (efortul „medium”) și forma fixă: Ce s-a întâmplat → De ce →
     // Ce poți face (insight.ANALIZA_ATENTA, în contextul întrebării, nu în partea fixă din cache). Se numără ca orice întrebare.
     const analiza = insight.esteAnaliza(message);
     if (analiza) system.push({ type: 'text', text: insight.ANALIZA_ATENTA });
@@ -5733,11 +5733,11 @@ async function _raInsight(req, res, opts) {
     // Cifrele, verificate fără să-l punem pe om să verifice (Alin, 15.10: „ce să verific? Am AI… îmi zice clar dacă e greșit
     // ceva"): o cifră care nu se regăsește în date și nici nu se poate socoti din ele → RA Insight își rescrie O DATĂ răspunsul,
     // doar cu cifre din unelte. Rămâne aceeași întrebare (un singur rând de consum).
-    // Tot o dată se rescrie și un răspuns cu litere din alt alfabet (Alin, 19.10: „октомбrie 2026" într-un răspuns); ce rămâne
+    // Tot o dată se rescrie și un răspuns cu litere din alt alfabet (Alin, 19.10: „октомбrie 2026” într-un răspuns); ce rămâne
     // după rescriere se trece în litere românești (insight.litereRomanesti), ca să nu ajungă niciodată la client.
-    // Procentele din întrebare („reduc costurile cu 10%") intră la socotelile acceptate (22.10: „cam 65 de lei" = 10% din 651).
-    // Vorbele despre echipament (22.10, proba modelelor: „Mașina nu trimite date despre nivelul din rezervor") cer și ele o
-    // rescriere, ca literele. Ce s-a corectat se numără — doar câte, niciun text (contorul din „RA Insight · control").
+    // Procentele din întrebare („reduc costurile cu 10%”) intră la socotelile acceptate (22.10: „cam 65 de lei” = 10% din 651).
+    // Vorbele despre echipament (22.10, proba modelelor: „Mașina nu trimite date despre nivelul din rezervor”) cer și ele o
+    // rescriere, ca literele. Ce s-a corectat se numără — doar câte, niciun text (contorul din „RA Insight · control”).
     let lipsa = [], rescris = false;
     try { lipsa = cifre.negasite(reply, dateCitite, message); } catch (e) { lipsa = []; }
     const strain = insight.areLitereStraine(reply);
@@ -5749,8 +5749,8 @@ async function _raInsight(req, res, opts) {
       if (lipsa.length) cer.push('Verificarea aplicației: cifrele ' + lipsa.join(', ') + ' nu se regăsesc în datele citite de unelte și nici nu se pot socoti din ele. ' +
         'Scrie din nou tot răspunsul, doar cu cifre din unelte (sumele pe mașină și pe zi sunt în pe_masina / pe_masina_si_zi).');
       if (strain) cer.push('Ai scris cuvinte cu litere din alt alfabet. Scrie din nou tot răspunsul numai cu litere românești.');
-      if (echip.length) cer.push('Ai scris o frază care pune vina pe aparat sau trimite omul la el („' + echip[0] + '"). Aparatul, senzorii și montajul sunt treaba RA Track: ' +
-        'scrie doar faptul (de pildă „consumul e socotit din fișă, nu măsurat"), fără să-l trimiți să verifice ceva și fără să-i spui să ne contacteze.');
+      if (echip.length) cer.push('Ai scris o frază care pune vina pe aparat sau trimite omul la el („' + echip[0] + '”). Aparatul, senzorii și montajul sunt treaba RA Track: ' +
+        'scrie doar faptul (de pildă „consumul e socotit din fișă, nu măsurat”), fără să-l trimiți să verifice ceva și fără să-i spui să ne contacteze.');
       try {
         const r2 = await ai.runAgent({
           system, messages: istoric.concat([{ role: 'user', content: message }, { role: 'assistant', content: reply },
@@ -5765,20 +5765,20 @@ async function _raInsight(req, res, opts) {
       } catch (e) { /* rămâne răspunsul dintâi, cu cifrele spuse mai jos */ }
     }
     reply = insight.litereRomanesti(reply);   // ultima plasă, mereu (și ş/ţ cu sedilă → ș/ț)
-    reply = sursaExterna.faraTitluri(reply);  // fără „Din sursă externă" / „Din flota ta" deasupra părților (Alin, 29.10)
+    reply = sursaExterna.faraTitluri(reply);  // fără „Din sursă externă” / „Din flota ta” deasupra părților (Alin, 29.10)
     if (rescris && !o.proba && req.companyId != null) db.noteazaCorectura(req.companyId, Object.assign({ ramas: lipsa.length > 0 }, corectat)).catch(() => {});
     // Proba modelelor: fără firmă pe rând (nu intră în consumul și în panourile clientului), cu felul ei.
     if (o.proba) db.recordAiUsage(null, 'proba_modele', _agg, userId, model).catch(() => {});
     else db.recordAiUsage(req.companyId, 'insight', _agg, userId, model).catch(() => {});
 
-    // Surse unice (tip + mașină + perioadă), pentru „Deschide raportul".
+    // Surse unice (tip + mașină + perioadă), pentru „Deschide raportul”.
     const seen = new Set(); const uniqSources = [];
     for (const s of sources) { const k = s.type + '|' + (s.imei || s.vehicle || '') + '|' + s.from + '|' + s.to; if (!seen.has(k)) { seen.add(k); uniqSources.push(s); } }
     const inteles = (gata ? gata.inteles : []).concat(_insightInteles(uniqSources, folosite, gasite, mesaje.length > 0, [].concat(sdVazut ? [{ tip: 'perioada', text: sdVazut }, { tip: 'subiect', text: 'RA Drive' }] : [],
       cbVazut ? [{ tip: 'perioada', text: cbVazut }, { tip: 'subiect', text: 'Combustibil' }] : [],
       hcVazut ? [{ tip: 'perioada', text: hcVazut }, { tip: 'subiect', text: 'Ore de condus' }] : [])));
 
-    // Butoane de ales, când răspunsul întreabă „care dintre ele?". „Celălalt" scoate mașina despre care tocmai s-a vorbit.
+    // Butoane de ales, când răspunsul întreabă „care dintre ele?”. „Celălalt” scoate mașina despre care tocmai s-a vorbit.
     let variante = ambiguitati.length ? ambiguitati : (!uniqSources.length ? [].concat.apply([], gasite.ambigue.map(a => a.variante)) : []);
     if (/(^|[^a-z])(celalalt|cealalta|celelalte|celalti|alta|altul|alte|altei)([^a-z]|$)/.test(insight.norm(message)) && Array.isArray(ctx.masini)) {
       const discutate = new Set(ctx.masini);
@@ -5787,7 +5787,7 @@ async function _raInsight(req, res, opts) {
     const vazuteV = new Set();
     const alege = /\?/.test(reply) ? variante.filter(v => (vazuteV.has(v.imei) ? false : vazuteV.add(v.imei))).slice(0, 8).map(v => ({ text: insight.eticheta(v), trimite: v.nr || v.nume })) : [];
 
-    // Ce s-a discutat — pentru următoarea întrebare („și săptămâna dinainte?").
+    // Ce s-a discutat — pentru următoarea întrebare („și săptămâna dinainte?”).
     const ctxNou = Object.assign({}, ctx);
     const imeisSurse = Array.from(new Set(uniqSources.filter(s => s.imei).map(s => s.imei)));
     if (imeisSurse.length) ctxNou.masini = imeisSurse;
@@ -5795,7 +5795,7 @@ async function _raInsight(req, res, opts) {
     const ultima = uniqSources[uniqSources.length - 1];
     if (ultima) { ctxNou.perioada = { from: ultima.from, to: ultima.to }; ctxNou.rapoarte = Array.from(new Set(uniqSources.map(s => s.type))).slice(0, 6); }
 
-    // Întrebările de continuare de sub răspuns (Alin, 08.10: „da"): ACEEAȘI regulă ca la AI Raport (aiRaport.urmari), din
+    // Întrebările de continuare de sub răspuns (Alin, 08.10: „da”): ACEEAȘI regulă ca la AI Raport (aiRaport.urmari), din
     // raportul citit ultimul. Gata scrise, gratuite până le apasă omul — apăsate, sunt o întrebare ca oricare alta.
     let urmari = [];
     const subR = ultima ? aiRaport.SUBIECTE.find(function (x) { return x.raport === ultima.type; }) : null;
@@ -5816,14 +5816,14 @@ async function _raInsight(req, res, opts) {
         if (pf) gasiteProbleme.push(pf);
       });
     }
-    // „Am găsit o problemă" în locul benzii „De verificat" (Alin, 15.10): problemele găsite de aplicație în date, iar o cifră
-    // rămasă negăsită după rescriere se spune pe față, ca problemă — nu „verifică tu".
+    // „Am găsit o problemă” în locul benzii „De verificat” (Alin, 15.10): problemele găsite de aplicație în date, iar o cifră
+    // rămasă negăsită după rescriere se spune pe față, ca problemă — nu „verifică tu”.
     const verificare = _verificaRaspunsul(reply, message, dateCitite, citite, lipsa, { aplicatie: dateAplicatie, sursa: dateSursa });
     if (verificare && verificare.cifre) gasiteProbleme.push({ fel: 'cifra', grav: 'galben', titlu: 'Nu am găsit în rapoarte: ' + verificare.cifre.join(', '),
       dovada: 'Cifra nu apare în datele citite și nu se poate socoti din ele. N-o lua drept sigură.',
       butoane: uniqSources[0] ? [{ fel: 'raport', text: 'Deschide „' + uniqSources[0].label + '”', tip: uniqSources[0].type, imei: uniqSources[0].imei, de: uniqSources[0].from, pana: uniqSources[0].to }] : [] });
     const problemeGasite = probleme.ordoneaza(gasiteProbleme);
-    // „Sursă externă": ce s-a căutat și sursele (sub răspuns, păstrate în conversație); insigna spune câte căutări.
+    // „Sursă externă”: ce s-a căutat și sursele (sub răspuns, păstrate în conversație); insigna spune câte căutări.
     const sursaEcran = sursaGasit ? sursaExterna.pentruEcran(sursaGasit, Date.now()) : null;
     const insigna = pachete.insigna('ai', { numarat: !o.proba && !req.isSuper && req.companyId != null, sursa: sursaEcran ? sursaEcran.cautari.length : 0 });
     const extraAi = { probleme: problemeGasite.length ? problemeGasite : undefined, verificat: verificare && verificare.confirmat ? true : undefined,
@@ -5843,24 +5843,24 @@ async function _raInsight(req, res, opts) {
     res.status(500).json({ error: 'RA Insight: ' + e.message, reply: 'RA Insight nu a putut răspunde acum. Încearcă din nou peste un minut.' });
   }
 }
-// Trei uși, același RA Insight: ruta nouă a secțiunii, ruta veche din Rapoarte (web + telefon) și „Asistent AI"
+// Trei uși, același RA Insight: ruta nouă a secțiunii, ruta veche din Rapoarte (web + telefon) și „Asistent AI”
 // de pe telefonul vechi (mai jos, la /api/ai/chat). Rapoartele intră în joc doar pentru cine are dreptul la ele.
 app.post('/api/insight/intreaba', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, (req, res) => _raInsight(req, res, { usa: 'sectiune' }));
 app.post('/api/ai/reports-agent', requireAuth, requirePerm('viewReports'), withScope, requireFeature('ai_assistant'), requireAiSeat, (req, res) => _raInsight(req, res, { usa: 'rapoarte' }));
 
-// ─── Proba modelelor (Alin, 08.10: „Haiku e slab tare… ce-mi recomanzi după?") ───────────────────────────────────────
+// ─── Proba modelelor (Alin, 08.10: „Haiku e slab tare… ce-mi recomanzi după?”) ───────────────────────────────────────
 // Doar pentru noi (super-admin): aceleași întrebări, puse la mai multe modele, pe datele unei firme alese; răspunsurile
 // una lângă alta, cu costul ADEVĂRAT al fiecăruia (din tokenii întorși, pe prețurile modelului — ai.MODELE). Răspunde
 // ACEEAȘI funcție ca pentru client (_raInsight, cu `proba`): fără conversație salvată, fără fondul firmei, fără răspunsul
-// rapid; consumul se scrie pe noi (rând fără firmă, felul „proba_modele"). O singură probă deodată, ținută în memorie.
-// „Pachet și conturi" (pachetele RA Insight, pasul 3 — macheta din 14.10): administratorul firmei vede pachetul, câte au
+// rapid; consumul se scrie pe noi (rând fără firmă, felul „proba_modele”). O singură probă deodată, ținută în memorie.
+// „Pachet și conturi” (pachetele RA Insight, pasul 3 — macheta din 14.10): administratorul firmei vede pachetul, câte au
 // rămas, cine are RA Insight și câte întrebări a folosit fiecare; conturile și limitele le dă pe rutele lor (ai-seat,
 // ai-limita). Textele le scrie pachete.js; ecranul doar le arată.
 app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), withScope, async (req, res) => {
   try {
     if (req.companyId == null) return res.status(400).json({ error: 'Pagina e a unei firme: alege întâi firma.' });
     const sp = await _starePachet(req.companyId, null);
-    // Orice firmă are un pachet (Start, dacă nu i-am pus altul); regula veche, „pe cont", a fost scoasă pe 11.11.
+    // Orice firmă are un pachet (Start, dacă nu i-am pus altul); regula veche, „pe cont”, a fost scoasă pe 11.11.
     if (!sp) return res.status(404).json({ error: 'Nu am găsit firma.' });
     const p = sp.pachet, st = sp.st, acum = Date.now();
     const users = (await db.getUsers(req.companyId)).filter(function (u) { return u.active !== false && u.role !== 'superadmin' && !(u.access_until && Number(u.access_until) < acum); });
@@ -5889,7 +5889,7 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
       return { id: r.id, cand: pachete.dataScurta(r.creat_la), cine: r.user_nume || '', rezumat: pachete.rezumatTrecere(r),
         email: r.email_trimis ? 'trimisă pe email' : 'emailul n-a plecat', pdf: '/api/insight/pachet-trecere/' + r.id + '/pdf' };
     });
-    // Conturile pline (16.11, „Treci la Pro"): pachetul cel mai mic cu încă un cont — doar administratorului care poate schimba pachetul.
+    // Conturile pline (16.11, „Treci la Pro”): pachetul cel mai mic cu încă un cont — doar administratorului care poate schimba pachetul.
     let recomandatConturi = null;
     if (p.conturi != null && conturi >= p.conturi && _poateSchimbaPachet(req, sp.co)) {
       const rec = pachete.recomanda(p, { conturi: conturi + 1 });
@@ -5904,7 +5904,7 @@ app.get('/api/insight/pachet-conturi', requireAuth, requirePerm('manageUsers'), 
       nota: pachete.notaConturi(p, laCine), luna: pachete.reincarcare(acum).luna, sursa: await _sursaPentruFirma(req.companyId, acum) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Sursă externă" în „Pachet și conturi" (28.10): rândul firmei — pornită / oprită pentru toată firma, câte s-au folosit. Doar
+// „Sursă externă” în „Pachet și conturi” (28.10): rândul firmei — pornită / oprită pentru toată firma, câte s-au folosit. Doar
 // cât o avem pornită pentru firme și pachetul o are (de la Basic); altfel rândul nu apare (null).
 async function _sursaPentruFirma(companyId, acum) {
   try {
@@ -5914,7 +5914,7 @@ async function _sursaPentruFirma(companyId, acum) {
     return { nume: sursaExterna.NUME, explicatie: sursaExterna.EXPLICATIE, oprita: oprita, text: sursaExterna.textFirma(st, oprita, acum) };
   } catch (e) { return null; }
 }
-// Administratorul firmei pornește / oprește „Sursa externă" pentru toată firma (pornită din oficiu de la Basic).
+// Administratorul firmei pornește / oprește „Sursa externă” pentru toată firma (pornită din oficiu de la Basic).
 app.put('/api/insight/sursa-externa', requireAuth, requirePerm('manageUsers'), withScope, requireFeature('ai_assistant'), async (req, res) => {
   try {
     if (req.companyId == null) return res.status(400).json({ error: 'Comutatorul e al unei firme: alege întâi firma.' });
@@ -5927,7 +5927,7 @@ app.put('/api/insight/sursa-externa', requireAuth, requirePerm('manageUsers'), w
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Prețurile pachetelor PENTRU O FIRMĂ: lista de azi, peste care stau cele din contractul ei (Anexa nr. 1: pachetul ales și
-// prețurile celorlalte la semnare) și prețul pachetului pe care îl are acum (negociat). O singură socoteală — „Vezi pachetele"
+// prețurile celorlalte la semnare) și prețul pachetului pe care îl are acum (negociat). O singură socoteală — „Vezi pachetele”
 // și trecerea din aplicație o folosesc pe ea, ca omul să confirme prețul pe care îl vede.
 async function _preturiPachetFirma(co) {
   const out = Object.assign({}, await _preturiPachete());
@@ -5947,7 +5947,7 @@ async function _preturiPachetFirma(co) {
 // Poate omul ăsta schimba pachetul firmei? Administratorul ei, din contul lui (nu noi — noi îl punem din fila „Acces”), pe
 // o firmă cu pachet (nu pe regula veche, nu pe demo).
 function _poateSchimbaPachet(req, co) { return !!(co && !req.isSuper && req.companyId != null && permReq(req, 'manageUsers') && !co.is_demo && _pachetCo(co)); }
-// „Vezi pachetele" (administratorul firmei, din caseta pachetului): ce primește fiecare pachet, cu prețul pentru firma lui, care
+// „Vezi pachetele” (administratorul firmei, din caseta pachetului): ce primește fiecare pachet, cu prețul pentru firma lui, care
 // e al firmei și ce e programat. Descrierile stau în pachete.js (aceleași pe site, fără prețuri). Din pasul 6, administratorul
 // trece singur la alt pachet de aici (`/api/insight/pachet-trecere`).
 app.get('/api/insight/pachete', requireAuth, withScope, async (req, res) => {
@@ -5994,7 +5994,7 @@ app.post('/api/insight/pachet-trecere', requireAuth, requirePerm('manageUsers'),
     const b = req.body || {};
     const r = await _trecereFirma(req, b.cod);
     if (r.error) return res.status(r.status).json({ error: r.error });
-    if (b.acord !== true) return res.status(400).json({ error: 'Bifează „Am citit și sunt de acord", apoi confirmă.' });
+    if (b.acord !== true) return res.status(400).json({ error: 'Bifează „Am citit și sunt de acord”, apoi confirmă.' });
     if (String(b.text || '') !== r.t.text) return res.status(409).json({ error: 'Ceva s-a schimbat de când ai deschis fereastra (prețul, ziua sau conturile). Citește din nou și confirmă.', text: r.t.text, buton: pachete.butonTrecere(r.t) });
     await _applyCompanySettingsPatch(r.co.id, { ai_pachet_trecere: r.t }, { trecere: true });
     const a = getAuth(req) || {};
@@ -6012,7 +6012,7 @@ app.post('/api/insight/pachet-trecere', requireAuth, requirePerm('manageUsers'),
       pdf: '/api/insight/pachet-trecere/' + rand.id + '/pdf' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Confirmarea, ca PDF: administratorul firmei (doar ale firmei lui) și noi. „Nu e a ta" și „nu există" = 404, ca la facturi.
+// Confirmarea, ca PDF: administratorul firmei (doar ale firmei lui) și noi. „Nu e a ta” și „nu există” = 404, ca la facturi.
 app.get('/api/insight/pachet-trecere/:id/pdf', requireAuth, withScope, async (req, res) => {
   try {
     const rand = await db.getTrecerePachet(req.params.id);
@@ -6055,7 +6055,7 @@ async function _trimiteConfirmarePachet(rand, co, u) {
   return rez;
 }
 // Soldul de la Anthropic (pasul 4): îl scriem noi, din pagina lor de facturare; ziua o pune serverul.
-// Locul UNIC al soldului (04.11): „RA Insight · control" și „Control costuri" scriu tot aici. `reincarcare` (opțional) = ce e pornit la
+// Locul UNIC al soldului (04.11): „RA Insight · control” și „Control costuri” scriu tot aici. `reincarcare` (opțional) = ce e pornit la
 // Anthropic (Settings → Billing → Auto-reload): { sub, cumpara } în dolari, sau null = oprită; netrimisă = rămâne cum era.
 app.put('/api/admin/insight/sold', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -6066,7 +6066,7 @@ app.put('/api/admin/insight/sold', requireAuth, requireSuperadmin, async (req, r
       else {
         const sub = Number(r && r.sub), cumpara = Number(r && r.cumpara);
         if (!(Number.isFinite(sub) && sub >= 0 && sub <= 100000 && Number.isFinite(cumpara) && cumpara > 0 && cumpara <= 100000))
-          return res.status(400).json({ error: 'Reîncărcarea: „sub cât" (0 sau mai mult) și „cât cumpără" (peste 0), în dolari.' });
+          return res.status(400).json({ error: 'Reîncărcarea: „sub cât” (0 sau mai mult) și „cât cumpără” (peste 0), în dolari.' });
         await db.setSetting('anthropic_reincarcare', JSON.stringify({ sub: Math.round(sub * 100) / 100, cumpara: Math.round(cumpara * 100) / 100, la: Date.now() }));
       }
       auditReq(req, 'update', 'anthropic_reincarcare', null, { pornita: !(r === null || r === false) });
@@ -6109,8 +6109,8 @@ function _probaIntrebariImplicite(acum) {
     'Vreau să reduc costurile cu 10%. De unde să încep?'
   ];
 }
-// Cererea „ca un administrator al firmei", dar cu numele nostru în jurnal: vede DOAR mașinile firmei alese — lista lor
-// explicită (`allowedImeis`), ca la omul firmei. Gol (null) ar însemna „toate mașinile platformei" (așa e la super-admin):
+// Cererea „ca un administrator al firmei”, dar cu numele nostru în jurnal: vede DOAR mașinile firmei alese — lista lor
+// explicită (`allowedImeis`), ca la omul firmei. Gol (null) ar însemna „toate mașinile platformei” (așa e la super-admin):
 // starea live (fleet_status) ar fi trimis modelului și mașinile altor firme.
 async function _cerereProba(req, companyId, message) {
   const a = getAuth(req) || {};
@@ -6232,14 +6232,14 @@ app.get('/api/insight/conversatii/:id', requireAuth, withScope, requireFeature('
     const mesaje = await db.mesajeConversatie(c.id, userId, 200);
     // Insigna mesajelor de dinainte de antet (19.10) se completează aici, din textul ei — pagina are o singură formă.
     // Răspunsurile salvate înainte de 20.10 pot avea litere din alt alfabet: se curăță la citire (litere.js), ca nicio
-    // conversație veche să nu le mai arate. La fel titlul „Din sursă externă" al răspunsurilor din 28–29.10. Ce a scris
+    // conversație veche să nu le mai arate. La fel titlul „Din sursă externă” al răspunsurilor din 28–29.10. Ce a scris
     // omul rămâne cum l-a scris.
     mesaje.forEach(function (m) {
       if (m.extra && m.extra.insigna) m.extra.insigna = pachete.insignaCompleta(m.extra.insigna);
       if (m.rol !== 'user') m.text = sursaExterna.faraTitluri(insight.litereRomanesti(m.text));
     });
-    // Cartonașele pasului 2: starea de ACUM (apăsat Da / Nu, anulat, cât mai ține „Anulează"), din rândul propunerii. Un mesaj
-    // poate avea și mai multe cartonașe (`propuneri`, partea 3: „două lucruri deodată, aprobate pe rând").
+    // Cartonașele pasului 2: starea de ACUM (apăsat Da / Nu, anulat, cât mai ține „Anulează”), din rândul propunerii. Un mesaj
+    // poate avea și mai multe cartonașe (`propuneri`, partea 3: „două lucruri deodată, aprobate pe rând”).
     const ids = [];
     mesaje.forEach(function (m) {
       const x = m.extra || {};
@@ -6282,7 +6282,7 @@ app.post('/api/insight/mesaje/:id/feedback', requireAuth, withScope, requireFeat
 });
 // ─── Notițele firmei pentru RA Insight (pasul 2) ───
 // Regulile casei, scrise O DATĂ de administratorul firmei și citite de RA Insight la fiecare întrebare: „motorina e
-// 7,30 lei", „grupa Distribuție = cele 8 dube", „la noi săptămâna e luni–sâmbătă". Le văd toți cei cu RA Insight din
+// 7,30 lei", „grupa Distribuție = cele 8 dube”, „la noi săptămâna e luni–sâmbătă”. Le văd toți cei cu RA Insight din
 // firmă (de-aia nu se pun acolo date personale); le scrie doar cine administrează oamenii firmei.
 const INSIGHT_NOTITE_MAX = 1500;
 app.get('/api/insight/notite', requireAuth, withScope, requireFeature('ai_assistant'), async (req, res) => {
@@ -6351,7 +6351,7 @@ app.post('/api/admin/insight/sterge-vechi', requireAuth, requireSuperadmin, asyn
 // Noaptea (2–6, ora României), o dată pe zi: pentru fiecare om cu discuții noi (de după pragul fișei lui, până la începutul zilei de
 // azi) RA Insight își completează fișa — câteva rânduri + cum numește omul mașinile. Doar firmele cu AI (de la Basic), doar oamenii cu
 // cont RA Insight, fără demo și fără noi. Consumul = un rând 'fisa' (ne costă pe noi, nu e o întrebare a firmei). Fișa NU pleacă odată
-// cu conversațiile șterse la 12 luni (Alin, 11.11: „aș vrea să păstrăm cumva fișa"); pleacă cu contul sau din Setări → Preferințe.
+// cu conversațiile șterse la 12 luni (Alin, 11.11: „aș vrea să păstrăm cumva fișa”); pleacă cu contul sau din Setări → Preferințe.
 let _fiseNoapteZi = null;
 async function fiseInsightNoaptea(acum, fortat) {
   const t = acum || Date.now(), zi = condus.zi(t), ora = condus.ora(t);
@@ -6389,10 +6389,10 @@ async function _scrieFisa(userId, companyId, pana) {
   await db.puneFisaAi(userId, companyId, fisaInsight.curata(j, masini.map(function (m) { return m.nr; })), pana);
   return true;
 }
-// Setări → Preferințe (11.11): ce spune blocul „RA Insight · ce știe despre tine" și butonul care șterge tot (cu confirmare). Doar
+// Setări → Preferințe (11.11): ce spune blocul „RA Insight · ce știe despre tine” și butonul care șterge tot (cu confirmare). Doar
 // fișa omului care întreabă; textele le dă serverul.
 // Fișa e de la pachetul Basic (Alin, 11.11: „ascunde [pe Start], da"): pe Start nu se scrie, deci blocul din Preferințe lipsește și
-// „ce știi despre mine?" nu e o cerere a fișei — afară de o fișă rămasă de pe un pachet de dinainte (se poate citi și șterge).
+// „ce știi despre mine?” nu e o cerere a fișei — afară de o fișă rămasă de pe un pachet de dinainte (se poate citi și șterge).
 async function _fisaActiva(companyId, fisaOm) {
   if (!fisaInsight.goala(fisaOm)) return true;
   if (companyId == null) return false;
@@ -6426,7 +6426,7 @@ if (process.env.SEED_TEST === '1') {
 // Doar pentru probe (SEED_TEST=1): mută ultima scriere a unei conversații cu N luni în urmă, ca proba să
 // verifice ștergerea fără să aștepte un an.
 if (process.env.SEED_TEST === '1') {
-  // …și o propunere a pasului 2 cu N minute în urmă (capătul lui „Anulează", propunerea veche), fără să aștepte.
+  // …și o propunere a pasului 2 cu N minute în urmă (capătul lui „Anulează”, propunerea veche), fără să aștepte.
   app.post('/api/test/actiune-veche', requireAuth, requireSuperadmin, async (req, res) => {
     try {
       const b = req.body || {}, ms = Math.max(0, Number(b.minute) || 0) * 60000;
@@ -6446,7 +6446,7 @@ if (process.env.SEED_TEST === '1') {
   });
 }
 
-// ═══ Safe Drive & costuri (pasul 3 din RA Insight; Alin, 02.10: „SAFE DRIVE, CU COSTURI") ═══
+// ═══ Safe Drive & costuri (pasul 3 din RA Insight; Alin, 02.10: „SAFE DRIVE, CU COSTURI”) ═══
 // Cum conduce fiecare mașină și fiecare șofer și cât costă asta în lei, pe luni, cu luna dinainte alături. Regulile stau
 // în condus.js (aceleași praguri și același scor ca raportul EcoDrive), zilele și luna în safe_drive.js. Aici: cine vede
 // ce (doar mașinile omului, fără demo și fără arhivate), coada de calcul și tura de noapte. Pagina e doar pentru cine are
@@ -6455,7 +6455,7 @@ if (process.env.SEED_TEST === '1') {
 // Coada: o mașină pe un șir de zile = o sarcină; cel mult două deodată, ca ingestul și rapoartele să aibă loc. Aceeași
 // sarcină cerută de doi oameni se face o dată.
 const SD_IN_PARALEL = 2;
-const SD_ASTEAPTA_MS = 8000;          // cât așteaptă o cerere după calcul, înainte să răspundă „se pregătește"
+const SD_ASTEAPTA_MS = 8000;          // cât așteaptă o cerere după calcul, înainte să răspundă „se pregătește”
 const _sdCoada = [], _sdChei = new Map();
 let _sdMerg = 0;
 function _sdPune(imei, de, pana) {
@@ -6492,7 +6492,7 @@ async function _sdAsigura(imeis, de, pana, acum) {
 // consumul, prețul și clasa; plus șoferii firmei și setările ei.
 // Flota omului, pentru TOATE ramurile RA Insight (Safe Drive, Mentenanță & acte, Combustibil, Ore de condus): mașinile la
 // care are acces (fără arhivate; demo-ul îl taie canAccessImei), cu eticheta din fișa RA Insight, șoferii, setările firmei
-// și grupele („Toată flota · 20 de mașini" / „Distribuție · 8 mașini"). O singură regulă pentru „ce mașini vede omul".
+// și grupele („Toată flota · 20 de mașini” / „Distribuție · 8 mașini”). O singură regulă pentru „ce mașini vede omul”.
 async function _ramFlota(req) {
   const companyScope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
   let devices = await db.getDevices(companyScope === -1 ? -1 : companyScope);
@@ -6558,7 +6558,7 @@ async function _sdLuna(req, o) {
     if (Object.keys(lipsa).length) return Object.assign(comun, { pregatire: { procent: null } });
   }
   // Luna aleasă întâi; luna dinainte (pentru comparație) intră la coadă după ea. Se așteaptă amândouă, cel mult 8 secunde.
-  // Luna aleasă negata → „se pregătește" (cu procentul); gata, dar fără cea dinainte → luna, iar pagina mai întreabă o dată.
+  // Luna aleasă negata → „se pregătește” (cu procentul); gata, dar fără cea dinainte → luna, iar pagina mai întreabă o dată.
   const a = await _sdAsigura(imeis, L.de, L.pana, acum);
   const b = await _sdAsigura(imeis, Li.de, Li.pana, acum);
   const numara = function (x) { return Object.keys(x).reduce(function (n, k) { return n + x[k].length; }, 0); };
@@ -6601,7 +6601,7 @@ app.put('/api/insight/safe-drive/preturi', requireAuth, requireFleet, withScope,
     res.json({ ok: true, preturi: p });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Am vorbit cu el": ziua în care șeful a discutat cu un șofer. Ziua o scrie serverul; nota e scurtă și opțională.
+// „Am vorbit cu el”: ziua în care șeful a discutat cu un șofer. Ziua o scrie serverul; nota e scurtă și opțională.
 app.post('/api/insight/safe-drive/discutie', requireAuth, requireFleet, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
     const b = req.body || {};
@@ -6704,7 +6704,7 @@ app.get('/api/insight/mentenanta', requireAuth, withScope, requireFeature('ai_as
 });
 // ─── Socotelile grele ale ramurilor (citesc toată luna de poziții): o dată, în fundal, ținute minte o vreme ───
 // A doua cerere pentru același lucru așteaptă ACEEAȘI socoteală (nu pornește una nouă); după `ttl` se reface. Cererea
-// așteaptă cel mult `asteptaMs`, apoi răspunde „se pregătește" (pagina mai întreabă). `doarGata`: nu pornește nimic.
+// așteaptă cel mult `asteptaMs`, apoi răspunde „se pregătește” (pagina mai întreabă). `doarGata`: nu pornește nimic.
 const _ramCache = new Map();
 async function _ramGreu(cheie, ttl, fn, asteptaMs, doarGata) {
   let e = _ramCache.get(cheie);
@@ -6732,8 +6732,8 @@ function _ramGrupa(f, o) {
   }
   return grupa;
 }
-// Un interval ANUME (RA Insight: „1–7 octombrie", „săptămâna trecută"), cu intervalul de aceeași lungime de dinainte.
-// Până pe 08.10 unealta combustibil știa doar luni întregi: la „1–7 octombrie" citea toată luna (Alin: „eu am dat doar
+// Un interval ANUME (RA Insight: „1–7 octombrie”, „săptămâna trecută”), cu intervalul de aceeași lungime de dinainte.
+// Până pe 08.10 unealta combustibil știa doar luni întregi: la „1–7 octombrie” citea toată luna (Alin: „eu am dat doar
 // până pe 07… ce facem aici?"). Cel mult RAM_INTERVAL_ZILE, ca o întrebare să nu citească un an de poziții.
 const RAM_INTERVAL_ZILE = 93;
 function _ramInterval(f, o, acum) {
@@ -6773,7 +6773,7 @@ function _ramPerioada(f, o, acum) {
 // ═══ RA Insight → Combustibil (pasul 4) ═══
 // Litri și lei pe lună, cu aceleași zile din luna dinainte; consumul pe mașină față de cel din fișă; alimentările și
 // scăderile suspecte. Cifrele vin din MOTORUL RAPOARTELOR (_consumptionMap — ca Consum / Costuri / Emisii — și raportul
-// „Alimentări & scăderi"), cu opțiunile ecranului Rapoarte (_optiuniRaport) — deci pagina, rapoartele și RA Insight spun
+// „Alimentări & scăderi”), cu opțiunile ecranului Rapoarte (_optiuniRaport) — deci pagina, rapoartele și RA Insight spun
 // același lucru. O SINGURĂ funcție, pentru pagină și pentru unealta combustibil a lui RA Insight.
 async function _ramCombustibil(req, o) {
   o = o || {};
@@ -6807,7 +6807,7 @@ app.get('/api/insight/combustibil', requireAuth, withScope, requireFeature('ai_a
 
 // ═══ RA Insight → Ore de condus (pasul 4) ═══
 // Orele de condus ale fiecărui șofer pe o săptămână (luni–duminică), încălcările Reg. 561 și de unde vin cifrele. Totul din
-// raportul „Condus & repaus (Reg. 561)" (rHos: tahograful sau estimarea din GPS, fiecare zi pe șoferul de atunci), cu
+// raportul „Condus & repaus (Reg. 561)” (rHos: tahograful sau estimarea din GPS, fiecare zi pe șoferul de atunci), cu
 // opțiunile ecranului Rapoarte — deci pagina, raportul și RA Insight spun același lucru. O SINGURĂ funcție, pentru pagină,
 // pentru unealta ore_condus a lui RA Insight și pentru numărul de lângă ramură.
 const RAM_SAPTAMANI = 4;   // săptămâna de acum + trei înapoi
@@ -6862,9 +6862,9 @@ app.get('/api/insight/ore-condus', requireAuth, withScope, requireFeature('ai_as
   catch (e) { console.warn('[ORE DE CONDUS]', e.message); res.status(500).json({ error: 'Ore de condus: ' + e.message }); }
 });
 
-// ═══ RA Insight → Scrisoarea de luni: SCOASĂ pe 04.11 (Alin: „o scoatem de tot… fiecare are acces să întrebe ce dorește") ═══
-// Spunea același lucru ca „Azi la tine", care stă sub salut ori de câte ori deschizi RA Insight; cine vrea ceva lunea pe email are
-// rapoartele programate. Au plecat: tura de luni, pagina din „Pagini", anunțul, rândul din pachete (aplicație + site). Scrisorile deja
+// ═══ RA Insight → Scrisoarea de luni: SCOASĂ pe 04.11 (Alin: „o scoatem de tot… fiecare are acces să întrebe ce dorește”) ═══
+// Spunea același lucru ca „Azi la tine”, care stă sub salut ori de câte ori deschizi RA Insight; cine vrea ceva lunea pe email are
+// rapoartele programate. Au plecat: tura de luni, pagina din „Pagini”, anunțul, rândul din pachete (aplicație + site). Scrisorile deja
 // trimise se șterg o dată, la pornire (`_scrisoriSterse`): nu le mai poate deschide nimeni. Telefonul vechi (care încă are pagina) primește
 // pe rutele de mai jos 410, cu textul de dedesubt, în locul unei erori.
 const SCRISOARE_SCOASA = 'Scrisoarea de luni nu mai există: ce spunea găsești oricând în „Azi la tine”, sub salutul din RA Insight, iar rapoartele de luni le poți programa din Rapoarte.';
@@ -6880,12 +6880,12 @@ async function _scrisoriSterse() {
   } catch (e) { console.warn('[RA Insight] scrisorile vechi nu s-au putut șterge:', e.message); }
 }
 
-// ─── „Azi la tine" (Capitolul 2, pasul 1 — Alin, 15.10): prima privire în RA Insight ────────────────────────────────────
-// ─── Pasul 2 al Capitolului 2: „RA Insight face, cu Da-ul tău" — partea 1, ȘOFERII PE MAȘINI (Alin, 22.10: „da") ──────────
+// ─── „Azi la tine” (Capitolul 2, pasul 1 — Alin, 15.10): prima privire în RA Insight ────────────────────────────────────
+// ─── Pasul 2 al Capitolului 2: „RA Insight face, cu Da-ul tău” — partea 1, ȘOFERII PE MAȘINI (Alin, 22.10: „da”) ──────────
 // Regulile și textele stau în soferi_masini.js; aici se adună fișele (mașinile omului, șoferii firmei, istoricul șoferilor) și
 // se aplică schimbările pe CALEA ECRANULUI (Vehicule › fișa mașinii › Șofer = db.assignDevice, cu grupa de acum a mașinii), cu
-// aceleași drepturi (requireEdit('vehicule')). De la pachetul Basic (requireRamuri). Nici propunerea, nici „Da"-ul nu se
-// numără. Nimic fără „Da": doar butonul aplică; un „da" scris aduce din nou cartonașul. „Anulează" ține ANULARE_MIN minute.
+// aceleași drepturi (requireEdit('vehicule')). De la pachetul Basic (requireRamuri). Nici propunerea, nici „Da”-ul nu se
+// numără. Nimic fără „Da”: doar butonul aplică; un „da” scris aduce din nou cartonașul. „Anulează” ține ANULARE_MIN minute.
 const soferiMasini = require('./soferi_masini');
 async function _soferiDate(req) {
   const f = await _ramFlota(req);
@@ -6898,14 +6898,14 @@ async function _soferiDate(req) {
   });
   return { soferi: soferi, an: soferiMasini.analiza({ masini: masini, soferi: soferi, istoric: istoric, acum: Date.now() }) };
 }
-// „Cine poate apăsa Da" = cine poate schimba vehiculele din ecran (aceeași poartă ca ruta /assign).
+// „Cine poate apăsa Da” = cine poate schimba vehiculele din ecran (aceeași poartă ca ruta /assign).
 function _poateSchimbaSoferi(req) { return !!(permReq(req, 'manageFleet') && poateEditare(req, 'vehicule')); }
 async function _cineNume(req) {
   const a = getAuth(req) || {};
   try { const u = a.userId != null ? await db.getUserById(a.userId) : null; if (u && u.full_name && String(u.full_name).trim()) return String(u.full_name).trim(); } catch (e) { /* rămâne numele contului */ }
   return a.username || 'tu';
 }
-// Omul care nu poate apăsa „Da" află cine poate: administratorii firmei (au mereu dreptul).
+// Omul care nu poate apăsa „Da” află cine poate: administratorii firmei (au mereu dreptul).
 async function _cineAproba(companyId) {
   try {
     const l = (await db.getUsers(companyId)).filter(function (u) { return u.active !== false && (u.role === 'company_admin' || u.role === 'admin'); });
@@ -6919,7 +6919,7 @@ async function _optiuniCard(req) {
 }
 // Aplică schimbări în ordine, fiecare verificată pe starea de ACUM (nu pe fișa citită la propunere): mașina e la îndemâna
 // omului, șoferul de acum e cel de la propunere, șoferul nou e din firma mașinii și nu e trecut (încă) pe altă mașină. Ce nu
-// trece se sare, cu motivul. În jurnal: „prin RA Insight", cu textul schimbării.
+// trece se sare, cu motivul. În jurnal: „prin RA Insight”, cu textul schimbării.
 async function _aplicaSoferi(req, schimbari, o) {
   const x = o || {};
   const nume = x.nume || {};
@@ -6939,11 +6939,11 @@ async function _aplicaSoferi(req, schimbari, o) {
     auditReq(req, 'assign', 'device', s.imei, { driver_id: la, de_la: deLa, prin: 'RA Insight', actiune: x.actiuneId || null, anulare: x.anulare ? true : undefined,
       text: soferiMasini.jurnalText(nrDe(d), la != null ? (nume[la] || ('#' + la)) : null) });
   }
-  if (aplicate.length) { invalidateAccessCache(); try { _aziTinut.clear(); } catch (e) { /* „Azi la tine" se reface la 2 minute */ } }
+  if (aplicate.length) { invalidateAccessCache(); try { _aziTinut.clear(); } catch (e) { /* „Azi la tine” se reface la 2 minute */ } }
   return { aplicate: aplicate, sarite: sarite };
 }
 function _numeSoferi(soferi) { const m = {}; (soferi || []).forEach(function (s) { m[s.id] = s.nume; }); return m; }
-// Cartonașul cum îl vede pagina: din rândul acțiunii (sursa adevărului), cu starea de acum și cât mai e până la capătul lui „Anulează".
+// Cartonașul cum îl vede pagina: din rândul acțiunii (sursa adevărului), cu starea de acum și cât mai e până la capătul lui „Anulează”.
 function _cardPublic(a) {
   const c = Object.assign({}, (a.date && a.date.card) || {});
   delete c.schimbari;
@@ -6960,7 +6960,7 @@ function _cardPublic(a) {
   if (a.date && a.date.anulareText) c.anulareText = a.date.anulareText;
   return c;
 }
-// Ce arată pagina „Șoferi pe mașini": aceleași fișe și aceeași regulă ca discuția.
+// Ce arată pagina „Șoferi pe mașini”: aceleași fișe și aceeași regulă ca discuția.
 function _paginaSoferi(d, oc) {
   const an = d.an;
   const peImei = {}; an.masini.forEach(function (m) { peImei[m.imei] = m; });
@@ -6979,7 +6979,7 @@ function _paginaSoferi(d, oc) {
     texte: { intro: soferiMasini.TEXTE.intro, jos: soferiMasini.TEXTE.sofeiNuPrimesc, nuStie: soferiMasini.TEXTE.nuStie }
   };
 }
-// Cererea din discuție („Pune-l pe Mihai Ionescu pe B 77 TIR", „Propune un șofer pentru B 268 ROY", „Arată-mi potrivirea
+// Cererea din discuție („Pune-l pe Mihai Ionescu pe B 77 TIR”, „Propune un șofer pentru B 268 ROY”, „Arată-mi potrivirea
 // șoferilor"): pe reguli, fără model, nenumărată. Întoarce false când mesajul nu e de-al ei (merge mai departe la întrebări).
 async function _insightSoferi(req, res, x) {
   const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
@@ -6994,8 +6994,8 @@ async function _insightSoferi(req, res, x) {
     res.json(Object.assign({ reply: reply, sources: [], alege: [], urmari: [] }, e, { conversatieId: sv.convId, mesajId: sv.mesajId }));
     return sv;
   }
-  // „da" scris: cartonașul încă neapăsat, din nou, cu butonul — nimic fără „Da". După „Gata", la „Îți pregătesc și schimbarea
-  // asta?", „da" = prima continuare („Pune-l pe Ion Popescu pe B 268 ROY"): vine cartonașul ei, tot cu butonul.
+  // „da” scris: cartonașul încă neapăsat, din nou, cu butonul — nimic fără „Da”. După „Gata”, la „Îți pregătesc și schimbarea
+  // asta?", „da” = prima continuare („Pune-l pe Ion Popescu pe B 268 ROY”): vine cartonașul ei, tot cu butonul.
   if (daScris) {
     const a = x.ctx.propunere ? await db.actiuneInsight(x.ctx.propunere, userId) : null;
     if (a && a.stare === 'propusa' && Date.now() - a.creat_la < soferiMasini.PROPUNERE_ORE * 3600000) {
@@ -7006,13 +7006,13 @@ async function _insightSoferi(req, res, x) {
     if (x.ctx.urmatoare) msg = String(x.ctx.urmatoare);
     else if (!soferiMasini.pareCerere(msg)) return false;
   }
-  // Întâi: e chiar o cerere despre șoferi? („Pune-mi raportul…" nu e: merge mai departe, la rapoarte.) Abia apoi pachetul.
+  // Întâi: e chiar o cerere despre șoferi? („Pune-mi raportul…” nu e: merge mai departe, la rapoarte.) Abia apoi pachetul.
   const soferi0 = req.companyId != null ? await db.soferiPentruPotrivire(req.companyId) : [];
   const u = soferiMasini.cerere(msg, soferi0, x.fisa);
   if (!u) return false;
   if (req.isSuper || req.companyId == null) { await spune('Propunerile de șoferi se fac pe flota unei firme, iar contul de fondator n-are una. Intră cu contul administratorului firmei ca să le vezi.'); return true; }
   const co = await db.getCompanyById(req.companyId);
-  if (!_firmaAreRamuri(co)) { const t = 'Propunerile (trece șoferul pe mașină, pagina „Șoferi pe mașini") sunt de la pachetul Basic în sus.'; await spune(t, { pachetMesaj: t }); return true; }
+  if (!_firmaAreRamuri(co)) { const t = 'Propunerile (trece șoferul pe mașină, pagina „Șoferi pe mașini”) sunt de la pachetul Basic în sus.'; await spune(t, { pachetMesaj: t }); return true; }
   const d = await _soferiDate(req);
   const acum = Date.now();
   const nrDe = function (imei) { const m = d.an.masini.filter(function (q) { return q.imei === imei; })[0]; return m ? m.nr : ''; };
@@ -7049,8 +7049,8 @@ app.get('/api/insight/soferi-masini', requireAuth, withScope, requireFeature('ai
     res.json(_paginaSoferi(d, await _optiuniCard(req)));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Aplică cele bifate" din pagină: doar propunerile de ACUM pe care omul le-a bifat, în ordinea lor (cel scos de pe o mașină
-// merge pe alta după ce iese). O acțiune pentru toate, cu „Anulează" de 10 minute.
+// „Aplică cele bifate” din pagină: doar propunerile de ACUM pe care omul le-a bifat, în ordinea lor (cel scos de pe o mașină
+// merge pe alta după ce iese). O acțiune pentru toate, cu „Anulează” de 10 minute.
 app.post('/api/insight/soferi-masini/aplica', requireAuth, requireEdit('vehicule'), withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
     if (req.isSuper || req.companyId == null) return res.status(400).json({ error: 'Propunerile se aplică pe flota unei firme.' });
@@ -7080,8 +7080,8 @@ app.post('/api/insight/soferi-masini/aplica', requireAuth, requireEdit('vehicule
       text: 'Gata: ' + (gata.length === 1 ? 'o schimbare' : gata.length + ' schimbări') + '. Se ' + (gata.length === 1 ? 'poate' : 'pot') + ' anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Da" pe cartonașul din discuție. Drepturile = ale ecranului de care ține propunerea (`_poateActiunea`): șoferul — Vehicule › fișa
-// mașinii; alerta — Alerte (23.10); discuția — RA Drive (23.10). Cu `la` = alt șofer ales din „Schimbă" (doar dintre cei propuși pe
+// „Da” pe cartonașul din discuție. Drepturile = ale ecranului de care ține propunerea (`_poateActiunea`): șoferul — Vehicule › fișa
+// mașinii; alerta — Alerte (23.10); discuția — RA Drive (23.10). Cu `la` = alt șofer ales din „Schimbă” (doar dintre cei propuși pe
 // cartonaș); la alertă și discuție, `campuri` (pragul, mașina, numele / nota), verificate pe cartonaș.
 app.post('/api/insight/actiuni/:id/aplica', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
@@ -7105,7 +7105,7 @@ app.post('/api/insight/actiuni/:id/aplica', requireAuth, withScope, requireFeatu
       if (!r.ok) return res.status(409).json({ error: String(r.text || '').replace(/\*\*/g, '') });
       card = r.card; schimbari = r.card.schimbari;
     }
-    // „Da", o singură dată: două apăsări deodată — doar prima trece propunerea mai departe.
+    // „Da”, o singură dată: două apăsări deodată — doar prima trece propunerea mai departe.
     const prins = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
     if (!prins) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.' });
     const d = await _soferiDate(req);
@@ -7127,7 +7127,7 @@ app.post('/api/insight/actiuni/:id/aplica', requireAuth, withScope, requireFeatu
         let mesajId = null;
         if (a.conversatie_id) {
           mesajId = await db.adaugaMesajAi(a.conversatie_id, 'assistant', u.text, { source: 'reguli', urmari: u.urmari, insigna: ins });
-          // „da" scris acum = prima continuare (vezi _insightSoferi); propunerea apăsată nu mai e „în discuție".
+          // „da” scris acum = prima continuare (vezi _insightSoferi); propunerea apăsată nu mai e „în discuție”.
           const cv = await db.conversatieUser(a.conversatie_id, userId);
           const cx = Object.assign({}, (cv && cv.context) || {}); delete cx.propunere;
           if (u.urmari && u.urmari[0] && /^Pune-l pe /.test(u.urmari[0].trimite)) cx.urmatoare = u.urmari[0].trimite; else delete cx.urmatoare;
@@ -7139,7 +7139,7 @@ app.post('/api/insight/actiuni/:id/aplica', requireAuth, withScope, requireFeatu
     res.json({ ok: true, propunere: _cardPublic(fin || prins), sarite: rez.sarite, urmator: urmator });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Nu": propunerea rămâne în discuție, fără să schimbe nimic. Nu cere drepturi de editare (nu face nimic).
+// „Nu”: propunerea rămâne în discuție, fără să schimbe nimic. Nu cere drepturi de editare (nu face nimic).
 app.post('/api/insight/actiuni/:id/refuza', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
   try {
     const userId = req.auth.userId;
@@ -7150,8 +7150,8 @@ app.post('/api/insight/actiuni/:id/refuza', requireAuth, withScope, requireFeatu
     res.json({ ok: true, propunere: _cardPublic(e) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Anulează" (10 minute): schimbările se întorc în ordine inversă, fiecare doar dacă mașina are încă șoferul pus prin „Da"; alerta
-// se scoate din Alerte, discuția din RA Drive. Drepturile, ca la „Da".
+// „Anulează” (10 minute): schimbările se întorc în ordine inversă, fiecare doar dacă mașina are încă șoferul pus prin „Da”; alerta
+// se scoate din Alerte, discuția din RA Drive. Drepturile, ca la „Da”.
 app.post('/api/insight/actiuni/:id/anuleaza', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
     const userId = req.auth.userId;
@@ -7179,13 +7179,13 @@ app.post('/api/insight/actiuni/:id/anuleaza', requireAuth, withScope, requireFea
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Pasul 2, partea 2 (23.10; Alin: „da"): ALERTA DE VITEZĂ și „AM VORBIT CU EL" — „RA Insight face, cu Da-ul tău" ─────────
+// ─── Pasul 2, partea 2 (23.10; Alin: „da”): ALERTA DE VITEZĂ și „AM VORBIT CU EL” — „RA Insight face, cu Da-ul tău” ─────────
 // Regulile și textele stau în propuneri.js; aici se adună datele (mașinile omului, pozițiile ultimelor 30 de zile, rândul șoferului
 // din RA Drive) și se aplică pe CALEA ECRANULUI: alerta ca din Alerte › Adaugă regulă (db.createAlert, pe firma omului), discuția ca
-// din RA Drive › „Am vorbit cu el" (db.adaugaDiscutieSafeDrive). Aceeași tabelă (insight_actiuni) și aceleași „Da" / „Nu" /
-// „Anulează" (10 minute) ca la șoferi. De la Basic; nimic nu se numără (fără model).
+// din RA Drive › „Am vorbit cu el” (db.adaugaDiscutieSafeDrive). Aceeași tabelă (insight_actiuni) și aceleași „Da” / „Nu” /
+// „Anulează” (10 minute) ca la șoferi. De la Basic; nimic nu se numără (fără model).
 const propuneri = require('./propuneri');
-// Cine poate apăsa „Da" pe fiecare fel = cine poate face același lucru din ecranul lui (Vehicule, Alerte, RA Drive).
+// Cine poate apăsa „Da” pe fiecare fel = cine poate face același lucru din ecranul lui (Vehicule, Alerte, RA Drive).
 function _poateActiunea(req, fel) {
   if (fel === 'alerta') return !!(permReq(req, 'manageFleet') && poateEditare(req, 'alerte') && poateEcran(req, 'alerte'));
   if (fel === 'discutie') return !!permReq(req, 'manageFleet');
@@ -7195,13 +7195,13 @@ function _poateActiunea(req, fel) {
   if (fel === 'raport') return !!(permReq(req, 'viewReports') && poateEcran(req, 'programari'));
   return _poateSchimbaSoferi(req);
 }
-// „Vede toată flota" (dreptul viewAll, netăiat din rol) — doar el pune o alertă pe toată flota din discuție.
+// „Vede toată flota” (dreptul viewAll, netăiat din rol) — doar el pune o alertă pe toată flota din discuție.
 function _veziToataFlota(req) { return req.allowedImeis == null || !!permReq(req, 'viewAll'); }
 async function _optiuniCardFel(req, fel) {
   const poate = _poateActiunea(req, fel);
   return { cine: await _cineNume(req), poate: poate, aproba: poate ? null : await _cineAproba(req.companyId) };
 }
-// „Din ultimele 30 de zile": doar pozițiile care trec de pragul EFECTIV al motorului (pragul + marja), apoi regula de răcire a
+// „Din ultimele 30 de zile”: doar pozițiile care trec de pragul EFECTIV al motorului (pragul + marja), apoi regula de răcire a
 // motorului (propuneri.simuleazaViteza). Cea mai mare viteză, cu locul ei dacă îl găsim repede. Fără citire → null, nu o cifră.
 async function _vitezaUltimeleZile(imeis, prag) {
   const marja = { baza: SPEED_ALERT_BASE, marja: SPEED_ALERT_MARGIN };
@@ -7222,7 +7222,7 @@ async function _vitezaUltimeleZile(imeis, prag) {
     return { sim: sim, max: max, marja: marja };
   } catch (e) { return { sim: null, max: null, marja: marja }; }
 }
-// Cererea din discuție: „Anunță-mă când Loganul trece de 130 km/h", „Notează că am vorbit cu Ion despre viteză". Pe reguli, fără
+// Cererea din discuție: „Anunță-mă când Loganul trece de 130 km/h”, „Notează că am vorbit cu Ion despre viteză”. Pe reguli, fără
 // model, nenumărată. Întoarce false când mesajul nu e de-al ei (merge mai departe: șoferii, rapoartele, întrebările).
 async function _insightPropuneri(req, res, x) {
   const userId = req.auth && req.auth.userId != null ? req.auth.userId : null;
@@ -7272,7 +7272,7 @@ async function _propunereAlerta(req, x, u, spune, ctxFara, userId) {
   }
   const v = await _vitezaUltimeleZile(u.imei ? [u.imei] : f.devices.map(function (d) { return d.imei; }), u.prag);
   if (v.max && peImei[v.max.imei]) v.max.eticheta = scurt(peImei[v.max.imei]);
-  // „Pe" (din „Schimbă"): mașinile omului, cea aleasă întâi, plus toată flota, dacă o vede.
+  // „Pe” (din „Schimbă”): mașinile omului, cea aleasă întâi, plus toată flota, dacă o vede.
   const lista = (u.imei ? [peImei[u.imei]] : []).concat(f.devices.filter(function (d) { return d.imei !== u.imei; })).slice(0, propuneri.MASINI_IN_LISTA);
   const optiuni = lista.map(function (d) { return { v: d.imei, t: eti(d), scurt: scurt(d) }; });
   if (flotaOk) optiuni.push({ v: '', t: 'Toată flota', scurt: 'toată flota' });
@@ -7305,7 +7305,7 @@ async function _propunereDiscutie(req, x, u, soferi, spune, ctxFara, userId) {
   auditReq(req, 'ai_propunere', 'assistant', id, { fel: 'discutie', sofer: s.id, via: x.usa || 'insight' });
   return true;
 }
-// „Schimbă" pe alertă: „din ultimele 30 de zile" socotit din nou pentru pragul și mașina alese (doar cifre, nu schimbă nimic).
+// „Schimbă” pe alertă: „din ultimele 30 de zile” socotit din nou pentru pragul și mașina alese (doar cifre, nu schimbă nimic).
 // Propunerea e a omului (404 pentru altul); pragul și mașina — doar ce e pe cartonaș.
 app.post('/api/insight/actiuni/:id/dovezi', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, requireRamuri, async (req, res) => {
   try {
@@ -7321,7 +7321,7 @@ app.post('/api/insight/actiuni/:id/dovezi', requireAuth, withScope, requireFeatu
     res.json({ dovezi: propuneri.doveziViteza({ prag: c.prag, imei: c.spec.imei, sim: v.sim, max: v.max, marja: v.marja, acum: Date.now() }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Da" pe o alertă / o discuție (chemată din ruta comună /aplica, după drepturi, stare și vechime). Totul pe starea de ACUM.
+// „Da” pe o alertă / o discuție (chemată din ruta comună /aplica, după drepturi, stare și vechime). Totul pe starea de ACUM.
 async function _aplicaPropunere2(req, res, a) {
   const userId = req.auth.userId, card = (a.date && a.date.card) || {};
   const esuat = async function (motiv, cod) {
@@ -7347,7 +7347,7 @@ async function _aplicaPropunere2(req, res, a) {
     const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: propuneri.cardAlertaDupa(card, c), alertaId: al.id, spec: spec, gata: g }) });
     return res.json({ ok: true, propunere: _cardPublic(fin || prins) });
   }
-  // „Am vorbit cu el": șoferul tot al firmei, ziua o scrie serverul (ca ruta din RA Drive).
+  // „Am vorbit cu el”: șoferul tot al firmei, ziua o scrie serverul (ca ruta din RA Drive).
   const nota = propuneri.notaDiscutie(req.body && req.body.campuri, card);
   const sofer = await db.getDriverById(parseInt(card.soferId, 10) || 0);
   if (!sofer || Number(sofer.company_id) !== Number(req.companyId)) return res.status(409).json({ error: propuneri.TEXTE.soferPlecat });
@@ -7361,7 +7361,7 @@ async function _aplicaPropunere2(req, res, a) {
   const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: propuneri.cardDiscutieDupa(card, nota), discutieId: d.id, nota: nota, gata: g }) });
   return res.json({ ok: true, propunere: _cardPublic(fin || prins) });
 }
-// „Anulează" pe o alertă / o discuție (10 minute, din ruta comună): ce a pus „Da" se scoate, pe calea ecranului.
+// „Anulează” pe o alertă / o discuție (10 minute, din ruta comună): ce a pus „Da” se scoate, pe calea ecranului.
 async function _anuleazaPropunere2(req, res, a) {
   const userId = req.auth.userId;
   const prins = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'anulata', anulatLa: Date.now() });
@@ -7383,12 +7383,12 @@ async function _anuleazaPropunere2(req, res, a) {
   res.json({ ok: true, text: txt, propunere: _cardPublic(fin || prins) });
 }
 
-// ─── Pasul 2, partea 3 (26.10; Alin: „6. după ce rezolvi punctele de la 1 la 5"): REVIZIA, ACTUL, RAPORTUL PROGRAMAT ──────────
-// Macheta M6 din 21.10: „Programează revizia la Caddy și trimite-mi în fiecare luni raportul de consum" → câte un cartonaș pe lucru,
+// ─── Pasul 2, partea 3 (26.10; Alin: „6. după ce rezolvi punctele de la 1 la 5”): REVIZIA, ACTUL, RAPORTUL PROGRAMAT ──────────
+// Macheta M6 din 21.10: „Programează revizia la Caddy și trimite-mi în fiecare luni raportul de consum” → câte un cartonaș pe lucru,
 // aprobate pe rând. Regulile și textele stau în programari.js; aici se adună datele (kilometrajul, km-ii pe lună, intervalele firmei,
 // preavizul, actul de acum, adresa omului, agenda firmei, prima trimitere) și se aplică pe CALEA ECRANULUI: revizia ca din Mentenanță
 // › Adaugă (db.createMaintenance), actul ca din Documente › Adaugă (cel vechi de același tip trece în istoric, db.createVehicleDocument),
-// raportul ca din Rapoarte › Programate (db.createReportSchedule, computeNextRun). Aceeași tabelă și aceleași „Da" / „Nu" / „Anulează".
+// raportul ca din Rapoarte › Programate (db.createReportSchedule, computeNextRun). Aceeași tabelă și aceleași „Da” / „Nu” / „Anulează”.
 const programari = require('./programari');
 async function _optiuniCardP3(req, fel) {
   const poate = _poateActiunea(req, fel);
@@ -7464,8 +7464,8 @@ async function _insightProgramari(req, res, x) {
       if (!u.tip) { intreaba(programari.TEXTE.ceRaport, aiRaport.RAPOARTE_PROPUSE.map(function (k) { const R = reports.REPORTS[k]; return { text: R ? R.label : k, trimite: String(u.text || '') + ' — raportul ' + (R ? R.label : k) }; })); break; }
       const R = reports.REPORTS[u.tip];
       if (!R) { intreaba(programari.TEXTE.ceRaport); break; }
-      if (!poateRaport(req, u.tip)) { intreaba('Raportul „' + R.label + '" nu e printre cele pe care le vezi.'); break; }
-      if (aiRaport.RAPOARTE_CU_ALEGERI.indexOf(u.tip) >= 0) { intrebare = pentru + 'Raportul „' + R.label + '" cere alegeri pe care le faci din Rapoarte › Programate.'; break; }
+      if (!poateRaport(req, u.tip)) { intreaba('Raportul „' + R.label + '” nu e printre cele pe care le vezi.'); break; }
+      if (aiRaport.RAPOARTE_CU_ALEGERI.indexOf(u.tip) >= 0) { intrebare = pentru + 'Raportul „' + R.label + '” cere alegeri pe care le faci din Rapoarte › Programate.'; break; }
       if (u.variante) { intreaba(programari.TEXTE.careMasina, alegeMasini(u.variante).concat([{ text: 'Toată flota', trimite: String(u.text || '') + ' pentru toată flota' }])); break; }
       if (u.imei && !peImei[u.imei]) { intreaba(programari.TEXTE.nuVad); break; }
       let email = null, agendaN = 0;
@@ -7496,7 +7496,7 @@ async function _insightProgramari(req, res, x) {
   if (sv.convId) { for (const p of pub) { try { await db.legaActiuneInsight(p.id, userId, sv.convId); } catch (e) { /* cartonașul rămâne în mesaj */ } } }
   return true;
 }
-// „Da" pe o revizie / un act / un raport programat (din ruta comună /aplica, după drepturi, stare și vechime). Totul pe starea de ACUM.
+// „Da” pe o revizie / un act / un raport programat (din ruta comună /aplica, după drepturi, stare și vechime). Totul pe starea de ACUM.
 async function _aplicaPropunere3(req, res, a) {
   const userId = req.auth.userId, card = (a.date && a.date.card) || {};
   const esuat = async function (motiv, cod) {
@@ -7533,7 +7533,7 @@ async function _aplicaPropunere3(req, res, a) {
     const nr = d.plate || d.name || s.imei, companyId = d.company_id != null ? d.company_id : req.companyId;
     const prins = await db.treceActiuneInsight(a.id, userId, 'propusa', { stare: 'aplicata', aplicatLa: Date.now() });
     if (!prins) return res.status(409).json({ error: 'Propunerea a fost deja apăsată.' });
-    // Ca POST /api/documents: actul de acum de același tip trece în istoricul mașinii (nu se șterge); „Anulează" îl face iar valabil.
+    // Ca POST /api/documents: actul de acum de același tip trece în istoricul mașinii (nu se șterge); „Anulează” îl face iar valabil.
     let inlocuite = [], doc;
     try {
       inlocuite = (await db.getVehicleDocuments(s.imei, companyId) || []).filter(function (z) { return z.doc_type === s.doc_type; }).map(function (z) { return z.id; });
@@ -7564,7 +7564,7 @@ async function _aplicaPropunere3(req, res, a) {
   const fin = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'aplicata', date: Object.assign({}, a.date, { card: programari.cardRaportDupa(card, c, next.getTime()), programareId: sc.id, spec: s, gata: programari.gataRaport(s, label, next.getTime(), cine, prins.aplicat_la) }) });
   return res.json({ ok: true, propunere: _cardPublic(fin || prins) });
 }
-// „Anulează" pe o revizie / un act / un raport programat (10 minute, din ruta comună): ce a pus „Da" se scoate, pe calea ecranului.
+// „Anulează” pe o revizie / un act / un raport programat (10 minute, din ruta comună): ce a pus „Da” se scoate, pe calea ecranului.
 async function _anuleazaPropunere3(req, res, a) {
   const userId = req.auth.userId, D = a.date || {}, s = D.spec || {};
   const prins = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'anulata', anulatLa: Date.now() });
@@ -7599,13 +7599,13 @@ async function _anuleazaPropunere3(req, res, a) {
 // (agents.esteFaraSemnal / esteLiber, pragurile firmei) și lista de termene a ramurii (_ramMentenanta, preaviz.js). Fără
 // model; nu se numără pe niciun pachet. Ținut minte 2 minute pe om (o deschidere a secțiunii nu reface tot). Noi (super-admin)
 // nu avem o flotă a noastră: răspunsul e gol.
-// ── „Azi la noi" (asistentul fondatorilor, etapa 1, pasul 1; macheta „tot un chat", Alin, 30.10: „1. da, 2. da, 3. da") ──
-// Primul mesaj al chatului de pe „Acasă" (verticala Fondator): ce cere o mână de om azi, cel mult 5 rânduri, în ordinea
+// ── „Azi la noi” (asistentul fondatorilor, etapa 1, pasul 1; macheta „tot un chat”, Alin, 30.10: „1. da, 2. da, 3. da”) ──
+// Primul mesaj al chatului de pe „Acasă” (verticala Fondator): ce cere o mână de om azi, cel mult 5 rânduri, în ordinea
 // hotărâtă. Regulile și textele stau în azi_la_noi.js (curat); aici se ADUNĂ datele, cu regulile care există deja: neplata
 // (restanțele, ca accesul), cererile clienților și de cont demo, contractele (contracte.deAnuntat, ca anunțul zilnic; „trimis la
 // semnat" de peste 7 zile), montajul (montaj.stareConfirmare pe ziua de mâine; termenele din _termeneMontaj, ca anunțul zilnic),
 // montajul de facturat (_deFacturatMontaj), abonamentul lunii (_abonamentulLunii + facturaAbonamentLuna, ca factura automată),
-// aparatele fără firmă, stocul sub prag (stocMod.alerte), emailul (_emailVerdict, ca „Stare producție"), „Date emitent" (numele
+// aparatele fără firmă, stocul sub prag (stocMod.alerte), emailul (_emailVerdict, ca „Stare producție”), „Date emitent” (numele
 // + CUI-ul, regula facturii automate) și soldul Anthropic (_soldAnthropic). Același pentru toți fondatorii (doar salutul e al
 // omului); ținut minte 2 minute. Fără model, deci fără cost. Un pas care cade nu oprește restul (rândul lui lipsește).
 const aziLaNoi = require('./azi_la_noi');
@@ -7638,8 +7638,8 @@ async function _abonamenteNeemise(acum) {
   _abonNeemiseMem = { la: acum, luna: z.slice(0, 7), l: l };
   return { l: l, luna: numeLuna };
 }
-// Facturile trecute de scadență, cu regulile neplății (neplata.js) — O socoteală pentru rândul „bani" din „Azi la noi" și pentru
-// asistentul fondatorilor („Cine e restant?", unealta `restante`). `zilePanaLaOprire` -1 = accesul e deja oprit.
+// Facturile trecute de scadență, cu regulile neplății (neplata.js) — O socoteală pentru rândul „bani” din „Azi la noi” și pentru
+// asistentul fondatorilor („Cine e restant?”, unealta `restante`). `zilePanaLaOprire` -1 = accesul e deja oprit.
 async function _restanteAcum(acum) {
   const toate = (await db.facturiNeachitateToate()) || {};
   const out = [];
@@ -7657,8 +7657,8 @@ async function _restanteAcum(acum) {
   return out;
 }
 // Banda banilor pentru AI (04.11), sub cele patru cifre, mereu la vedere: soldul la zi (sau alarma refuzului) și firmele trecute de 80%
-// din întrebările lunii. Aceleași socoteli ca „RA Insight · control" și anunțurile. Socotită la FIECARE cerere (nu ține minte 2 minute ca
-// restul lui „Azi la noi"): un refuz al lui Anthropic trebuie să se vadă pe loc.
+// din întrebările lunii. Aceleași socoteli ca „RA Insight · control” și anunțurile. Socotită la FIECARE cerere (nu ține minte 2 minute ca
+// restul lui „Azi la noi”): un refuz al lui Anthropic trebuie să se vadă pe loc.
 async function _bandaAi(acum) {
   const f = soldAi.firmeAproape(await _intrebariFirmeAi().catch(function () { return []; }));
   return soldAi.banda({ cheie: !!(ai && ai.aiEnabled()), refuz: await _aiRefuzAcum(), sold: await _soldAnthropic(), firme: f, leiPeDolar: await _leiPeDolar(), acum: acum });
@@ -7726,23 +7726,23 @@ async function _aziLaNoiDate(acum) {
   });
   return d;
 }
-// Doar fondatorii; ?proaspat=1 = fără memoria de 2 minute (butonul „Reîncarcă" al paginii și probele).
+// Doar fondatorii; ?proaspat=1 = fără memoria de 2 minute (butonul „Reîncarcă” al paginii și probele).
 app.get('/api/admin/azi-la-noi', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const acum = Date.now();
     if (!_aziLaNoiMem.d || acum - _aziLaNoiMem.la > 2 * 60000 || String(req.query.proaspat || '') === '1') _aziLaNoiMem = { la: acum, d: await _aziLaNoiDate(acum) };
     const a = getAuth(req); let nume = '', email = (a && a.username) || '';
     try { const u = a && a.userId ? await db.getUserById(a.userId) : null; nume = (u && u.full_name) || ''; email = (u && (u.username || u.email)) || email; } catch (e) {}
-    // Întrebările gata făcute de sub „Azi la noi" (pasul 2) vin tot de aici: pagina nu-și scrie textele.
+    // Întrebările gata făcute de sub „Azi la noi” (pasul 2) vin tot de aici: pagina nu-și scrie textele.
     let bandaAi = null; try { bandaAi = await _bandaAi(acum); } catch (e) { console.warn('[azi-la-noi] banda AI: ' + e.message); }
     res.json(Object.assign(aziLaNoi.randuri(Object.assign({}, _aziLaNoiMem.d, { acum: acum, nume: nume, email: email, ai: bandaAi })), { intrebari: asistentF.INTREBARI_GATA }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ── Asistentul fondatorilor, pasul 2 (Alin, 30.10: „2. da" — caseta „Întreabă orice", ca în macheta „tot un chat") ──────────────
+// ── Asistentul fondatorilor, pasul 2 (Alin, 30.10: „2. da” — caseta „Întreabă orice”, ca în macheta „tot un chat”) ──────────────
 // Regulile, textele și uneltele modelului stau în asistent_fondatori.js (curat). Aici doar datele, adunate cu socotelile care există
 // deja (_restanteAcum, _stareFirmeToate, _venitLunarToate, calendarul de montaj, contractele, stocul, _deFacturatMontaj,
 // _abonamenteNeemise) — ACELEAȘI pentru răspunsul pe loc și pentru uneltele modelului (`_asfDate`). Modelul răspunde pe contul nostru:
-// fel „asistent", fără firmă pe rând, în afara AI_BILLABLE_KINDS (se vede în soldul Anthropic). Doar fondatorii.
+// fel „asistent”, fără firmă pe rând, în afara AI_BILLABLE_KINDS (se vede în soldul Anthropic). Doar fondatorii.
 const asistentF = require('./asistent_fondatori');
 async function _asfDate(u, acum) {
   const ZI = 86400000;
@@ -7792,7 +7792,7 @@ async function _asfDate(u, acum) {
     }) };
   }
   if (u.s === 'demo') {
-    // Fără date personale (ca anunțul lor și ca „Azi la noi"): doar firma, dacă a scris-o.
+    // Fără date personale (ca anunțul lor și ca „Azi la noi”): doar firma, dacă a scris-o.
     return { cereri: ((await db.listDemoRequests({ status: 'new', limit: 50 })) || []).map(function (r) {
       return { firma: r.company || '', ce: r.wants_demo ? 'cont demo' : 'mesaj din formular', la: _msData(r.created_at) || acum };
     }) };
@@ -7824,7 +7824,7 @@ async function _asfDate(u, acum) {
 }
 // Uneltele modelului (asistentF.UNELTE): aceleași date, ca obiecte scurte; `folosite` = ce a citit (insigna și butoanele de sub
 // răspuns se fac din uneltele chiar rulate); `citite` = ce au întors (pasul 3: cifrele răspunsului se caută aici). Zilele vin
-// „AAAA-LL-ZZ", pe ora României.
+// „AAAA-LL-ZZ”, pe ora României.
 function _asfZiMs(s, capat) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '').trim());
   return m ? insight.inceputZiRO(+m[1], +m[2] - 1, +m[3] + (capat ? 1 : 0)) : null;
@@ -7913,7 +7913,7 @@ function _asfIstoric(l) {
   if (out.length && out[out.length - 1].role === 'user') out.pop();   // întrebarea nouă vine separat
   return out;
 }
-// Contextul păstrat pe conversație (ce a întors ultimul răspuns pe loc: subiectul, perioada, firmele — pentru „Și luna trecută?"),
+// Contextul păstrat pe conversație (ce a întors ultimul răspuns pe loc: subiectul, perioada, firmele — pentru „Și luna trecută?”),
 // curățat la fiecare citire: subiectul cunoscut, perioada ca numere, firmele DOAR dintre cele care există azi (numele din bază).
 function _asfCtxCurat(c, firme) {
   if (!c || typeof c !== 'object' || !asistentF.SURSE[c.s]) return null;
@@ -7930,7 +7930,7 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
     const acum = Date.now();
     const userId = (getAuth(req) || {}).userId || null;
     // Conversația (pasul 4, 04.11): cea deschisă — a fondatorului; a celuilalt răspunde 404, ca una care nu există — sau una nouă,
-    // făcută la primul răspuns. Contextul („Și luna trecută?") și istoricul pentru model vin de aici; ce trimite pagina nu contează.
+    // făcută la primul răspuns. Contextul („Și luna trecută?”) și istoricul pentru model vin de aici; ce trimite pagina nu contează.
     let conv = null;
     if (b.conversatieId != null && b.conversatieId !== '') {
       conv = await db.asfConversatie(b.conversatieId, userId);
@@ -7966,8 +7966,8 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
       { type: 'text', text: asistentF.instructiuni(insight.SCRISUL), cache_control: { type: 'ephemeral' } },
       { type: 'text', text: asistentF.contextIntrebare(acum) }
     ];
-    // Analiza atentă (pasul 3, 04.11): la „de ce", „compară", „ce să fac" — aceeași regulă ca la RA Insight (insight.esteAnaliza),
-    // același model cu efortul „medium" și forma fixă, cu zilele perioadelor date de aplicație (asistentF.analizaAtenta).
+    // Analiza atentă (pasul 3, 04.11): la „de ce”, „compară”, „ce să fac” — aceeași regulă ca la RA Insight (insight.esteAnaliza),
+    // același model cu efortul „medium” și forma fixă, cu zilele perioadelor date de aplicație (asistentF.analizaAtenta).
     const analiza = insight.esteAnaliza(text);
     if (analiza) system.push({ type: 'text', text: asistentF.analizaAtenta(acum) });
     const efort = analiza ? 'medium' : undefined, maxTokens = analiza ? 1100 : 900;
@@ -7995,7 +7995,7 @@ app.post('/api/admin/asistent/intreaba', requireAuth, requireSuperadmin, async (
     }
     // Un rând de consum pe întrebare (și când modelul a căzut la mijloc: ce s-a consumat s-a plătit; rescrierea intră în același rând).
     if (_agg.input_tokens || _agg.output_tokens) db.recordAiUsage(null, 'asistent', _agg, userId, model).catch(function () {});
-    // Anthropic a refuzat (04.11): fondatorului i se spune de ce și ce e de făcut (textele lui sold_ai), nu doar „n-a răspuns".
+    // Anthropic a refuzat (04.11): fondatorului i se spune de ce și ce e de făcut (textele lui sold_ai), nu doar „n-a răspuns”.
     if (!reply) return trimite(asistentF.eroareModel(refuz ? soldAi.textRefuz(refuz).scurt + ' ' + soldAi.textRefuz(refuz).ceFaci : null));
     const dm = asistentF.dupaModel(folosite);
     reply = insight.litereRomanesti(reply);
@@ -8036,7 +8036,7 @@ app.delete('/api/admin/asistent/conversatii/:id', requireAuth, requireSuperadmin
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „+" din caseta asistentului: firmele (doar numele, fără demo) și perioadele pe care le înțeleg regulile — pagina nu-și scrie listele.
+// „+” din caseta asistentului: firmele (doar numele, fără demo) și perioadele pe care le înțeleg regulile — pagina nu-și scrie listele.
 app.get('/api/admin/asistent/meta', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const firme = ((await db.getCompanies()) || []).filter(function (c) { return !c.is_demo; })
@@ -8064,11 +8064,11 @@ async function _aziLaTine(req) {
   imeis.forEach(function (imei) {
     const live = livePositions.get(imei), d = peImei[imei];
     const ts = live && live.timestamp ? new Date(live.timestamp).getTime() : (d && d.last_seen ? new Date(d.last_seen).getTime() : NaN);
-    if (!Number.isFinite(ts)) return;   // aparatul n-a transmis niciodată (montajul încă nefăcut): nu e „tăcut"
+    if (!Number.isFinite(ts)) return;   // aparatul n-a transmis niciodată (montajul încă nefăcut): nu e „tăcut”
     const min = (acum - ts) / 60000;
     if (agents && agents.esteFaraSemnal(min, th.offlineMin)) faraSemnal.push({ imei: imei, eticheta: f.etPe[imei], nr: nrDe(imei), minute: min });
   });
-  // Ce au scris agenții azi (pe ora României), pe mașinile omului; „offline" se socotește mai sus, pe loc.
+  // Ce au scris agenții azi (pe ora României), pe mașinile omului; „offline” se socotește mai sus, pe loc.
   const azi0 = insight.perioada({ period: 'today' }, acum).from;
   const acces = new Set(imeis);
   let constatari = [];
@@ -8101,7 +8101,7 @@ async function _aziLaTine(req) {
         .map(function (m) { return { imei: m.imei, nr: m.nr, stare: m.stare, text: m.text, sofer: m.sofer ? m.sofer.nume : null, soferId: m.sofer ? m.sofer.id : null, ceruta: m.ceruta && m.ceruta.cod, zileFara: m.zileFara }; });
     }
   } catch (e) { soferiR = []; }
-  // Permisul expirat al unui șofer trecut pe mașină stă O DATĂ: rândul cu „Propunere" (macheta M5) îl ia din termenele lui RA Care.
+  // Permisul expirat al unui șofer trecut pe mașină stă O DATĂ: rândul cu „Propunere” (macheta M5) îl ia din termenele lui RA Care.
   const expiratiPeMasini = new Set(soferiR.filter(function (s) { return s.stare === 'expirat' && s.soferId != null; }).map(function (s) { return Number(s.soferId); }));
   termene = termene.filter(function (t) { return !(t.fel === 'permis' && t.stare === 'depasit' && expiratiPeMasini.has(Number(t.driverId))); });
   const r = aziLaTine.randuri({ agenti: agenti, offlineMin: th.offlineMin, faraSemnal: faraSemnal, constatari: constatari, termene: termene, libere: libere, ieri: ieri, soferi: soferiR });
@@ -8113,7 +8113,7 @@ async function _aziLaTine(req) {
 app.get('/api/insight/azi', requireAuth, withScope, requireFeature('ai_assistant'), requireAiSeat, async (req, res) => {
   try { res.json(await _aziLaTine(req)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Butonul „Raport" din caseta lui RA Insight: rapoartele pe care omul le poate cere în cuvinte (dreptul la fiecare, ca pagina
+// Butonul „Raport” din caseta lui RA Insight: rapoartele pe care omul le poate cere în cuvinte (dreptul la fiecare, ca pagina
 // Rapoarte; fără cele care cer o alegere făcută acolo — zona hotspot-ului, semnalele CAN). Alesul pune în casetă „Fă-mi
 // raportul „…”", iar omul adaugă mașina și perioada.
 app.get('/api/insight/rapoarte', requireAuth, requirePerm('viewReports'), withScope, (req, res) => {
@@ -8144,7 +8144,7 @@ const INSIGHT_PRESETS = {
   ralanti:  { title: 'Ralanti (idle) — 7 zile',        type: 'idling',           period: 'last_7_days' },
   ecodrive: { title: 'EcoDrive — clasament șoferi (30 zile)', type: 'ecodrive_drivers', period: 'last_30_days', top: 3 },
 };
-// Perioadele pe ora României, ca peste tot în RA Insight (23.10): cu setHours pe serverul pe UTC, „săptămâna asta" și „luna
+// Perioadele pe ora României, ca peste tot în RA Insight (23.10): cu setHours pe serverul pe UTC, „săptămâna asta” și „luna
 // asta" începeau la 3 dimineața (vara), iar între miezul nopții și 3 cuprindeau încă ziua / luna de dinainte.
 function _insightPeriod(p) { return insight.perioada({ period: p }, Date.now()); }
 app.get('/api/insight/presets', requireAuth, requirePerm('viewReports'), (req, res) => {
@@ -8189,9 +8189,9 @@ const ALERT_THRESHOLD_SPECS = [
   // schimb de ulei da. Înainte, documentele împrumutau careDaysLead cu un Math.max(7, …) — deci
   // pragul mentenanței muta, pe furiș, și alerta actelor.
   { k: 'docDaysLead', min: 1, max: 365, round: true },     // push + culoarea listei — zile înainte de expirarea ACTULUI
-  { k: 'dispOnlineMin', min: 5, max: 240, round: true },   // RA Dispatch — „disponibil": ultimul semnal sub (min)
-  { k: 'dispIdleHour', min: 0, max: 23, round: true },     // RA Dispatch — verifică „subutilizat" după ora (0-23)
-  { k: 'dispIdleKm', min: 1, max: 100, round: true },      // RA Dispatch — „nefolosit azi": sub (km)
+  { k: 'dispOnlineMin', min: 5, max: 240, round: true },   // RA Dispatch — „disponibil”: ultimul semnal sub (min)
+  { k: 'dispIdleHour', min: 0, max: 23, round: true },     // RA Dispatch — verifică „subutilizat” după ora (0-23)
+  { k: 'dispIdleKm', min: 1, max: 100, round: true },      // RA Dispatch — „nefolosit azi”: sub (km)
   { k: 'compContWarnMin', min: 60, max: 270, round: true },  // RA Compliance — avertisment timpuriu conducere continuă (min; 270 = 4h30 = doar la limită)
   { k: 'compDailyWarnMin', min: 120, max: 540, round: true } // RA Compliance — avertisment timpuriu conducere zilnică (min; 540 = 9h = doar la limită)
 ];
@@ -8255,7 +8255,7 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     const storeCompany = (req.isSuper && req.filterCompanyId != null) ? req.filterCompanyId : req.companyId;
     // GATE: agentul cerut trebuie să fie activ pentru compania de stocare (plan + override)
     const enabled = await _getEnabledAgents(storeCompany);
-    if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '" e oprit pentru firma asta.' });
+    if (which !== 'all' && enabled.indexOf(which) < 0) return res.status(403).json({ error: 'Agentul „' + which + '” e oprit pentru firma asta.' });
     if (which === 'all' && !enabled.length) return res.json({ findings: [], aiSummary: null, stored: 0, message: 'Agenții AI sunt opriți pentru firma asta.' });
     const alertThresholds = await _getAlertThresholds(storeCompany);
     const _coFP = await db.getCompanyById(storeCompany).then(function (c) { return effectiveFuelPrices(c && c.settings).motorina; }).catch(function () { return null; });
@@ -8269,7 +8269,7 @@ app.post('/api/agents/run', requireAuth, withScope, async (req, res) => {
     let _aiAllowed = !!(ai && ai.aiEnabled() && findings.length);
     // Rezumatul AI se face DOAR la rularea tuturor agenților. La un agent rulat singur nu-l afișează nimeni (web-ul și
     // telefonul nou arată constatările una câte una; agenții live se citesc din /api/agents/:key/live), dar fiecare
-    // apăsare pe „Rulează" — mai ales din APK-urile vechi — cumpăra un rezumat pe care nu-l citea nimeni.
+    // apăsare pe „Rulează” — mai ales din APK-urile vechi — cumpăra un rezumat pe care nu-l citea nimeni.
     if (which !== 'all') _aiAllowed = false;
     if (_aiAllowed && storeCompany != null) {
       try {
@@ -8303,9 +8303,9 @@ app.get('/api/agents/findings', requireAuth, withScope, async (req, res) => {
     res.json(list);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Agenți „live" (dispatch, care) — stare de MOMENT calculată la cerere, FĂRĂ persistență și FĂRĂ AI:
+// Agenți „live” (dispatch, care) — stare de MOMENT calculată la cerere, FĂRĂ persistență și FĂRĂ AI:
 // e o stare curentă, nu un eveniment de istoric → nu acumulăm constatări care se repetă/expiră.
-// (Alertele „reale" de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
+// (Alertele „reale” de mentenanță/documente merg oricum prin push/checkExpiries → clopoțel.)
 app.get('/api/agents/:key/live', requireAuth, withScope, async (req, res) => {
   try {
     if (!agents) return res.status(503).json({ error: 'Agenții indisponibili' });
@@ -8359,7 +8359,7 @@ app.get('/api/dispatch/suggest', requireAuth, withScope, async (req, res) => {
       if (!canAccessImei(req, imei)) continue;
       if (!live || live.latitude == null || live.longitude == null || !live.timestamp) continue;
       const ageMin = (now - new Date(live.timestamp).getTime()) / 60000;
-      const online = ageMin < 65; // 1h + tampon: parcate care trimit o dată/oră rămân „online"/Oprit
+      const online = ageMin < 65; // 1h + tampon: parcate care trimit o dată/oră rămân „online”/Oprit
       const stopped = (live.speed || 0) <= 3;
       const distKm = haversineDistance(lat, lon, live.latitude, live.longitude);
       list.push({
@@ -8391,7 +8391,7 @@ async function _runAgentsWorkerBody() {
       await _yield(); // o companie per tick → agenții nu monopolizează pool-ul de conexiuni
       if (co.is_demo) continue;
       const enabled = (plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS)).filter(function (k) { return !LIVE_AGENTS.has(k); }); // agenții live (dispatch/care) se calculează la deschiderea paginii, nu în fundal
-      if (!enabled.length) continue; // planul „start" nu rulează niciun agent
+      if (!enabled.length) continue; // planul „start” nu rulează niciun agent
       const imeis = await db.getCompanyActiveImeis(co.id); // agenții nu rulează pe vehicule arhivate
       if (!imeis.length) continue;
       const alertThresholds = Object.assign({}, globalThresholds, _alertThresholdsFromSettings(co && co.settings)); // compania suprascrie global
@@ -8399,7 +8399,7 @@ async function _runAgentsWorkerBody() {
       const result = await agents.runAll({ db, imeis, livePositions, companyId: co.id, defaultSpeedLimit: _sysSpeed, alertThresholds: alertThresholds, fuelPrice: _coFP }, enabled);
       for (const f of (result.findings || [])) await db.createAgentFinding(Object.assign({}, f, { companyId: co.id }));
       _nCo++; _nFind += (result.findings || []).length;
-      try { await db.setSetting('agents_lastrun_' + co.id, new Date().toISOString()); } catch (e) {} // „ultima rulare" per companie
+      try { await db.setSetting('agents_lastrun_' + co.id, new Date().toISOString()); } catch (e) {} // „ultima rulare” per companie
     }
     try { await db.setSetting('agents_lastrun', new Date().toISOString()); } catch (e) {} // fallback global (super-admin)
     return _nCo + ' companii · ' + _nFind + ' constatări';
@@ -8417,7 +8417,7 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
     // să poată spune dacă e restanță și în câte zile se taie accesul.
     let facturi = {}; try { facturi = await db.facturiNeachitateToate(); } catch (e) { facturi = {}; }
     // Când a mai transmis firma ceva și cine e omul de contact — două interogări în plus pentru
-    // TOATĂ lista, nu una pe firmă. Prima e pentru coloana „Ultima activitate" (clientul care se
+    // TOATĂ lista, nu una pe firmă. Prima e pentru coloana „Ultima activitate” (clientul care se
     // stinge se vede din timp), a doua pentru căutare: după telefon, email sau numele adminului.
     let activitate = {}; try { activitate = await db.lastActivityByCompany(); } catch (e) { activitate = {}; }
     let admini = {}; try { admini = await db.companyAdmins(); } catch (e) { admini = {}; }
@@ -8440,14 +8440,14 @@ app.get('/api/companies', requireAuth, requireSuperadmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── începe „Venitul lunar pe firmă" ──────────────────────────────────────────────────────────────
-// „Cât facturez lunar firmei ăsteia" e cifra după care se conduce afacerea, și nu se vedea nicăieri:
-// coloana „Plăți" arăta cât s-a încasat DE LA ÎNCEPUT. Aici o socotim cu ACELAȘI motor de preț care
+// ── începe „Venitul lunar pe firmă” ──────────────────────────────────────────────────────────────
+// „Cât facturez lunar firmei ăsteia” e cifra după care se conduce afacerea, și nu se vedea nicăieri:
+// coloana „Plăți” arăta cât s-a încasat DE LA ÎNCEPUT. Aici o socotim cu ACELAȘI motor de preț care
 // face factura (`plans.computeCompanyPrice`, cu pachetul RA Insight în el) — dacă ecranul ar socoti
 // altfel decât factura, am afla de la client, nu de la noi.
 //
 // Funcție CURATĂ (fără bază, fără await): primește firma și vehiculele ei clasificate, întoarce suma lunară.
-// Se poate proba cu cifre inventate. (Conturile RA Insight nu mai intră în bani: regula „pe cont" a ieșit pe 11.11.)
+// Se poate proba cu cifre inventate. (Conturile RA Insight nu mai intră în bani: regula „pe cont” a ieșit pe 11.11.)
 //   c        = firma
 //   nrCan    = { none, can, fms } — câte vehicule din fiecare fel
 function _venitLunar(c, nrCan) {
@@ -8462,9 +8462,9 @@ function _venitLunar(c, nrCan) {
   if (chirie) lei += chirie.totalRON;
   return Math.round(lei * 100) / 100;
 }
-// ── sfârșit „Venitul lunar pe firmă" ──
+// ── sfârșit „Venitul lunar pe firmă” ──
 // Cifrele de bani ale listei de companii, aduse separat: lista se deschide pe loc, iar coloana
-// „Lunar" și totalul apar o clipă mai târziu. Altfel o listă de 60 de clienți ar aștepta după o
+// „Lunar” și totalul apar o clipă mai târziu. Altfel o listă de 60 de clienți ar aștepta după o
 // socoteală care se uită la toate vehiculele din platformă.
 let _mrrCache = { la: 0, date: null };
 async function _venitLunarToate(lista) {
@@ -8474,7 +8474,7 @@ async function _venitLunarToate(lista) {
   const peFirma = {};
   (bits || []).forEach(function (b) {
     // Doar aparatele PORNITE (au transmis pe firmă: `abonament_de_la`) — aceeași regulă ca factura (abonament.js). Un
-    // aparat nemontat nu plătește, deci nici „Lunar" nu-l numără (lista lui Robert, 01.10, pct. 10).
+    // aparat nemontat nu plătește, deci nici „Lunar” nu-l numără (lista lui Robert, 01.10, pct. 10).
     if (!b.pornit) return;
     const chei = Array.isArray(b.io_keys) ? b.io_keys : (function () { try { return JSON.parse(b.io_keys || '[]'); } catch (e) { return []; } })();
     const io = {}; chei.forEach(function (k) { io[k] = 1; });
@@ -8486,7 +8486,7 @@ async function _venitLunarToate(lista) {
   const out = { firme: {}, totalLei: 0 };
   (list || []).filter(function (c) { return !c.is_demo; }).forEach(function (c) {
     // Fără nicio mașină pornită, factura n-are nimic (nici RA Insight, păstrarea, chiria sau tariful fix — pornesc odată
-    // cu prima mașină, abonament.js), deci nici „Lunar".
+    // cu prima mașină, abonament.js), deci nici „Lunar”.
     const lei = peFirma[c.id] ? _venitLunar(c, peFirma[c.id]) : 0;
     out.firme[c.id] = lei;
     out.totalLei += lei;
@@ -8502,12 +8502,12 @@ app.get('/api/companies/mrr', requireAuth, requireSuperadmin, async (req, res) =
     res.json(out);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ── începe „Lista de clienți, pe hârtie" ─────────────────────────────────────────────────────────
+// ── începe „Lista de clienți, pe hârtie” ─────────────────────────────────────────────────────────
 // Exportul listei de companii. Două lucruri gândite dinainte, nu după:
 //   • îl poate lua DOAR fondatorul — și refuză SERVERUL, nu doar ecranul care ascunde butonul.
 //     Un buton ascuns tot poate fi apăsat de cine îi știe adresa;
 //   • rămâne un rând în jurnalul de audit: cine l-a descărcat și când. Fișierul iese din aplicație
-//     și nu-l mai controlează nimeni — peste un an vrem să existe un răspuns la „de unde a apărut".
+//     și nu-l mai controlează nimeni — peste un an vrem să existe un răspuns la „de unde a apărut”.
 // Numele și logo-ul respectă regula casei (report_export.js → sendReport).
 function _randuriExportCompanii(lista, bani, acum) {
   const zi = 86400000;
@@ -8533,7 +8533,7 @@ function _randuriExportCompanii(lista, bani, acum) {
     ];
   });
 }
-// ── sfârșit „Lista de clienți, pe hârtie" ──
+// ── sfârșit „Lista de clienți, pe hârtie” ──
 app.get('/api/companies/export', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     if (!reportExport) return res.status(503).json({ error: 'Exportul nu e disponibil pe serverul ăsta.' });
@@ -8582,9 +8582,9 @@ app.get('/api/companies/export', requireAuth, requireSuperadmin, async (req, res
     return reportExport.sendReport(res, report, 'xlsx');
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Starea fiecărei firme (fără demo), cu regulile filtrelor din Companii — O socoteală pentru cifrele de sub „Companii"
-// (/api/admin/counts) și pentru asistentul fondatorilor („câte firme…", unealta `firme`): „fără contract" = `contracte.faraContract`
-// (niciun contract sau unul încheiat cu acces; NU „dosar incomplet"), restanța = o factură trecută de scadență, în avertisment
+// Starea fiecărei firme (fără demo), cu regulile filtrelor din Companii — O socoteală pentru cifrele de sub „Companii”
+// (/api/admin/counts) și pentru asistentul fondatorilor („câte firme…”, unealta `firme`): „fără contract” = `contracte.faraContract`
+// (niciun contract sau unul încheiat cu acces; NU „dosar incomplet”), restanța = o factură trecută de scadență, în avertisment
 // (`neplata.stareNeplata`), suspendată = accesul oprit (de noi sau pentru neplată).
 async function _stareFirmeToate(acum) {
   const [lista, dos, facturi] = await Promise.all([
@@ -8608,17 +8608,17 @@ app.get('/api/admin/counts', requireAuth, withScope, async (req, res) => {
   try {
     if (req.isSuper) {
       // Exclude compania DEMO din numerele de platformă — consecvent cu restul aplicației (listele de vehicule și
-      // dashboard-ul de business exclud deja demo-ul). Altfel cardul arăta umflat (ex. 6 „active" = 5 demo + 1 real).
+      // dashboard-ul de business exclud deja demo-ul). Altfel cardul arăta umflat (ex. 6 „active” = 5 demo + 1 real).
       const r = await db.pool.query(`SELECT
         (SELECT COUNT(*)::int FROM companies WHERE COALESCE(is_demo, false) = false) AS companies,
         (SELECT COUNT(*)::int FROM users WHERE company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo)) AS users,
         (SELECT COUNT(*)::int FROM devices WHERE status IS DISTINCT FROM 'archived' AND (company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo))) AS active_devices,
         (SELECT COUNT(*)::int FROM devices WHERE status = 'archived' AND (company_id IS NULL OR company_id NOT IN (SELECT id FROM companies WHERE is_demo))) AS archived_devices`);
-      // Cartonașul „Companii" nu spunea decât un număr. Fondatorul vrea să vadă din „Acasă" dacă e ceva de rezolvat — cu
-      // ACELEAȘI reguli ca filtrele din Companii (Alin, 30.10: „da acum"; până atunci „fără contract" număra orice dosar
-      // incomplet, iar „restanțe" și firmele suspendate de noi, fără nicio factură neplătită): „fără contract" =
-      // `contracte.faraContract`, „restanță" = o factură trecută de scadență, în avertisment (`neplata.stareNeplata`),
-      // „suspendate" = accesul oprit (de noi sau pentru neplată), numărate separat.
+      // Cartonașul „Companii” nu spunea decât un număr. Fondatorul vrea să vadă din „Acasă” dacă e ceva de rezolvat — cu
+      // ACELEAȘI reguli ca filtrele din Companii (Alin, 30.10: „da acum”; până atunci „fără contract” număra orice dosar
+      // incomplet, iar „restanțe” și firmele suspendate de noi, fără nicio factură neplătită): „fără contract” =
+      // `contracte.faraContract`, „restanță” = o factură trecută de scadență, în avertisment (`neplata.stareNeplata`),
+      // „suspendate” = accesul oprit (de noi sau pentru neplată), numărate separat.
       const out = Object.assign({}, r.rows[0]);
       try {
         const st = await _stareFirmeToate(Date.now());
@@ -8665,7 +8665,7 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
       b.totalLive++;
       const ageMin = live.timestamp ? (now - new Date(live.timestamp).getTime()) / 60000 : 1e9;
       if (ageMin < 5) b.online++;
-      if (ageMin > 60) b.offline30++; // „offline" = >1h fără date (aliniat cu statusul vehiculelor)
+      if (ageMin > 60) b.offline30++; // „offline” = >1h fără date (aliniat cu statusul vehiculelor)
       const io = live.io || {};
       const gsm = Number(io.gsm_signal);
       if (Number.isFinite(gsm)) { b.gsmSum += gsm; b.gsmN++; if (gsm < 2) b.weakSignal++; }
@@ -8719,9 +8719,9 @@ app.get('/api/admin/overview', requireAuth, requireSuperadmin, async (req, res) 
     function _companyMrr(c) {
       if (c.is_demo || !plans) return { mrr: 0, cuOferta: false };
       const eff = plans.effectivePlan(c);
-      // Estimare la scară de dashboard: toate vehiculele numărate pe nivelul de bază (ca „none") → fără query CAN
+      // Estimare la scară de dashboard: toate vehiculele numărate pe nivelul de bază (ca „none”) → fără query CAN
       // per companie (clasificarea CAN rulează doar în /overview). Pt. presetări/flat e EXACT; pt. oferte tiered e
-      // o estimare-minim (cardurile au deja eticheta „estimat"). Add-on-urile AI se numără ca „list price".
+      // o estimare-minim (cardurile au deja eticheta „estimat”). Add-on-urile AI se numără ca „list price”.
       const price = plans.computeCompanyPrice(c, { none: (c.device_count || 0), can: 0, fms: 0 });
       return { mrr: price.monthlyTotal, cuOferta: !!eff };
     }
@@ -8778,7 +8778,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     const [users, devices, payments] = await Promise.all([
       db.getUsers(id), db.getDevices(id), db.getPayments(id, 500)
     ]);
-    // Oferta efectivă întâi — ne dă lista IMEI „cu CAN" setată manual (canImeis); altfel cădem pe auto-detect.
+    // Oferta efectivă întâi — ne dă lista IMEI „cu CAN” setată manual (canImeis); altfel cădem pe auto-detect.
     const offer = plans ? plans.effectivePlan(company) : null;
     const canSet = (offer && Array.isArray(offer.canImeis)) ? new Set(offer.canImeis) : null;
     const vehicles = (devices || [])
@@ -8789,7 +8789,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
           imei: d.imei, name: d.name || null, plate: d.plate || null, vehicle_type: d.vehicle_type || null,
           gps_model: d.gps_model || null,   // modelul aparatului (FMC650…) — intră în anexa contractului
           can_type: ct, can_interface: d.can_interface || null,
-          bill_can: canSet ? canSet.has(d.imei) : (ct !== 'none'), // „cu CAN" pt. facturare: override manual sau auto
+          bill_can: canSet ? canSet.has(d.imei) : (ct !== 'none'), // „cu CAN” pt. facturare: override manual sau auto
           last_position_time: d.last_position_time || d.last_seen || null
         };
       })
@@ -8810,12 +8810,12 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
       can: vehicles.filter(v => v.can_type === 'can').length,
       none: vehicles.filter(v => v.can_type === 'none').length
     };
-    // Counts pentru FACTURARE (model direct, 2 trepte): „cu CAN" = bill_can, restul „fără CAN".
+    // Counts pentru FACTURARE (model direct, 2 trepte): „cu CAN” = bill_can, restul „fără CAN”.
     const billCounts = { can: vehicles.filter(v => v.bill_can).length, none: vehicles.filter(v => !v.bill_can).length, fms: 0 };
     // Flota firmei e chiar aici: simulatorul de încărcare (după flotă) se socotește pe ce vedem acum, nu pe lista de acum 2 minute.
     if (plans && plans.setFlotaGreaFirma) plans.setFlotaGreaFirma(id, vehicles.some(function (v) { return plans.TIPURI_CU_MARFA.indexOf(v.vehicle_type) >= 0; }));
     const features = plans ? plans.featuresFor(company) : {};
-    // Fila „Stare": RA Insight pe firmă — câte conturi, cât din fond (aceeași socoteală ca „Utilizare RA Insight"). Doar
+    // Fila „Stare”: RA Insight pe firmă — câte conturi, cât din fond (aceeași socoteală ca „Utilizare RA Insight”). Doar
     // numere: nu cine ce a întrebat.
     let insight = null;
     try {
@@ -8825,13 +8825,13 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
       insight = { enabled: ri.enabled, conturi: ri.conturi, fond: ri.fond, used: ri.used, ramase: ri.ramase, epuizat: ri.epuizat };
     } catch (e) { insight = null; }
     const price = plans ? plans.computeCompanyPrice(company, billCounts, { features }) : null;
-    // Dosarul juridic vine în același apel ca restul: fila „Contract" nu trebuie să mai ceară o dată.
+    // Dosarul juridic vine în același apel ca restul: fila „Contract” nu trebuie să mai ceară o dată.
     let contract = null, istoric = [];
     try { [contract, istoric] = await Promise.all([db.getCompanyContract(id), db.listContracts(id)]); } catch (e) {}
     const acum = Date.now();
     // Contract vs. factură: ce s-a SEMNAT (anexa în vigoare, cu actele adiționale semnate) lângă ce
     // s-ar FACTURA luna asta. Factura se socotește cu exact funcția facturii, nu cu o copie — altfel
-    // ecranul ar putea spune „se potrivește" despre o factură care iese altfel.
+    // ecranul ar putea spune „se potrivește” despre o factură care iese altfel.
     let comparatie = null, prelungireInLucru = null;
     if (contract && contract.status !== 'incheiat') {
       try {
@@ -8840,7 +8840,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         if (pl) prelungireInLucru = { id: pl.id, number: pl.number, status: pl.status };
         const anexa = contracte.anexaInVigoare(contract, acte) || {};
         // Aparatele care PLĂTESC: cele pornite (au transmis pe firmă), clasificate ca pe factură (`_aparateAbonament`).
-        // Până pe 01.10 se numărau și cele nemontate, deci „factura" de aici arăta altă sumă decât factura (pct. 10).
+        // Până pe 01.10 se numărau și cele nemontate, deci „factura” de aici arăta altă sumă decât factura (pct. 10).
         const pornite = await _aparateAbonament(company);
         const bc = { none: 0, can: 0, fms: 0 };
         pornite.forEach(function (a) { bc[a.tip] = (bc[a.tip] || 0) + 1; });
@@ -8857,7 +8857,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
         const retContract = servicii.filter(function (x) { return x.fel === 'ret'; });
         const pastrareFirma = contracte.pastrareFirma(company.settings);
         // Pe bucăți, nu pe total: o trecere la alt pachet RA Insight în cursul lunii se facturează pe zile, deci
-        // totalul ar putea spune „nu se potrivește" din motive normale.
+        // totalul ar putea spune „nu se potrivește” din motive normale.
         comparatie = {
           masini: {
             contract: { lei: r2((Number(anexa.monthlyTotal) || 0) - suma(servicii, 'total')),
@@ -8881,7 +8881,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
           // Ce scrie în contract că se plătește lunar, dar nu ajunge pe nicio factură. (Păstrarea datelor
           // a stat aici până pe 24.09 — vândută, semnată, dar nici facturată, nici livrată; are acum rândul ei.)
           // Chiria ajunge pe factură când firma are rândurile ei (`chirieFirma`, puse de contractul din ofertă): atunci NU e
-          // „nefacturată". Până pe 01.10 apărea aici la fiecare client care închiriază (lista lui Robert, pct. 13).
+          // „nefacturată”. Până pe 01.10 apărea aici la fiecare client care închiriază (lista lui Robert, pct. 13).
           nefacturate: servicii.filter(function (x) { return x.fel !== 'ai' && x.fel !== 'ret' && !x.inclus && Number(x.total) > 0 &&
               !(x.fel === 'chirie' && contracte.chirieFirma(company.settings)); })
             .map(function (x) { return { nume: x.nume, lei: r2(x.total) }; }),
@@ -8892,7 +8892,7 @@ app.get('/api/companies/:id/overview', requireAuth, requireSuperadmin, async (re
     // Starea de plată a firmei: aceeași regulă ca gardul de acces, ca ecranul să nu spună altceva.
     let npFirma = { faza: 'ok' };
     try { npFirma = neplata.stareNeplata(await db.facturiNeachitate(id), acum); } catch (e) {}
-    // Documentele firmei (facturi + proforme, fără ciorne), pentru fila „Facturi" din fișă.
+    // Documentele firmei (facturi + proforme, fără ciorne), pentru fila „Facturi” din fișă.
     let facturi = [];
     try {
       facturi = ((await db.getInvoices({ companyId: id, limit: 100 })) || []).filter(function (f) { return f.status !== 'draft'; })
@@ -8939,20 +8939,20 @@ app.delete('/api/companies/:id', requireAuth, requireSuperadmin, async (req, res
 // Documentele semnate se țin ca base64 în rândul contractului, la fel ca actele vehiculelor. NU se
 // aduc niciodată în liste — doar la descărcarea explicită — fiindcă un PDF scanat are megaocteți.
 // Drumul unui contract, în ordinea în care se întâmplă în realitate:
-//   ciorna    — în lucru la noi, se completează. Doar aici PDF-ul poartă semnul „CIORNĂ".
+//   ciorna    — în lucru la noi, se completează. Doar aici PDF-ul poartă semnul „CIORNĂ”.
 //   aprobat   — l-am verificat și e gata de semnat. PDF-ul e curat, se printează și se semnează.
 //   trimis    — a plecat la client, așteptăm hârtia semnată înapoi.
 //   activ     — semnat de amândoi, în vigoare.
 //   incheiat  — relația s-a terminat.
-// „aprobat" a fost adăugat la cererea lui Alin: „de ce o ciornă, dacă noi deja vorbim de o semnare
+// „aprobat” a fost adăugat la cererea lui Alin: „de ce o ciornă, dacă noi deja vorbim de o semnare
 // de contract? Aici ar trebui aprobă contractul și îl poți descărca printabil pentru semnare."
 const CONTRACT_STARI = ['ciorna', 'aprobat', 'trimis', 'activ', 'incheiat'];
 const CONTRACT_MIME = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
 const CONTRACT_MAX_B = 4 * 1024 * 1024; // 4 MB per act (limita de body e 6 MB)
 // Numele fișierului în antetul descărcării: o dată fără diacritice (pentru browserele vechi) și o
 // dată cel adevărat, UTF-8 — aceeași regulă ca la rapoarte și oferte. Pagina citește ÎNTÂI varianta
-// UTF-8 (`_numeDinAntet`), deci „Transport Țăndărei SRL" ajunge pe disc cu diacriticele lui. Până
-// pe 23.09 contractele puneau numele doar codat („RA%20TRAKS…"), fără variantă UTF-8.
+// UTF-8 (`_numeDinAntet`), deci „Transport Țăndărei SRL” ajunge pe disc cu diacriticele lui. Până
+// pe 23.09 contractele puneau numele doar codat („RA%20TRAKS…”), fără variantă UTF-8.
 function _antetDescarcare(nume) {
   if (reportExport && reportExport.contentDisposition) return reportExport.contentDisposition(nume);
   const ascii = String(nume || 'fisier').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, '').replace(/["\\]/g, '');
@@ -8960,14 +8960,14 @@ function _antetDescarcare(nume) {
 }
 
 // Un id care nu e număr nu trebuie să ajungă până la baza de date: acolo dă eroare 500 („invalid
-// input syntax for type integer"), adică „s-a stricat serverul", când de fapt cererea era greșită.
+// input syntax for type integer"), adică „s-a stricat serverul”, când de fapt cererea era greșită.
 function _idCtr(req, res) {
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) { res.status(400).json({ error: 'Identificator invalid' }); return null; }
   return id;
 }
-// Reprezentantul cu NUME, sau null (lista lui Robert, 01.10, pct. 16): „Client nou" fără nume salva doar funcția, iar
-// „Aprobă" copia apoi acel reprezentant gol peste cel scris pe firmă. Pe firmă se scrie doar unul cu nume.
+// Reprezentantul cu NUME, sau null (lista lui Robert, 01.10, pct. 16): „Client nou” fără nume salva doar funcția, iar
+// „Aprobă” copia apoi acel reprezentant gol peste cel scris pe firmă. Pe firmă se scrie doar unul cu nume.
 function _repCuNume(v) {
   if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { return null; } }
   return v && typeof v === 'object' && String(v.name || '').trim() ? v : null;
@@ -9123,7 +9123,7 @@ app.post('/api/contracts/:id/acte', requireAuth, requireSuperadmin, async (req, 
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const c = await db.getContractById(id); if (!c) return res.status(404).json({ error: 'Contract inexistent' });
-    // Actul adițional schimbă un contract SEMNAT și în vigoare. La unul nesemnat (inclusiv „trimis",
+    // Actul adițional schimbă un contract SEMNAT și în vigoare. La unul nesemnat (inclusiv „trimis”,
     // încă nesemnat de client) se schimbă contractul însuși; la unul încheiat nu mai ai ce schimba.
     if (c.status !== 'activ') {
       return res.status(400).json({ error: c.status === 'incheiat'
@@ -9147,11 +9147,11 @@ app.put('/api/acte/:id', requireAuth, requireSuperadmin, async (req, res) => {
     const id = _idCtr(req, res); if (id == null) return;
     const vechi = await db.getAct(id); if (!vechi) return res.status(404).json({ error: 'Act inexistent' });
     const b = Object.assign({}, req.body || {});
-    // Un act SEMNAT nu se mai rescrie și nu se mai întoarce la „în lucru" — la fel ca contractul.
+    // Un act SEMNAT nu se mai rescrie și nu se mai întoarce la „în lucru” — la fel ca contractul.
     // Se mai poate trece doar data semnării (dacă a fost uitată) și notițele noastre.
     if (vechi.status === 'activ') {
       if (b.status != null && b.status !== 'activ') {
-        return res.status(400).json({ error: 'Actul e semnat — nu se mai întoarce la „în lucru".' });
+        return res.status(400).json({ error: 'Actul e semnat — nu se mai întoarce la „în lucru”.' });
       }
       const inainte = _actDinCerere(vechi), dupa = _actDinCerere(Object.assign({}, vechi, b));
       const schimbate = ['number', 'obiect', 'start_at', 'luni_noi'].filter(function (k) {
@@ -9281,13 +9281,13 @@ app.post('/api/montaj/parteneri', requireAuth, requireSuperadmin, async (req, re
       tarife: tarife, active: b.active === undefined ? undefined : b.active !== false,
       notes: b.notes === undefined ? undefined : (b.notes ? String(b.notes).slice(0, 2000) : null)
     }, juridic));
-    // Fișa unui partener șters între timp (altă filă, alt coleg): „nu există", nu o eroare de program.
+    // Fișa unui partener șters între timp (altă filă, alt coleg): „nu există”, nu o eroare de program.
     if (!p) return res.status(404).json({ error: 'Partenerul nu mai există — poate a fost șters între timp. Reîncarcă pagina.' });
     auditReq(req, b.id ? 'update' : 'create', 'montaj_partener', p.id, { name: p.name });
     res.json(p);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ─── Contractele cu partenerii de montaj (Alin, 24.09: „semnăm contracte fix la fel ca la clienți") ──
+// ─── Contractele cu partenerii de montaj (Alin, 24.09: „semnăm contracte fix la fel ca la clienți”) ──
 // Același drum ca la clienți: în lucru ⇄ aprobat ⇄ trimis → semnat → încheiat, cu aceleași reguli de
 // trecere (`_trecereContract`). Invers la bani: partenerul (PRESTATOR) ne facturează pe noi (BENEFICIAR).
 // Anexa nr. 1 = tarifele lui, înghețate la creare; după semnare contractul NU se mai rescrie.
@@ -9346,7 +9346,7 @@ app.post('/api/montaj/contracte', requireAuth, requireSuperadmin, async (req, re
     if (ale.length) return res.status(409).json({ error: 'Partenerul are deja un contract ' + (ale[0].status === 'activ' ? 'în vigoare' : 'în lucru') + ' (' + (ale[0].number || '') + ').' });
     const date = _mcDinCerere(Object.assign({ status: 'ciorna' }, b, { partener_id: p.id,
       // Anexa nr. 1 = tarifele de AZI ale partenerului, înghețate; zona și reprezentantul, din fișa lui.
-      // Ritmul facturării lui se îngheață la fel: hârtia semnată îl spune (cap. „Prețul și plata").
+      // Ritmul facturării lui se îngheață la fel: hârtia semnată îl spune (cap. „Prețul și plata”).
       tarife: Object.assign({}, p.tarife || {}), ritm_facturare: montaj.ritmFacturare(p.ritm_facturare), zona: b.zona !== undefined ? b.zona : p.zona,
       partner_rep: b.partner_rep !== undefined ? b.partner_rep : p.legal_rep }));
     if (date.status !== 'ciorna' && date.status !== 'activ') date.status = 'ciorna';
@@ -9369,7 +9369,7 @@ app.put('/api/montaj/contracte/:id', requireAuth, requireSuperadmin, async (req,
       const alte = Object.keys(b).filter(function (k) { return _MC_DUPA_SEMNARE.indexOf(k) < 0; });
       if (alte.length) return res.status(400).json({ campuri: alte, error: 'Contractul e semnat și nu se mai schimbă. Alte tarife sau altă durată se fac printr-un contract nou.' });
     }
-    // „Reia tarifele partenerului": Anexa nr. 1 se reface din fișa lui — doar cât contractul e nesemnat.
+    // „Reia tarifele partenerului”: Anexa nr. 1 se reface din fișa lui — doar cât contractul e nesemnat.
     if (b.tarife_din_partener && vechi.status !== 'activ' && vechi.status !== 'incheiat') {
       const p = await db.getPartenerMontaj(vechi.partener_id); b.tarife = Object.assign({}, (p && p.tarife) || {});
       b.ritm_facturare = montaj.ritmFacturare(p && p.ritm_facturare);
@@ -9436,7 +9436,7 @@ app.get('/api/montaj/contracte/:id/file', requireAuth, requireSuperadmin, async 
     res.send(Buffer.from(f.b64, 'base64'));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Trimite la semnat" — ca la clienți: email cu PDF-ul atașat, răspunsul vine la noi.
+// „Trimite la semnat” — ca la clienți: email cu PDF-ul atașat, răspunsul vine la noi.
 app.post('/api/montaj/contracte/:id/trimite', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     if (!contractPdf) return res.status(503).json({ error: 'Generatorul de PDF nu e disponibil pe acest server.' });
@@ -9448,8 +9448,8 @@ app.post('/api/montaj/contracte/:id/trimite', requireAuth, requireSuperadmin, as
     if (goluri.length) return res.status(400).json({ lipsuri: goluri, error: 'Pe contract ar rămâne goluri: lipsește ' + goluri.map(function (k) { return ({ cui: 'CUI-ul', sediu: 'sediul', reprezentant: 'reprezentantul' })[k]; }).join(', ') + '. Completează-le în fișa partenerului.' });
     const catre = String((req.body && req.body.catre) || h.p.email || '').trim();
     if (!catre) return res.status(400).json({ error: 'Partenerul n-are adresă de email. Scrie adresa la care trimitem contractul.' });
-    if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
-    if (!mailer || !mailer.enabled()) return res.status(503).json({ faraEmail: true, error: 'Emailul nu e configurat pe server. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis-o".' });
+    if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '” nu arată a email.' });
+    if (!mailer || !mailer.enabled()) return res.status(503).json({ faraEmail: true, error: 'Emailul nu e configurat pe server. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis-o”.' });
     const pdf = await _pdfInBuffer(contractPdf.contractMontajPdf({ contract: h.c, partener: h.p, emitent: h.emitent }));
     const noi = h.emitent.name || 'RA Track';
     const r = await mailer.send({ to: catre, replyTo: h.emitent.email || undefined,
@@ -9464,7 +9464,7 @@ app.post('/api/montaj/contracte/:id/trimite', requireAuth, requireSuperadmin, as
     res.json({ ok: true, trimis_la: catre, sent_at: acum, status: 'trimis' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Toate lucrările, de la toți clienții — fila „Lucrări" din Montaj. Marja se socotește aici, o dată.
+// Toate lucrările, de la toți clienții — fila „Lucrări” din Montaj. Marja se socotește aici, o dată.
 app.get('/api/montaj/lucrari', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const rows = await db.toateLucrarileMontaj(req.query.limit);
@@ -9479,10 +9479,10 @@ app.delete('/api/montaj/parteneri/:id', requireAuth, requireSuperadmin, async (r
     const id = _idCtr(req, res); if (id == null) return;
     // Un partener cu contract SEMNAT nu se șterge: hârtia e act juridic și rămâne în dosar, iar lista
     // contractelor se leagă de partener — fără el, contractul semnat ar dispărea din ecran. Se trece pe
-    // „inactiv". Contractele nesemnate pleacă odată cu el (un nesemnat se șterge oricum, ca la clienți).
+    // „inactiv”. Contractele nesemnate pleacă odată cu el (un nesemnat se șterge oricum, ca la clienți).
     const ale = (await db.listContracteMontaj()).filter(function (c) { return c.partener_id === id; });
     const semnat = ale.filter(function (c) { return c.status === 'activ' || c.status === 'incheiat'; })[0];
-    if (semnat) return res.status(409).json({ error: 'Partenerul are contractul semnat ' + (semnat.number || '') + ' — nu se șterge, hârtia rămâne în dosar. Trece-l pe „inactiv" din fișa lui.' });
+    if (semnat) return res.status(409).json({ error: 'Partenerul are contractul semnat ' + (semnat.number || '') + ' — nu se șterge, hârtia rămâne în dosar. Trece-l pe „inactiv” din fișa lui.' });
     for (const c of ale) await db.stergeContractMontaj(c.id);
     await db.deletePartenerMontaj(id);
     auditReq(req, 'delete', 'montaj_partener', id, { contracte_nesemnate: ale.length });
@@ -9491,7 +9491,7 @@ app.delete('/api/montaj/parteneri/:id', requireAuth, requireSuperadmin, async (r
 });
 
 // ─── Stocul nostru de echipamente (Gestiune → Stoc echipamente, 25.09) ──────────────────────────
-// Alin: „noi trebuie să avem un stoc de echipamente, de GPS-uri, LV-CAN-uri". Aparatele închiriate
+// Alin: „noi trebuie să avem un stoc de echipamente, de GPS-uri, LV-CAN-uri”. Aparatele închiriate
 // rămân ALE NOASTRE și stau la clienți, deci trebuie să știm oricând unde e fiecare. Strict ale noastre:
 // ce avem în depozit și cât ne-a costat nu iese niciodată printr-o rută de client. Regulile (pe unde
 // poate merge o bucată, alertele) stau în stoc.js; aici doar se aplică.
@@ -9525,7 +9525,7 @@ app.post('/api/stoc/intrare', requireAuth, requireSuperadmin, async (req, res) =
     // La un GPS, seria E IMEI-ul: după el îl recunoaștem când se conectează. Altă serie n-ar fi primită niciodată.
     const faraImei = montaj.seriiFaraImei(tip, serii);
     if (faraImei.length) return res.status(400).json({ serii: faraImei, error: 'La aparatele GPS, seria e IMEI-ul (15 cifre, scris pe eticheta aparatului). ' +
-      (faraImei.length === 1 ? '„' + faraImei[0] + '" nu e un IMEI.' : 'Nu sunt IMEI-uri: ' + faraImei.slice(0, 6).join(', ') + (faraImei.length > 6 ? '…' : '') + '.') });
+      (faraImei.length === 1 ? '„' + faraImei[0] + '” nu e un IMEI.' : 'Nu sunt IMEI-uri: ' + faraImei.slice(0, 6).join(', ') + (faraImei.length > 6 ? '…' : '') + '.') });
     const exista = await db.seriiExistenteInStoc(serii);
     if (exista.length) return res.status(409).json({ serii: exista, error: (exista.length === 1 ? 'Seria ' : 'Seriile ') + exista.slice(0, 8).join(', ') + (exista.length > 8 ? '…' : '') + (exista.length === 1 ? ' e deja în stoc.' : ' sunt deja în stoc.') });
     let cost = null;
@@ -9574,7 +9574,7 @@ app.post('/api/stoc/muta', requireAuth, requireSuperadmin, async (req, res) => {
       const x = await db.getStoc(id);
       if (!x) { refuzate.push({ id: id, motiv: 'nu mai există' }); continue; }
       if (!stocMod.poateTrece(x.stare, stare)) {
-        refuzate.push({ id: id, serie: x.serie, motiv: 'e ' + (stocMod.ETICHETE_STARE[x.stare] || x.stare) + ' — de acolo nu poate ajunge „' + stocMod.ETICHETE_STARE[stare] + '"' });
+        refuzate.push({ id: id, serie: x.serie, motiv: 'e ' + (stocMod.ETICHETE_STARE[x.stare] || x.stare) + ' — de acolo nu poate ajunge „' + stocMod.ETICHETE_STARE[stare] + '”' });
         continue;
       }
       const m = { stare: stare, cine: _cine(req), nota: nota, company_id: x.company_id, partener_id: x.partener_id, proprietar: x.proprietar };
@@ -9596,7 +9596,7 @@ app.post('/api/stoc/muta', requireAuth, requireSuperadmin, async (req, res) => {
     res.json({ ok: true, mutate: mutate.length, refuzate: refuzate });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ATENȚIE la ordine: ruta cu nume fix stă ÎNAINTEA `/api/stoc/:id`, altfel „praguri" ar fi citit ca id.
+// ATENȚIE la ordine: ruta cu nume fix stă ÎNAINTEA `/api/stoc/:id`, altfel „praguri” ar fi citit ca id.
 // Pragurile: stocul minim pe model (sub el, e timpul să comandăm) și câte zile poate sta o bucată la instalator.
 app.put('/api/stoc/praguri', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -9622,7 +9622,7 @@ app.put('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
     if (b.serie !== undefined) {
       f.serie = String(b.serie || '').trim().slice(0, 60) || null;
       if (f.serie && f.serie !== x.serie) { const alta = await db.stocDupaSerie(f.serie); if (alta) return res.status(409).json({ error: 'Seria ' + f.serie + ' e deja în stoc.' }); }
-      if (f.serie && montaj.seriiFaraImei(x.tip, [f.serie]).length) return res.status(400).json({ error: 'La aparatele GPS, seria e IMEI-ul (15 cifre, scris pe eticheta aparatului). „' + f.serie + '" nu e un IMEI.' });
+      if (f.serie && montaj.seriiFaraImei(x.tip, [f.serie]).length) return res.status(400).json({ error: 'La aparatele GPS, seria e IMEI-ul (15 cifre, scris pe eticheta aparatului). „' + f.serie + '” nu e un IMEI.' });
     }
     if (b.cost_eur !== undefined) {
       if (b.cost_eur === null || b.cost_eur === '') f.cost_eur = null;
@@ -9641,20 +9641,20 @@ app.put('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Se șterge DOAR o bucată trecută din greșeală: încă în depozit și fără nicio mutare. Una cu istoric
-// e marfă care a trăit — se trece pe „casat", ca urma să rămână.
+// e marfă care a trăit — se trece pe „casat”, ca urma să rămână.
 app.delete('/api/stoc/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const x = await db.getStoc(id); if (!x) return res.status(404).json({ error: 'Bucata nu există.' });
-    if (x.stare !== 'depozit' || (x.istoric || []).length > 1) return res.status(400).json({ error: 'Bucata are deja istoric — nu se șterge. Dacă nu mai e bună, treci-o pe „casat".' });
+    if (x.stare !== 'depozit' || (x.istoric || []).length > 1) return res.status(400).json({ error: 'Bucata are deja istoric — nu se șterge. Dacă nu mai e bună, treci-o pe „casat”.' });
     await db.stergeStoc(id);
     if (x.serie) stocImeis.delete(x.serie);   // trecut din greșeală → nici primit la conectare
     auditReq(req, 'delete', 'stoc', id, { tip: x.tip, serie: x.serie });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Legătura automată: un aparat din stoc, legat de o firmă în „Dispozitive" (înregistrat pe ea sau
-// adoptat), trece singur pe „montat la client". Al cui e se ia din contractul firmei: firma care
+// Legătura automată: un aparat din stoc, legat de o firmă în „Dispozitive” (înregistrat pe ea sau
+// adoptat), trece singur pe „montat la client”. Al cui e se ia din contractul firmei: firma care
 // închiriază primește aparate ale NOASTRE. Un aparat necunoscut stocului nu se atinge; o eroare aici
 // nu oprește înregistrarea aparatului (stocul e evidență, nu poartă).
 async function _stocLaFirma(imei, companyId, cine) {
@@ -9662,22 +9662,22 @@ async function _stocLaFirma(imei, companyId, cine) {
     if (!imei || companyId == null) return null;
     const x = await db.stocDupaSerie(String(imei));
     if (!x) return null;
-    // Deja montată la ALTĂ firmă („Mută între companii", corectura unei adopții greșite): bucata merge odată cu aparatul,
-    // cu rând în istoric. Rămâne „montat" și al cui era (proprietarul nu se schimbă dintr-o mutare). Până pe 01.10 rămânea
+    // Deja montată la ALTĂ firmă („Mută între companii”, corectura unei adopții greșite): bucata merge odată cu aparatul,
+    // cu rând în istoric. Rămâne „montat” și al cui era (proprietarul nu se schimbă dintr-o mutare). Până pe 01.10 rămânea
     // în stoc la firma veche (lista lui Robert, pct. 15).
     if (x.stare === 'montat') {
       if (Number(x.company_id) === Number(companyId)) return null;
       const nou = await db.getCompanyById(companyId); if (!nou) return null;
       const vechi = x.company_id != null ? await db.getCompanyById(x.company_id).catch(function () { return null; }) : null;
       return await db.mutaStoc(x.id, { stare: 'montat', company_id: Number(companyId), partener_id: null, proprietar: x.proprietar, cine: cine || null,
-        nota: 'automat: aparatul a fost mutat' + (vechi ? ' de la „' + vechi.name + '"' : '') + ' pe „' + nou.name + '" în „Dispozitive"' });
+        nota: 'automat: aparatul a fost mutat' + (vechi ? ' de la „' + vechi.name + '”' : '') + ' pe „' + nou.name + '” în „Dispozitive”' });
     }
     if (x.stare !== 'depozit' && x.stare !== 'instalator') return null;
     const co = await db.getCompanyById(companyId); if (!co) return null;
     stocImeis.delete(String(imei));   // montat: de acum hotărăște rândul din Dispozitive (stoc.PRIMITE_LA_CONECTARE)
     return await db.mutaStoc(x.id, { stare: 'montat', company_id: Number(companyId), partener_id: null,
       proprietar: contracte.chirieFirma(co.settings) ? 'ra' : 'client', cine: cine || null,
-      nota: 'automat: aparatul a fost legat de firmă în „Dispozitive"' });
+      nota: 'automat: aparatul a fost legat de firmă în „Dispozitive”' });
   } catch (e) { console.warn('[STOC] legarea de firmă:', e.message); return null; }
 }
 
@@ -9705,12 +9705,12 @@ app.post('/api/companies/:id/montaje', requireAuth, requireSuperadmin, async (re
     // O zi anulată e istoric (01.10): nu se rescrie din formular; se reprogramează din calendar.
     if (ex && ex.status === montaj.STARE_ANULAT) return res.status(409).json({ error: 'Ziua asta e anulată și stă în istoric. Se reprogramează din calendar (Business → Montaj).' });
     const stare = montaj.STARI.indexOf(b.status) >= 0 ? b.status : (ex ? ex.status : 'de_programat');
-    // O lucrare facturată clientului RĂMÂNE facturată (01.10, punctul 19): „partenerul ne-a facturat" o redeschidea, iar
-    // „Montaj de facturat" o propunea pe a doua factură. Ce ne-a facturat partenerul se scrie în câmpul facturii lui.
+    // O lucrare facturată clientului RĂMÂNE facturată (01.10, punctul 19): „partenerul ne-a facturat” o redeschidea, iar
+    // „Montaj de facturat” o propunea pe a doua factură. Ce ne-a facturat partenerul se scrie în câmpul facturii lui.
     // Factura noastră anulată (cât n-a ajuns la ANAF) o redeschide singură.
     if (ex && ex.factura_client != null && stare !== 'facturat_clientului') {
       return res.status(409).json({ facturata: true, error: 'Lucrarea e deja facturată clientului' + (ex.factura_client_nr ? ', pe ' + ex.factura_client_nr : '') +
-        ', deci rămâne „facturat clientului". Factura primită de la partener se scrie în câmpul „Nr. facturii de la partener".' });
+        ', deci rămâne „facturat clientului”. Factura primită de la partener se scrie în câmpul „Nr. facturii de la partener”.' });
     }
     const m = await db.upsertMontaj({
       id: idEx, company_id: id,
@@ -9751,15 +9751,15 @@ app.delete('/api/montaje/:id', requireAuth, requireSuperadmin, async (req, res) 
       if (c && (c.status === 'activ' || c.status === 'incheiat')) return res.status(409).json({ anuleaza: true, error: 'Ziua asta se anulează din calendar, cu motivul ei (instalatorul sau clientul nu poate), ca să rămână în istoric.' });
     }
     await db.deleteMontaj(id);
-    // Anexa nr. 2 a unui contract nesemnat se ține în pas cu lucrările și la ștergere (01.10, Alin: „rezolvăm problema").
-    // Până atunci rămânea „cum a fost salvată ultima dată": 3 + 2 mașini, ștearsă lucrarea de 2, contractul tot 5 spunea.
+    // Anexa nr. 2 a unui contract nesemnat se ține în pas cu lucrările și la ștergere (01.10, Alin: „rezolvăm problema”).
+    // Până atunci rămânea „cum a fost salvată ultima dată”: 3 + 2 mașini, ștearsă lucrarea de 2, contractul tot 5 spunea.
     let ref = { anexa: null };
     if (m.contract_id) { try { ref = await _refaAnexaDinLucrari(m.contract_id); } catch (e) {} }
     auditReq(req, 'delete', 'montaj', id, { company_id: m.company_id, anexa: ref.anexa });
     res.json({ ok: true, anexa: ref.anexa, mesaj: _mesajStergereLucrare(ref.anexa) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Ce scrie ecranul după „Șterge" pe o lucrare (web și telefon arată textul ăsta, nu-și fac al lor).
+// Ce scrie ecranul după „Șterge” pe o lucrare (web și telefon arată textul ăsta, nu-și fac al lor).
 function _mesajStergereLucrare(anexa) {
   return 'Lucrare ștearsă ✓' + ({
     semnat: ' — contractul e semnat, deci Anexa nr. 2 rămâne cum s-a semnat',
@@ -9772,7 +9772,7 @@ function _mesajStergereLucrare(anexa) {
 // ─── Calendarul de montaj (Business → Montaj, Alin 30.09) ───────────────────────────────────────
 // „Să am calendar de programare… să pot selecta eu ziua, și să-mi arate jos ce am de instalat și
 // disponibilitatea." SINGURUL loc în care se PROGRAMEAZĂ montajul unui contract SEMNAT: fiecare zi
-// programată e o lucrare (tabela `montaje`, status „programat") — exact ce va vedea instalatorul în contul
+// programată e o lucrare (tabela `montaje`, status „programat”) — exact ce va vedea instalatorul în contul
 // lui (partea lui Robert). Ce mai e de programat se socotește din Anexa nr. 2 minus lucrări
 // (`montaj.deProgramat`), nu se ține separat, ca să nu se poată despărți de ele. Doar contracte semnate:
 // la unul nesemnat, lucrările din fișă scriu încă Anexa nr. 2 (o zi programată ar tăia-o la ziua aia).
@@ -9788,7 +9788,7 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
       db.contracteInVigoare(), db.listParteneriMontaj(), db.listStoc().catch(function () { return []; }),
       db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })
     ]);
-    // O zi ANULATĂ nu stă în grilă (01.10): e în istoric, iar mașinile ei s-au întors la „de programat".
+    // O zi ANULATĂ nu stă în grilă (01.10): e în istoric, iar mașinile ei s-au întors la „de programat”.
     const lucrari = brute.filter(function (l) { return l.status !== montaj.STARE_ANULAT && _ziRo(l.data_lucrare).slice(0, 7) === luna; }).map(_mjcLucrareCal);
     const cuMontaj = inVigoare.filter(function (c) { return contracte.masiniDeMontat(c) > 0; });
     const peContract = {};
@@ -9798,7 +9798,7 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
     const deProgramat = cuMontaj.map(function (c) {
       const s = montaj.deProgramat(c.montaj, peContract[c.id] || []);
       const t = contracte.termenMontaj(c, contracte.avansContract(((dd && dd.avans) || {})[c.company_id], c), s.montate, acum);
-      // Aparatul de pe fiecare fel de lucrare („Instalare dispozitiv GPS" → FMC130), din ce s-a vândut sau închiriat.
+      // Aparatul de pe fiecare fel de lucrare („Instalare dispozitiv GPS” → FMC130), din ce s-a vândut sau închiriat.
       const ap = montaj.aparatePeTip(c.montaj, c.annex);
       s.tipuri = s.tipuri.map(function (x) { return Object.assign({}, x, { aparat: (ap[x.tip] || []).map(montaj.numeScurt).join(' / ') || null }); });
       return Object.assign({ contract_id: c.id, company_id: c.company_id, company_name: c.company_name, number: c.number,
@@ -9816,8 +9816,8 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
     // programate (oricare lună) și istoricul (montate + anulate). Ecranele doar arată ce primesc.
     const [progBrut, istBrut] = await Promise.all([db.montajeProgramate(300), db.montajeIstoric(100)]);
     const programate = progBrut.map(_mjcLucrareCal);
-    // Intervențiile din „Cereri de la clienți" (22.10, „Pune și în Calendarul de montaj, ca intervenție"): stau în calendar și îl
-    // țin ocupat pe instalator (ca o mașină), dar NU sunt lucrări de montaj — nu intră în contract, în „de programat", în facturi.
+    // Intervențiile din „Cereri de la clienți” (22.10, „Pune și în Calendarul de montaj, ca intervenție”): stau în calendar și îl
+    // țin ocupat pe instalator (ca o mașină), dar NU sunt lucrări de montaj — nu intră în contract, în „de programat”, în facturi.
     const interventii = (await db.interventiiCalendar().catch(function () { return []; })).map(_mjcInterventie);
     // Lucrările lunii + toate cele programate (alte luni), fiecare O dată (o zi programată din luna asta e în amândouă).
     const vazute = {};
@@ -9841,7 +9841,7 @@ app.get('/api/montaj/calendar', requireAuth, requireSuperadmin, async (req, res)
       interventii: interventii.filter(function (x) { return x.zi.slice(0, 7) === luna; }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// O intervenție din „Cereri de la clienți", cum o arată calendarul (o „mașină" a instalatorului în ziua ei).
+// O intervenție din „Cereri de la clienți”, cum o arată calendarul (o „mașină” a instalatorului în ziua ei).
 function _mjcInterventie(c) {
   const p = c.programare || {};
   return { id: 'c' + c.id, cerere_id: c.id, interventie: true, zi: p.zi, partener_id: p.partener_id || null, partener_nume: p.partener_nume || null,
@@ -9859,7 +9859,7 @@ function _mjcLucrareCal(l) {
     confirmat_instalator: !!Number(l.confirmat_instalator_la), confirmat_client: !!Number(l.confirmat_client_la),
     conf: montaj.stareConfirmare(l), conf_text: l.status === 'programat' ? montaj.textConfirmare(l) : null };
 }
-// O zi programată: contractul, ziua, instalatorul și câte bucăți din fiecare tip „pe mașină". Prețurile NU vin
+// O zi programată: contractul, ziua, instalatorul și câte bucăți din fiecare tip „pe mașină”. Prețurile NU vin
 // de la ecran: pentru client din Anexa nr. 2 (ce s-a semnat), costul din tarifele instalatorului.
 app.post('/api/montaj/programeaza', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -9895,7 +9895,7 @@ app.post('/api/montaje/:id/muta', requireAuth, requireSuperadmin, async (req, re
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
-    if (m.status === montaj.STARE_ANULAT) return res.status(400).json({ error: 'Ziua asta e anulată: se reprogramează din „Istoric".' });
+    if (m.status === montaj.STARE_ANULAT) return res.status(400).json({ error: 'Ziua asta e anulată: se reprogramează din „Istoric”.' });
     if (montaj.STARI_PROGRAMATE.indexOf(m.status) < 0) return res.status(400).json({ error: 'Lucrarea e deja montată — ziua ei nu se mai mută.' });
     const b = req.body || {};
     const zi = Number(b.data_lucrare);
@@ -9916,13 +9916,13 @@ app.post('/api/montaje/:id/muta', requireAuth, requireSuperadmin, async (req, re
     res.json({ ok: true, lucrare: u });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Montată": câte mașini s-au făcut de fapt. Ce nu s-a montat se întoarce SINGUR la „de programat" (se
+// „Montată”: câte mașini s-au făcut de fapt. Ce nu s-a montat se întoarce SINGUR la „de programat” (se
 // socotește din lucrări) — și tot de aici numără drumul clientului și termenul de 30 de zile.
 app.post('/api/montaje/:id/montata', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = _idCtr(req, res); if (id == null) return;
     const m = await db.getMontaj(id); if (!m) return res.status(404).json({ error: 'Lucrare inexistentă' });
-    if (m.status === montaj.STARE_ANULAT) return res.status(400).json({ error: 'Ziua asta e anulată: se reprogramează din „Istoric".' });
+    if (m.status === montaj.STARE_ANULAT) return res.status(400).json({ error: 'Ziua asta e anulată: se reprogramează din „Istoric”.' });
     if (montaj.STARI_PROGRAMATE.indexOf(m.status) < 0) return res.status(400).json({ error: 'Lucrarea e deja trecută ca montată.' });
     if (m.contract_id) {
       const c = await db.getContractById(m.contract_id);
@@ -9946,8 +9946,8 @@ app.post('/api/montaje/:id/montata', requireAuth, requireSuperadmin, async (req,
 });
 
 // ─── Calendarul refăcut (Alin, 01.10): confirmări, anulare cu motiv, reprogramare, nota de stoc ─────────────────
-// Până face Robert contul instalatorului, confirmările și anularea le facem noi, de aici. Când îl face, „Accept" din
-// contul lui cheamă `db.confirmaMontaj(id, { instalator: true })`, iar „Refuz" cheamă `_anuleazaLucrarea(…, { motiv:
+// Până face Robert contul instalatorului, confirmările și anularea le facem noi, de aici. Când îl face, „Accept” din
+// contul lui cheamă `db.confirmaMontaj(id, { instalator: true })`, iar „Refuz” cheamă `_anuleazaLucrarea(…, { motiv:
 // 'instalator' })` — ACEEAȘI funcție ca butonul nostru, ca istoricul să spună la fel, oricine ar fi anulat.
 app.post('/api/montaje/:id/confirmari', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -9986,7 +9986,7 @@ async function _scrieZiuaNoua(v, cine) {
     items: v.items, total_client: s.totalClient, total_partener: s.totalPartener, currency: 'RON', status: 'programat',
     factura_partener: null, notes: null, created_by: cine || null });
 }
-// Anularea, cu motivul ei (și, dacă vrei, ziua nouă). O SINGURĂ funcție: butonul nostru și, mai târziu, „Refuz" din
+// Anularea, cu motivul ei (și, dacă vrei, ziua nouă). O SINGURĂ funcție: butonul nostru și, mai târziu, „Refuz” din
 // contul instalatorului. → { ok, nou } sau { status, error }.
 async function _anuleazaLucrarea(id, o) {
   const motiv = String((o && o.motiv) || '');
@@ -10049,7 +10049,7 @@ app.post('/api/montaj/nota-stoc', requireAuth, requireSuperadmin, async (req, re
 });
 
 // ─── Montajul de facturat, în ritmul instalatorului (Alin, 30.09) ─────────────────────────────────
-// „Dacă instalatorul ne facturează săptămânal, automat și noi tot săptămânal… ca să nu fim pe pierdere." DOAR montajul;
+// „Dacă instalatorul ne facturează săptămânal, automat și noi tot săptămânal… ca să nu fim pe pierdere.” DOAR montajul;
 // abonamentul rămâne lunar. Regula (perioada, ce e gata) stă în montaj.js; aici doar se adună lucrările.
 async function _deFacturatMontaj(acum) {
   const rows = await db.lucrariMontateNefacturate();
@@ -10090,7 +10090,7 @@ async function montajDeFacturatTick(acum) {
   return raport;
 }
 
-// Toate contractele, pentru ecranul „Contracte" din meniu — pasul dintre ofertă și client.
+// Toate contractele, pentru ecranul „Contracte” din meniu — pasul dintre ofertă și client.
 // Vine și lista firmelor FĂRĂ contract: aia e gaura adevărată, nu contractele care există.
 // Drumul unui contract, din numărătorile adunate o dată (`db.drumDateToate`). Fără ele → fără drum,
 // nu un drum inventat.
@@ -10107,8 +10107,8 @@ app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
       db.drumDateToate(contracte.MONTAJ_EXECUTAT).catch(function () { return null; })]);
     const acum = Date.now();
     // Firmele care au avut contract, s-a ÎNCHEIAT, dar intră în aplicație în continuare: lucrează
-    // fără act, exact ca una fără niciun contract — deci se văd lângă ele, nu doar la „Încheiate".
-    // „Intră" = aceeași socoteală ca registrul de clienți (`stareAcces`): nesuspendată de noi, nici
+    // fără act, exact ca una fără niciun contract — deci se văd lângă ele, nu doar la „Încheiate”.
+    // „Intră” = aceeași socoteală ca registrul de clienți (`stareAcces`): nesuspendată de noi, nici
     // pentru neplată.
     const incheiateCuAcces = (firme || []).filter(function (co) {
       const c = curente[co.id];
@@ -10124,7 +10124,7 @@ app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
           sfarsit: contracte.sfarsitCurent(c, acum),
           preaviz_pana: contracte.ultimaZiDePreaviz(c, acum),
           // Alarma de expirare, cu ACEEAȘI regulă ca notificarea zilnică (`deAnuntat`). Nu se citește
-          // din starea dosarului: acolo „dosar incomplet" (ex. lipsește scanul) ascundea expirarea, și
+          // din starea dosarului: acolo „dosar incomplet” (ex. lipsește scanul) ascundea expirarea, și
           // un contract care se termina peste 40 de zile nu apărea nicăieri pe ecran (găsit 23.09).
           alarma: contracte.deAnuntat(c, acum),
           // Unde e clientul pe drum (ofertă → trimis → semnat → montaj → aparate → prima factură) și
@@ -10134,8 +10134,8 @@ app.get('/api/contracts', requireAuth, requireSuperadmin, async (req, res) => {
       }),
       fara_contract: fara,
       incheiate_cu_acces: incheiateCuAcces,
-      // Butonul „Trimite la semnat" chiar trimite doar cu SMTP pus. Fără el, ecranul spune pe față
-      // „descarcă și trimite tu" — un buton nu promite ce aplicația nu face.
+      // Butonul „Trimite la semnat” chiar trimite doar cu SMTP pus. Fără el, ecranul spune pe față
+      // „descarcă și trimite tu” — un buton nu promite ce aplicația nu face.
       trimite_pe_email: !!(mailer && mailer.enabled())
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -10162,13 +10162,13 @@ app.get('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (re
 
 // Ce s-a vândut într-o ofertă se aprinde pe firmă: RA Insight + cota de întrebări, plus PREȚUL DE
 // FACTURARE (preț pe mașină, după fel). UN SINGUR loc, chemat când contractul se face din ofertă
-// („client nou din ofertă") — ca să nu existe două liste care se desincronizează.
+// („client nou din ofertă”) — ca să nu existe două liste care se desincronizează.
 //
 // ⚠ Contractul se face din ofertă ca CIORNĂ, deci RA Insight se aprinde de la ciornă, nu de la
 // semnare: clientul îl poate încerca de cum primește contul. Se facturează abia după, pe conturi.
 //
 // ⚠ Tahograful și e-Transportul NU se aprind singure, chiar dacă sunt vândute în ofertă. Decizia e
-// veche și rămâne bună: partea lor de „descărcare la distanță" încă întoarce date demonstrative, iar
+// veche și rămâne bună: partea lor de „descărcare la distanță” încă întoarce date demonstrative, iar
 // e-Transportul n-are token propriu pe companie (vezi E.1 din lista de dinainte de lansare). Un
 // client care plătește nu trebuie să dea peste date fabricate crezând că sunt reale. Se pornesc de
 // mână, deliberat, când sunt gata — de aceea le și întoarcem, ca să fie spuse omului.
@@ -10193,7 +10193,7 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
     }
   }
   // Prețul de facturare. Până pe 23.09 nu se scria: firma deschisă din ofertă avea 0 lei în
-  // „Abonament & plăți", iar prețul se tasta a doua oară, de mână (exact ce promitea că nu mai faci).
+  // „Abonament & plăți”, iar prețul se tasta a doua oară, de mână (exact ce promitea că nu mai faci).
   // Se scrie DOAR dacă firma n-are deja un preț — unul negociat separat nu se calcă.
   let pretScris = null, autoPornit = false;
   const u = dinOferta && dinOferta.unitati;
@@ -10209,9 +10209,9 @@ async function _aplicaOfertaPeFirma(companyId, oferta, dinOferta) {
         note: ('Din oferta #' + oferta.id + (oferta.name ? ' — ' + oferta.name : '')).slice(0, 300)
       };
       await db.setCompanyOferta(companyId, pretScris);
-      // Factura automată pornește odată cu prețul (Alin, 29.09: „da"). Până atunci, firma nouă din ofertă avea
-      // „Auto" OPRIT (așa e în bază, la orice firmă nouă), iar dacă uitai bifa din Facturare, abonamentul nu se
-      // factura niciodată — și nimic nu-ți amintea: „Drumul clientului" bifa „Prima factură" deja cu factura
+      // Factura automată pornește odată cu prețul (Alin, 29.09: „da”). Până atunci, firma nouă din ofertă avea
+      // „Auto” OPRIT (așa e în bază, la orice firmă nouă), iar dacă uitai bifa din Facturare, abonamentul nu se
+      // factura niciodată — și nimic nu-ți amintea: „Drumul clientului” bifa „Prima factură” deja cu factura
       // aparatelor. Pornită devreme nu grăbește nimic: cât nicio mașină nu transmite, nu se emite nimic.
       // Doar la PRIMA ofertă a firmei (fără preț până acum): unui client vechi nu-i schimbăm ce am ales pentru el.
       if (!co.auto_invoice) {
@@ -10263,14 +10263,14 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     if (co.is_demo) return res.status(400).json({ error: 'Compania demo nu are contract.' });
     const date = _contractDinCerere(req.body || {});
     // Un contract NOU se naște în lucru (sau direct semnat, pentru un act deja semnat pe hârtie) —
-    // niciodată „încheiat".
+    // niciodată „încheiat”.
     if (date.status === 'incheiat') return res.status(400).json({ error: 'Un contract nou nu se poate naște încheiat.' });
     // Unul singur deodată: cât firma are un contract în lucru sau în vigoare, al doilea ar fi o dublură.
-    // Prelungirea se face prin act adițional („Reînnoiește"), iar un contract nou după ce primul s-a încheiat.
+    // Prelungirea se face prin act adițional („Reînnoiește”), iar un contract nou după ce primul s-a încheiat.
     const curent = await db.getCompanyContract(id);
     if (curent && curent.status !== 'incheiat') {
       return res.status(409).json({ error: curent.status === 'activ'
-        ? 'Firma are deja un contract în vigoare (' + (curent.number || 'fără număr') + '). Pentru prelungire folosește „Reînnoiește"; pentru alte schimbări, un act adițional.'
+        ? 'Firma are deja un contract în vigoare (' + (curent.number || 'fără număr') + '). Pentru prelungire folosește „Reînnoiește”; pentru alte schimbări, un act adițional.'
         : 'Firma are deja un contract în lucru (' + (curent.number || 'fără număr') + ').' });
     }
     if (!date.number) date.number = await db.nextContractNumber();
@@ -10279,13 +10279,13 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     const dinOferta = (req.body && req.body.din_oferta && typeof req.body.din_oferta === 'object') ? req.body.din_oferta : null;
     // Din ofertă direct în contract: prețul convenit intră în anexă fără să-l mai scrie nimeni a
     // doua oară. Aparatele NU vin din ofertă (acolo sunt doar numere: „10 vehicule, din care 3 cu
-    // CAN"), ci se bifează în fila „Contract" după ce aparatele adevărate sunt adoptate.
+    // CAN"), ci se bifează în fila „Contract” după ce aparatele adevărate sunt adoptate.
     let oferta = null;
     const offerId = parseInt(req.body && req.body.offer_id, 10);
     if (Number.isFinite(offerId)) {
       try { oferta = await db.getOfferById(offerId); } catch (e) {}
       // Oferta cu aparate închiriate cere cel puțin 24 de luni: aparatul își scoate banii din chirie, în
-      // timp. „Nedeterminată" rămâne voie — clauza de durată minimă din contract o acoperă.
+      // timp. „Nedeterminată” rămâne voie — clauza de durată minimă din contract o acoperă.
       const _ch = oferta ? _chirieDinOferta(oferta) : null;
       if (_ch && date.months != null && Number(date.months) < contracte.CHIRIE_LUNI_MIN) {
         return res.status(400).json({ error: 'Oferta e cu echipamente închiriate: contractul se face pe cel puțin ' +
@@ -10321,13 +10321,13 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     let autoFactura = false;
     if (oferta) {
       try { await db.legOferta(oferta.id, { company_id: id, contract_id: c.id }); } catch (e) {}
-      // Oferta care a devenit contract e o ofertă CÂȘTIGATĂ. Până pe 23.09 rămânea „trimisă" și, după
-      // 30 de zile, „expirată" — deși era client: pâlnia număra un câștig drept pierdere. Data o
+      // Oferta care a devenit contract e o ofertă CÂȘTIGATĂ. Până pe 23.09 rămânea „trimisă” și, după
+      // 30 de zile, „expirată” — deși era client: pâlnia număra un câștig drept pierdere. Data o
       // scrie serverul (`decided_at`), ca la orice decizie.
       if (oferta.status !== 'acceptata') { try { await db.setOfferStatus(oferta.id, 'acceptata', {}); } catch (e) {} }
       // CE S-A VÂNDUT SE ȘI ACTIVEAZĂ. Până acum, un client deschis din ofertă primea contractul cu
       // prețul corect, dar în fișa firmei nu se scria NIMIC: modulele rămâneau stinse, iar cota RA
-      // Insight lipsea — adică „fără cotă", adică NELIMITAT. Vindeai 50 de întrebări pe lună și
+      // Insight lipsea — adică „fără cotă”, adică NELIMITAT. Vindeai 50 de întrebări pe lună și
       // livrai nelimitat, în tăcere. Acum oferta acceptată aprinde exact ce scrie în ea.
       try {
         const ap = await _aplicaOfertaPeFirma(id, oferta, dinOferta);
@@ -10339,7 +10339,7 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
           await db.createNotification({
             type: 'module_de_pornit', severity: 'warning', companyId: null, userId: null,
             title: 'De pornit manual: ' + ap.deAprinsManual.map(k => et[k] || k).join(' și '),
-            body: 'Contractul firmei „' + co.name + '" include ' + ap.deAprinsManual.map(k => et[k] || k).join(' și ') +
+            body: 'Contractul firmei „' + co.name + '” include ' + ap.deAprinsManual.map(k => et[k] || k).join(' și ') +
               '. Modulele nu se aprind singure (tahograful încă dă date demonstrative la descărcarea la distanță, iar raportarea e-Transport la ANAF pe CUI-ul clientului e încă de confirmat). Pornește-le din fișa companiei când sunt gata.',
             data: { company_id: id, module: ap.deAprinsManual }
           }).catch(function () {});
@@ -10350,15 +10350,15 @@ app.post('/api/companies/:id/contract', requireAuth, requireSuperadmin, async (r
     // Reprezentantul legal e o însușire a FIRMEI, nu doar a hârtiei: rămâne și la contractul următor.
     if (_repCuNume(date.client_rep) && !_repCuNume(co.legal_rep)) { try { await db.pool.query('UPDATE companies SET legal_rep = $2 WHERE id = $1', [id, JSON.stringify(date.client_rep)]); } catch (e) {} }
     auditReq(req, 'create', 'contract', c.id, { company_id: id, number: c.number });
-    // `auto_factura`: ecranul „Client nou" spune că abonamentul pleacă singur doar când chiar s-a pornit.
+    // `auto_factura`: ecranul „Client nou” spune că abonamentul pleacă singur doar când chiar s-a pornit.
     res.json(autoFactura ? Object.assign({}, c, { auto_factura: true }) : c);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── începe „Contractul semnat se încuie" ─────────────────────────────────────────────────────────
-// Regula scrisă pe ecran de la început („Contractul semnat nu se mai schimbă") NU era apărată de
+// ── începe „Contractul semnat se încuie” ─────────────────────────────────────────────────────────
+// Regula scrisă pe ecran de la început („Contractul semnat nu se mai schimbă”) NU era apărată de
 // nimic (găsit 23.09, pe viu): anexa unui contract semnat se rescria fără act adițional, iar lista
-// „Unde e contractul" îl dădea înapoi la „în lucru" — de unde butonul „Șterge" îl făcea să dispară.
+// „Unde e contractul” îl dădea înapoi la „în lucru” — de unde butonul „Șterge” îl făcea să dispară.
 // Acum drumul are un singur sens după semnare, iar ce s-a semnat nu se mai atinge.
 //   • nesemnat (în lucru / aprobat / trimis): se lucrează liber, înainte și înapoi; poate fi semnat;
 //   • semnat: rămâne semnat sau se încheie — atât;
@@ -10368,7 +10368,7 @@ function _trecereContract(din, spre) {
   if (din === spre) return null;
   if (din === 'incheiat') return 'Contractul e încheiat și rămâne așa. Pentru o relație nouă, fă un contract nou.';
   if (din === 'activ') return spre === 'incheiat' ? null
-    : 'Contractul e semnat — nu se mai întoarce la „în lucru". Ce se schimbă se scrie într-un act adițional.';
+    : 'Contractul e semnat — nu se mai întoarce la „în lucru”. Ce se schimbă se scrie într-un act adițional.';
   if (spre === 'incheiat') return 'Un contract nesemnat nu se încheie. Dacă nu mai e de actualitate, șterge-l.';
   return null;
 }
@@ -10400,19 +10400,19 @@ app.put('/api/contracts/:id', requireAuth, requireSuperadmin, async (req, res) =
           error: 'Contractul e semnat și nu se mai schimbă. Mașini noi, alt preț sau o prelungire se fac printr-un act adițional.' });
       }
     }
-    // „Salvează anexa" trimite doar aparatele. Serviciile lunare (RA Insight, păstrarea datelor) și
+    // „Salvează anexa” trimite doar aparatele. Serviciile lunare (RA Insight, păstrarea datelor) și
     // regula RA Insight rămân din anexa de dinainte — până pe 23.09 fiecare salvare le ștergea.
     if (b.annex && typeof b.annex === 'object') b.annex = Object.assign({}, contracte.dinAnexaDePastrat(vechi.annex), b.annex);
     const date = _contractDinCerere(Object.assign({}, vechi, b));
     date.status = stareNoua;
     // Contract cu echipamente închiriate: cel puțin CHIRIE_LUNI_MIN, ca la creare (lista lui Robert, 01.10, pct. 17).
-    // Până atunci, din dosar se putea salva 12 luni, iar hârtia scria și 12, și 24. „Nedeterminată" rămâne voie.
+    // Până atunci, din dosar se putea salva 12 luni, iar hârtia scria și 12, și 24. „Nedeterminată” rămâne voie.
     const _anCh = _jsonSigur(date.annex);
     if (_anCh && _anCh.chirie && date.months != null && Number(date.months) < contracte.CHIRIE_LUNI_MIN) {
       return res.status(400).json({ error: 'Contractul e cu echipamente închiriate: durata e de cel puțin ' +
         contracte.numar(contracte.CHIRIE_LUNI_MIN, 'lună', 'luni') + '.' });
     }
-    // „Încheiat" fără dată de încetare n-are sens — pune ziua de azi, ca să nu rămână o gaură în act.
+    // „Încheiat” fără dată de încetare n-are sens — pune ziua de azi, ca să nu rămână o gaură în act.
     if (date.status === 'incheiat' && !date.ended_at) date.ended_at = Date.now();
     if (date.status !== 'incheiat') { date.ended_at = null; date.ended_reason = null; }
     const c = await db.updateContract(id, date);
@@ -10421,11 +10421,11 @@ app.put('/api/contracts/:id', requireAuth, requireSuperadmin, async (req, res) =
     res.json(c);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ── sfârșit „Contractul semnat se încuie" ──
+// ── sfârșit „Contractul semnat se încuie” ──
 
 // ─── Reînnoirea: prelungirea unui contract care se apropie de capăt ─────────────────────────────
 // Contractul semnat scrie singur cum se continuă: „Contractul nu se prelungește automat. Continuarea
-// relației după împlinirea termenului se face prin act adițional scris." Butonul „Reînnoiește" face
+// relației după împlinirea termenului se face prin act adițional scris." Butonul „Reînnoiește” face
 // exact actul ăsta, cu textul și datele puse, ca ciornă. De acolo merge pe drumul oricărui act
 // (aprobat → trimis → semnat). Capătul contractului se mută abia când actul e SEMNAT — până atunci
 // alarma rămâne aprinsă, fiindcă o prelungire nesemnată nu prelungește nimic.
@@ -10465,7 +10465,7 @@ app.delete('/api/contracts/:id', requireAuth, requireSuperadmin, async (req, res
     if (!c) return res.status(404).json({ error: 'Contract inexistent' });
     // Un contract semnat NU se șterge — se încheie. Altfel dispare dovada că a existat vreodată.
     if (c.status === 'activ' || c.status === 'incheiat') {
-      return res.status(400).json({ error: 'Un contract semnat nu se șterge. Marchează-l „încheiat" dacă relația s-a terminat.' });
+      return res.status(400).json({ error: 'Un contract semnat nu se șterge. Marchează-l „încheiat” dacă relația s-a terminat.' });
     }
     await db.deleteContract(id);
     auditReq(req, 'delete', 'contract', id, { company_id: c.company_id });
@@ -10516,10 +10516,10 @@ app.delete('/api/contracts/:id/file', requireAuth, requireSuperadmin, async (req
 });
 
 // ─── Butoanele de pe lipsuri (Contracte, 24.09) ─────────────────────────────────────────────────
-// Alin: „butonul fix acolo unde lipsește". Lista spunea CE lipsește, dar ca să rezolvi intrai în fișa
+// Alin: „butonul fix acolo unde lipsește”. Lista spunea CE lipsește, dar ca să rezolvi intrai în fișa
 // firmei, pe fila Contract, și căutai câmpul. Acum fiecare lipsă are butonul ei, chiar pe etichetă.
 
-// „Completează": datele firmei din dosar (CUI, denumire, Reg. Com., sediu, email, reprezentant).
+// „Completează”: datele firmei din dosar (CUI, denumire, Reg. Com., sediu, email, reprezentant).
 // Scrie DOAR ce se trimite (`completeazaDosarFirma`) — `PUT /api/companies/:id` rescrie tot rândul.
 app.put('/api/companies/:id/dosar', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -10539,7 +10539,7 @@ app.put('/api/companies/:id/dosar', requireAuth, requireSuperadmin, async (req, 
       const r = b.legal_rep || {};
       d.legal_rep = text(r.name, 120) ? { name: text(r.name, 120), role: text(r.role, 80) } : null;
     }
-    // Plătitoare de TVA — vine de la ANAF (butonul „ANAF"). Hotărăște ce scrie pe factură: „RO" în fața CUI-ului
+    // Plătitoare de TVA — vine de la ANAF (butonul „ANAF”). Hotărăște ce scrie pe factură: „RO” în fața CUI-ului
     // și codul de TVA din factura electronică. Până pe 30.09 se arăta pe ecran și nu se salva nicăieri.
     if (b.vat_payer === true || b.vat_payer === false) d.vat_payer = b.vat_payer;
     await db.completeazaDosarFirma(id, d);
@@ -10558,8 +10558,8 @@ function _pdfInBuffer(doc) {
     doc.on('error', reject);
   });
 }
-// „Trimite la semnat": contractul APROBAT pleacă pe email la client, cu PDF-ul atașat — același PDF
-// ca la „Descarcă" (`contractPdf`, nu o copie). Starea devine singură „trimis", cu ziua și adresa,
+// „Trimite la semnat”: contractul APROBAT pleacă pe email la client, cu PDF-ul atașat — același PDF
+// ca la „Descarcă” (`contractPdf`, nu o copie). Starea devine singură „trimis”, cu ziua și adresa,
 // scrise de server DUPĂ ce emailul chiar a plecat. Răspunsul omului (contractul semnat) vine la noi
 // (`replyTo` = emailul nostru de facturare). Fără SMTP, butonul nu minte: spune că nu poate trimite.
 app.post('/api/contracts/:id/trimite', requireAuth, requireSuperadmin, async (req, res) => {
@@ -10570,7 +10570,7 @@ app.post('/api/contracts/:id/trimite', requireAuth, requireSuperadmin, async (re
     if (c.status === 'ciorna') return res.status(400).json({ error: 'Contractul e încă în lucru. Aprobă-l întâi — o ciornă nu pleacă la semnat.' });
     if (c.status !== 'aprobat' && c.status !== 'trimis') return res.status(400).json({ error: 'Contractul e deja semnat — nu mai e nimic de trimis la semnat.' });
     const co = await db.getCompanyById(c.company_id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-    // Pe hârtie n-au voie să rămână goluri: fără CUI, sediu sau reprezentant, contractul pleacă cu „________".
+    // Pe hârtie n-au voie să rămână goluri: fără CUI, sediu sau reprezentant, contractul pleacă cu „________”.
     const lipsuri = contracte.stareDosar(co, c, Date.now()).lipsuri.filter(function (k) { return ['cui', 'sediu', 'reprezentant'].indexOf(k) >= 0; });
     if (lipsuri.length) {
       return res.status(400).json({ lipsuri: lipsuri,
@@ -10578,10 +10578,10 @@ app.post('/api/contracts/:id/trimite', requireAuth, requireSuperadmin, async (re
     }
     const catre = String((req.body && req.body.catre) || co.contact_email || '').trim();
     if (!catre) return res.status(400).json({ error: 'Firma n-are adresă de email. Scrie adresa la care trimitem contractul.' });
-    if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '" nu arată a email.' });
+    if (!_EMAIL_RE.test(catre) || catre.length > 200) return res.status(400).json({ error: 'Adresa „' + catre.slice(0, 80) + '” nu arată a email.' });
     if (!mailer || !mailer.enabled()) {
       return res.status(503).json({ faraEmail: true,
-        error: 'Emailul nu e configurat pe server, deci nu pot trimite. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis".' });
+        error: 'Emailul nu e configurat pe server, deci nu pot trimite. Descarcă contractul, trimite-l tu, apoi apasă „Am trimis”.' });
     }
     const emitent = ((await getSystemSettings()).invoice_issuer) || {};
     const pdf = await _pdfInBuffer(contractPdf.contractPdf({ contract: c, firma: co, emitent: emitent }));
@@ -10673,7 +10673,7 @@ app.get('/api/gdpr/erase-preview/:id', requireAuth, requireSuperadmin, async (re
 });
 
 // Pasul 2: ștergerea propriu-zisă. Ireversibilă, deci cere numele companiei tastat exact — o
-// confirmare de tip „da/nu" se apasă din greșeală, un nume tastat nu.
+// confirmare de tip „da/nu” se apasă din greșeală, un nume tastat nu.
 app.post('/api/gdpr/erase/:id', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const cid = parseInt(req.params.id);
@@ -10681,12 +10681,12 @@ app.post('/api/gdpr/erase/:id', requireAuth, requireSuperadmin, async (req, res)
     if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
     const confirm = String((req.body && req.body.confirm) || '');
     if (confirm !== co.name) {
-      return res.status(400).json({ error: `Scrie exact numele companiei ca să confirmi: „${co.name}"` });
+      return res.status(400).json({ error: `Scrie exact numele companiei ca să confirmi: „${co.name}”` });
     }
     // Consemnăm ÎNAINTE: jurnalul de audit al companiei dispare odată cu ea, iar urma trebuie să rămână.
     auditReq(req, 'erase', 'gdpr', cid, { company: co.name });
     const r = await gdpr.stergeCompanie(db.pool, cid, { uscat: false });
-    console.warn(`[GDPR] Compania „${co.name}" (${cid}) ȘTEARSĂ definitiv de ${req.auth && req.auth.username}: ${r.total} rânduri`);
+    console.warn(`[GDPR] Compania „${co.name}” (${cid}) ȘTEARSĂ definitiv de ${req.auth && req.auth.username}: ${r.total} rânduri`);
     try { invalidateAccessCache(); invalidateReguliCache(); await refreshWsScope(); } catch (_) {}
     res.json(r);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -10699,7 +10699,7 @@ function appBaseUrl(req) {
   return (process.env.BASE_URL || ('https://' + h)).replace(/\/$/, '');
 }
 // Linkul prin care omul ÎȘI pune parola. Se face într-un singur loc, fiindcă e singurul mod în care
-// se naște o parolă în RA Track: nimeni nu scrie parola altcuiva (vezi CLAUDE.md, „Parola nu există").
+// se naște o parolă în RA Track: nimeni nu scrie parola altcuiva (vezi CLAUDE.md, „Parola nu există”).
 async function linkDeParola(req, user, opts) {
   const token = crypto.randomBytes(32).toString('hex');
   const hours = (opts && opts.hours) || (24 * 7);
@@ -10722,7 +10722,7 @@ async function trimiteLinkParola(req, user, opts) {
   return trimis ? { trimis: true, link: null, motiv: null }
                 : { trimis: false, link: link, motiv: motiv || 'Trimiterea emailului a eșuat.' };
 }
-// Vechea poartă, păstrată pentru cine vrea doar „a plecat / n-a plecat".
+// Vechea poartă, păstrată pentru cine vrea doar „a plecat / n-a plecat”.
 async function sendSetPasswordEmail(req, user, opts) {
   return (await trimiteLinkParola(req, user, opts)).trimis;
 }
@@ -10733,13 +10733,13 @@ async function _trimiteEmailulDeParola(req, user, link, opts) {
   if (opts.invite) {
     subject = 'Invitație RA Track' + (opts.company ? ' — ' + opts.company.name : '');
     text = 'Bună' + (user.full_name ? ' ' + user.full_name : '') + ',\n\n'
-      + 'Ai fost invitat să administrezi ' + (opts.company ? '„' + opts.company.name + '"' : 'un cont') + ' în RA Track.\n'
+      + 'Ai fost invitat să administrezi ' + (opts.company ? '„' + opts.company.name + '”' : 'un cont') + ' în RA Track.\n'
       + 'Utilizator: ' + user.username + '\n\n'
       + 'Setează-ți parola (link valabil ' + Math.round(hours / 24) + ' zile):\n' + link + '\n\n'
       + 'După ce setezi parola, te autentifici la ' + appBaseUrl(req) + '/app\n\n— RA Track';
   } else {
     subject = 'Resetare parolă RA Track';
-    text = 'Resetare parolă pentru contul „' + user.username + '".\n\nLink (valabil ' + hours + ' ore):\n' + link + '\n\nDacă nu ai cerut tu resetarea, ignoră acest email.\n\n— RA Track';
+    text = 'Resetare parolă pentru contul „' + user.username + '”.\n\nLink (valabil ' + hours + ' ore):\n' + link + '\n\nDacă nu ai cerut tu resetarea, ignoră acest email.\n\n— RA Track';
   }
   return await channels.sendEmailTo(user.email, subject, text, null, null,
     { jurnal: { fel: opts.invite ? 'invitatie' : 'parola', companyId: user.company_id != null ? user.company_id : null } });
@@ -10764,7 +10764,7 @@ app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req,
     const rez = await trimiteLinkParola(req, u, { invite: true, company: co });
     // Eșecul era TĂCUT: contul rămânea cu parolă random, fără email și fără cale de recuperare
     // → cont inaccesibil, iar cel care l-a creat nu afla niciodată. Acum se vede în log + în răspuns.
-    if (!rez.trimis) console.warn('[INVITE] Emailul de invitație NU a plecat pentru „' + username + '" (companie ' + companyId + '): ' + (rez.motiv || 'trimitere eșuată'));
+    if (!rez.trimis) console.warn('[INVITE] Emailul de invitație NU a plecat pentru „' + username + '” (companie ' + companyId + '): ' + (rez.motiv || 'trimitere eșuată'));
     auditReq(req, 'create', 'company_admin', u.id, { companyId, invited: rez.trimis });
     res.json(Object.assign({}, u, {
       invited: rez.trimis,
@@ -10868,8 +10868,8 @@ async function notifyDemoRequest(row) {
     }
   } catch (e) { console.warn('[DEMO-REQ] notificare:', e.message); }
   // Emailul către noi: formularul de pe site e singura cale de contact publică (Robert, 02.11: fără telefon pe site), deci merge
-  // MEREU la adresa noastră de contact (fără SUPPORT_EMAIL setat, plecat nimic până pe 02.11), iar „Răspunde" ajunge la cel care a scris.
-  // Un email care n-a plecat se vede în „Stare producție" (mailer.setLaRezultat); cererea rămâne oricum în „Cereri demo".
+  // MEREU la adresa noastră de contact (fără SUPPORT_EMAIL setat, plecat nimic până pe 02.11), iar „Răspunde” ajunge la cel care a scris.
+  // Un email care n-a plecat se vede în „Stare producție” (mailer.setLaRezultat); cererea rămâne oricum în „Cereri demo”.
   try {
     const to = process.env.DEMO_REQUEST_EMAIL || (await _adresaSuport());
     if (to && mailer && mailer.enabled()) {
@@ -10880,7 +10880,7 @@ async function notifyDemoRequest(row) {
         subject: (row.wants_demo ? FORMULAR_SUBIECTE[0] : FORMULAR_SUBIECTE[1]) + ' · ' + cine,
         text: [row.wants_demo ? 'CERERE DE CONT DEMO' : 'Mesaj de contact', 'Nume: ' + (row.name || '—'), 'Firmă: ' + (row.company || '—'),
           'Email: ' + row.email, 'Telefon: ' + (row.phone || '—'), '', (row.message || ''), '',
-          row.wants_demo ? 'Se aprobă din Administrare → Cereri demo. „Răspunde" la acest email ajunge la cel care a scris.' : '„Răspunde" la acest email ajunge la cel care a scris.'].join('\n'),
+          row.wants_demo ? 'Se aprobă din Administrare → Cereri demo. „Răspunde” la acest email ajunge la cel care a scris.' : '„Răspunde” la acest email ajunge la cel care a scris.'].join('\n'),
         jurnal: { fel: 'formular' },
       });
       if (r && r.ok === false) console.warn('[DEMO-REQ] emailul către noi n-a plecat:', r.error);
@@ -10910,17 +10910,17 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 app.get('/api/unassigned-devices', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.getUnassignedDevices()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Trecerea unui aparat pe o firmă (adopția din „Neasignate" sau mutarea). O SINGURĂ funcție, folosită și
+// Trecerea unui aparat pe o firmă (adopția din „Neasignate” sau mutarea). O SINGURĂ funcție, folosită și
 // de trecerea unuia și de trecerea mai multora deodată (28.09) — adopția rămâne într-un singur loc.
 async function _trecePeFirma(req, imei, companyId) {
   await db.setDeviceCompany(imei, companyId);
-  // Propunerea din anunțul „aparate noi transmit" și-a făcut treaba (sau a fost ocolită): nu mai rămâne agățată.
+  // Propunerea din anunțul „aparate noi transmit” și-a făcut treaba (sau a fost ocolită): nu mai rămâne agățată.
   try { await db.pool.query('UPDATE devices SET anuntat_firma = NULL WHERE imei = $1', [imei]); } catch (e) {}
   _devCompanyCache.delete(imei);
-  _locMasini.delete(imei);   // „Distribuie locația": linkul făcut la firma veche se oprește pe loc, nu peste 30 de secunde
+  _locMasini.delete(imei);   // „Distribuie locația”: linkul făcut la firma veche se oprește pe loc, nu peste 30 de secunde
   _uitaPornirea(imei);   // abonamentul pornește din nou la prima transmisie pe firma nouă (dacă firma s-a schimbat)
   auditReq(req, 'assign_company', 'device', imei, { companyId });
-  // Aparatul din stoc (seria = aparatul montat ACUM), legat de firmă → „montat la client" (stoc.js).
+  // Aparatul din stoc (seria = aparatul montat ACUM), legat de firmă → „montat la client” (stoc.js).
   if (companyId != null) await _stocLaFirma(aparatSchimbat.aparatPeMasina(imei, _aparate), companyId, _cine(req));
   await _flotaGreaReincarca();   // un camion mutat pe o firmă îi pornește singur simulatorul de încărcare (dacă nu l-am ales noi)
 }
@@ -10999,7 +10999,7 @@ app.put('/api/devices/:imei/can-interface', requireAuth, requireSuperadmin, asyn
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Super-admin: TOATE dispozitivele (toate companiile) — sursa modulului „Dispozitive". Lean (fără io_data brut),
+// Super-admin: TOATE dispozitivele (toate companiile) — sursa modulului „Dispozitive”. Lean (fără io_data brut),
 // cu tipul de date clasificat (FMS/CAN/fără), starea (active/neasignat/archived) și compania.
 app.get('/api/admin/devices', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -11016,7 +11016,7 @@ app.get('/api/admin/devices', requireAuth, requireSuperadmin, async (req, res) =
         last_position_time: d.last_position_time || d.last_seen || null,
         created_at: d.created_at || null,
         install_issue: d.install_issue || null,
-        // Firma propusă de anunțul „aparate noi transmit" (30.09), cât aparatul e încă fără firmă: la clicul pe anunț,
+        // Firma propusă de anunțul „aparate noi transmit” (30.09), cât aparatul e încă fără firmă: la clicul pe anunț,
         // ecranul bifează toate aparatele propuse pentru aceeași firmă, chiar dacă au venit în loturi diferite.
         anuntat_firma: d.company_id == null && d.anuntat_firma != null ? Number(d.anuntat_firma) : null
       }));
@@ -11033,7 +11033,7 @@ function _invScope(req) {
 }
 async function _deviceInventory(req, opts) {
   // Fără firmă cunoscută și fără cont de platformă nu se dă nimic: înainte, rutele nu treceau prin withScope, deci
-  // req.companyId era gol — adică „toate firmele" — iar un admin de firmă primea aparatele TUTUROR clienților.
+  // req.companyId era gol — adică „toate firmele” — iar un admin de firmă primea aparatele TUTUROR clienților.
   if (!req.isSuper && req.companyId == null) return [];
   // Aparatele arhivate sunt doar ale noastre (hotărât 18.09): clientul nu le vede.
   const o = Object.assign({}, opts || {}, { includeArchived: !!(req.isSuper && opts && opts.includeArchived) });
@@ -11046,7 +11046,7 @@ async function _deviceInventory(req, opts) {
   });
 }
 app.get('/api/device-inventory', requireAuth, requireFleet, withScope, async (req, res) => {
-  // ?arhivate=1 → și aparatele scoase din flotă. Ecranul „Aparate GPS" din Setări le cere pe toate
+  // ?arhivate=1 → și aparatele scoase din flotă. Ecranul „Aparate GPS” din Setări le cere pe toate
   // o dată și le desparte pe file; inventarul vechi nu trimite parametrul, deci rămâne cum era.
   try { res.json(await _deviceInventory(req, { includeArchived: req.query.arhivate === '1' })); }
   catch (e) { res.status(500).json({ error: e.message }); }
@@ -11062,11 +11062,11 @@ function _invSemnalText(lastTx) {
   const cat = m < 60 ? (m + ' min') : h < 24 ? (h + (h === 1 ? ' oră' : ' ore')) : (z + (z === 1 ? ' zi' : ' zile'));
   return (d < INV_MUT_ORE * 3600000 ? 'tăcut de ' : 'fără semnal de ') + cat;
 }
-// Export brandat: trece prin sendReport → nume „RA-Track - Raport ... - data" + logo (regula din CLAUDE.md).
+// Export brandat: trece prin sendReport → nume „RA-Track - Raport ... - data” + logo (regula din CLAUDE.md).
 //
 // GET  = tot inventarul (link direct, compatibilitate).
 // POST = fix rândurile de pe ecran, în ordinea de pe ecran (`imeis`). Înainte exista doar GET-ul, iar
-// butonul „Exportă Excel" îl chema fără nimic: filtrai la o firmă, vedeai 3 rânduri și primeai toate
+// butonul „Exportă Excel” îl chema fără nimic: filtrai la o firmă, vedeai 3 rânduri și primeai toate
 // aparatele din toate firmele (găsit 18.09). Filtrarea NU se rescrie aici — vine gata făcută de la
 // ecran, altfel am avea două reguli de potrivire care se despart în timp.
 async function _inventarExport(req, res) {
@@ -11184,11 +11184,11 @@ if (process.env.NODE_ENV === 'test') {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
   // Pune un vehicul în lista LIVE cu IO-uri alese, ca probele să poată verifica ecranele care
-  // depind de ce transmite mașina (ex. „ce trimite și ce înseamnă"). Altfel proba ar putea doar
+  // depind de ce transmite mașina (ex. „ce trimite și ce înseamnă”). Altfel proba ar putea doar
   // să se uite la forma răspunsului, nu și la conținut — adică exact partea care se strică.
   app.post('/api/debug/live-io', requireAuth, requireSuperadmin, (req, res) => {
     const b = req.body || {};
-    // Nu doar cifre: vehiculele semănate pentru probe au IMEI-uri de forma „TEST222". Tăind literele,
+    // Nu doar cifre: vehiculele semănate pentru probe au IMEI-uri de forma „TEST222”. Tăind literele,
     // poziția ajungea sub altă cheie și proba se uita la un vehicul gol fără să se plângă.
     const imei = String(b.imei || '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 32);
     if (!imei) return res.status(400).json({ error: 'IMEI lipsă' });
@@ -11236,7 +11236,7 @@ app.get('/api/debug/live/:imei', requireAuth, requireSuperadmin, (req, res) => {
   });
 });
 
-// Golește snapshotul CAN „sticky" al unui vehicul — și din memorie, și din baza de date.
+// Golește snapshotul CAN „sticky” al unui vehicul — și din memorie, și din baza de date.
 // De ce există: valorile cărate (carburant, kilometraj) rămân valabile cât mașina e parcată, dar
 // dacă una a fost citită greșit o dată, se cară la nesfârșit și poate hrăni alerte false. Până acum
 // singura cale de a scăpa de ea era o intervenție directă în baza de date.
@@ -11280,8 +11280,8 @@ app.get('/api/debug/io-reference', requireAuth, requireSuperadmin, (req, res) =>
   res.json({ ids: ref, count: Object.keys(ref).length });
 });
 
-// Audit „de ce apare X pe hartă": pentru fiecare vehicul — status DB vs set arhivat în memorie vs prezent în live.
-// Evidențiază „leaks" (arhivat în DB dar încă pe hartă). Cu ?fix=1 forțează reconcilierea pe loc.
+// Audit „de ce apare X pe hartă”: pentru fiecare vehicul — status DB vs set arhivat în memorie vs prezent în live.
+// Evidențiază „leaks” (arhivat în DB dar încă pe hartă). Cu ?fix=1 forțează reconcilierea pe loc.
 // Facturare AUTOMATĂ — rulare manuală (super-admin): emite facturile lunii pt. companiile cu auto_invoice.
 app.post('/api/admin/billing/run-auto', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await billingAutoInvoiceTick()); } catch (e) { res.status(500).json({ error: e.message }); }
@@ -11328,7 +11328,7 @@ app.put('/api/companies/:id/billing-config', requireAuth, requireSuperadmin, asy
     const sets = [], args = [id];
     if (b.auto_invoice !== undefined) { args.push(b.auto_invoice === true || b.auto_invoice === 'true'); sets.push('auto_invoice=$' + args.length); }
     if (b.billing_day !== undefined) { args.push(Math.max(1, Math.min(parseInt(b.billing_day) || 1, 28))); sets.push('billing_day=$' + args.length); }
-    // `parseInt(0) || 15` dădea 15: termenul „plata la emitere" (0 zile) era imposibil de setat,
+    // `parseInt(0) || 15` dădea 15: termenul „plata la emitere” (0 zile) era imposibil de setat,
     // fiindcă zero e o valoare falsă în JavaScript. Verificăm dacă e număr, nu dacă e adevărat.
     if (b.payment_term_days !== undefined) {
       const t = parseInt(b.payment_term_days, 10);
@@ -11395,7 +11395,7 @@ app.put('/api/devices/company/bulk', requireAuth, requireSuperadmin, async (req,
     if (imeis.length > 1000) return res.status(400).json({ error: 'Prea multe IMEI-uri (max 1000 per cerere)' });
     const companyId = req.body.company_id != null && req.body.company_id !== '' ? parseInt(req.body.company_id) : null;
     if (companyId != null && !(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
-    // Aceleași două reguli ca la mutarea unui singur aparat (mai sus). Fără ele, „Bifează tot" din telefon muta
+    // Aceleași două reguli ca la mutarea unui singur aparat (mai sus). Fără ele, „Bifează tot” din telefon muta
     // și aparatele arhivate, pe care ruta de câte unul le refuză (găsit 24.09).
     const _ceMut = new Set(imeis);
     const _arhivate = (await db.getDevicesLite()).filter(d => _ceMut.has(String(d.imei)) && d.status === 'archived').map(d => String(d.imei));
@@ -11403,7 +11403,7 @@ app.put('/api/devices/company/bulk', requireAuth, requireSuperadmin, async (req,
     if (companyId != null && demoCompanyId != null && companyId === demoCompanyId && imeis.some(im => !DEMO_SET.has(im))) {
       return res.status(400).json({ error: 'Compania demo e doar pentru vehiculele simulate.' });
     }
-    // Fiecare aparat trece prin ACEEAȘI regulă ca la „Trece pe firmă" (`_trecePeFirma`): pe firma nouă abonamentul
+    // Fiecare aparat trece prin ACEEAȘI regulă ca la „Trece pe firmă” (`_trecePeFirma`): pe firma nouă abonamentul
     // pornește din nou, la prima transmisie, iar stocul se mută odată cu aparatul. Până pe 30.09 ruta asta scria
     // doar firma (un UPDATE în bloc): o mașină mutată de la o firmă la alta ajungea pe factura celei noi ca și cum
     // ar fi mers la ea de luni de zile, iar în stoc rămânea la firma veche.
@@ -11428,7 +11428,7 @@ app.put('/api/users/:id/company', requireAuth, requireSuperadmin, async (req, re
     if (!target) return res.status(404).json({ error: 'Utilizator inexistent' });
     if (isSuper(target.role)) return res.status(400).json({ error: 'Super-adminul aparține platformei, nu unei companii' });
     const companyId = (req.body.company_id != null && req.body.company_id !== '') ? parseInt(req.body.company_id) : null;
-    // company_id == null = „platformă/super" în restul codului (_accessBlocked, requireFeature). Un cont non-super NU poate
+    // company_id == null = „platformă/super” în restul codului (_accessBlocked, requireFeature). Un cont non-super NU poate
     // rămâne fără companie — altfel ar sări peste gating-ul de abonament + funcții. Oglindește crearea de user (400).
     if (companyId == null) return res.status(400).json({ error: 'Selectează compania pentru utilizator (un cont nu poate rămâne fără companie)' });
     if (!(await db.getCompanyById(companyId))) return res.status(400).json({ error: 'Companie inexistentă' });
@@ -11482,7 +11482,7 @@ app.get('/api/tacho', requireAuth, requirePerm('viewReports'), withCompany, requ
 // ATENȚIE la ordine: rutele cu nume fix (scadentar, istoric) trebuie declarate ÎNAINTEA lui
 // `/api/tacho/:id`. Express potrivește în ordinea scrierii, iar `:id` le-ar înghiți numele —
 // `parseInt('scadentar')` iese NaN, iar ruta ar răspunde 404 fără să spună de ce.
-// „Cine trebuie descărcat următorul" — ecranul de intrare al secțiunii Tahograf.
+// „Cine trebuie descărcat următorul” — ecranul de intrare al secțiunii Tahograf.
 // Termenele sunt cele din regulament: cardul șoferului la 28 de zile, memoria vehiculului la 90.
 // Se pot STRÂNGE per companie (o firmă prudentă descarcă la 21 de zile), niciodată lărgi peste lege.
 app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
@@ -11499,7 +11499,7 @@ app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCom
     const acum = new Date().toISOString();
 
     // 1. Flota demo nu are ce căuta aici. Vehiculele DEMO-1..5 sunt sintetice și au fost semănate cu
-    //    categoria „truck", deci treceau de filtrul de categorie și apăreau ca „niciodată descărcate"
+    //    categoria „truck”, deci treceau de filtrul de categorie și apăreau ca „niciodată descărcate”
     //    în scadențarul unui super-admin. Aceeași regulă ca peste tot: demo se vede DOAR în contul demo.
     if (req.companyId !== demoCompanyId) {
       soferi = soferi.filter(d => d.company_id !== demoCompanyId);
@@ -11508,7 +11508,7 @@ app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCom
 
     // 2. Doar șoferii cu card de tahograf, adică cei cu o categorie de marfă/persoane pe permis
     //    (C*, D*). Cine are doar B nu conduce vehicul cu tahograf, deci n-are ce descărca — a apărea
-    //    în listă ca „niciodată descărcat" ar fi o alarmă falsă permanentă.
+    //    în listă ca „niciodată descărcat” ar fi o alarmă falsă permanentă.
     //    Șoferii FĂRĂ nicio categorie completată sunt un caz aparte: s-ar putea să fie profesioniști
     //    necompletați. Îi numărăm și îi spunem pe nume în ecran, ca să nu dispară în tăcere.
     const proSoferi = [], nepro = [], neincadrati = [];
@@ -11522,7 +11522,7 @@ app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCom
         fisiere: Number(d.fisiere) || 0, ultima: tacho.ziISO(d.ultima) },
       tacho.scadenta(d.ultima, pragCard, acum)));
 
-    // 3. Doar vehiculele care au tahograf de descărcat. Regula (și capcana „Tractor" vs „Autotractor")
+    // 3. Doar vehiculele care au tahograf de descărcat. Regula (și capcana „Tractor” vs „Autotractor”)
     //    stă în tacho.js — o singură dată, ca s-o poată citi și rapoartele.
     const faraTahograf = vehicule.filter(v => !tacho.vehiculAreTahograf(v.vehicle_type));
     const V = vehicule.filter(v => tacho.vehiculAreTahograf(v.vehicle_type)).map(v => Object.assign(
@@ -11559,7 +11559,7 @@ app.get('/api/tacho/scadentar', requireAuth, requirePerm('viewReports'), withCom
 // de tahograf (`licenseCats.needsTacho`), ce vehicul are tahograf (`tacho.vehiculAreTahograf`) și
 // când e depășit termenul (`tacho.scadenta`) vin din aceleași funcții ca ecranul clientului. Dacă
 // s-ar scrie a doua oară aici, cele două ecrane ar începe să spună lucruri diferite despre același
-// șofer — exact greșeala reparată la „Semnal".
+// șofer — exact greșeala reparată la „Semnal”.
 app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const acum = new Date().toISOString();
@@ -11589,8 +11589,8 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
         soferi: 0, vehicule: 0, depasite: 0, niciodata: 0, curand: 0,
         celMaiTarziu: 0,          // câte zile întârziere are cel mai rău rând
         fisiere: 0, fisiere30: 0, necitite: 0, ultimulFisier: null,
-        // CINE anume e în urmă — se deschide din „Afișează mai mult". Fără nume, rândul firmei spune
-        // „3 termene depășite" și tot trebuie să intri în firmă ca să afli pe cine sunt.
+        // CINE anume e în urmă — se deschide din „Afișează mai mult”. Fără nume, rândul firmei spune
+        // „3 termene depășite” și tot trebuie să intri în firmă ca să afli pe cine sunt.
         probleme: []
       });
     }
@@ -11634,7 +11634,7 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
 
     const lista = Array.from(perFirma.values()).map(f => {
       const deDescarcat = f.soferi + f.vehicule;
-      // Cei mai întârziați primii: „niciodată descărcat" înaintea unei întârzieri de 2 zile.
+      // Cei mai întârziați primii: „niciodată descărcat” înaintea unei întârzieri de 2 zile.
       const rang = { niciodata: 0, depasit: 1, curand: 2 };
       f.probleme.sort((a, b) => (rang[a.stare] - rang[b.stare]) || ((a.zile == null ? -1e9 : a.zile) - (b.zile == null ? -1e9 : b.zile)));
       const problemeTotal = f.probleme.length;
@@ -11644,7 +11644,7 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
         probleme: f.probleme.slice(0, MAX_NUME),
         // Zile de la ultimul fișier — ca să se vadă firma care plătește modulul și nu-l folosește.
         zileFaraFisier: f.ultimulFisier ? Math.floor((Date.now() - f.ultimulFisier) / ZI) : null,
-        // „Are camioane, n-are modulul" = ocazie de vânzare. „Are modulul, n-are camioane" = îl plătește degeaba.
+        // „Are camioane, n-are modulul” = ocazie de vânzare. „Are modulul, n-are camioane” = îl plătește degeaba.
         deVandut: !f.modul && deDescarcat > 0,
         platitDegeaba: f.modul && deDescarcat === 0,
         ultimulFisier: f.ultimulFisier ? new Date(f.ultimulFisier).toISOString() : null
@@ -11658,12 +11658,12 @@ app.get('/api/admin/tacho-overview', requireAuth, requireSuperadmin, async (req,
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── începe „e-Transportul, pe firme" (privirea FONDATORULUI) ─────────────────────────────────────
+// ── începe „e-Transportul, pe firme” (privirea FONDATORULUI) ─────────────────────────────────────
 // Fondatorul vedea ecranul CLIENTULUI, hrănit cu transporturile TUTUROR firmelor și fără coloană de
-// firmă: scria „Ford Transit · UIT 3049…" și nu puteai spune al cui e (Alin, 18.09). Mai rău decât
-// la tahograf: pe fiecare rând era buton „Șterge", iar `ownsRow` întoarce `true` pentru super-admin —
+// firmă: scria „Ford Transit · UIT 3049…” și nu puteai spune al cui e (Alin, 18.09). Mai rău decât
+// la tahograf: pe fiecare rând era buton „Șterge”, iar `ownsRow` întoarce `true` pentru super-admin —
 // adică puteai șterge dovada de conformitate ANAF a unui client de pe un ecran unde nici nu vedeai
-// al cui e. Aici NU se adaugă și NU se șterge nimic: singura acțiune pe firmă e „Deschide firma".
+// al cui e. Aici NU se adaugă și NU se șterge nimic: singura acțiune pe firmă e „Deschide firma”.
 //
 // Regulile (termen UIT, tăcerea vehiculului, starea transportului) vin din `etransport.js` —
 // ACELEAȘI funcții ca scadențarul clientului. Fără asta am ajunge cu două ecrane care spun altceva
@@ -11688,8 +11688,8 @@ app.get('/api/admin/etransport-overview', requireAuth, requireSuperadmin, async 
         active: 0, probleme: 0, curand: 0, ok: 0, necunoscut: 0, incheiate: 0,
         ultimul: null,        // când a intrat ultimul cod UIT
         celMaiRau: 0,         // cele mai multe ore de întârziere de pe un transport
-        // CARE transporturi sunt problema — se deschid din „Afișează mai mult". Fără ele, cartonașul
-        // scrie „3 de rezolvat" și tot trebuie să intri în firmă ca să afli care.
+        // CARE transporturi sunt problema — se deschid din „Afișează mai mult”. Fără ele, cartonașul
+        // scrie „3 de rezolvat” și tot trebuie să intri în firmă ca să afli care.
         lista: []
       });
     }
@@ -11704,7 +11704,7 @@ app.get('/api/admin/etransport-overview', requireAuth, requireSuperadmin, async 
     for (const t of rows) {
       const f = perFirma.get(t.company_id); if (!f) continue;
       if (t.imei && DEMO_SET.has(t.imei)) continue;
-      // „Ultima poziție" = cea mai nouă dintre ce scrie în bază și ce e în memorie — exact ca în
+      // „Ultima poziție” = cea mai nouă dintre ce scrie în bază și ce e în memorie — exact ca în
       // scadențarul clientului, altfel ecranul nostru ar spune altceva decât al lui despre același camion.
       const lp = t.imei ? livePositions.get(t.imei) : null;
       if (lp && lp.timestamp) {
@@ -11738,7 +11738,7 @@ app.get('/api/admin/etransport-overview', requireAuth, requireSuperadmin, async 
         problemeTotal: f.lista.length,
         lista: f.lista.slice(0, MAX_NUME),
         zileFaraCod: f.ultimul ? Math.floor((Date.now() - f.ultimul) / ZI) : null,
-        // „Are mașini, n-are modulul" = ocazie de vânzare. „Are modulul, n-a introdus niciun cod" = îl plătește degeaba.
+        // „Are mașini, n-are modulul” = ocazie de vânzare. „Are modulul, n-a introdus niciun cod” = îl plătește degeaba.
         deVandut: !f.modul && f.vehicule > 0,
         platitDegeaba: f.modul && f.active === 0 && f.incheiate === 0,
         ultimul: f.ultimul ? new Date(f.ultimul).toISOString() : null
@@ -11752,7 +11752,7 @@ app.get('/api/admin/etransport-overview', requireAuth, requireSuperadmin, async 
       // informație de-a NOASTRĂ, nu una pe care clientul s-o poată rezolva.
       anaf: { pornit: anafPornit, test: anafPornit && anaf.cfg().test },
       // Toate cifrele legale vin de aici, din `etransport.js`. Ecranul nu-și scrie niciuna: altfel
-      // „codul ține 5 zile" ar exista în două locuri și s-ar despărți la prima schimbare de lege.
+      // „codul ține 5 zile” ar exista în două locuri și s-ar despărți la prima schimbare de lege.
       praguri: {
         tacereMinute: etr.TACERE_MINUTE, curandOre: etr.CURAND_ORE,
         zileNational: etr.ZILE_NATIONAL, zileIntracomunitar: etr.ZILE_INTRACOMUNITAR
@@ -11761,7 +11761,7 @@ app.get('/api/admin/etransport-overview', requireAuth, requireSuperadmin, async 
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ── sfârșit „e-Transportul, pe firme" ──
+// ── sfârșit „e-Transportul, pe firme” ──
 
 // Istoricul unui șofer sau al unui vehicul + GOLURILE din arhivă (zilele pe care nu le poți dovedi).
 app.get('/api/tacho/istoric', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('tahograf'), async (req, res) => {
@@ -11796,7 +11796,7 @@ app.get('/api/tacho/:id', requireAuth, requirePerm('viewReports'), withCompany, 
 app.post('/api/tacho/upload', requireAuth, requireFleet, withCompany, requireFeature('tahograf'), async (req, res) => {
   try {
     // Hotărât 18.09: fondatorul nu încarcă fișierele clientului. APK-ul 1.0.1 îi dădea totuși formularul, iar fișierul
-    // ieșea fără firmă: șoferul clientului apărea „descărcat", deși fișierul nu era în arhiva lui.
+    // ieșea fără firmă: șoferul clientului apărea „descărcat”, deși fișierul nu era în arhiva lui.
     if (req.isSuper && req.auth && req.auth.viaApiKey) return res.status(403).json({ error: 'Fișierele le încarcă firma.' });
     const { filename, b64, imei, driverId } = req.body;
     if (!b64) return res.status(400).json({ error: 'Lipsește fișierul' });
@@ -11852,12 +11852,12 @@ app.delete('/api/tacho/:id', requireAuth, requireFleet, withCompany, requireFeat
 function etransportEnabled() { return !!(anaf && anaf.enabled()); }
 app.get('/api/etransport/status', requireAuth, (req, res) => res.json({ enabled: etransportEnabled() }));
 // Tipurile de operațiune + câte zile ține codul la fiecare. Din etransport.js, ca interfața să nu
-// scrie „5 zile" de mână — dacă termenul se schimbă, se schimbă într-un singur loc.
+// scrie „5 zile” de mână — dacă termenul se schimbă, se schimbă într-un singur loc.
 app.get('/api/etransport/tipuri', requireAuth, (req, res) => res.json({ tipuri: etr.TIPURI }));
 app.get('/api/etransport', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('etransport'), async (req, res) => {
   try { res.json(await db.getEtransports(req.isSuper ? null : req.companyId)); } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Cine trebuie rezolvat acum" — ecranul de intrare al secțiunii. Grupat după urgență, ca la Tahograf.
+// „Cine trebuie rezolvat acum” — ecranul de intrare al secțiunii. Grupat după urgență, ca la Tahograf.
 // ATENȚIE la ordine: ruta cu nume fix trebuie declarată ÎNAINTEA oricărei `/api/etransport/:id`.
 app.get('/api/etransport/scadentar', requireAuth, requirePerm('viewReports'), withCompany, requireFeature('etransport'), async (req, res) => {
   try {
@@ -11867,7 +11867,7 @@ app.get('/api/etransport/scadentar', requireAuth, requirePerm('viewReports'), wi
 
     const acum = new Date().toISOString();
     const anafPornit = etransportEnabled();
-    // „Ultima poziție" = cea mai nouă dintre ce scrie în bază (`last_seen`, supraviețuiește
+    // „Ultima poziție” = cea mai nouă dintre ce scrie în bază (`last_seen`, supraviețuiește
     // repornirii) și ce e în memorie (`livePositions`, ce citește CHIAR mecanismul care trimite la
     // ANAF). Dacă am lua doar una, ecranul ar spune altceva decât face trimiterea.
     for (const t of rows) {
@@ -11891,7 +11891,7 @@ app.get('/api/etransport/scadentar', requireAuth, requirePerm('viewReports'), wi
     const nr = (s) => active.filter(x => x.stare === s).length;
     res.json({
       // Fără token ANAF nu se trimite nimic. Ecranul trebuie s-o spună o dată, sus — altfel omul
-      // citește „vehiculul transmite" și înțelege „sunt în regulă la ANAF", care e opusul adevărului.
+      // citește „vehiculul transmite” și înțelege „sunt în regulă la ANAF”, care e opusul adevărului.
       anaf: { pornit: anafPornit, test: anafPornit && anaf.cfg().test },
       praguri: { tacereMinute: etr.TACERE_MINUTE, curandOre: etr.CURAND_ORE },
       active, incheiate,
@@ -11933,7 +11933,7 @@ app.post('/api/etransport', requireAuth, requireFleet, withCompany, requireFeatu
     if (coId == null && dev) coId = dev.company_id;
     if (coId == null) return res.status(400).json({
       error: dev
-        ? 'Vehiculul ales nu e atribuit niciunei firme. Atribuie-l întâi în „Dispozitive".'
+        ? 'Vehiculul ales nu e atribuit niciunei firme. Atribuie-l întâi în „Dispozitive”.'
         : 'Transportul trebuie să fie al unei firme — alege vehiculul.'
     });
     const tr = await db.createEtransport(b, coId);
@@ -11949,7 +11949,7 @@ app.put('/api/etransport/:id', requireAuth, requireFleet, withCompany, requireFe
     await db.updateEtransport(parseInt(req.params.id), b); auditReq(req, 'update', 'etransport', req.params.id); res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Termenul trimis de ecran („2026-10-23T23:59:59", fără fus = o oră a României) → clipa adevărată (etransport.js,
+// Termenul trimis de ecran („2026-10-23T23:59:59”, fără fus = o oră a României) → clipa adevărată (etransport.js,
 // 23.10): până atunci se citea pe ceasul serverului, UTC, și codul ieșea valabil cu trei ore după miezul nopții de la
 // noi. Gol = nimic trimis (la POST se propune din start). Ce nu e o dată se refuză pe față, nu se ghicește.
 const TERMEN_UIT_GRESIT = 'Termenul codului UIT nu e o dată. Alege ziua din calendar.';
@@ -11964,9 +11964,9 @@ app.delete('/api/etransport/:id', requireAuth, requireFleet, withCompany, requir
 
 // ─── Simulatorul de încărcare: semiremorcile și remorcile firmei (Robert, 12.10) ───
 // Cifrele obișnuite (felurile de camion, tipurile de semiremorcă) vin DOAR de aici — ecranele nu le scriu a doua oară.
-// `tipuriCuMarfa` = felurile de vehicul la care fișa arată fila „Încărcare" (aceeași listă care aprinde modulul).
+// `tipuriCuMarfa` = felurile de vehicul la care fișa arată fila „Încărcare” (aceeași listă care aprinde modulul).
 app.get('/api/incarcare/meta', requireAuth, (req, res) => { res.json(Object.assign(incarcare.meta(), { tipuriCuMarfa: plans ? plans.TIPURI_CU_MARFA : [] })); });
-// Lista: oricine din firmă (ca vehiculele); scrierea: cine poate edita vehiculele. Modulul „Simulator încărcare" pornit.
+// Lista: oricine din firmă (ca vehiculele); scrierea: cine poate edita vehiculele. Modulul „Simulator încărcare” pornit.
 app.get('/api/remorci', requireAuth, withCompany, requireFeature('incarcare'), async (req, res) => {
   try {
     let cid = req.isSuper ? null : req.companyId;
@@ -12009,9 +12009,9 @@ app.delete('/api/remorci/:id', requireAuth, requireEdit('vehicule'), withCompany
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ─── Atașarea la un vehicul, din fișa remorcii (13.10, Robert: „buton … de atașare la un vehicul"; „automat când atașez
+// ─── Atașarea la un vehicul, din fișa remorcii (13.10, Robert: „buton … de atașare la un vehicul”; „automat când atașez
 // semiremorca … să pot face simularea") ───
-// Atașată = vehiculul o are ca semiremorcă / remorcă (`devices.inc_remorca_id`, aceeași legătură ca în fila „Încărcare"
+// Atașată = vehiculul o are ca semiremorcă / remorcă (`devices.inc_remorca_id`, aceeași legătură ca în fila „Încărcare”
 // a vehiculului): simulatorul o pune singur când alegi vehiculul. Ce vehicule se pot alege și DE CE nu e niciunul spune
 // incarcare.vehiculePentruRemorca (aceeași regulă ca simularea). Vehiculele: ale firmei remorcii, pe care omul le vede.
 async function _vehiculeCuplare(req, companyId) {
@@ -12065,7 +12065,7 @@ app.put('/api/remorci/:id/atasare', requireAuth, requireEdit('vehicule'), withSc
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Simulatorul de încărcare (pasul 3, 12.10: „cu 3D și greutatea pe osii") ───
+// ─── Simulatorul de încărcare (pasul 3, 12.10: „cu 3D și greutatea pe osii”) ───
 // Regulile (cum se așază marfa, osiile, textele) stau în incarcare.js; aici doar se adună datele și se verifică drepturile.
 // Ecranul, PDF-ul și telefonul (mai târziu) primesc ACELAȘI rezultat — nimeni nu-l socotește a doua oară.
 async function _incFlota(req) {
@@ -12152,17 +12152,17 @@ app.post('/api/incarcare/pdf', requireAuth, withScope, requireFeature('incarcare
 });
 
 // ─── Planurile de încărcare (pasul 4, 12.10): dispecerul trimite planul unui om din firmă (de obicei șoferul), care îl
-// vede pe telefon și apasă „Am încărcat" sau „Am o problemă"; dispecerul primește anunțul. Se țin doar alegerile; cifrele
+// vede pe telefon și apasă „Am încărcat” sau „Am o problemă”; dispecerul primește anunțul. Se țin doar alegerile; cifrele
 // se socotesc din nou la fiecare deschidere. Planurile sunt ale FIRMEI: noi (super-admin) nu vedem planurile clienților —
-// doar pe cele făcute de noi (Robert: „nu vrem să vedem ce face o companie").
-// Cine face și trimite planuri: cine poate modifica flota (adminul, managerul) și dispecerul firmei — rolul „Dispecer"
-// nu modifică flota, dar planul de încărcare e treaba lui (în machetă, „dispecerul"). Șoferul doar primește.
+// doar pe cele făcute de noi (Robert: „nu vrem să vedem ce face o companie”).
+// Cine face și trimite planuri: cine poate modifica flota (adminul, managerul) și dispecerul firmei — rolul „Dispecer”
+// nu modifică flota, dar planul de încărcare e treaba lui (în machetă, „dispecerul”). Șoferul doar primește.
 const _incDispecer = (req) => req.isSuper || permReq(req, 'manageFleet') || getAuth(req).role === 'dispatcher';
 
-// ─── „Distribuie locația" (Robert, 21.10: „ca pe WhatsApp… să poată să vadă oricine are acel link… după ce expiră, să nu
+// ─── „Distribuie locația” (Robert, 21.10: „ca pe WhatsApp… să poată să vadă oricine are acel link… după ce expiră, să nu
 // mai existe") ───
 // Din fișa mașinii, cine dispecerizează face un link pentru 15 minute, o oră sau 8 ore. Oricine are linkul vede mașina pe
-// hartă (pagina publică /locatie/<token>), actualizată singură. La expirare sau la „Oprește", rândul se șterge și linkul
+// hartă (pagina publică /locatie/<token>), actualizată singură. La expirare sau la „Oprește”, rândul se șterge și linkul
 // răspunde că locația nu mai e distribuită. Regulile și textele: locatie_distribuita.js. Spre public pleacă DOAR ce pune
 // `locatieDistribuita.pentruPagina` (numele mașinii, numărul, firma, poziția) — fără IMEI, fără șofer, fără istoric.
 // Cine poate: aceeași regulă ca planurile de încărcare (adminul, managerul, dispecerul) — vizualizatorul doar se uită.
@@ -12234,9 +12234,9 @@ app.delete('/api/devices/:imei/locatie-distribuita/:id', requireAuth, withScope,
     res.json({ ok: true, text: 'Linkul s-a oprit. Cine îl deschide acum vede că locația nu mai e distribuită.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Prelungește" (Robert, 23.10, varianta c): aceleași durate, adăugate la ora de final, cel mult 8 ore înainte de acum
+// „Prelungește” (Robert, 23.10, varianta c): aceleași durate, adăugate la ora de final, cel mult 8 ore înainte de acum
 // (locatieDistribuita.prelungire). Același link — pagina publică citește rândul la fiecare cerere, deci vede ora nouă singură.
-// Cine poate: ca la facere și la „Oprește". Un link care nu mai merge (expirat, mașina arhivată sau mutată pe altă firmă)
+// Cine poate: ca la facere și la „Oprește”. Un link care nu mai merge (expirat, mașina arhivată sau mutată pe altă firmă)
 // nu se prelungește: se face altul.
 app.post('/api/devices/:imei/locatie-distribuita/:id/prelungire', requireAuth, withScope, async (req, res) => {
   try {
@@ -12271,7 +12271,7 @@ app.get('/locatie/:token', (req, res) => {
 app.get('/api/public/locatie/:token', async (req, res) => {
   res.set('Cache-Control', NO_CACHE);
   res.set('X-Robots-Tag', 'noindex, nofollow');
-  // Orice „nu" arată la fel (expirat, oprit, inventat, mașina arhivată, firma oprită): nimeni nu află mai mult din el.
+  // Orice „nu” arată la fel (expirat, oprit, inventat, mașina arhivată, firma oprită): nimeni nu află mai mult din el.
   const incheiat = () => res.status(404).json({ activ: false, titlu: locatieDistribuita.TITLU_INCHEIAT, text: locatieDistribuita.TEXT_INCHEIAT });
   try {
     const token = String(req.params.token || '');
@@ -12351,7 +12351,7 @@ app.get('/api/incarcare/planuri/:id', requireAuth, withScope, requireFeature('in
   try {
     const p = await db.getPlan(req.params.id), eu = getAuth(req).userId, acum = Date.now();
     if (!_incVedePlanul(req, p)) {
-      // Șoferul deschide anunțul unui plan pe care dispecerul tocmai îl reface: îi spunem asta, nu „nu există".
+      // Șoferul deschide anunțul unui plan pe care dispecerul tocmai îl reface: îi spunem asta, nu „nu există”.
       if (p && p.trimis_catre === eu) return res.status(404).json({ error: 'Dispecerul reface planul — ți-l trimite din nou când e gata.' });
       return res.status(404).json({ error: 'Planul nu există.' });
     }
@@ -12398,7 +12398,7 @@ app.delete('/api/incarcare/planuri/:id', requireAuth, withScope, requireFeature(
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// „Trimite șoferului": unui om ACTIV al firmei planului (nu unui cont de-al nostru); anunț în aplicație și pe telefon.
+// „Trimite șoferului”: unui om ACTIV al firmei planului (nu unui cont de-al nostru); anunț în aplicație și pe telefon.
 app.post('/api/incarcare/planuri/:id/trimite', requireAuth, withScope, requireFeature('incarcare'), async (req, res) => {
   try {
     if (!_incDispecer(req)) return res.status(403).json({ error: 'Acces interzis' });
@@ -12480,7 +12480,7 @@ app.post('/api/webhooks/:id/test', requireAuth, requireAdmin, withCompany, async
     if (!(await ownsRow(req, 'webhooks', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     const w = await db.getWebhookById(req.params.id);
     if (!w) return res.status(404).json({ error: 'Inexistent' });
-    // Doar acest webhook (nu fan-out) — buton „testează acest webhook".
+    // Doar acest webhook (nu fan-out) — buton „testează acest webhook”.
     const body = JSON.stringify({ company_id: w.company_id, ts: new Date().toISOString(), event: 'test', imei: null, vehicle: null, severity: 'info', message: 'Eveniment de test RA Track' });
     _deliverWebhook(w, body);
     auditReq(req, 'test', 'webhook', w.id);
@@ -12594,8 +12594,8 @@ app.get('/api/tollro/profil/:imei', requireAuth, withScope, async (req, res) => 
 });
 
 // ─── Cursă nouă: căutare de adrese + traseu + cost ───────────────────────────────────────────────
-// Întrebarea la care răspunde: „cât mă costă drumul ăsta, pe care încă nu l-am făcut?" — cea pe care
-// o pune un dispecer când dă un preț. Restul secțiunii răspunde la „cât m-a costat" (din traseul real).
+// Întrebarea la care răspunde: „cât mă costă drumul ăsta, pe care încă nu l-am făcut?” — cea pe care
+// o pune un dispecer când dă un preț. Restul secțiunii răspunde la „cât m-a costat” (din traseul real).
 //
 // Cheia furnizorului de hărți stă la SERVER. Dacă ecranul ar chema direct serviciul, cheia ar ajunge
 // în browserul fiecărui client și oricine ar putea consuma plafonul nostru.
@@ -12628,7 +12628,7 @@ app.post('/api/tollro/cursa', requireAuth, withScope, async (req, res) => {
     if (!start || !end) return res.status(400).json({ error: 'Alege punctul de plecare și destinația' });
 
     // Profilul vine din FIȘĂ, nu din formular — la fel ca în restul secțiunii. Aici se vede cel mai
-    // bine de ce: pe ecranul concurenței se putea alege „3,5–7,5 t" pentru un camion de 41 t declarat
+    // bine de ce: pe ecranul concurenței se putea alege „3,5–7,5 t” pentru un camion de 41 t declarat
     // în același formular, iar costul ieșea de trei ori mai mic. La noi treapta se calculează din masă.
     const cm = _tollroCuManual(prof, b.manual);
     const v = cm.profil;
@@ -12637,7 +12637,7 @@ app.post('/api/tollro/cursa', requireAuth, withScope, async (req, res) => {
     try { r = await routing.ruta(start, end, { masaKg: v.masaKg, axe: v.axe }); }
     catch (e) { return res.status(e.status || 502).json({ error: e.message }); }
 
-    // De aici încolo e exact drumul folosit la „din istoric": rărire la ~250 m, clasa drumului din
+    // De aici încolo e exact drumul folosit la „din istoric”: rărire la ~250 m, clasa drumului din
     // OpenStreetMap, distanța pusă în dreptul clasei. O singură logică de taxare, două surse de puncte.
     const PAS_M = 250;
     const esant = [r.puncte[0]];
@@ -12733,7 +12733,7 @@ app.get('/api/tollro/flota', requireAuth, withScope, async (req, res) => {
 });
 
 // Completarile de mana: se accepta DOAR pentru campurile pe care fisa nu le are. Daca fisa spune
-// 30 t, nimeni nu poate „calcula la 5 t" trimitand alta masa — altfel taxa ar deveni negociabila din
+// 30 t, nimeni nu poate „calcula la 5 t” trimitand alta masa — altfel taxa ar deveni negociabila din
 // browser, iar cifra pusa in oferta n-ar mai avea nicio legatura cu vehiculul.
 // Ce s-a completat de mana se raporteaza inapoi, ca ecranul sa poata spune „valoare introdusa acum,
 // nesalvata in fisa".
@@ -12759,8 +12759,8 @@ app.put('/api/tollro/profil/:imei', requireAuth, requireFleet, withScope, async 
     const imei = String(req.params.imei || '');
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
     // `canAccessImei` e permisiv pentru super-admin, deci NU spune si daca vehiculul exista. Fara
-    // verificarea asta, un UPDATE pe un IMEI inexistent raspundea 200 („s-a salvat") desi n-a atins
-    // niciun rand — exact felul de „succes" care te lasa sa crezi ca ai completat fisa.
+    // verificarea asta, un UPDATE pe un IMEI inexistent raspundea 200 („s-a salvat”) desi n-a atins
+    // niciun rand — exact felul de „succes” care te lasa sa crezi ca ai completat fisa.
     if (!(await _tollroProfil(imei))) return res.status(404).json({ error: 'Vehicul negasit' });
     const b = req.body || {};
     const patch = {};
@@ -12822,7 +12822,7 @@ app.post('/api/tollro/din-istoric', requireAuth, withScope, async (req, res) => 
     if (esant.length < 2) return res.json({ vehicul: prof, rezultat: null, error: 'Vehiculul aproape nu s-a deplasat în intervalul ales.' });
 
     // Modulul de drumuri e optional la pornire (require intr-un try) — daca lipseste, spunem clar
-    // ca functia e indisponibila, nu cadem cu 500 pe „classesForPoints of null".
+    // ca functia e indisponibila, nu cadem cu 500 pe „classesForPoints of null”.
     if (!roadlimits || typeof roadlimits.classesForPoints !== 'function') {
       return res.status(503).json({ error: 'Datele despre tipul drumurilor nu sunt disponibile pe acest server.' });
     }
@@ -12831,7 +12831,7 @@ app.post('/api/tollro/din-istoric', requireAuth, withScope, async (req, res) => 
     catch (e) { return res.status(e.code === 'AREA' ? 400 : 502).json({ error: e.message }); }
 
     // Distanța fiecărui segment merge la clasa punctului de la care pleacă. Segmentele fără drum
-    // identificat (off-road, zonă fără date OSM) se raportează separat — nu le împingem în „netaxat"
+    // identificat (off-road, zonă fără date OSM) se raportează separat — nu le împingem în „netaxat”
     // ca și cum am ști că nu se taxează.
     const km = { autostrada: 0, national: 0, alte: 0 };
     let kmNecunoscut = 0;
@@ -12855,8 +12855,8 @@ app.post('/api/tollro/din-istoric', requireAuth, withScope, async (req, res) => 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── „Anunță echipa RA Track" (capitolul 4 al machetei din 21.10; Alin, 22.10: „da" la flux, „te sunăm în cel mult o zi
-// lucrătoare", cererile le preiau amândoi, cu „Preiau") ────────────────────────────────────────────────────────────────
+// ─── „Anunță echipa RA Track” (capitolul 4 al machetei din 21.10; Alin, 22.10: „da” la flux, „te sunăm în cel mult o zi
+// lucrătoare", cererile le preiau amândoi, cu „Preiau”) ────────────────────────────────────────────────────────────────
 // O SINGURĂ cale pentru o cerere nouă: `_cerereNoua`. O cheamă butonul din casetele RA Insight, rândul din fișa mașinii și
 // iconița cu căști (toate prin POST /api/cereri-echipa), plus ruta veche /api/support (telefoanele de dinainte) — iar mesajele
 // nu mai ajung în jurnalul de erori. Regulile și textele: cereri_echipa.js. Datele aparatului le pune SERVERUL, din clipa
@@ -12874,7 +12874,7 @@ async function _cerereAparat(imei) {
   let d = null;
   try { d = await db.getDeviceFull(imei); } catch (e) {}
   if (d) {
-    out.imei = aparatSchimbat.aparatAl(d) || out.imei;   // aparatul montat ACUM („Schimbă aparatul", 29.10), nu cheia mașinii
+    out.imei = aparatSchimbat.aparatAl(d) || out.imei;   // aparatul montat ACUM („Schimbă aparatul”, 29.10), nu cheia mașinii
     if (d.gps_model) out.model = String(d.gps_model);
     if (d.sim_number) out.sim = String(d.sim_number);
     if (d.abonament_de_la) out.pornit = Number(d.abonament_de_la);
@@ -12922,7 +12922,7 @@ async function _cerereNoua(req, body) {
     dev = canAccessImei(req, c.imei) && !DEMO_SET.has(c.imei) ? await db.getDeviceByImei(c.imei) : null;
     if (!dev || dev.status === 'archived' || Number(dev.company_id) !== Number(req.companyId)) return { status: 404, error: 'Mașina nu există.' };
     aparat = await _cerereAparat(c.imei);
-    // „Ceva nu merge la aparat" (fișa mașinii) pe o mașină care nu transmite = „Nu transmite": aceeași regulă ca în caseta din
+    // „Ceva nu merge la aparat” (fișa mașinii) pe o mașină care nu transmite = „Nu transmite”: aceeași regulă ca în caseta din
     // RA Insight (agents.esteFaraSemnal, pragul firmei), ca mașina să aibă O cerere deschisă, nu două pe același lucru.
     if (c.problema === 'aparat' && aparat.ultima && agents) {
       let th = {}; try { th = await _getAlertThresholds(req.companyId); } catch (e) {}
@@ -12952,7 +12952,7 @@ async function _cerereLaNoi(req, c) {
   const to = await _adresaSuport();
   if (to && mailer && mailer.enabled()) {
     const em = cereriEchipa.emailNoi(c, { acum: Date.now(), link: appBaseUrl(req) + '/app' });
-    // În „Trimise" ca „Suport" (ca emailul rutei vechi, 22.10): toate emailurile noastre poartă felul lor.
+    // În „Trimise” ca „Suport” (ca emailul rutei vechi, 22.10): toate emailurile noastre poartă felul lor.
     await mailer.send({ to: to, replyTo: (c.contact || {}).email || undefined, subject: em.subject, text: em.text, html: em.html,
       jurnal: { fel: 'suport', companyId: c.company_id != null ? c.company_id : null } });
   }
@@ -12973,7 +12973,7 @@ function _cereriMeta() {
     dateTrimise: cereriEchipa.DATE_TRIMISE, dateTrimiseFaraMasina: cereriEchipa.DATE_TRIMISE_FARA_MASINA, notaTrimisa: cereriEchipa.NOTA_TRIMISA,
     notaLista: cereriEchipa.NOTA_LISTA, notaDupa: cereriEchipa.NOTA_DUPA, probleme: cereriEchipa.PROBLEME, buton: cereriEchipa.BUTON };
 }
-// „Cererile tale" + ce trebuie ferestrei (cum te găsim, textele). Administratorul firmei le vede pe toate ale firmei.
+// „Cererile tale” + ce trebuie ferestrei (cum te găsim, textele). Administratorul firmei le vede pe toate ale firmei.
 app.get('/api/cereri-echipa', requireAuth, withScope, async (req, res) => {
   try {
     const a = req.auth || getAuth(req) || {}, acum = Date.now();
@@ -12985,7 +12985,7 @@ app.get('/api/cereri-echipa', requireAuth, withScope, async (req, res) => {
       demo: demoCompanyId != null && req.companyId === demoCompanyId, contact: { nume: k.nume, telefon: k.telefon, email: k.email } }, _cereriMeta()));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Cererile deschise pe mașinile din casete (în locul butonului: „Echipa RA Track se ocupă · cererea nr. 142 · …").
+// Cererile deschise pe mașinile din casete (în locul butonului: „Echipa RA Track se ocupă · cererea nr. 142 · …”).
 app.get('/api/cereri-echipa/deschise', requireAuth, withScope, async (req, res) => {
   try {
     const imeis = String(req.query.imeis || '').split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x && canAccessImei(req, x); }).slice(0, 50);
@@ -13009,7 +13009,7 @@ app.post('/api/cereri-echipa', requireAuth, withScope, async (req, res) => {
       seOcupa: cereriEchipa.seOcupa(r.cerere, acum), nota: cereriEchipa.NOTA_TRIMISA, notaDupa: cereriEchipa.NOTA_DUPA });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Ruta veche a ferestrei „Suport clienți" (telefoanele de dinainte de APK-ul nou): o cerere ca oricare alta, fără mașină.
+// Ruta veche a ferestrei „Suport clienți” (telefoanele de dinainte de APK-ul nou): o cerere ca oricare alta, fără mașină.
 app.post('/api/support', requireAuth, withScope, async (req, res) => {
   if (_demoBlocked(req, res)) return;
   try {
@@ -13020,7 +13020,7 @@ app.post('/api/support', requireAuth, withScope, async (req, res) => {
     res.json({ ok: true, id: r.cerere.id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ─── La noi: Business › „Cereri de la clienți" ──────────────────────────────────────────────────────────────────────────
+// ─── La noi: Business › „Cereri de la clienți” ──────────────────────────────────────────────────────────────────────────
 app.get('/api/admin/cereri-echipa/numar', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.cereriEchipaNumar()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -13142,7 +13142,7 @@ app.get('/api/devices', requireAuth, withScope, async (req, res) => {
     // Implicit ascunde vehiculele arhivate (de pe hartă/selectoare); ?includeArchived=1 le include (management)
     // — dar numai la noi: clientul NU vede aparatele arhivate (hotărât 18.09), oricum ar cere.
     if (!(req.query.includeArchived && req.isSuper)) devices = devices.filter(d => d.status !== 'archived');
-    // Overlay „moved_at" (memoria de mișcare) din snapshot-ul live → statusul are histerezis chiar de la prima încărcare.
+    // Overlay „moved_at” (memoria de mișcare) din snapshot-ul live → statusul are histerezis chiar de la prima încărcare.
     for (const d of devices) { const lp = livePositions.get(d.imei); if (lp && lp.moved_at) d.moved_at = lp.moved_at; }
     res.json(devices);
   } catch (err) {
@@ -13171,9 +13171,9 @@ function _arhivaTermen(row) {
 
 // ─── Ștergerea istoricului, la 30 de zile după încetare ──────────────────────────────────────────
 // Contractul (Anexa GDPR, pct. 7) promite: la încetare, clientul are 30 de zile să ceară datele
-// înapoi; fără cerere, se șterg. Aplicația le ținea 2 ani — până pe 24.09 (Alin: „exact așa facem").
+// înapoi; fără cerere, se șterg. Aplicația le ținea 2 ani — până pe 24.09 (Alin: „exact așa facem”).
 // Se șterge tot istoricul de localizare al aparatului (poziții vii + arhivă + curse + alerte). Rândul
-// aparatului rămâne, marcat „istoric șters", ca să se vadă ce s-a întâmplat.
+// aparatului rămâne, marcat „istoric șters”, ca să se vadă ce s-a întâmplat.
 async function stergeIstoricArhivate() {
   const zile = contracte.ZILE_DATE_DUPA_INCETARE;
   const lista = await db.aparateCuIstoricDeSters(Date.now() - zile * 86400000);
@@ -13208,7 +13208,7 @@ if (process.env.SEED_TEST === '1') {
 
 // ─── Păstrarea istoricului cât contractul e în vigoare (decizie Alin, 24.09) ─────────────────────
 // 12 luni pentru TOȚI, incluse în abonament; mai mult unde firma a plătit (`settings.pastrare`, scris
-// din oferta acceptată sau din „Abonament & plăți"). Până pe 24.09 o singură vârstă, 180 de zile, pentru
+// din oferta acceptată sau din „Abonament & plăți”). Până pe 24.09 o singură vârstă, 180 de zile, pentru
 // toată lumea (politica TimescaleDB sau `POSITION_RETENTION_DAYS`) — iar 24/36 de luni se vindeau și se
 // semnau fără să se livreze.
 //
@@ -13371,7 +13371,7 @@ if (process.env.SEED_TEST === '1') {
   });
 }
 
-// Dispozitive arhivate (contracte încheiate) + nr. poziții păstrate în arhivă. Pagina „Dispozitive arhivate".
+// Dispozitive arhivate (contracte încheiate) + nr. poziții păstrate în arhivă. Pagina „Dispozitive arhivate”.
 // Doar a noastră: arhivarea e decizia noastră, deci și evidența ei (18.09). Toate ecranele care o cer sunt ale fondatorilor.
 app.get('/api/archived-devices', requireAuth, requireSuperadmin, withScope, async (req, res) => {
   try {
@@ -13384,9 +13384,9 @@ app.get('/api/archived-devices', requireAuth, requireSuperadmin, withScope, asyn
   }
 });
 
-// ─── „Descarcă tot istoricul" (Alin, 02.10: „O facem acum") ─────────────────────────────────────────────────────────
+// ─── „Descarcă tot istoricul” (Alin, 02.10: „O facem acum”) ─────────────────────────────────────────────────────────
 // Un client care pleacă are 30 de zile să-și ceară datele înapoi (contractul, Anexa GDPR). Butonul stă în Dispozitive
-// arhivate, pe rândul mașinii: un singur Excel cu TOT istoricul ei, oricât de lung — o foaie pe lună, plus „Sumar".
+// arhivate, pe rândul mașinii: un singur Excel cu TOT istoricul ei, oricât de lung — o foaie pe lună, plus „Sumar”.
 // Se scrie în flux (`reportExport.istoricCompletXlsx`), citit din bază pe pagini: memoria rămâne mică. MĂSURAT: un an
 // (≈ 500.000 de poziții) = ~30 s și un fișier de ~23 MB. De aceea, câte UNUL deodată pe tot serverul: al doilea primește
 // 429 și încearcă peste un minut. Doar noi (super-admin), ca tot ecranul; mașinile demo nu se descarcă (canAccessImei).
@@ -13401,7 +13401,7 @@ app.get('/api/devices/:imei/istoric-complet', requireAuth, requireSuperadmin, wi
     const dev = await db.getDeviceFull(imei).catch(function () { return null; });
     if (!dev) return res.status(404).json({ error: 'Aparatul nu există.' });
     const pauza = function () { return new Promise(function (r) { setImmediate(r); }); };
-    // 1) Câte poziții are fiecare lună — „Sumar" stă primul, deci cifrele lui trebuie știute înainte.
+    // 1) Câte poziții are fiecare lună — „Sumar” stă primul, deci cifrele lui trebuie știute înainte.
     const sumar = await reportExport.istoricPeLuni(function (dupa) { return db.istoricOre(imei, dupa, 50000); }, pauza);
     if (!sumar.total) return res.status(404).json({ error: 'Mașina nu mai are istoric de descărcat (s-a șters sau n-a transmis niciodată).' });
     const co = dev.company_id != null ? await db.getCompanyById(dev.company_id).catch(function () { return null; }) : null;
@@ -13458,17 +13458,17 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
     ['name', 'plate', 'vehicle_type', 'vin', 'brand', 'model'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
     // Modelul aparatului și cartela SIM se scriau DOAR la editare, deși sunt exact datele pe care le
     // știm când îl înregistrăm (îl avem în mână). Rezultatul: orice aparat nou intra în „Inventar
-    // dispozitive" ca „fără model/SIM" și cerea imediat o a doua trecere prin fișă (Alin, 18.09).
-    // Ruta e `requireSuperadmin`, deci regula „le scriem doar NOI" rămâne apărată de ușă, nu de aici.
+    // dispozitive" ca „fără model/SIM” și cerea imediat o a doua trecere prin fișă (Alin, 18.09).
+    // Ruta e `requireSuperadmin`, deci regula „le scriem doar NOI” rămâne apărată de ușă, nu de aici.
     ['gps_model', 'sim_number'].forEach(k => { if (req.body[k]) fields[k] = req.body[k]; });
-    // Semnalare „problemă la montaj" direct de la adăugare (anulabilă ulterior din listă)
+    // Semnalare „problemă la montaj” direct de la adăugare (anulabilă ulterior din listă)
     const instIssue = req.body.install_issue
       ? { note: (typeof req.body.install_issue_note === 'string' && req.body.install_issue_note.trim()) ? req.body.install_issue_note.trim().slice(0, 300) : null, at: Date.now(), by: (req.session && req.session.username) || null }
       : null;
 
     // Dacă IMEI-ul există DEJA: ADOPȚIE dacă e neasignat (company_id NULL) — tipic un tracker care a transmis ÎNAINTE
     // de a fi înregistrat. Îl revendică compania care îl adaugă (ne-super: doar compania proprie). Dacă aparține deja
-    // ALTEI companii → 409 (nu se poate „fura").
+    // ALTEI companii → 409 (nu se poate „fura”).
     const _existing = await db.getDeviceFull(imei);
     if (_existing) {
       if (_existing.company_id != null) return res.status(409).json({ error: 'Există deja un vehicul cu acest IMEI' });
@@ -13497,8 +13497,8 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
     _uitaPornirea(imei);   // rând nou: nicio zi de pornire ținută minte de la un rând șters (pct. 12)
     invalidateAccessCache(); // vehicul nou în companie → reîmprospătează accesul (altfel nu apare/nu se editează ~15s)
     invalidateLiveEnrichCache(); // identitatea nouă (nume/nr) să apară imediat pe /api/live, nu după 20s
-    // Dacă vehiculul transmitea deja (era în memoria live ca IMEI „gol"), pune-i numele/nr ACUM + anunță WS,
-    // ca să nu aștepte un pachet GPS nou și să nu i se „reseteze" plăcuța peste rosterul din DB.
+    // Dacă vehiculul transmitea deja (era în memoria live ca IMEI „gol”), pune-i numele/nr ACUM + anunță WS,
+    // ca să nu aștepte un pachet GPS nou și să nu i se „reseteze” plăcuța peste rosterul din DB.
     const _pos = livePositions.get(imei);
     if (_pos) {
       _pos.name = fields.name || null;
@@ -13508,7 +13508,7 @@ app.post('/api/devices', requireAuth, requireSuperadmin, withScope, async (req, 
       broadcastWs({ type: 'position', data: _pos });
     }
     auditReq(req, 'create', 'device', imei, { name: fields.name, plate: fields.plate });
-    // Înregistrat direct pe o firmă → aparatul din stocul nostru trece pe „montat la client".
+    // Înregistrat direct pe o firmă → aparatul din stocul nostru trece pe „montat la client”.
     if (companyId != null) await _stocLaFirma(imei, companyId, _cine(req));
     res.json({ ok: true, imei });
   } catch (err) {
@@ -13527,7 +13527,7 @@ const VEHICLE_CSV_COLS = [
   { h: 'serie_motor', f: 'engine_serial' }, { h: 'centru_cost', f: 'cost_center' }, { h: 'nr_inventar', f: 'inventory_number' },
   { h: 'consum_oras', f: 'consumption_city' }, { h: 'consum_afara', f: 'consumption_road' }, { h: 'consum_stationar', f: 'consumption_idle' },
   // Datele APARATULUI, nu ale mașinii. Lipseau, deși importul e calea prin care înregistrăm un lot
-  // întreg de trackere — deci intrau toate în inventar ca „fără model/SIM" (Alin, 18.09). Numele
+  // întreg de trackere — deci intrau toate în inventar ca „fără model/SIM” (Alin, 18.09). Numele
   // coloanei e `model_gps`, ca să nu se încurce cu `model`, care e modelul VEHICULULUI.
   // Adăugare, nu schimbare: un fișier vechi, fără coloanele astea, se importă exact ca înainte.
   { h: 'model_gps', f: 'gps_model' }, { h: 'cartela_sim', f: 'sim_number' }
@@ -13555,8 +13555,8 @@ app.get('/api/devices/export.csv', requireAuth, withScope, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Export brandat: „Situația flotei" (Excel/PDF) ──────────────────────────────────────────────
-// Butonul „Exportă" din Vehicule. CSV-ul de mai sus rămâne, dar pentru altceva: e formatul pe care
+// ─── Export brandat: „Situația flotei” (Excel/PDF) ──────────────────────────────────────────────
+// Butonul „Exportă” din Vehicule. CSV-ul de mai sus rămâne, dar pentru altceva: e formatul pe care
 // îl reînghite importul (export → editezi → reimporți). Documentul ăsta e pentru citit și trimis.
 app.get('/api/devices/export', requireAuth, withScope, async (req, res) => {
   try {
@@ -13564,7 +13564,7 @@ app.get('/api/devices/export', requireAuth, withScope, async (req, res) => {
     let devices = await db.getDevices();
     if (req.allowedImeis != null) devices = devices.filter(d => req.allowedImeis.has(d.imei));
     if (req.companyId !== demoCompanyId) devices = devices.filter(d => !DEMO_SET.has(d.imei));
-    // „Vehicule arhivate" e documentul nostru; clientul primește mereu situația flotei active (18.09).
+    // „Vehicule arhivate” e documentul nostru; clientul primește mereu situația flotei active (18.09).
     const archived = req.isSuper && String(req.query.scope || '') === 'archived';
     devices = devices.filter(d => archived ? d.status === 'archived' : d.status !== 'archived');
     // Numele șoferilor, ca documentul să nu arate un id de bază de date
@@ -13681,18 +13681,18 @@ app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res
     const { imei } = req.params;
     const dev = await db.getDeviceFull(imei);
     if (!dev) return res.status(404).json({ error: 'Vehicul inexistent' });
-    _locMasini.delete(imei);   // „Distribuie locația": linkurile mașinii șterse se opresc pe loc
+    _locMasini.delete(imei);   // „Distribuie locația”: linkurile mașinii șterse se opresc pe loc
     if (dev.status !== 'archived') return res.status(400).json({ error: 'Doar vehiculele ARHIVATE pot fi șterse definitiv. Arhivează-l întâi.' });
     const deleted = await db.deleteDeviceCompletely(imei);
     archivedImeis.delete(imei);
     registeredImeis.delete(imei);
     await _aparateReincarca();   // mașina ștearsă nu mai are aparat schimbat de ținut minte
     // Rândul s-a dus, deci și ziua lui de pornire: înregistrat din nou, aparatul pornește abonamentul la prima transmisie.
-    // Până pe 01.10 memoria îl ținea „pornit" până la repornirea serverului (lista lui Robert, pct. 12).
+    // Până pe 01.10 memoria îl ținea „pornit” până la repornirea serverului (lista lui Robert, pct. 12).
     _uitaPornirea(imei);
     // Șters definitiv = nu mai e primit nici ca aparat din stoc (găsit de Robert, 30.09: revenea singur, cu poziții noi).
-    // Bucata încă „în depozit" / „la instalator" trece pe „defect", cu notă: de verificat înainte să se mai monteze.
-    // Bucata din stoc e a APARATULUI montat acum pe mașină (după „Schimbă aparatul" nu mai e cheia ei).
+    // Bucata încă „în depozit” / „la instalator” trece pe „defect”, cu notă: de verificat înainte să se mai monteze.
+    // Bucata din stoc e a APARATULUI montat acum pe mașină (după „Schimbă aparatul” nu mai e cheia ei).
     const _aparatSters = aparatSchimbat.aparatAl(dev) || imei;
     stocImeis.delete(_aparatSters);
     try {
@@ -13710,7 +13710,7 @@ app.delete('/api/devices/:imei', requireAuth, requireSuperadmin, async (req, res
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── „Schimbă aparatul" (Robert, 29.10: „1 da, 2 acum") ───
+// ─── „Schimbă aparatul” (Robert, 29.10: „1 da, 2 acum”) ───
 // Aparatul nou PREIA mașina: istoricul, fișa, actele, reviziile, șoferul și abonamentul rămân pe ea (aparat_schimbat.js).
 // Doar noi (aparatele sunt marfa noastră — decizia din 16.09). O SINGURĂ cale de schimbare: `db.schimbaAparat`, chemată de
 // POST-ul de mai jos; pagina (fișa mașinii) doar arată ce primește de la GET.
@@ -13723,7 +13723,7 @@ app.get('/api/devices/:imei/schimba-aparat', requireAuth, requireSuperadmin, asy
     const aparatAcum = aparatSchimbat.aparatAl(v);
     const d = await db.aparateDeMontat(Object.keys(_MODELE_TRACKER), stocMod.PRIMITE_LA_CONECTARE);
     const sv = await db.stocDupaSerie(aparatAcum);
-    const vechiInStoc = !!(sv && sv.stare === 'montat');   // doar așa se poate trece pe „defect" / „retur" (stoc.TRECERI)
+    const vechiInStoc = !!(sv && sv.stare === 'montat');   // doar așa se poate trece pe „defect” / „retur” (stoc.TRECERI)
     const lista = aparatSchimbat.candidati({ stoc: d.stoc, neasignate: d.neasignate, ocupate: new Set(d.ocupate), aparatAcum,
       modele: _MODELE_TRACKER, acum: Date.now() });
     const istoric = await db.istoricAparate(v.imei);
@@ -13753,7 +13753,7 @@ app.post('/api/devices/:imei/schimba-aparat', requireAuth, requireSuperadmin, as
     const vechiul = aparatSchimbat.vechiulValid(b.vechiul) ? b.vechiul : 'defect';
     const motiv = b.motiv ? String(b.motiv).trim().slice(0, 300) || null : null;
     const sim = b.sim === undefined ? undefined : (String(b.sim == null ? '' : b.sim).trim().slice(0, 40) || null);
-    // Din stoc se ia doar un tracker încă nemontat (în depozit sau la instalator) — cel din „Neasignate" îl verifică baza.
+    // Din stoc se ia doar un tracker încă nemontat (în depozit sau la instalator) — cel din „Neasignate” îl verifică baza.
     const stocNou = await db.stocDupaSerie(nou);
     const echip = stocNou ? montaj.echipament(stocNou.tip) : null;
     const dinStoc = !!(echip && echip.transmite && stocMod.primitLaConectare(stocNou.stare));
@@ -13768,7 +13768,7 @@ app.post('/api/devices/:imei/schimba-aparat', requireAuth, requireSuperadmin, as
     await _aparateReincarca();
     if (r.ajustare != null || r.vechiM != null) _contoare.set(v0.imei, { ajustare: r.ajustare, vechi: r.vechiM });
     else _contoare.delete(v0.imei);
-    if (r.sursa === 'neasignat') {   // rândul lui din „Neasignate" s-a dus: nici în listă, nici pe hartă
+    if (r.sursa === 'neasignat') {   // rândul lui din „Neasignate” s-a dus: nici în listă, nici pe hartă
       registeredImeis.delete(nou); deviceAttempts.delete(nou); _uitaPornirea(nou); _devCompanyCache.delete(nou);
       livePositions.delete(nou); lastCanIo.delete(nou); _locMasini.delete(nou);
       broadcastWs({ type: 'removed', data: { imei: nou } });
@@ -13778,7 +13778,7 @@ app.post('/api/devices/:imei/schimba-aparat', requireAuth, requireSuperadmin, as
     // Conexiunile se refac: aparatul nou sună din nou și ajunge pe mașină; cel vechi e refuzat.
     [v0.imei, nou, r.vechi].forEach(function (k) { const c = activeConnections.get(k); if (c && c.socket) { try { c.socket.destroy(); } catch (_) {} } });
 
-    // Stocul: aparatul nou → montat la firma mașinii; cel vechi → „defect" sau „retur".
+    // Stocul: aparatul nou → montat la firma mașinii; cel vechi → „defect” sau „retur”.
     await _stocLaFirma(nou, v0.company_id, _cine(req));
     let stocVechi = null;
     try {
@@ -13861,7 +13861,7 @@ app.get('/api/live', requireAuth, withScope, async (req, res) => {
 // ─── Geocodare inversă, PRIN SERVERUL NOSTRU ───
 // Până acum browserul și APK-ul loveau `nominatim.openstreetmap.org` DIRECT: fără throttle (politica lor
 // cere ≤1 cerere/s pe aplicație), fără User-Agent identificabil (browserele nu-l pot seta), cu un cache
-// separat per filă. Cu zeci de operatori × sute de vehicule, asta e exact „heavy use"-ul pentru care
+// separat per filă. Cu zeci de operatori × sute de vehicule, asta e exact „heavy use”-ul pentru care
 // Nominatim blochează IP-uri — și `GEOCODE_URL` de pe server nu acoperea nimic din traficul ăla.
 // Acum totul trece pe aici: o singură coadă, un singur cache, o singură identitate, un singur furnizor
 // de schimbat printr-o variabilă de mediu.
@@ -13955,7 +13955,7 @@ app.post('/api/match', requireAuth, async (req, res) => {
 
     // `auto:true` = apel automat la deschiderea unui traseu. Acolo folosim DOAR OSRM: metoda gratuită trece
     // prin Overpass, iar o interogare la fiecare deschidere de traseu ar fi exact utilizarea pe care politica
-    // lor o interzice. Pentru ea există butonul „Aliniază pe drumuri", care apelează fără flagul ăsta.
+    // lor o interzice. Pentru ea există butonul „Aliniază pe drumuri”, care apelează fără flagul ăsta.
     const auto = !!(req.body && req.body.auto);
     let matched = null, source = null, attribution;
     if (OSRM_ON) { matched = await osrmMatch(pts); if (matched) source = 'osrm'; }
@@ -13967,7 +13967,7 @@ app.post('/api/match', requireAuth, async (req, res) => {
       } catch (e) {
         // Traseu prea întins pentru o singură interogare Overpass — e o limită reală, nu o defecțiune.
         if (e && e.code === 'AREA') return res.json({ matched: null, reason: 'zona_prea_mare' });
-        // Serviciul OSM a picat (504 / timeout). NU e același lucru cu „nu există drumuri pe acolo", iar
+        // Serviciul OSM a picat (504 / timeout). NU e același lucru cu „nu există drumuri pe acolo”, iar
         // instanțele publice Overpass chiar cad des — dacă spunem greșit, operatorul caută vina în date.
         return res.json({ matched: null, reason: 'osm_indisponibil' });
       }
@@ -14037,7 +14037,7 @@ app.get('/api/history/:imei', requireAuth, withScope, async (req, res) => {
 });
 // Sumarul unui traseu — O SINGURĂ socoteală pentru ecranul Traseu (`/api/history/:imei?ext=1`) și pentru fișierul
 // descărcat de acolo (`/api/traseu/excel`), ca hârtia să spună exact ce spune ecranul (01.10).
-//   • distanța și combustibilul: din reports.fuelStats (identic cu „Statistici consum");
+//   • distanța și combustibilul: din reports.fuelStats (identic cu „Statistici consum”);
 //   • timpul în deplasare / staționar: din poziții (IDLE_SPEED = 3 km/h, ca în reports.js), fără salturile de peste o oră;
 //   • depășirile: față de limita setată pe mașină.
 async function _sumarTraseu(imei, from, to, history, limit) {
@@ -14072,7 +14072,7 @@ async function _sumarTraseu(imei, from, to, history, limit) {
   };
 }
 // Traseul descărcat din ecranul Traseu (Alin, 01.10: „nu are numele RA Track… în interiorul fișierului sunt doar
-// cifre, nimic de înțeles"). Excel prin `sendReport` — numele casei, logo-ul pe fiecare foaie —, cu „Sumar" (aceleași
+// cifre, nimic de înțeles"). Excel prin `sendReport` — numele casei, logo-ul pe fiecare foaie —, cu „Sumar” (aceleași
 // cifre ca ecranul, din `_sumarTraseu`) și pozițiile pe românește (`reportExport.traseuVehicul`). Unul sau mai multe
 // vehicule (cele bifate pe ecran). Aceleași drepturi ca traseul: cine vede mașina pe hartă îi poate descărca traseul.
 // Exportul CSV brut (`/api/export/:imei`) rămâne cum era: e documentat pentru integrările prin API.
@@ -14152,7 +14152,7 @@ app.put('/api/devices/:imei/details', requireAuth, requireEdit('vehicule'), with
     // Câmpuri rezervate SUPER-ADMIN (admin/user companie nu le pot seta) — eliminate din body dacă nu e super.
     if (!req.isSuper) { delete b.ignition_source; delete b.show_transport; delete b.gps_model; delete b.sim_number; }
     if (b.show_transport !== undefined) b.show_transport = (b.show_transport === true || b.show_transport === 'true'); // normalizează boolean
-    // Fila „Încărcare" (12.10): cifrele trec prin regulile simulatorului; semiremorca obișnuită trebuie să fie a firmei mașinii.
+    // Fila „Încărcare” (12.10): cifrele trec prin regulile simulatorului; semiremorca obișnuită trebuie să fie a firmei mașinii.
     if (incarcare.CAMPURI_CAROSERIE.some(function (k) { return b[k] !== undefined; })) {
       const cc = incarcare.curataCaroserie(b);
       if (cc.eroare) return res.status(400).json({ error: cc.eroare });
@@ -14164,7 +14164,7 @@ app.put('/api/devices/:imei/details', requireAuth, requireEdit('vehicule'), with
       }
       Object.assign(b, cc.campuri);
     }
-    // „Km la bord" (index manual pt. mașini fără CAN): reținem valoarea veche ÎNAINTE de update, ca să (re)facem snapshot-ul
+    // „Km la bord” (index manual pt. mașini fără CAN): reținem valoarea veche ÎNAINTE de update, ca să (re)facem snapshot-ul
     // contorului GPS DOAR când operatorul chiar schimbă valoarea — altfel orice resalvare a fișei ar rebaza contorul și
     // ar pierde km-ii deja parcurși de la montare. Fișa trimite mereu câmpul, deci comparăm explicit vechi vs nou.
     let odoPrev;
@@ -14186,7 +14186,7 @@ app.put('/api/devices/:imei/details', requireAuth, requireEdit('vehicule'), with
         }
       } catch (e) { /* nu bloca salvarea fișei dacă snapshot-ul eșuează */ }
     }
-    if (b.ignition_source !== undefined) refreshDin1Set(); // override „contact din DIN1" → actualizează cache ingest
+    if (b.ignition_source !== undefined) refreshDin1Set(); // override „contact din DIN1” → actualizează cache ingest
     invalidateLiveEnrichCache(); // fișa poate conține fuel_price/cost_per_ton_km/greutăți din enrichment
     if (b.vehicle_type !== undefined) await _flotaGreaReincarca();   // felul vehiculului → simulatorul de încărcare (după flotă)
     auditReq(req, 'update', 'device', imei, { fields: Object.keys(b).length });
@@ -14213,12 +14213,12 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
     if (!canAccessImei(req, req.params.imei)) return res.status(403).json({ error: 'Acces interzis' });
     const device = await db.getDeviceFull(req.params.imei);
     if (!device) return res.status(404).json({ error: 'Device not found' });
-    // Momente de referință pentru „în staționare de" / „motor pornit/oprit de".
+    // Momente de referință pentru „în staționare de” / „motor pornit/oprit de”.
     // FERESTRE SEPARATE (intenționat):
     //  • last_moved_at (de când nu s-a mai deplasat) — fereastră LUNGĂ (STAT_DAYS, implicit 180z) ca să
     //    arate durata REALĂ a staționării chiar dacă vehiculul stă de luni de zile.
     //  • ignition_on_at/off_at (sesiunea curentă a contactului) — fereastră SCURTĂ (IGN_DAYS, implicit 30z)
-    //    ca „motor pornit/oprit de" să reflecte sesiunea recentă, nu o tranziție veche → fără valori absurde.
+    //    ca „motor pornit/oprit de” să reflecte sesiunea recentă, nu o tranziție veche → fără valori absurde.
     const STAT_DAYS = Math.min(Math.max(parseInt(process.env.STAT_LOOKBACK_DAYS) || 180, 1), 730);
     const IGN_DAYS = Math.min(Math.max(parseInt(process.env.IGN_LOOKBACK_DAYS) || 30, 1), STAT_DAYS);
     try {
@@ -14231,7 +14231,7 @@ app.get('/api/devices/:imei/full', requireAuth, withScope, async (req, res) => {
       );
       if (sd.rows && sd.rows[0]) { device.last_moved_at = sd.rows[0].last_moved_at; device.ignition_on_at = sd.rows[0].ignition_on_at; device.ignition_off_at = sd.rows[0].ignition_off_at; }
     } catch (e) { /* fără durate dacă interogarea eșuează */ }
-    // „Schimbă aparatul" (29.10): IMEI-ul aparatului montat acum (cheia mașinii rămâne `imei`) și rândul de sub el din fișă.
+    // „Schimbă aparatul” (29.10): IMEI-ul aparatului montat acum (cheia mașinii rămâne `imei`) și rândul de sub el din fișă.
     device.aparat_acum = aparatSchimbat.aparatAl(device);
     try { device.aparat_nota = aparatSchimbat.notaFisa(await db.istoricAparate(device.imei), device); } catch (e) { device.aparat_nota = null; }
     res.json(device);
@@ -14253,7 +14253,7 @@ app.put('/api/devices/:imei/truck-config', requireAuth, requireEdit('vehicule'),
   }
 });
 
-// Șoferul și grupa unei mașini sunt ale FIRMEI MAȘINII (B, 23.10; Alin: „da, le rezolvăm"). Fără verificare, o cerere făcută
+// Șoferul și grupa unei mașini sunt ale FIRMEI MAȘINII (B, 23.10; Alin: „da, le rezolvăm”). Fără verificare, o cerere făcută
 // de mână putea pune pe o mașină șoferul sau grupa altei firme, iar fișa mașinii și rapoartele arătau apoi numele omului de la
 // cealaltă firmă. Ce nu e al firmei mașinii răspunde ca un lucru care nu există (404), la oricine — și la noi. Gol = scos.
 // Singura excepție: grupele NOASTRE (făcute din contul de fondator, fără firmă) le folosim tot doar noi. O singură regulă
@@ -14302,7 +14302,7 @@ app.get('/api/drivers/:id/istoric-masini', requireAuth, withScope, async (req, r
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Mută un vehicul într-o grupă (sau îl scoate, cu group_id null) — folosit din ecranul „Grupe".
+// Mută un vehicul într-o grupă (sau îl scoate, cu group_id null) — folosit din ecranul „Grupe”.
 // Separat de /assign fiindcă acela scrie ȘI driver_id: mutarea între grupe ar rămâne fără șofer.
 app.put('/api/devices/:imei/group', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
@@ -14391,8 +14391,8 @@ app.get('/api/devices/:imei/io-mappings', requireAuth, withScope, async (req, re
     res.json(await db.getIoMappings(req.params.imei));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// „Ce trimite mașina asta și ce înseamnă" — pentru fereastra din telefon (echivalentul lui
-// „Ce înseamnă?" din web). Se face pe SERVER ca să nu ajungă în aplicația de telefon o a doua copie
+// „Ce trimite mașina asta și ce înseamnă” — pentru fereastra din telefon (echivalentul lui
+// „Ce înseamnă?” din web). Se face pe SERVER ca să nu ajungă în aplicația de telefon o a doua copie
 // a catalogului și a formatării: ar fi două liste care o iau razna una față de cealaltă.
 //
 // Ce întoarce, pentru fiecare semnal pe care vehiculul îl trimite ACUM:
@@ -14426,7 +14426,7 @@ app.get('/api/devices/:imei/io-explained', requireAuth, withScope, async (req, r
     const byId = {}; catalog.forEach((e) => { byId[e.id] = e; });
 
     // Mai multe ID-uri duc la același semnal intern (io_35/85/88 = turația). Păstrăm codul cel mai
-    // mic — e și cel cu unitatea corectă: io_84 se cheamă „(%)" dar primește litrii.
+    // mic — e și cel cu unitatea corectă: io_84 se cheamă „(%)” dar primește litrii.
     const peSemnal = {};
     catalog.forEach((e) => {
       if (!e.key || chei[e.key] === undefined) return;
@@ -14513,8 +14513,8 @@ app.put('/api/admin/system-settings', requireAuth, requireSuperadmin, async (req
     if (b.offline_minutes !== undefined) { const n = parseInt(b.offline_minutes); if (Number.isFinite(n) && n >= 5 && n <= 1440) await db.setSetting('offline_minutes', String(n)); }
     if (b.default_speed_limit !== undefined) { const n = parseInt(b.default_speed_limit); if (Number.isFinite(n) && n >= 10 && n <= 200) await db.setSetting('default_speed_limit', String(n)); }
     if (b.railway_volume_gb !== undefined) { const n = parseFloat(b.railway_volume_gb); if (Number.isFinite(n) && n > 0 && n <= 4096) await db.setSetting('railway_volume_gb', String(n)); } // plafon volum Railway pt. panoul de capacitate DB
-    if (b.anthropic_monthly_budget !== undefined) { const n = parseFloat(b.anthropic_monthly_budget); if (Number.isFinite(n) && n >= 0 && n <= 1000000) await db.setSetting('anthropic_monthly_budget', String(n)); } // buget lunar Anthropic (USD) pt. „disponibil = buget − cheltuit"
-    // Soldul Anthropic NU se mai scrie de aici (04.11): are un singur loc, PUT /api/admin/insight/sold („RA Insight · control").
+    if (b.anthropic_monthly_budget !== undefined) { const n = parseFloat(b.anthropic_monthly_budget); if (Number.isFinite(n) && n >= 0 && n <= 1000000) await db.setSetting('anthropic_monthly_budget', String(n)); } // buget lunar Anthropic (USD) pt. „disponibil = buget − cheltuit”
+    // Soldul Anthropic NU se mai scrie de aici (04.11): are un singur loc, PUT /api/admin/insight/sold („RA Insight · control”).
     if (b.invoice_issuer !== undefined && b.invoice_issuer && typeof b.invoice_issuer === 'object') {
       const i = b.invoice_issuer; const S = (v, n) => String(v == null ? '' : v).slice(0, n);
       const _vr = parseFloat(i.vat_rate); const vatRate = (Number.isFinite(_vr) && _vr >= 0 && _vr <= 100) ? _vr : COTA_TVA_IMPLICITA;
@@ -14734,11 +14734,11 @@ app.get('/api/stats', requireAuth, withScope, async (req, res) => {
 app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
   try {
     await applyCompanyFilter(req);
-    // „Azi" = de la miezul nopții în ROMÂNIA (23.10): serverul e pe UTC, iar cu setHours(0) „azi" începea la 3 dimineața.
+    // „Azi” = de la miezul nopții în ROMÂNIA (23.10): serverul e pe UTC, iar cu setHours(0) „azi” începea la 3 dimineața.
     const todayStart = new Date(insight.perioada({ period: 'today' }, Date.now()).from);
     const now = new Date();
     // Total vehicule = flota ÎNREGISTRATĂ (non-arhivată) din scope, NU doar cele care transmit live.
-    // Altfel un vehicul offline (ex. nu a transmis azi) dispărea din dashboard → totul pe 0. Acum apare ca „oprit".
+    // Altfel un vehicul offline (ex. nu a transmis azi) dispărea din dashboard → totul pe 0. Acum apare ca „oprit”.
     let scopedSize;
     try {
       const _scopeCompany = req.isSuper ? (req.filterCompanyId || null) : req.companyId;
@@ -14769,7 +14769,7 @@ app.get('/api/dashboard', requireAuth, withScope, async (req, res) => {
       const isOnline = data.timestamp && (now - new Date(data.timestamp)) < 3900000; // 65 min
       const _io = data.io || data.io_data || {};
       const hasIgnition = _io.ignition === 1 || _io.ignition === true;
-      // Histerezis: crawl în trafic (viteză ~0 dar s-a mișcat recent + contact pornit) → tot „în mișcare", nu „staționat".
+      // Histerezis: crawl în trafic (viteză ~0 dar s-a mișcat recent + contact pornit) → tot „în mișcare”, nu „staționat”.
       const _movedRecently = data.moved_at && (now - data.moved_at) < MOVE_MEMORY_MS;
       const isMoving = isOnline && ((data.speed || 0) > 3 || (_movedRecently && hasIgnition));
       const isStationat = isOnline && !isMoving && hasIgnition; // motor pornit, dar nemișcat (parcat cu contactul pornit)
@@ -14927,8 +14927,8 @@ app.get('/api/stats/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
-    // Fișa mașinii de pe hartă: „azi" de la miezul nopții în ROMÂNIA (23.10; cu setHours pe UTC începea la 3 dimineața),
-    // iar ziua scrisă e tot a României (miezul nopții românesc e încă „ieri" pe UTC).
+    // Fișa mașinii de pe hartă: „azi” de la miezul nopții în ROMÂNIA (23.10; cu setHours pe UTC începea la 3 dimineața),
+    // iar ziua scrisă e tot a României (miezul nopții românesc e încă „ieri” pe UTC).
     const todayStart = new Date(insight.perioada({ period: 'today' }, Date.now()).from);
     const now = new Date();
     const ziua = _ziRo(now.getTime());
@@ -15041,7 +15041,7 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
   try {
     const { imei } = req.params;
     if (!canAccessImei(req, imei)) return res.status(403).json({ error: 'Acces interzis' });
-    // Fără perioadă: „azi" de la miezul nopții în România (23.10; cu setHours pe UTC începea la 3 dimineața).
+    // Fără perioadă: „azi” de la miezul nopții în România (23.10; cu setHours pe UTC începea la 3 dimineața).
     const from = req.query.from || insight.perioada({ period: 'today' }, Date.now()).from;
     const to = req.query.to || new Date().toISOString();
     const history = await db.getDeviceHistory(imei, from, to);
@@ -15262,7 +15262,7 @@ app.get('/api/report/:imei', requireAuth, withScope, async (req, res) => {
     // Fallback ESTIMARE pentru vehicule FĂRĂ senzor de combustibil fiabil (ex. Dacia Logan): km × consum (config) + ralanti.
     // Cazuri: (a) fără senzor → fuelConsumed=null; (b) senzor CAN care raportează un nivel PLAT/nesigur pe o cursă reală →
     // consumed iese 0 deși mașina a mers zeci de km (imposibil). În ambele → estimăm onest (marcat fuelEstimated), altfel
-    // „carburant/consum" apărea 0.0 / — pe traseu chiar dacă vehiculul a rulat.
+    // „carburant/consum” apărea 0.0 / — pe traseu chiar dacă vehiculul a rulat.
     let fuelEstimated = false;
     if ((fuelConsumed === null || (fuelConsumed === 0 && globalTotalKm > 2)) && (globalTotalKm > 0.2 || globalEngineIdleTime > 60)) {
       try {
@@ -15381,8 +15381,8 @@ app.put('/api/drivers/:id', requireAuth, requireEdit('soferi'), withCompany, asy
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Export brandat: „Situația șoferilor" (Excel/PDF) ───────────────────────────────────────────
-// Trece prin sendReport → nume „RA-Track - Raport ... - data" + logo, ca ORICE document descărcat
+// ─── Export brandat: „Situația șoferilor” (Excel/PDF) ───────────────────────────────────────────
+// Trece prin sendReport → nume „RA-Track - Raport ... - data” + logo, ca ORICE document descărcat
 // din aplicație (regula din CLAUDE.md). Nu e o cale paralelă de export.
 function _drvLicRow(d, vehByDriver) {
   const cats = licenseCats.parse(d.license_categories);
@@ -15390,14 +15390,14 @@ function _drvLicRow(d, vehByDriver) {
   const n0 = new Date(); const ref = new Date(n0.getFullYear(), n0.getMonth(), n0.getDate());
   let exp = '—', stare;
   if (d.license_expiry) {
-    // Comparăm pe zile calendaristice: un permis care expiră azi NU e „expirat".
+    // Comparăm pe zile calendaristice: un permis care expiră azi NU e „expirat”.
     const e = new Date(d.license_expiry);
     const days = Math.round((Date.UTC(e.getFullYear(), e.getMonth(), e.getDate())
       - Date.UTC(ref.getFullYear(), ref.getMonth(), ref.getDate())) / 86400000);
     exp = e.toLocaleDateString('ro-RO');
     stare = days < 0 ? 'Expirat de ' + (-days) + ' zile' : (days === 0 ? 'Expiră azi' : (days <= 30 ? 'Expiră în ' + days + ' zile' : 'Valabil'));
-    // „Fără dată de expirare" nu încape în coloana din PDF și se tăia cu „…". Lângă coloana
-    // „Expiră", care arată „—", forma scurtă spune exact același lucru.
+    // „Fără dată de expirare” nu încape în coloana din PDF și se tăia cu „…”. Lângă coloana
+    // „Expiră”, care arată „—”, forma scurtă spune exact același lucru.
   } else { stare = (d.license_number || cats.length) ? 'Fără dată' : 'Fără permis în fișă'; }
   const vh = (vehByDriver[d.id] || []).slice().sort((a, b) => a.localeCompare(b));
   return { cls: cls.key,
@@ -15511,7 +15511,7 @@ app.post('/api/drivers/import', requireAuth, requireEdit('soferi'), withCompany,
         const lic = (data.license_number || '').toUpperCase();
         const mail = (data.email || '').toLowerCase();
         let match = (lic && byLic.get(lic)) || (mail && byMail.get(mail)) || byName.get(name.toLowerCase()) || null;
-        if (match === 'AMBIGUU') { errors.push({ line, error: 'Există doi șoferi cu numele „' + name + '" — completează numărul de permis ca să știm care e' }); continue; }
+        if (match === 'AMBIGUU') { errors.push({ line, error: 'Există doi șoferi cu numele „' + name + '” — completează numărul de permis ca să știm care e' }); continue; }
         if (match) {
           // Poza rămâne a lui: CSV-ul n-o conține, iar updateDriver ar șterge-o cu null.
           data.photo_b64 = match.photo_b64 || null;
@@ -15672,7 +15672,7 @@ app.put('/api/geofences/:id', requireAuth, requireEdit('hotspoturi'), withCompan
     if (!cur) return res.status(404).json({ error: 'Zona nu mai există.' });
     // ─── Modificare PARȚIALĂ ─────────────────────────────────────────────────────────────────────────
     // Până acum, orice cheie lipsă din cerere se scria pe gol: telefonul trimitea doar nume, culoare și
-    // formă, iar descrierea, categoria, grupa și bifa „Regiune" puse de pe web dispăreau fără urmă.
+    // formă, iar descrierea, categoria, grupa și bifa „Regiune” puse de pe web dispăreau fără urmă.
     // Acum cererea se pune PESTE rândul salvat: ce lipsește rămâne cum era, iar o cheie trimisă goală
     // (așa cum trimite web-ul formularul întreg) golește în continuare câmpul.
     const body = (req.body && typeof req.body === 'object') ? req.body : {};
@@ -15728,11 +15728,11 @@ app.delete('/api/geofences/:id', requireAuth, requireEdit('hotspoturi'), withCom
 
 // ─── Alerte CRUD ───
 
-// Când sună de fapt o alertă de viteză (26.10, Alin: „da" — spune-o și pe ecranul Alerte): pragul + marja motorului, cel puțin
+// Când sună de fapt o alertă de viteză (26.10, Alin: „da” — spune-o și pe ecranul Alerte): pragul + marja motorului, cel puțin
 // baza + marja. O singură socoteală (propuneri.pragEfectiv) și o singură frază (propuneri.textMarjaViteza), ca în cartonașul din
 // RA Insight; ecranele doar le arată.
 const _MARJA_VITEZA = { baza: SPEED_ALERT_BASE, marja: SPEED_ALERT_MARGIN };
-// Cum sună o regulă, scris pe rândul ei din Alerte: viteza — de la ce viteză (pragul + marja); alertele „de stare" (27.10) — „la
+// Cum sună o regulă, scris pe rândul ei din Alerte: viteza — de la ce viteză (pragul + marja); alertele „de stare” (27.10) — „la
 // apariție, apoi o dată pe zi" (alerte_stare.js). Textele le dă serverul; pagina doar le arată.
 function _sunaPeste(a) {
   if (!a) return a;
@@ -15750,7 +15750,7 @@ app.get('/api/alerts', requireAuth, withScope, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Nota de sub „Viteză max" din formularul regulii: cât scrie omul, aflăm de la server când sună (fără prag = baza motorului).
+// Nota de sub „Viteză max” din formularul regulii: cât scrie omul, aflăm de la server când sună (fără prag = baza motorului).
 app.get('/api/alerts/viteza', requireAuth, withScope, (req, res) => {
   const p = String(req.query.prag == null ? '' : req.query.prag).trim();
   const prag = p === '' ? null : Number(p);
@@ -15760,7 +15760,7 @@ app.get('/api/alerts/viteza', requireAuth, withScope, (req, res) => {
     text: [propuneri.textMarjaViteza(prag, _MARJA_VITEZA), propuneri.textRacireViteza()].filter(Boolean).join(' ')
   });
 });
-// Fereastra regulii: care tipuri sunt „de stare" și fraza de sub câmpuri („Sună când apare…"), ca pagina să n-o scrie ea (27.10).
+// Fereastra regulii: care tipuri sunt „de stare” și fraza de sub câmpuri („Sună când apare…”), ca pagina să n-o scrie ea (27.10).
 app.get('/api/alerts/cum-suna', requireAuth, (req, res) => {
   res.json({ deStare: alerteStare.DE_STARE, text: alerteStare.TEXT });
 });
@@ -15769,10 +15769,10 @@ app.post('/api/alerts', requireAuth, requireEdit('alerte'), withScope, async (re
   try {
     if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
     // Compania regulii: pentru super-admin vine din formular (compania nu se poate deduce — el n-are una).
-    // Înainte se folosea `req.companyId`, care pentru super-admin e NULL: regula ieșea „fără companie", iar
+    // Înainte se folosea `req.companyId`, care pentru super-admin e NULL: regula ieșea „fără companie”, iar
     // motorul o aplica ATUNCI vehiculelor TUTUROR companiilor (vezi evaluateAlerts), fără ca administratorii
     // lor s-o vadă în listă (getAlerts filtrează pe company_id). `null` explicit rămâne posibil, dar acum e
-    // o alegere conștientă („toată platforma"), nu un efect secundar.
+    // o alegere conștientă („toată platforma”), nu un efect secundar.
     let coId = req.companyId;
     if (req.isSuper && Object.prototype.hasOwnProperty.call(req.body, 'company_id')) {
       coId = (req.body.company_id === null || req.body.company_id === '') ? null : Number(req.body.company_id);
@@ -15882,7 +15882,7 @@ function _odoFromIo(io) {
   return (km != null && isFinite(km) && km > 0) ? Math.round(km) : null;
 }
 
-// Preavizul — CÂT DE DEVREME spunem că ceva „vine curând". O singură cifră pentru fiecare fel de
+// Preavizul — CÂT DE DEVREME spunem că ceva „vine curând”. O singură cifră pentru fiecare fel de
 // scadență, folosită în AMBELE locuri: culoarea din listă ȘI alerta la clopoțel/telefon.
 //
 // Înainte erau șase numere diferite pentru aceeași idee: lista de acte se colora la 30 de zile, dar
@@ -15900,7 +15900,7 @@ const DOC_DAYS_LEAD = preaviz.ACTE_ZILE;       // ACTE — 30 de zile
 // Preavizul fiecărei companii, într-o singură interogare. Ordinea: setarea companiei → setarea
 // globală (super-admin) → constantele de mai sus.
 async function _leadsByCompany() {
-  // Regula (firma → pragurile globale → pornirea) stă în preaviz.js — aceeași pentru raportul „Scadențe".
+  // Regula (firma → pragurile globale → pornirea) stă în preaviz.js — aceeași pentru raportul „Scadențe”.
   let firme = [];
   try { firme = (await db.getCompanies()).map(function (co) { return { id: co.id, praguri: _alertThresholdsFromSettings(co.settings) || {} }; }); } catch (e) {}
   return preaviz.peFirme(await _getGlobalAlertThresholds(), firme);
@@ -15911,9 +15911,9 @@ function _maintClosed(m) { return preaviz.lucrareInchisa(m); }
 // `leads` = preavizul companiei (vezi _leadsByCompany); lipsă → constantele implicite.
 function maintenanceDueState(m, odo, leads) { return preaviz.stareRevizie(m, odo, leads); }
 // Aceeași poveste pentru ACTE, ca ecranele să nu mai calculeze fiecare pe cont propriu.
-// 'expired' | 'soon' | 'ok' | 'none' (fără dată de expirare). Regula stă în preaviz.js (și raportul „Scadențe" o folosește).
+// 'expired' | 'soon' | 'ok' | 'none' (fără dată de expirare). Regula stă în preaviz.js (și raportul „Scadențe” o folosește).
 function documentDueState(d, leadDays) { return preaviz.stareAct(d, leadDays); }
-// La marcarea „efectuat": înregistrează momentul EXACT (done_at) + data + km-ul curent (best-effort).
+// La marcarea „efectuat”: înregistrează momentul EXACT (done_at) + data + km-ul curent (best-effort).
 async function stampMaintenanceDone(body) {
   if (!body || body.status !== 'done') return;
   if (!body.done_at) body.done_at = new Date().toISOString();
@@ -15922,7 +15922,7 @@ async function stampMaintenanceDone(body) {
     try { const km = _odoFromIo(await db.getLastIo(body.imei)); if (km) body.done_km = km; } catch (e) {}
   }
 }
-// RECURENȚĂ: la bifarea „efectuat" a unei mentenanțe cu interval setat, creează AUTOMAT următoarea scadență
+// RECURENȚĂ: la bifarea „efectuat” a unei mentenanțe cu interval setat, creează AUTOMAT următoarea scadență
 // (due_km = done_km + interval_km; due_date = done_date + interval_months) — altfel acoperirea expiră în tăcere.
 async function maybeCreateNextMaintenance(oldRow, body, companyId) {
   try {
@@ -15950,7 +15950,7 @@ app.post('/api/maintenance', requireAuth, requireEdit('mentenanta'), withScope, 
     if (req.body.imei && !canAccessImei(req, req.body.imei)) return res.status(403).json({ error: 'Acces interzis' });
     await stampMaintenanceDone(req.body);
     const m = await db.createMaintenance(req.body, req.companyId); auditReq(req, 'create', 'maintenance', m.id, { imei: req.body.imei, type: req.body.type });
-    maybeCreateNextMaintenance(null, req.body, req.companyId).catch(() => {}); // creată direct „efectuată" cu interval → programează următoarea
+    maybeCreateNextMaintenance(null, req.body, req.companyId).catch(() => {}); // creată direct „efectuată” cu interval → programează următoarea
     res.json(m);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -16078,12 +16078,12 @@ app.post('/api/maintenance/:id/to-document', requireAuth, requireEdit('mentenant
     if (!(await ownsRow(req, 'maintenance', req.params.id))) return res.status(403).json({ error: 'Acces interzis' });
     const m = (await db.pool.query('SELECT * FROM maintenance WHERE id = $1', [req.params.id])).rows[0];
     if (!m) return res.status(404).json({ error: 'Intrarea nu mai există' });
-    if (!maintTypes.isDocType(m.type)) return res.status(400).json({ error: '„' + m.type + '" e o lucrare la service, nu un act.' });
+    if (!maintTypes.isDocType(m.type)) return res.status(400).json({ error: '„' + m.type + '” e o lucrare la service, nu un act.' });
     const docType = maintTypes.canonDocType(m.type);
     const dev = await db.getDeviceFull(m.imei);
     const companyId = (dev && dev.company_id != null) ? dev.company_id : m.company_id;
     const existing = (await db.getVehicleDocuments(m.imei, companyId) || []).find(d => d.doc_type === docType);
-    if (existing) return res.status(409).json({ error: 'Vehiculul are deja un act „' + docType + '".', existing: { id: existing.id, expiry_date: existing.expiry_date } });
+    if (existing) return res.status(409).json({ error: 'Vehiculul are deja un act „' + docType + '”.', existing: { id: existing.id, expiry_date: existing.expiry_date } });
     const doc = await db.createVehicleDocument({
       imei: m.imei, doc_type: docType,
       expiry_date: m.due_date || null,          // scadența lucrării = valabilitatea actului
@@ -16102,7 +16102,7 @@ app.get('/api/documents', requireAuth, withScope, async (req, res) => {
     if (req.query.imei && !canAccessImei(req, req.query.imei)) return res.status(403).json({ error: 'Acces interzis' });
     let rows = await db.getVehicleDocuments(req.query.imei, req.isSuper ? null : req.companyId);
     if (req.allowedImeis != null) rows = rows.filter(d => req.allowedImeis.has(d.imei)); // scope per-vehicul (deja aplicat)
-    // Starea („expirat / expiră curând / valabil") se calculează AICI, ca la mentenanță. Înainte o
+    // Starea („expirat / expiră curând / valabil”) se calculează AICI, ca la mentenanță. Înainte o
     // socotea fiecare ecran pe cont propriu, cu 30 de zile bătute în cod în două locuri — iar alerta
     // suna după alt prag. Acum ecranul și telefonul folosesc aceeași cifră.
     const leads = await _leadsByCompany();
@@ -16135,7 +16135,7 @@ app.post('/api/documents', requireAuth, requireEdit('documente'), withScope, asy
     const companyId = dev && dev.company_id != null ? dev.company_id : req.companyId;
     // Reînnoire = actul vechi de același tip iese din uz — dar NU se mai șterge, trece în ISTORICUL
     // mașinii (decizie 2026-08-20). Așa vezi ce RCA aveai anul trecut, la ce firmă și cât ai dat.
-    // Excepție „Altul" → poate exista în mai multe exemplare, deci nu înlocuiește nimic.
+    // Excepție „Altul” → poate exista în mai multe exemplare, deci nu înlocuiește nimic.
     if (req.body.doc_type !== 'Altul') {
       try { await db.archiveVehicleDocumentsByType(req.body.imei, req.body.doc_type, companyId); } catch (e) {}
     }
@@ -16187,7 +16187,7 @@ app.post('/api/documents/scan', requireAuth, requireEdit('documente'), withScope
     auditReq(req, 'scan', 'document', null, { sursa: r.sursa, tip: r.tipDetectat, campuri: Object.keys(r.campuri).length });
     res.json(r);
   } catch (err) {
-    // Mesajele din docscan sunt scrise pentru oameni („PDF-ul e o scanare fără text...") — le dăm mai departe. Refuzul lui Anthropic
+    // Mesajele din docscan sunt scrise pentru oameni („PDF-ul e o scanare fără text...”) — le dăm mai departe. Refuzul lui Anthropic
     // (04.11) primește textul pentru client, fără cauză (noi am aflat deja).
     res.status(400).json({ error: err && err.refuzAnthropic ? soldAi.TEXT_POZA : err.message });
   }
@@ -16270,7 +16270,7 @@ function isPointInCircle(lat, lng, centerLat, centerLng, radiusKm) {
   return haversineDistance(lat, lng, centerLat, centerLng) <= radiusKm;
 }
 
-// Coridor: punctul e „în zonă" dacă e la cel mult halfMeters de oricare segment al liniei centrale.
+// Coridor: punctul e „în zonă” dacă e la cel mult halfMeters de oricare segment al liniei centrale.
 // Proiecție planară locală (echirectangulară) — exactă pentru lățimi de coridor (zeci de metri).
 function isPointNearPolyline(lat, lng, line, halfMeters) {
   if (!Array.isArray(line) || line.length < 2 || !(halfMeters > 0)) return false;
@@ -16308,9 +16308,9 @@ async function getDeviceCompanyCached(imei) {
   } catch (e) { return null; }
 }
 
-// ── Alertă „furt combustibil" (per companie, prag self-service fuelTheftL) ───────────────────────────
+// ── Alertă „furt combustibil” (per companie, prag self-service fuelTheftL) ───────────────────────────
 // Două moduri: (1) PARCARE — scădere între ultima oprire (ign OFF) și următoarea pornire (ign ON);
-// (2) ÎN MERS — scădere bruscă în deplasare, dar NU alertăm imediat: ținem o „suspiciune" și o confirmăm
+// (2) ÎN MERS — scădere bruscă în deplasare, dar NU alertăm imediat: ținem o „suspiciune” și o confirmăm
 // doar dacă nivelul NU revine în ~1h (clătinarea/înclinarea pe pantă readuce temporar citirea CAN în jos).
 const _fuelTheft = new Map();          // imei -> { ign, lastFuel, parkFuel, parkAt, susp:{baseline,low,at}|null }
 const _fuelTheftCooldown = new Map();  // imei -> ts ultima alertă (anti-spam)
@@ -16335,8 +16335,8 @@ async function _emitFuelTheft(imei, data, info) {
   console.log(`[FUEL-THEFT] ${imei}: -${info.drop.toFixed(1)}L (${info.mode})`);
 }
 // Cel mai MIC prag activ pe vehiculul asta, din toti cei care asculta scaderile de carburant:
-// pragul companiei („furt combustibil") si pragul fiecarui utilizator abonat la evenimentul
-// „Scadere brusca combustibil". Automatul ruleaza o singura data, pe pragul cel mai sensibil, si
+// pragul companiei („furt combustibil”) si pragul fiecarui utilizator abonat la evenimentul
+// „Scadere brusca combustibil”. Automatul ruleaza o singura data, pe pragul cel mai sensibil, si
 // intoarce CAT a scazut; fiecare abonat isi aplica apoi propriul prag. Daca nu asculta nimeni,
 // intoarce 0 si detectia sta oprita — ca pana acum.
 async function _pragCarburantMin(imei, companyId) {
@@ -16430,13 +16430,13 @@ async function getGeofencesForScopeCached(companyId) {
 function invalidateReguliCache() { _alertsCache = null; _geoScopeCache.clear(); }
 
 // Răcirea unei reguli pe aceeași mașină: cel mult o dată la 5 minute (propuneri.RACIRE_MS — aceeași cifră cu care cartonașul din
-// RA Insight socotește „din ultimele 30 de zile"). `ALERTE_RACIRE_MS` doar în probe (o coboară ca să vadă ce sună după răcire);
+// RA Insight socotește „din ultimele 30 de zile”). `ALERTE_RACIRE_MS` doar în probe (o coboară ca să vadă ce sună după răcire);
 // NU o seta în producție.
 const ALERTE_RACIRE_MS = Number(process.env.ALERTE_RACIRE_MS) > 0 ? Number(process.env.ALERTE_RACIRE_MS) : propuneri.RACIRE_MS;
 
-// Alertele „de stare" (cod de eroare, temperatura motorului, suprasarcina, priza de putere, plăcuțele, revizia — Alin, 27.10: „da"):
+// Alertele „de stare” (cod de eroare, temperatura motorului, suprasarcina, priza de putere, plăcuțele, revizia — Alin, 27.10: „da”):
 // sună când starea începe, cât ține o amintire pe zi, revenită după 30 de minute de normal = sună din nou (regula: alerte_stare.js).
-// Starea fiecărei reguli pe fiecare mașină stă aici, în memorie; după o repornire, „când a sunat ultima oară" se citește O DATĂ din
+// Starea fiecărei reguli pe fiecare mașină stă aici, în memorie; după o repornire, „când a sunat ultima oară” se citește O DATĂ din
 // istoricul alertelor (db.ultimaAlertaSunata) — altfel fiecare publicare ar suna din nou pe toate mașinile cu plăcuțele uzate.
 const alerteStare = require('./alerte_stare');
 const _stariAlerte = new Map();   // `${alertId}_${imei}` → starea (alerteStare.stareNoua)
@@ -16460,8 +16460,8 @@ function _contactDin(io) {
 }
 // Pornirea și oprirea motorului = SCHIMBAREA contactului, de la poziția de dinainte (`anterior`, luată din harta live ÎNAINTE de
 // poziția nouă) până la capătul pachetului, record cu record, în ordinea timpului (un pachet poate ține și pornirea, și oprirea).
-// Până pe 26.10 regula „Oprire motor" citea poziția de dinainte din harta live DUPĂ ce poziția nouă fusese pusă acolo — o compara
-// cu ea însăși și nu suna niciodată —, iar „Pornire motor" suna la fiecare 5 minute cât contactul era pornit. Fără o stare știută
+// Până pe 26.10 regula „Oprire motor” citea poziția de dinainte din harta live DUPĂ ce poziția nouă fusese pusă acolo — o compara
+// cu ea însăși și nu suna niciodată —, iar „Pornire motor” suna la fiecare 5 minute cât contactul era pornit. Fără o stare știută
 // de dinainte (prima poziție după o repornire), primul record doar o stabilește: nu sună nimic.
 function _schimbariContact(anterior, records) {
   const ms = function (t) { return t == null ? 0 : (typeof t === 'number' ? t : new Date(t).getTime()) || 0; };
@@ -16506,9 +16506,9 @@ async function evaluateAlerts(imei, data, contact) {
       _alertIdleStart.delete(imei);
     }
 
-    // Starea „era în zonă" se avansează O SINGURĂ DATĂ per poziție, nu per alertă. Altfel, când există
+    // Starea „era în zonă” se avansează O SINGURĂ DATĂ per poziție, nu per alertă. Altfel, când există
     // DOUĂ reguli pe aceeași zonă + același vehicul (intrare + ieșire), prima regulă evaluată suprascria
-    // starea, iar a doua citea deja starea nouă → tranziția era „consumată" și alerta a doua NU se
+    // starea, iar a doua citea deja starea nouă → tranziția era „consumată” și alerta a doua NU se
     // declanșa niciodată. Practic: mergea doar intrarea, ieșirea niciodată (sau invers, după ordinea lor).
     const _gfPending = new Map(); // stateKey -> isInside, aplicat DUPĂ ce toate alertele au citit starea veche
 
@@ -16523,7 +16523,7 @@ async function evaluateAlerts(imei, data, contact) {
       // Alertele de zonă își au răcirea PER ZONĂ (mai jos, la emitere): o regulă poate urmări mai multe
       // zone, iar o răcire comună ar fi înghițit a doua trecere dintr-o oră. Restul tipurilor: ca înainte.
       const _isGeo = alert.type === 'geofence_enter' || alert.type === 'geofence_exit';
-      // Alertele „de stare" se citesc la FIECARE poziție (trebuie văzut și când starea se termină); sunetul îl hotărăște _stareSuna.
+      // Alertele „de stare” se citesc la FIECARE poziție (trebuie văzut și când starea se termină); sunetul îl hotărăște _stareSuna.
       if (!_isGeo && !alerteStare.eDeStare(alert.type)) {
         const lastTriggered = alertCooldowns.get(cooldownKey);
         if (lastTriggered && (Date.now() - lastTriggered) < ALERTE_RACIRE_MS) continue; // 5 min cooldown
@@ -16546,7 +16546,7 @@ async function evaluateAlerts(imei, data, contact) {
         }
 
         case 'fuel_drop': {
-          // Regula asta nu s-a declanșat NICIODATĂ: citea „poziția anterioară" din `livePositions`,
+          // Regula asta nu s-a declanșat NICIODATĂ: citea „poziția anterioară” din `livePositions`,
           // care fusese deja înlocuită cu poziția curentă câteva rânduri mai sus — deci scădea o
           // valoare din ea însăși și obținea mereu zero. Acum folosește verdictul detectorului
           // (aceeași sursă ca alerta de furt și ca evenimentele per-utilizator).
@@ -16573,7 +16573,7 @@ async function evaluateAlerts(imei, data, contact) {
           }
           break;
 
-        // Alertele „de stare": la apariție, apoi o dată pe zi cât ține (alerte_stare.js; vezi _stareSuna).
+        // Alertele „de stare”: la apariție, apoi o dată pe zi cât ține (alerte_stare.js; vezi _stareSuna).
         case 'dtc_error':
         case 'engine_temp':
         case 'overload_legal':
@@ -16639,7 +16639,7 @@ async function evaluateAlerts(imei, data, contact) {
           if (_idling && st && !st.alerted && _idleMin >= thr) {
             st.alerted = true;
             triggered = true;
-            alertData = { idleMinutes: Math.round(_idleMin), threshold: thr, idleStart: st.start }; // startul REAL al sesiunii → detaliu „De la … până la …"
+            alertData = { idleMinutes: Math.round(_idleMin), threshold: thr, idleStart: st.start }; // startul REAL al sesiunii → detaliu „De la … până la …”
           }
           break;
         }
@@ -16746,10 +16746,10 @@ async function notify(n) {
 }
 // Fan-out push nativ pentru notify(): rezolvă utilizatorii țintă (userId / imei / companie) și trimite DOAR
 // celor care au push activat pentru acest tip. No-op dacă FCM nu e configurat (sendPushToUser iese devreme).
-// O regulă din secțiunea „Alerte" ajunge la notificare cu type='alert', iar tipul ei REAL (viteză,
+// O regulă din secțiunea „Alerte” ajunge la notificare cu type='alert', iar tipul ei REAL (viteză,
 // combustibil, ralanti…) călătorește doar în data.alertType — unde nimeni nu se uita la filtrare.
-// Efectul: stingeai „Depășire viteză" din Preferințe notificări, opreai evenimentele automate, dar
-// regulile din „Alerte" continuau să sune, pentru că se verifica alt rând din aceeași listă.
+// Efectul: stingeai „Depășire viteză” din Preferințe notificări, opreai evenimentele automate, dar
+// regulile din „Alerte” continuau să sune, pentru că se verifica alt rând din aceeași listă.
 // Câteva tipuri de regulă nu se numesc la fel ca rândul din preferințe — de aici echivalențele.
 const ALERT_TIP_EVENIMENT = {
   idle_engine: 'idling',
@@ -16780,8 +16780,8 @@ async function _notifyPush(n, notifId) {
   const payload = { title: n.title || 'RA Track', body: n.body || '', imei: n.imei || null, data: Object.assign({ type: n.type || '' }, n.data || {}, notifId != null ? { notifId: notifId } : {}) };
   for (const u of users) {
     const up = userTypePref(prefsMap, u.id, n.type);
-    // Regulă din „Alerte" pe un tip pe care utilizatorul l-a stins explicit → tăcem, oricât de
-    // pornit ar fi rândul general „Reguli de alertă". Comutatorul stins trebuie să stingă.
+    // Regulă din „Alerte” pe un tip pe care utilizatorul l-a stins explicit → tăcem, oricât de
+    // pornit ar fi rândul general „Reguli de alertă”. Comutatorul stins trebuie să stingă.
     if (n.type === 'alert' && tipulReguliiStins(prefsMap, u.id, n.data)) continue;
     // Comutatorul PRINCIPAL al tipului, stins → tăcere totală. Lipsea de aici, deși cealaltă cale îl
     // verifica (`if (!up || !up.enabled) continue`). Se vedea mai ales pe telefon: acolo, stingând
@@ -16824,7 +16824,7 @@ async function _runWorker(key, fn) {
   if (w.running) { // rulare anterioară încă în desfășurare → SĂRIM tura asta (nu ne suprapunem peste ea)
     w.skipped++;
     const forMin = w.startedAt ? Math.round((Date.now() - w.startedAt) / 60000) : '?';
-    console.warn('[WORKER] „' + w.label + '" rulează de ' + forMin + ' min — sar peste tura curentă (total sărite: ' + w.skipped + ')');
+    console.warn('[WORKER] „' + w.label + '” rulează de ' + forMin + ' min — sar peste tura curentă (total sărite: ' + w.skipped + ')');
     return null;
   }
   w.running = true; w.startedAt = Date.now();
@@ -16834,7 +16834,7 @@ async function _runWorker(key, fn) {
     return out;
   } catch (e) {
     w.lastError = e.message; w.lastResult = null;
-    console.error('[WORKER] „' + w.label + '" a eșuat:', e.message);
+    console.error('[WORKER] „' + w.label + '” a eșuat:', e.message);
     return null;
   } finally {
     w.lastMs = Date.now() - w.startedAt; w.lastAt = new Date().toISOString(); w.runs++;
@@ -16962,12 +16962,12 @@ async function _checkExpiriesBody() {
     const _vehLabel = (im) => _vehIdent.get(im) || im;
     // Documente vehicul (ITP / RCA / ROVINIETĂ) — alerte la lead / 3 / 1 zile + EXPIRAT.
     //
-    // Pragul „lead" e ACELAȘI careDaysLead per companie ca la mentenanță — interfața promitea asta
+    // Pragul „lead” e ACELAȘI careDaysLead per companie ca la mentenanță — interfața promitea asta
     // în trei locuri (setări web, mobil, RA Care), dar bucla de aici era bătută în cuie pe 7 zile.
     // Nesetat, rămâne 7: comportamentul vechi nu se schimbă pentru nimeni care n-a atins setarea.
     //
     // Dedup pe DURATA bucketului, ca la mentenanță (_mntDateDedup) — nu pe implicitul de 20h, care
-    // făcea ca fiecare bucket să sune zilnic cât timp era activ, iar „EXPIRAT" să sune zilnic LA
+    // făcea ca fiecare bucket să sune zilnic cât timp era activ, iar „EXPIRAT” să sune zilnic LA
     // NESFÂRȘIT. Acum: o alertă per prag, iar pentru actul expirat un memento pe săptămână — un act
     // uitat nu trebuie să devină zgomot pe care înveți să-l ignori.
     // Preavizul actelor are acum cheia LUI (docDaysLead, implicit 30) și e ACELAȘI număr care
@@ -16993,7 +16993,7 @@ async function _checkExpiriesBody() {
         dedupHours: dedupH,
         title: label + (days < 0 ? ' EXPIRAT' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
         body: label + (d.number ? ' (' + d.number + ')' : '') + (days < 0 ? ' a expirat de ' + (-days) + ' zile' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + ' — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + '.',
-        // Cheia bucketului vechi „7" devine „lead" — cheile vechi din tabelă nu se mai potrivesc,
+        // Cheia bucketului vechi „7” devine „lead” — cheile vechi din tabelă nu se mai potrivesc,
         // deci la primul deploy alertele active pot suna o dată în plus. Acceptat: o notificare
         // dublă o singură dată e mai ieftină decât o schemă de migrare pe chei de dedup.
         data: { key: 'vdoc-' + d.id + '-' + bucket, docId: d.id, days: days, docType: d.doc_type }
@@ -17025,7 +17025,7 @@ async function _checkExpiriesBody() {
       }
     } catch (e) { console.warn('[checkExpiries] acte fără dată:', e.message); }
 
-    // Reguli „Expirare documente" (Management → Alerte): avertizare TIMPURIE la pragul warnDays per regulă
+    // Reguli „Expirare documente” (Management → Alerte): avertizare TIMPURIE la pragul warnDays per regulă
     // (un vehicul sau toată compania). Pragurile urgente 7/3/1/EXPIRAT de mai sus rămân pentru toate documentele.
     try {
       const docRules = (await db.getAlerts()).filter(a => a.enabled && a.type === 'document_expiry');
@@ -17045,7 +17045,7 @@ async function _checkExpiriesBody() {
               type: 'document_expiry', severity: 'warning', imei: d.imei || null, companyId: d.company_id,
               dedupHours: wd * 24, // o singură avertizare timpurie pe toată banda warnDays
               title: label + ' expiră în ' + days + ' zile' + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
-              body: label + (d.number ? ' (' + d.number + ')' : '') + ' expiră în ' + days + ' zile — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + ' (regula „' + a.name + '").',
+              body: label + (d.number ? ' (' + d.number + ')' : '') + ' expiră în ' + days + ' zile — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + ' (regula „' + a.name + '”).',
               data: { key: 'vdoc-rule-' + a.id + '-' + d.id, alertId: a.id, docId: d.id, days }
             };
             await notify(nEarly);
@@ -17070,7 +17070,7 @@ const EVENT_TYPES = [
   { key: 'no_ignition_move', label: 'Mișcare fără contact',       threshold: false },
   { key: 'dtc_error',        label: 'Erori motor (DTC)',          threshold: false },
   { key: 'document_expiry',  label: 'Expirare documente',         threshold: false },
-  // Regulile definite manual în „Alerte" (viteză, zone, ralanti…) trimit notificări cu type='alert'.
+  // Regulile definite manual în „Alerte” (viteză, zone, ralanti…) trimit notificări cu type='alert'.
   // Tipul LIPSEA din catalog, deci nu exista nicio bifă pentru el — iar push-ul se trimite doar pentru
   // tipuri bifate. Rezultatul: o regulă de alertă nu putea ajunge NICIODATĂ pe telefon, indiferent ce
   // configurai. Push implicit PORNIT: regula a fost creată tocmai ca să fii anunțat.
@@ -17162,7 +17162,7 @@ async function getEligibleUsers(imei) { const c = _eligibleCache.get(imei); if (
 const _userEvtCooldown = new Map();
 function userCooldownOk(userId, type, key, ms) { const k = userId + '_' + type + '_' + key; const last = _userEvtCooldown.get(k); if (last && Date.now() - last < (ms || 300000)) return false; _userEvtCooldown.set(k, Date.now()); return true; }
 const _idlingStart = new Map();
-const _noIgnMoveStart = new Map(); // imei -> ts de când e „mișcare cu contactul oprit" continuă (filtrează glitch-uri tranzitorii de ignition)
+const _noIgnMoveStart = new Map(); // imei -> ts de când e „mișcare cu contactul oprit” continuă (filtrează glitch-uri tranzitorii de ignition)
 
 // Preferința unui user pentru un tip: dacă nu are nicio preferință salvată → implicit doar in-app
 function userTypePref(prefsMap, userId, type) {
@@ -17215,7 +17215,7 @@ async function deliverCompanyEvent(imei, ev) {
 }
 async function deliverUserEvent(user, ev, p) {
   try {
-    // data completă: locul evenimentului (lat/lng) + extra per tip (ex. idling: alertType/idleStart → detaliu „De la…Până la")
+    // data completă: locul evenimentului (lat/lng) + extra per tip (ex. idling: alertType/idleStart → detaliu „De la…Până la”)
     const nd = Object.assign({ eventType: ev.type }, (ev.lat != null && ev.lng != null) ? { lat: ev.lat, lng: ev.lng } : {}, ev.extra || {});
     const saved = await db.createNotification({ type: ev.type, severity: ev.severity || 'warning', imei: ev.imei || null, title: ev.title, body: ev.body, data: nd, userId: user.id });
     broadcastWsToUser(user.id, { type: 'notification', data: saved });
@@ -17225,7 +17225,7 @@ async function deliverUserEvent(user, ev, p) {
   if (p && (p.push || (p.push == null && ev.severity === 'critical'))) sendPushToUser(user.id, { title: ev.title, body: ev.body, imei: ev.imei || null, data: { type: ev.type, imei: ev.imei || '' } }).catch(() => {});
 }
 
-// ─── „Aparate noi transmit" (Alin, 30.09: „da, pregătește-l ca notificare, să fie funcțional atunci când face Robert") ───
+// ─── „Aparate noi transmit” (Alin, 30.09: „da, pregătește-l ca notificare, să fie funcțional atunci când face Robert”) ───
 // Un aparat fără firmă care începe să transmită e, aproape sigur, unul abia montat. Dacă uiți să-l treci pe firmă,
 // clientul nu-și vede mașina, iar abonamentul ei nu pornește. Anunțul merge DOAR la noi (super-admini); clientul nu
 // vede nimic până nu trecem aparatele pe firma lui.
@@ -17234,7 +17234,7 @@ async function deliverUserEvent(user, ev, p) {
 // raportul instalatorului, îl cheamă și raportul, cu firma, instalatorul și lucrarea știute:
 //     anuntaAparateNoi({ imeis, companyId, partenerId, lucrareId, sursa: 'instalator' })
 // Un aparat se anunță o singură dată (`devices.anuntat_nou_la`), deci raportul și semnalul nu se dublează.
-// Anunțul vechi („Dispozitiv nou conectat", la fiecare aparat, pe loc) a fost înlocuit de ăsta.
+// Anunțul vechi („Dispozitiv nou conectat”, la fiecare aparat, pe loc) a fost înlocuit de ăsta.
 async function _aparatNouDinStoc(imei) {
   try {
     const x = await db.stocDupaSerie(String(imei));
@@ -17246,7 +17246,7 @@ async function anuntaAparateNoi(o) {
   const imeis = Array.from(new Set(((o && o.imeis) || []).map(String))).filter(function (i) { return !DEMO_SET.has(i); });
   if (!imeis.length) return { anuntate: 0 };
   const acum = (o && o.acum) || Date.now();
-  // Doar ce e ACUM în „Neasignate" se poate trece pe firmă; restul (încă neconectat) se spune pe nume.
+  // Doar ce e ACUM în „Neasignate” se poate trece pe firmă; restul (încă neconectat) se spune pe nume.
   const inNeas = await db.aparateInNeasignate(imeis);
   const transmit = inNeas.filter(function (x) { return x.transmite; }).map(function (x) { return x.imei; });
   const sursa = o && o.sursa === 'instalator' ? 'instalator' : 'semnal';
@@ -17442,9 +17442,9 @@ async function evaluateUserEvents(imei, data, prev) {
     const cand = [];
     // Scăderea de carburant NU se mai calculează aici. Se calcula ca „nivelul din poziția anterioară
     // minus nivelul de acum", pe un singur pachet — fără să aștepte așezarea sondei, fără să verifice
-    // că amândouă citirile vin din aceeași sursă și fără să observe că valoarea „anterioară" era, de
+    // că amândouă citirile vin din aceeași sursă și fără să observe că valoarea „anterioară” era, de
     // fapt, cea cărată de dinainte de parcare. Rezultatul: la fiecare pornire de motor, un anunț de
-    // furt care nu se întâmplase (Dacia Logan, „de la 43 L la 32 L"). Verdictul vine acum de la
+    // furt care nu se întâmplase (Dacia Logan, „de la 43 L la 32 L”). Verdictul vine acum de la
     // singurul detector serios, `checkFuelTheft` → fueltheft.js, care rulează înaintea noastră.
     const fd = data._fuelDrop;
     if (fd && fd.drop > 0) {
@@ -17460,7 +17460,7 @@ async function evaluateUserEvents(imei, data, prev) {
       if (min >= 3) cand.push({ type: 'idling', mag: Math.round(min), body: `Motor pornit, staționat de ~${Math.round(min)} min`,
         extra: { alertType: 'idle_engine', idleStart: _idlingStart.get(imei), idleMinutes: Math.round(min) } }); // → detaliul arată intervalul real
     } else { _idlingStart.delete(imei); }
-    // „Mișcare fără contact" (tractare/împingere): doar dacă PERSISTĂ ≥ 60s. Un singur pachet cu ignition=0 e adesea
+    // „Mișcare fără contact” (tractare/împingere): doar dacă PERSISTĂ ≥ 60s. Un singur pachet cu ignition=0 e adesea
     // un glitch tranzitoriu (ex. LV-CAN200 raportează contactul intermitent) → nu mai dă alertă falsă la fiecare flicker.
     if (io.ignition === 0 && speed > 5) {
       if (!_noIgnMoveStart.has(imei)) _noIgnMoveStart.set(imei, Date.now());
@@ -17665,7 +17665,7 @@ app.get('/api/reports', requireAuth, (req, res) => {
 
 // ─── Istoric rapoarte (per user, generate la cerere — retenție 7 zile) ───
 // NB: declarate ÎNAINTE de /api/reports/:type ca să nu fie capturate de ruta parametrizată.
-// Ce semnale CAN se pot bifa pentru raportul „CAN detaliat" — și, dintre ele, care sunt chiar
+// Ce semnale CAN se pot bifa pentru raportul „CAN detaliat” — și, dintre ele, care sunt chiar
 // trimise de mașinile alese. Fără asta, omul ar avea în față 40 de bife din care mașina lui
 // completează trei, iar raportul ar ieși gol fără să înțeleagă de ce.
 // Eșantionăm ultimele poziții din interval, nu tot istoricul: o listă de bife nu merită o citire
@@ -17720,8 +17720,8 @@ app.delete('/api/reports/history/:id', requireAuth, requirePerm('viewReports'), 
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── AI Raport (Rapoarte → fila „AI Raport"): întrebări despre rapoarte, pe REGULI — gratuit (Alin, 02.10) ───
-// „AI Raport va lua din rapoarte date, deci nu ne costă bani/tokeni; RA Insight va fi singurul care va costa." Înțelegerea
+// ─── AI Raport (Rapoarte → fila „AI Raport”): întrebări despre rapoarte, pe REGULI — gratuit (Alin, 02.10) ───
+// „AI Raport va lua din rapoarte date, deci nu ne costă bani/tokeni; RA Insight va fi singurul care va costa.” Înțelegerea
 // și propozițiile stau în ai_raport.js; aici: drepturile (aceleași ca la Rapoarte), mașinile accesibile, raportul rulat cu
 // ACELEAȘI opțiuni ca ecranul (_optiuniRaport). Nimic nu ajunge la model și nimic nu se numără din fondul RA Insight.
 // Întrebarea omului nu se scrie nicăieri (în jurnal: doar subiectul și câte mașini).
@@ -17738,7 +17738,7 @@ function _aiRaportPreaDes(userId) {
 app.get('/api/reports/ai-raport/intrebari', requireAuth, requirePerm('viewReports'), (req, res) => {
   res.json({ intrebari: aiRaport.INTREBARI_GATA, subiecte: aiRaport.ALEGERI_RAPORT.map(function (x) { return { text: x.text, pune: x.pune }; }) });
 });
-// Are omul RA Insight (modulul firmei + locul lui)? Doar ca AI Raport să știe dacă poate trimite „de ce"-urile acolo.
+// Are omul RA Insight (modulul firmei + locul lui)? Doar ca AI Raport să știe dacă poate trimite „de ce”-urile acolo.
 async function _areRaInsight(req) {
   if (req.isSuper || req.companyId == null) return true;
   try {
@@ -17749,7 +17749,7 @@ async function _areRaInsight(req) {
   } catch (e) { return false; }
 }
 // ─── Motorul pe reguli (AI Raport), O SINGURĂ dată (14.10) ────────────────────────────────────────────────────────────
-// Îl cheamă fila „AI Raport" din Rapoarte și RA Insight pe pachetul Start (sau când s-au terminat întrebările lunii):
+// Îl cheamă fila „AI Raport” din Rapoarte și RA Insight pe pachetul Start (sau când s-au terminat întrebările lunii):
 // aceleași cuvinte, aceleași rapoarte, aceleași cifre. Întoarce ce primea ecranul de la rută (`_status` = cod de eroare).
 async function _aiRaportCore(req, text, c0in) {
     const b = { text: text, context: c0in };
@@ -17777,7 +17777,7 @@ async function _aiRaportCore(req, text, c0in) {
       // Ce nu se poate răspunde pe reguli: spus cinstit, cu butoane; mașina și subiectul rămân în discuție (u.context).
       const etRaport = {}; Object.keys(reports.REPORTS).forEach(function (k) { etRaport[k] = reports.REPORTS[k].label; });
       const ne = Object.assign({ neinteles: true, motiv: u.motiv, context: u.context || ctx }, aiRaport.neinteles(u, fisa, { areInsight: await _areRaInsight(req), etRaport: etRaport }));
-      // Un raport pe care AI Raport nu-l citește: butonul „Deschide raportul", cu mașina și perioada din întrebare.
+      // Un raport pe care AI Raport nu-l citește: butonul „Deschide raportul”, cu mașina și perioada din întrebare.
       if (u.motiv === 'alt_raport') {
         if (!reports.REPORTS[u.raport] || !poateRaport(req, u.raport)) return ({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul ăsta — l-a tăiat firma din rolul tău.', context: ne.context });
         ne.sursa = { type: u.raport, label: reports.REPORTS[u.raport].label, from: u.perioada.from, to: u.perioada.to, imeis: u.masini || null };
@@ -17786,7 +17786,7 @@ async function _aiRaportCore(req, text, c0in) {
     }
     const def = reports.REPORTS[u.raport];
     if (!def) return ({ neinteles: true, motiv: 'fara_subiect', text: 'Raportul ăsta nu există.', context: ctx });
-    if (!poateRaport(req, u.raport)) return ({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul „' + def.label + '" — l-a tăiat firma din rolul tău.', context: ctx });
+    if (!poateRaport(req, u.raport)) return ({ neinteles: true, motiv: 'fara_drept', text: 'Nu ai acces la raportul „' + def.label + '” — l-a tăiat firma din rolul tău.', context: ctx });
     // Perioada: cel mult MAX_ZILE (scadențele privesc înainte și nu încarcă istoricul).
     let from = u.perioada.from, to = u.perioada.to, taiat = false;
     if (u.subiect !== 'scadente' && Date.parse(to) - Date.parse(from) > aiRaport.MAX_ZILE * 86400000) { from = new Date(Date.parse(to) - aiRaport.MAX_ZILE * 86400000).toISOString(); taiat = true; }
@@ -17795,7 +17795,7 @@ async function _aiRaportCore(req, text, c0in) {
     const cs = req.companyId != null ? await db.getCompanySettings(req.companyId).catch(function () { return null; }) : null;
     const opts = _optiuniRaport({}, cs);
     const rep = await reports.runReport(db, u.raport, imeis, from, to, opts, scope);
-    // `semnal` = aceleași cuvinte ca Inventarul („tăcut de 2 ore", „fără semnal de 3 zile"), ca „Unde e acum" să spună
+    // `semnal` = aceleași cuvinte ca Inventarul („tăcut de 2 ore”, „fără semnal de 3 zile”), ca „Unde e acum” să spună
     // când locul e doar ultimul primit — fără a treia listă de praguri.
     const extra = { fisa: fisa, acum: Date.now(), pret: (effectiveFuelPrices(cs).motorina || 7.5), semnal: _invSemnalText };
     // Sugestiile care cer încă un raport — doar pe o mașină sau câteva, ca să nu dublăm încărcarea pe toată flota.
@@ -17807,7 +17807,7 @@ async function _aiRaportCore(req, text, c0in) {
       try { extra.alimentari = await reports.runReport(db, 'fuel', imeis, from, to, opts, scope); } catch (e) {}
     }
     const r = aiRaport.raspunde(Object.assign({}, u, { perioada: Object.assign({}, u.perioada, { from: from, to: to }) }), rep, extra);
-    if (taiat) r.sugestii.unshift({ fel: 'info', text: 'Am luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se scoate din „Generează rapoarte".' });
+    if (taiat) r.sugestii.unshift({ fel: 'info', text: 'Am luat ultimele ' + aiRaport.MAX_ZILE + ' de zile din perioada cerută — un raport mai lung se scoate din „Generează rapoarte”.' });
     auditReq(req, 'ai_raport', 'report', null, { subiect: u.subiect, masini: imeis.length });
     return ({
       inteles: aiRaport.inteles(u, fisa), raspuns: r, _u: u, _fisa: fisa,
@@ -17837,7 +17837,7 @@ app.post('/api/reports/ai-raport', requireAuth, requirePerm('viewReports'), with
   }
 });
 // Opțiunile unui raport (praguri, preț combustibil, filtre) — O SINGURĂ dată, pentru ecranul Rapoarte și pentru
-// „AI Raport" (02.10), ca amândouă să scoată aceleași cifre. `q` = parametrii cererii (req.query, sau ce pune AI Raport).
+// „AI Raport” (02.10), ca amândouă să scoată aceleași cifre. `q` = parametrii cererii (req.query, sau ce pune AI Raport).
 function _optiuniRaport(q, _cs) {
   q = q || {};
   return {
@@ -17852,9 +17852,9 @@ function _optiuniRaport(q, _cs) {
       geo: q.geo !== '0',                        // EcoDrive: geocodare adrese la Locație (implicit da); geo=0 → doar coordonate (rapid)
       geofenceId: parseInt(q.geofenceId) || null,
       osm: q.osm === '1', // Depășiri viteză: compară cu limita reală a drumului (OpenStreetMap) în loc de pragul fix
-      osmOver: q.osmOver != null ? (parseInt(q.osmOver) || 0) : 20, // OSM: prag relativ (km/h peste limita drumului). Lipsă (client vechi în cache) → default recomandat +20, nu „tot"
+      osmOver: q.osmOver != null ? (parseInt(q.osmOver) || 0) : 20, // OSM: prag relativ (km/h peste limita drumului). Lipsă (client vechi în cache) → default recomandat +20, nu „tot”
       sampleSec: parseInt(q.sampleSec) || 0, // Analitic: eșantionare (1 poziție la N sec; 0 = toate)
-      all: q.all === '1', // Scadențe: „Tot" (arată toate scadențele, fără orizont de lună)
+      all: q.all === '1', // Scadențe: „Tot” (arată toate scadențele, fără orizont de lună)
       geoBudgetMs: 30000, // buget geocodare adrese (Analitic); mărit pe calea în fundal mai jos (job async)
       timeFilter: parseReportTimeFilter(q), // filtru zile/ore (cascadă) — null dacă nu e cerut
       priceByType: effectiveFuelPrices(_cs),
@@ -17865,7 +17865,7 @@ function _optiuniRaport(q, _cs) {
   };
 }
 // Istoric rapoarte: un raport generat stă 7 zile, apoi se șterge singur. O SINGURĂ scriere, pentru pagina Rapoarte (pe loc și
-// în fundal) și pentru rapoartele cerute din RA Insight (`status: 'insight'` → pastila „din RA Insight" din listă).
+// în fundal) și pentru rapoartele cerute din RA Insight (`status: 'insight'` → pastila „din RA Insight” din listă).
 const ZILE_ISTORIC_RAPOARTE = 7;
 async function _istoricRaport(o) {
   const opts = o.opts || {};
@@ -17891,7 +17891,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
     const opts = _optiuniRaport(req.query, _cs);
     const _scope = req.isSuper ? null : (req.companyId != null ? req.companyId : -1);
     // ─── Generare în FUNDAL (background=1): răspundem imediat, generăm async, apoi notificăm userul ───
-    // Notificarea „report_ready" ajunge în clopoțel (WS) pe web + push FCM pe APK + în lista de notificări.
+    // Notificarea „report_ready” ajunge în clopoțel (WS) pe web + push FCM pe APK + în lista de notificări.
     const _fmt = (req.query.format || '').toLowerCase();
     if (_fmt === 'xlsx' || _fmt === 'pdf') opts.geoBudgetMs = 60000; // export de fișier (deliberat) → buget de geocodare mai mare, ca să nu iasă coordonate amestecate cu adrese
     if (req.query.background === '1' && req.query.log === '1' && _fmt !== 'xlsx' && _fmt !== 'pdf' && req.auth && req.auth.userId) {
@@ -17904,7 +17904,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
           const report = await reports.runReport(db, _type, imeis, from, to, opts, _scope);
           const label = (req.query.label ? String(req.query.label).slice(0, 120) : null) || (reports.REPORTS[_type] && reports.REPORTS[_type].label) || _type;
           const saved = await _istoricRaport({ companyId: _cid, userId: _uid, username: _uname, type: _type, label: label, imei: _imei, imeis: imeis, from: from, to: to, opts: opts, report: report });
-          await notify({ type: 'report_ready', severity: 'info', title: 'Raport generat', body: '„' + label + '" e disponibil în Istoric rapoarte.', data: { historyId: saved && saved.id, reportType: _type, jobId: _jobId, key: 'report_' + (saved && saved.id) }, userId: _uid, companyId: _cid });
+          await notify({ type: 'report_ready', severity: 'info', title: 'Raport generat', body: '„' + label + '” e disponibil în Istoric rapoarte.', data: { historyId: saved && saved.id, reportType: _type, jobId: _jobId, key: 'report_' + (saved && saved.id) }, userId: _uid, companyId: _cid });
           // push report_ready gestionat central de notify() → _notifyPush (respectă preferințele, fără dublură)
         } catch (e) {
           try { await notify({ type: 'report_error', severity: 'warning', title: 'Raport eșuat', body: 'Generarea raportului a eșuat: ' + ((e && e.message) || e), data: { reportType: _type, jobId: _jobId }, userId: _uid, companyId: _cid }); } catch (_) {}
@@ -17913,7 +17913,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
       return;
     }
     // Tenant: super → null (toate zonele, by design); non-super → compania sa. Orphan non-super (companyId null)
-    // primește -1 ca să NU cadă pe „toate" (getGeofences(-1) → 0 zone), evitând scurgerea numelor de zone străine.
+    // primește -1 ca să NU cadă pe „toate” (getGeofences(-1) → 0 zone), evitând scurgerea numelor de zone străine.
     const report = await reports.runReport(db, req.params.type, imeis, from, to, opts, _scope);
     const fmt = (req.query.format || '').toLowerCase();
     if (fmt === 'xlsx' || fmt === 'pdf') {
@@ -17933,7 +17933,7 @@ app.get('/api/reports/:type', requireAuth, requirePerm('viewReports'), withScope
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Statistici consum (agregat flotă + per vehicul + trend) — pentru pagina „Statistici consum".
+// Statistici consum (agregat flotă + per vehicul + trend) — pentru pagina „Statistici consum”.
 app.get('/api/fuel-stats', requireAuth, requirePerm('viewReports'), withScope, async (req, res) => {
   try {
     await applyCompanyFilter(req);
@@ -17957,7 +17957,7 @@ app.get('/api/fuel-prices', requireAuth, withScope, async (req, res) => {
     res.json({ auto: _fuelAuto || null, company: (cs && cs.fuel_prices) || {}, effective: effectiveFuelPrices(cs), source: fuelprice ? fuelprice.SOURCE : 'PretCarburant.ro' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// Istoric preț carburant național (media zilnică) — pentru modulul „Preț combustibil" (trend). Date publice → doar requireAuth.
+// Istoric preț carburant național (media zilnică) — pentru modulul „Preț combustibil” (trend). Date publice → doar requireAuth.
 app.get('/api/fuel-price-history', requireAuth, async (req, res) => {
   try { res.json({ history: await db.getFuelPriceHistory(req.query.days || 90), source: fuelprice ? fuelprice.SOURCE : 'PretCarburant.ro' }); }
   catch (err) { res.status(500).json({ error: err.message }); }
@@ -17997,8 +17997,8 @@ app.get('/api/report-schedules', requireAuth, requirePerm('viewReports'), withSc
     }));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// „Deblochează la Brevo" (28.10): scoate o adresă de pe lista Brevo de adrese blocate (după un refuz definitiv sau o reclamație de spam
-// Brevo nu mai trimite acolo, iar aplicația scria totuși „a plecat"). Doar noi; rând în audit.
+// „Deblochează la Brevo” (28.10): scoate o adresă de pe lista Brevo de adrese blocate (după un refuz definitiv sau o reclamație de spam
+// Brevo nu mai trimite acolo, iar aplicația scria totuși „a plecat”). Doar noi; rând în audit.
 app.post('/api/admin/email/deblocheaza', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const email = String((req.body || {}).email || '').trim().toLowerCase();
@@ -18011,7 +18011,7 @@ app.post('/api/admin/email/deblocheaza', requireAuth, requireSuperadmin, async (
       : email + ' nu era pe lista de adrese blocate la Brevo.', randuri: n });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// Conturile demo nu pot programa rapoarte: câmpul „destinatari" e liber, iar trimiterea pleacă de pe SMTP-ul
+// Conturile demo nu pot programa rapoarte: câmpul „destinatari” e liber, iar trimiterea pleacă de pe SMTP-ul
 // nostru — ar transforma demo-ul în releu de spam, cu reputația domeniului ratrack.ro drept garanție.
 function _demoBlocked(req, res) {
   if (demoCompanyId != null && req.companyId === demoCompanyId) {
@@ -18068,7 +18068,7 @@ app.post('/api/report-schedules/:id/run', requireAuth, requirePerm('viewReports'
     if (!s) return res.status(404).json({ error: 'Programare inexistentă' });
     const acum = new Date();
     const result = await reportSchedules.runSchedule(s, { db, reports, reportExport, channels, notify }, acum);
-    // „Trimite acum" scrie starea pe programare (fără reîncercări: omul e de față și vede ce s-a întâmplat).
+    // „Trimite acum” scrie starea pe programare (fără reîncercări: omul e de față și vede ce s-a întâmplat).
     const st = reportSchedules.stareDupa(result, reportSchedules.REINCERCARI_MIN.length, acum, s);
     try { await db.setScheduleStare(s.id, acum.toISOString(), st.stare, st.eroare); } catch (e) {}
     const cuDest = !!(result.recipients && result.recipients.length);
@@ -18170,11 +18170,11 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
         out.event = ev;
       }
       // Ralanti: intervalul REAL al sesiunii — start din alertData (sau dedus la notificările vechi),
-      // end = primul punct în mișcare DUPĂ eveniment (un query LIMIT 1, plafon +24h), altfel „încă în staționare".
-      // Gate ALINIAT cu clientul: alertType SAU titlu/body cu „idl"/„ralanti" (notificările vechi n-au alertType).
+      // end = primul punct în mișcare DUPĂ eveniment (un query LIMIT 1, plafon +24h), altfel „încă în staționare”.
+      // Gate ALINIAT cu clientul: alertType SAU titlu/body cu „idl”/„ralanti” (notificările vechi n-au alertType).
       if ((n.data || {}).alertType === 'idle_engine' || /ralanti|idl/i.test((n.title || '') + ' ' + (n.body || ''))) {
         const dd = n.data || {};
-        const _bodyMin = parseInt((String(n.body || '').match(/(\d+)\s*min/) || [])[1]) || 0; // vechi: minutele doar în text („staționat de ~32 min")
+        const _bodyMin = parseInt((String(n.body || '').match(/(\d+)\s*min/) || [])[1]) || 0; // vechi: minutele doar în text („staționat de ~32 min”)
         const start = Number(dd.idleStart) || (at - (Number(dd.idleMinutes) || _bodyMin) * 60000);
         let end = null;
         try {
@@ -18203,7 +18203,7 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
         }
         const _mins = end ? Math.max(1, Math.round((end - start) / 60000))
           : ongoing ? Math.max(1, Math.round((Date.now() - start) / 60000))
-          : (Number(dd.idleMinutes) || null); // end necunoscut & nu e live → „cel puțin X min"
+          : (Number(dd.idleMinutes) || null); // end necunoscut & nu e live → „cel puțin X min”
         // Carburant consumat pe staționare: contorul CAN cumulativ (exact) → nivelul rezervorului (aprox) → estimare ~1.5 L/h (ca în raportul Ralanti)
         let _fuelL = null, _fuelEst = false;
         try {
@@ -18233,7 +18233,7 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
         || /scădere\s*(?:combustibil\s*)?[\d.,]+\s*l\b/i.test(String(n.body || ''))) {
         const dd = n.data || {};
         let fromL = Number(dd.fromL), toL = Number(dd.toL), drop = Number(dd.drop);
-        // Alerta configurabilă „fuel_drop" (evaluateAlerts) salvează nivelurile ca previousLevel/currentLevel, nu fromL/toL.
+        // Alerta configurabilă „fuel_drop” (evaluateAlerts) salvează nivelurile ca previousLevel/currentLevel, nu fromL/toL.
         if (!Number.isFinite(fromL) && Number.isFinite(Number(dd.previousLevel))) fromL = Number(dd.previousLevel);
         if (!Number.isFinite(toL) && Number.isFinite(Number(dd.currentLevel))) toL = Number(dd.currentLevel);
         const _b = String(n.body || '');
@@ -18255,7 +18255,7 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
     }
 
     // Zona (geofence) la care se referă alerta. Fără geometria ei, harta arăta un traseu oarecare,
-    // iar întrebarea firească — „unde e zona și pe unde a intrat?" — rămânea fără răspuns.
+    // iar întrebarea firească — „unde e zona și pe unde a intrat?” — rămânea fără răspuns.
     // Motorul de alerte pune deja `geofenceId` în notificare; aici aducem forma propriu-zisă.
     try {
       const gid = (n.data || {}).geofenceId;
@@ -18269,7 +18269,7 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
       }
     } catch (e) { /* zona ștearsă între timp → harta cade elegant pe punctul evenimentului */ }
 
-    // Scadențe: notificarea spune „ITP expiră în 5 zile", dar modalul nu spunea CARE act, cu ce număr,
+    // Scadențe: notificarea spune „ITP expiră în 5 zile”, dar modalul nu spunea CARE act, cu ce număr,
     // de la cine și dacă avem scanul lui. Aici aducem rândul propriu-zis — și îl recalculăm la ZIUA DE
     // AZI, nu la ziua în care s-a trimis notificarea (o notificare de acum două săptămâni spunea „mai
     // ai 30 de zile" când, de fapt, mai erau 16).
@@ -18291,7 +18291,7 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
             days: doc.expiry_date ? _zile(doc.expiry_date) : null,
             imei: doc.imei || null, vehicle: veh,
             // Scanul actului: îl anunțăm, nu-l trimitem — poate avea sute de KB, iar modalul îl cere
-            // separat doar dacă omul apasă „Vezi actul".
+            // separat doar dacă omul apasă „Vezi actul”.
             hasFile: !!doc.file_b64, fileName: doc.file_name || null, fileMime: doc.file_mime || null,
           };
         }
@@ -18306,7 +18306,7 @@ app.get('/api/notifications/:id/context', requireAuth, withScope, async (req, re
           };
         }
       } else if (String(dd.key || '').startsWith('vdoc-nodate-')) {
-        // Rezumatul săptămânal „acte fără dată de expirare": lista efectivă, ca omul să știe pe care
+        // Rezumatul săptămânal „acte fără dată de expirare”: lista efectivă, ca omul să știe pe care
         // să le completeze. Fără ea, notificarea spunea un număr și trimitea la căutat prin flotă.
         const cid = Number(String(dd.key).replace('vdoc-nodate-', ''));
         if (req.isSuper || req.companyId == null || Number(req.companyId) === cid) {
@@ -18352,13 +18352,13 @@ app.put('/api/notification-prefs', requireAuth, async (req, res) => {
 
 // ─── Preferințe UI (per user) cu cascadă: app default → companie → user ───
 // Whitelist de chei UI permise (previne injection în JSONB cu chei arbitrare)
-// Ultimele două nu sunt preferințe de afișare, ci „compania asta folosește funcția X": ascund file
+// Ultimele două nu sunt preferințe de afișare, ci „compania asta folosește funcția X”: ascund file
 // întregi din fișa vehiculului pentru clienții care nu au sonde de combustibil sau nu au camioane.
-// ── începe „Catalogul de preferințe" (REPER pentru probe: verify_preferinte.js decupează exact
+// ── începe „Catalogul de preferințe” (REPER pentru probe: verify_preferinte.js decupează exact
 // bucata dintre reperul ăsta și cel de la sfârșit. Nu insera altceva între ele.) ──
 // O SINGURĂ sursă pentru cheie, fel (bifă sau alegere din listă), valoare din fabrică și LOCUL unde
-// se poate seta. „unde" contează: temele, harta sau sunetul sunt gustul OMULUI, iar filele pentru
-// camioane și sonde sunt „firma asta nu folosește funcția" — nu au ce căuta în contul cuiva.
+// se poate seta. „unde” contează: temele, harta sau sunetul sunt gustul OMULUI, iar filele pentru
+// camioane și sonde sunt „firma asta nu folosește funcția” — nu au ce căuta în contul cuiva.
 const UI_PREFS = [
   // Afișare — și personale, și cu regulă pe firmă (cascada: fabrică → firmă → om)
   { k: 'overspeed_heatmap', tip: 'bifa', implicit: true, unde: 'ambele' },
@@ -18398,7 +18398,7 @@ function _filterUiKeys(obj, unde) {
   }
   return out;
 }
-// ── sfârșit „Catalogul de preferințe" ──
+// ── sfârșit „Catalogul de preferințe” ──
 // Întoarce prefs efective după cascadă + sursa fiecărei chei (app/company/user) pentru UI
 app.get('/api/me/ui-prefs', requireAuth, async (req, res) => {
   try {
@@ -18437,7 +18437,7 @@ app.put('/api/me/ui-prefs', requireAuth, async (req, res) => {
 });
 // ─── Contul meu: parola și datele de contact ───
 // Până acum, un om nu-și putea schimba parola din aplicație: doar administratorul firmei i-o putea
-// pune. Un dispecer trebuia să-și roage patronul — sau să treacă prin „am uitat parola", care merge
+// pune. Un dispecer trebuia să-și roage patronul — sau să treacă prin „am uitat parola”, care merge
 // pe email. Aici își face treaba singur, dar numai dovedind că știe parola veche.
 const _parolaIncercari = new Map(); // userId → { n, ts } — o sesiune furată nu ghicește parola veche
 function _parolaPreaDes(userId) {
@@ -18529,7 +18529,7 @@ app.put('/api/devices/:imei/work-schedule', requireAuth, requireEdit('vehicule')
     res.json({ ok: true, work_schedule: w });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Semnalare „problemă la montaj" pe vehicul — set / anulare (reversibilă).
+// Semnalare „problemă la montaj” pe vehicul — set / anulare (reversibilă).
 app.put('/api/devices/:imei/install-issue', requireAuth, requireEdit('vehicule'), withScope, async (req, res) => {
   try {
     const imei = String(req.params.imei);
@@ -18556,8 +18556,8 @@ app.put('/api/device-groups/:id/work-schedule', requireAuth, requireEdit('grupe'
     res.json({ ok: true, work_schedule: w });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Fila „Acces" din fereastra firmei (web + telefon, 12.10): ce am ales NOI de mână, ce merge singur după flotă și
-// din ce. Ecranele scriu „automat" / „ales de noi" din asta — nu-și fac a doua regulă.
+// Fila „Acces” din fereastra firmei (web + telefon, 12.10): ce am ales NOI de mână, ce merge singur după flotă și
+// din ce. Ecranele scriu „automat” / „ales de noi” din asta — nu-și fac a doua regulă.
 function _accesModule(co) {
   return {
     features_setate: plans ? plans.featuresSetate(co) : {},
@@ -18586,12 +18586,12 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     const f = Object.assign({}, cur.features || {});
     fvalid.forEach(function (k) {
       if (typeof body.features[k] === 'boolean') f[k] = body.features[k];
-      // `null` = „înapoi la automat": cheia iese din setări și modulul merge iar după implicit / după flotă (plans.js).
+      // `null` = „înapoi la automat”: cheia iese din setări și modulul merge iar după implicit / după flotă (plans.js).
       else if (body.features[k] === null) delete f[k];
     });
     next.features = f;
   }
-  // Regula veche a lui RA Insight, „pe cont" (`ai_quota`), a fost scoasă pe 11.11 (Alin: „Scoate"): ce rămăsese scris pe o firmă
+  // Regula veche a lui RA Insight, „pe cont” (`ai_quota`), a fost scoasă pe 11.11 (Alin: „Scoate”): ce rămăsese scris pe o firmă
   // de probă pleacă la prima salvare a setărilor; nimic nu-l mai citește.
   delete next.ai_quota;
   // Pachetul RA Insight (14.10) → STRICT super-admin (oferta, fișa firmei, trecerea din aplicație o scrie prin rutele ei).
@@ -18603,8 +18603,8 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
     const ap = body.ai_pachet === null ? null : pachete.curataPachet(body.ai_pachet, await _preturiPachete());
     if (body.ai_pachet === null || ap) {
       Object.assign(next, pachete.consolideaza(next, acum));
-      // De azi, de la miezul nopții (ora României) — ca trecerea făcută de client și ca textul ferestrei din „Acces" (13.11, Alin:
-      // „1. DA"). Până atunci pornea din clipa apăsării, iar după-amiaza ziua aceea se socotea pe pachetul vechi.
+      // De azi, de la miezul nopții (ora României) — ca trecerea făcută de client și ca textul ferestrei din „Acces” (13.11, Alin:
+      // „1. DA”). Până atunci pornea din clipa apăsării, iar după-amiaza ziua aceea se socotea pe pachetul vechi.
       if (ap && ap.de_la == null) ap.de_la = pachete.inceputZi(acum);
       // `hotarat_la` (02.11): factura de pe 1 ia pachetul hotărât înainte de începutul lunii (pachete.pretAvans).
       next.ai_pachet_istoric = pachete.adaugaIstoric(next, ap ? { de_la: ap.de_la, cod: ap.cod, pretRON: ap.pretRON, hotarat_la: acum } : { de_la: pachete.inceputZi(acum), cod: 'start', pretRON: 0, hotarat_la: acum });
@@ -18647,7 +18647,7 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   } else if (body.alert_thresholds === null) {
     delete next.alert_thresholds;
   }
-  // Program de lucru (supraveghere „mișcare în afara programului"). Admin-ul companiei îl setează pentru flota lui.
+  // Program de lucru (supraveghere „mișcare în afara programului”). Admin-ul companiei îl setează pentru flota lui.
   if (body.work_schedule !== undefined) {
     if (body.work_schedule === null) delete next.work_schedule;
     else if (workSched) { const w = workSched.sanitize(body.work_schedule); if (w) next.work_schedule = w; }
@@ -18656,7 +18656,7 @@ async function _applyCompanySettingsPatch(companyId, body, opts) {
   await db.pool.query('UPDATE companies SET settings = $2 WHERE id = $1', [companyId, JSON.stringify(next)]);
   return next;
 }
-// Fereastra din fila „Acces" (13.11): ce scrie la schimbarea pachetului — textul îl face serverul (_schimbarePachetNoi), cu rândurile
+// Fereastra din fila „Acces” (13.11): ce scrie la schimbarea pachetului — textul îl face serverul (_schimbarePachetNoi), cu rândurile
 // exacte de pe factura din 1 a lunii următoare. Web și telefon îl arată ca atare și îl trimit înapoi la salvare (`textSchimbare`).
 app.get('/api/companies/:id/pachet-schimbare', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -18675,7 +18675,7 @@ app.get('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     const s = await db.getCompanySettings(id);
     const agentiImplicit = plans && plans.enabledAgentsFor(co);
     res.json({ ui_defaults: _filterUiKeys(s.ui_defaults || {}, 'firma'), enabled_agents: Array.isArray(s.enabled_agents) ? s.enabled_agents : null, agenti_implicit: agentiImplicit, alert_thresholds: s.alert_thresholds || {}, features: plans ? plans.featuresFor(co) : (s.features || {}), name: co.name, is_demo: !!co.is_demo, 
-      // Pachetul RA Insight (14.10): al firmei (Start, dacă nu i-am pus altul) și lista, cu prețurile de listă — fila „Acces".
+      // Pachetul RA Insight (14.10): al firmei (Start, dacă nu i-am pus altul) și lista, cu prețurile de listă — fila „Acces”.
       ai_pachet: (function () { const p = _pachetCo(co); return p ? { cod: p.cod, nume: p.nume, pretRON: p.pretRON, deLa: p.deLa,
         // Trecerea programată de administratorul firmei (pasul 6): o vedem și noi, cu ziua ei.
         urmator: p.urmator ? 'Programat de administratorul firmei: pachetul ' + p.urmator.nume + ' din ' + pachete.dataLunga(p.urmator.deLa) + '.' : null } : null; })(),
@@ -18709,7 +18709,7 @@ app.put('/api/companies/:id/settings', requireAuth, requireSuperadmin, async (re
     if (b.ai_pachet !== undefined && b.ai_pachet !== null && !pachete.curataPachet(b.ai_pachet)) {
       return res.status(400).json({ error: 'Pachet RA Insight necunoscut. Alege: ' + pachete.PACHETE.map(function (x) { return x.nume; }).join(', ') + '.' });
     }
-    // Fereastra din „Acces" (13.11): ecranul trimite textul pe care l-a confirmat omul. Dacă socoteala s-a schimbat între timp (altă zi,
+    // Fereastra din „Acces” (13.11): ecranul trimite textul pe care l-a confirmat omul. Dacă socoteala s-a schimbat între timp (altă zi,
     // alt preț de listă, o mașină pornită), nu se scrie nimic: 409 cu textul nou, de confirmat din nou. Fără text (telefonul vechi), ca înainte.
     if (b.ai_pachet && typeof b.textSchimbare === 'string') {
       const coS = await db.getCompanyById(id);
@@ -18751,7 +18751,7 @@ app.get('/api/io-catalog', requireAuth, async (req, res) => {
     });
     // Cheia internă sub care ajunge fiecare ID în `io` (AVL 100 → `can_program_number`). Fără ea,
     // interfața nu poate lega catalogul de ce trimite EFECTIV o mașină — rămâne un dicționar la fel
-    // pentru toate vehiculele, care nu răspunde la „ce dă mașina ASTA?".
+    // pentru toate vehiculele, care nu răspunde la „ce dă mașina ASTA?”.
     merged.forEach(function (e) { try { e.key = getIoName(e.id, null) || ('io_' + e.id); } catch (x) { e.key = 'io_' + e.id; } });
     // Categoriile finale
     const categories = Array.from(new Set(merged.map(function (e) { return e.category || 'Altele'; }))).sort();
@@ -18773,7 +18773,7 @@ app.put('/api/io-catalog/:id', requireAuth, requireSuperadmin, async (req, res) 
       const patch = {};
       ['name', 'name_ro', 'unit', 'category', 'desc_ro'].forEach(function (k) {
         if (b[k] != null && typeof b[k] === 'string') patch[k] = String(b[k]).slice(0, 200);
-        else if (b[k] === null) patch[k] = null; // marker pentru „șterge câmpul"
+        else if (b[k] === null) patch[k] = null; // marker pentru „șterge câmpul”
       });
       if (b.multiplier != null) {
         const m = Number(b.multiplier);
@@ -18783,7 +18783,7 @@ app.put('/api/io-catalog/:id', requireAuth, requireSuperadmin, async (req, res) 
       const anySet = Object.keys(patch).some(function (k) { return patch[k] != null; });
       if (!anySet) delete overrides[id];
       else overrides[id] = Object.assign({}, overrides[id] || {}, patch);
-      // Elimin câmpurile cu valoare null (au fost „șterse" prin marker)
+      // Elimin câmpurile cu valoare null (au fost „șterse” prin marker)
       if (overrides[id]) {
         Object.keys(overrides[id]).forEach(function (k) { if (overrides[id][k] === null) delete overrides[id][k]; });
         if (!Object.keys(overrides[id]).length) delete overrides[id];
@@ -18871,7 +18871,7 @@ app.put('/api/companies/:id/features', requireAuth, requireSuperadmin, async (re
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // ─── Oferta unei firme (super-admin) ────────────────────────────────────────────────────────────
-// Ruta asta a înlocuit vechiul `PUT /api/companies/:id/plan`. Nu mai există „planuri": scriem DOAR
+// Ruta asta a înlocuit vechiul `PUT /api/companies/:id/plan`. Nu mai există „planuri”: scriem DOAR
 // oferta pe firmă (`companies.custom_plan`), așa cum a fost convenită și semnată. Fără ofertă,
 // firma n-are preț și se vede ca atare în registrul de clienți — nu i se inventează unul.
 app.put('/api/companies/:id/oferta', requireAuth, requireSuperadmin, async (req, res) => {
@@ -18917,18 +18917,18 @@ app.put('/api/companies/:id/oferta', requireAuth, requireSuperadmin, async (req,
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Super-admin: înregistrează o ÎNCASARE fără factură (de ex. o sumă primită cash, înainte de acte).
-// Până pe 28.09 „prelungea accesul cu N luni" — ceasul vechi „acces până la", scos atunci (vezi
+// Până pe 28.09 „prelungea accesul cu N luni” — ceasul vechi „acces până la”, scos atunci (vezi
 // `stareAcces`). Acum doar scrie banii în registrul încasărilor: accesul ține de facturi, nu de luni
 // plătite. Încasarea UNEI FACTURI se face din lista de facturi (butonul ✓), nu de aici.
 app.post('/api/companies/:id/payment', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
     const co = await db.getCompanyById(id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
-    // Aplicația de telefon veche (până la 1.0.4) trimite aici „luni de prelungit": scria o încasare fără factură, iar
+    // Aplicația de telefon veche (până la 1.0.4) trimite aici „luni de prelungit”: scria o încasare fără factură, iar
     // factura rămânea neplătită — clientul se putea suspenda deși plătise (lista lui Robert, 01.10, pct. 14). Ceasul
-    // „acces până la" nu mai există; plata se trece pe factură, cu „Încasată".
+    // „acces până la” nu mai există; plata se trece pe factură, cu „Încasată”.
     if (req.body && req.body.months != null) {
-      return res.status(400).json({ aplicatieVeche: true, error: 'Aplicația de telefon e veche: plata unei facturi se trece pe factură, cu „Încasată" (sau de pe web). Instalează aplicația nouă.' });
+      return res.status(400).json({ aplicatieVeche: true, error: 'Aplicația de telefon e veche: plata unei facturi se trece pe factură, cu „Încasată” (sau de pe web). Instalează aplicația nouă.' });
     }
     // Sumă obligatorie: o încasare fără sumă nu spune nimic. Separatorul zecimal RO (virgulă) + miile (punct).
     const rawAmt = (req.body && req.body.amount != null) ? String(req.body.amount).trim() : '';
@@ -18955,7 +18955,7 @@ app.get('/api/payments', requireAuth, requireSuperadmin, async (req, res) => {
 });
 // ─── Facturi FISCALE (super-admin): generare din abonament (linii + TVA), emitere numerotată, plată/anulare ───
 const INV_SERIES = (process.env.INVOICE_SERIES || 'RAT').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'RAT';
-// Cota de TVA a facturilor: DOAR din „Date emitent" (lista lui Robert, 01.10, pct. 4). Fără cotă scrisă acolo, cota legală
+// Cota de TVA a facturilor: DOAR din „Date emitent” (lista lui Robert, 01.10, pct. 4). Fără cotă scrisă acolo, cota legală
 // de azi: 21% (din 01.08.2025; până pe 01.10 aplicația punea 19%). O cotă 0 scrisă de noi (neplătitor) rămâne 0.
 const COTA_TVA_IMPLICITA = 21;
 function _issuerVatRate(iss) { const v = parseFloat(iss && iss.vat_rate); return (Number.isFinite(v) && v >= 0 && v <= 100) ? v : COTA_TVA_IMPLICITA; }
@@ -19005,9 +19005,9 @@ function buildInvoiceLines(company, billCounts, features, vatRatePct) {
   } else {
     add('Abonament monitorizare GPS', cnt.total, bd.base);
   }
-  // Pachetul RA Insight (pasul 5): un rând fix, „RA Insight Pro", din motorul de preț (plans.js) — ca registrul. Regula veche,
-  // „pe cont", și suma fixă „Asistent AI" au ieșit pe 11.11 (Alin: „Scoate"); rândul „Agenți AI (monitorizare inteligentă)" pe
-  // 13.11 (Alin: „2. DA") — agenții sunt incluși, fără cost.
+  // Pachetul RA Insight (pasul 5): un rând fix, „RA Insight Pro”, din motorul de preț (plans.js) — ca registrul. Regula veche,
+  // „pe cont”, și suma fixă „Asistent AI” au ieșit pe 11.11 (Alin: „Scoate”); rândul „Agenți AI (monitorizare inteligentă)” pe
+  // 13.11 (Alin: „2. DA”) — agenții sunt incluși, fără cost.
   if (bd.aiPachet > 0) add(bd.aiPachetEticheta || 'RA Insight', 1, bd.aiPachet);
   if (!lines.length && (p.monthlyTotal > 0)) add('Abonament monitorizare GPS', 1, p.monthlyTotal);
   // Păstrarea istoricului peste cele 12 luni incluse (24/36 de luni, vândute în ofertă). Până pe 24.09
@@ -19039,12 +19039,12 @@ async function _aparateAbonament(company) {
   });
 }
 // Rândurile pachetului RA Insight pe factura unei luni (`imp` = abonament.imparte): O funcție, chemată de factura lunii
-// (_liniiAbonament) și de fereastra din „Acces" (_schimbarePachetNoi, 13.11), ca textul ferestrei să fie chiar rândurile facturii.
+// (_liniiAbonament) și de fereastra din „Acces” (_schimbarePachetNoi, 13.11), ca textul ferestrei să fie chiar rândurile facturii.
 function _liniiPachetDinImp(istoric, imp) {
   return pachete.liniiFactura({ istoric: istoric, an: imp.luna.an, luna: imp.luna.luna, intreaga: imp.firma.intreaga,
     partialaZi: imp.firma.partiala ? imp.firma.partiala.zi : null, anterioaraIntreaga: imp.firma.intreaga && !imp.firma.partiala });
 }
-// Fereastra din fila „Acces" (13.11, Alin: „1. DA"): ce se întâmplă dacă punem firmei pachetul `cod` acum — de azi (de la miezul
+// Fereastra din fila „Acces” (13.11, Alin: „1. DA”): ce se întâmplă dacă punem firmei pachetul `cod` acum — de azi (de la miezul
 // nopții, ora României, ca trecerea făcută de client) și rândurile RA Insight de pe factura din 1 a lunii următoare, pe istoricul care
 // ar rezulta (aceeași `_liniiPachetDinImp` ca factura, cu mașinile pornite de azi). Prețul = cel de listă (`curataPachet`, ca la scriere).
 async function _schimbarePachetNoi(co, cod, acum) {
@@ -19132,12 +19132,12 @@ function _clientSnapshot(co) {
 app.get('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const rows = await db.getInvoices({ companyId: req.query.company_id ? parseInt(req.query.company_id) : null, status: req.query.status || null, limit: parseInt(req.query.limit) || 500 });
-    // `la_anaf`: ajunsă la ANAF → ecranul nu mai arată „Anulează" (regula stă într-un singur loc, `_laAnaf`).
+    // `la_anaf`: ajunsă la ANAF → ecranul nu mai arată „Anulează” (regula stă într-un singur loc, `_laAnaf`).
     res.json({ invoices: rows.map(function (v) { return Object.assign({}, v, { la_anaf: _laAnaf(v) }); }) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Hârtia facturii (și a proformei), ca fișier PDF — ca oferta și contractul (Alin, 30.09). Aceeași hârtie pleacă
-// atașată la email (`_trimiteFactura`). Numele: „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf".
+// atașată la email (`_trimiteFactura`). Numele: „RA-Track - Factură RAT-2027-00002 - Transport SRL.pdf”.
 async function _trimitePdfFactura(res, inv) {
   if (!facturaPdf) return res.status(503).json({ error: 'Hârtia facturii nu se poate face pe serverul ăsta.' });
   let emitentAcum = {}; try { emitentAcum = (await getSystemSettings()).invoice_issuer || {}; } catch (e) {}
@@ -19156,7 +19156,7 @@ app.get('/api/invoices/:id', requireAuth, requireSuperadmin, async (req, res) =>
   try { const inv = await db.getInvoice(parseInt(req.params.id)); if (!inv) return res.status(404).json({ error: 'Factură inexistentă' }); res.json(inv); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
-// ─── Factura UNICĂ (aparate, montaj) completată din ce s-a semnat (decizia lui Alin, 28.09: „da") ───
+// ─── Factura UNICĂ (aparate, montaj) completată din ce s-a semnat (decizia lui Alin, 28.09: „da”) ───
 // Rândurile se iau din Anexa nr. 2 a contractului (aparatele, la cursul ÎNGHEȚAT acolo; montajul, la prețul
 // semnat) și din lucrările de montaj EXECUTATE și încă nefacturate clientului (cantitățile reale: dacă s-au
 // montat 48 din 50, se facturează 48). Până atunci, cantitățile și prețurile se scriau de mână.
@@ -19182,7 +19182,7 @@ async function _unicaDinContract(companyId) {
       });
     }
     // Aparatele aflate DEJA pe un document al contractului nu se mai propun (lista lui Robert, 01.10, pct. 5): după
-    // proforma de avans (încasată sau nu), „Generează factură" le propunea din nou, la fiecare factură unică.
+    // proforma de avans (încasată sau nu), „Generează factură” le propunea din nou, la fiecare factură unică.
     if (out.aparate.length) {
       const dejaPe = await _aparateDejaFacturate(companyId, c, out.aparate);
       out.aparate = out.aparate.map(function (a) { return Object.assign({}, a, { qty: Math.max(0, a.qty - (dejaPe.bucati[a.desc] || 0)) }); })
@@ -19197,7 +19197,7 @@ async function _unicaDinContract(companyId) {
     const items = _jsonSigur(j.items) || [];
     const linii = items.filter(function (r) { return Number(r.buc) > 0 && Number(r.pretClient) > 0; })
       .map(function (r) { const t = montaj.tip(r.tip); return { desc: t ? t.et : r.tip, qty: Number(r.buc), unitPrice: Number(r.pretClient) }; });
-    // Câte mașini s-au montat în ziua aceea — pentru mențiunea de pe factură („15.01.2027 (10 mașini)"):
+    // Câte mașini s-au montat în ziua aceea — pentru mențiunea de pe factură („15.01.2027 (10 mașini)”):
     // cel mai mare număr dintre lucrările făcute pe mașină (aparat, adaptor, CAN, FMS), nu suma lor.
     const masini = items.filter(function (r) { return ['gps', 'lvcan', 'caninc', 'fms'].indexOf(r.tip) >= 0; })
       .reduce(function (m, r) { return Math.max(m, Number(r.buc) || 0); }, 0);
@@ -19276,7 +19276,7 @@ app.post('/api/invoices/draft', requireAuth, requireSuperadmin, async (req, res)
 // Seria proformelor: SEPARATĂ de a facturilor. Numerele facturilor fiscale merg în șir, fără goluri; o proformă
 // e o cerere de plată, nu o factură — dacă ar lua un număr din seria fiscală, șirul ar avea găuri.
 const PF_SERIES = (process.env.PROFORMA_SERIES || 'PF').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'PF';
-// Cota pe fiecare rând = cea din „Date emitent" (`vr`), oricare ar fi cea trimisă de ecran (lista lui Robert, pct. 4): până
+// Cota pe fiecare rând = cea din „Date emitent” (`vr`), oricare ar fi cea trimisă de ecran (lista lui Robert, pct. 4): până
 // pe 01.10 serverul lua cota de pe rândul primit, deci o fereastră deschisă de dinainte sau un telefon vechi o puteau alege.
 function _liniiNormalizate(brute, vr) {
   return (brute || []).map(function (l) {
@@ -19300,18 +19300,18 @@ function _termenPlata(co) {
 }
 // Emite un document (numerotare ATOMICĂ + fotografia emitentului și a clientului).
 // Body: { companyId, fel: 'abonament'|'unica', luna, tip: 'invoice'|'proforma', periodStart, periodEnd, lines[], note, montaje[] }
-//   • fel lipsă (aplicația de telefon veche): se deduce din rânduri — „Abonament…"/„Supliment…" = abonament;
+//   • fel lipsă (aplicația de telefon veche): se deduce din rânduri — „Abonament…”/„Supliment…” = abonament;
 //   • abonamentul unei luni se emite O SINGURĂ DATĂ (refuz 409, cu numărul celei existente); după anulare, se poate reface;
 //   • proforma: doar pentru o factură UNICĂ, cu serie proprie, fără ANAF; la încasare devine factură fiscală;
-//   • `montaje`: lucrările puse pe factură — la o factură FISCALĂ trec pe „facturat clientului".
-// Compune documentul EXACT cum l-ar emite „Emite", fără să-l salveze și fără să ia un număr. Folosit de emitere
-// și de previzualizare (30.09, Alin: „să aibă previzualizare, că se pot face greșeli") — ca ce vezi înainte să
+//   • `montaje`: lucrările puse pe factură — la o factură FISCALĂ trec pe „facturat clientului”.
+// Compune documentul EXACT cum l-ar emite „Emite”, fără să-l salveze și fără să ia un număr. Folosit de emitere
+// și de previzualizare (30.09, Alin: „să aibă previzualizare, că se pot face greșeli”) — ca ce vezi înainte să
 // nu se poată despărți de ce pleacă. → { eroare: { status, body } } sau { co, iss, tip, fel, luna, calc, … }.
 async function _compuneFactura(b) {
   const id = parseInt(b.companyId); if (!Number.isFinite(id)) return { eroare: { status: 400, body: { error: 'companyId invalid' } } };
   const co = await db.getCompanyById(id); if (!co) return { eroare: { status: 404, body: { error: 'Companie inexistentă' } } };
   const iss = ((await getSystemSettings()).invoice_issuer) || {};
-  if (!iss.name || !iss.cui) return { eroare: { status: 400, body: { error: 'Completează întâi „Date emitent" (nume + CUI) — sunt obligatorii pe factură.' } } };
+  if (!iss.name || !iss.cui) return { eroare: { status: 400, body: { error: 'Completează întâi „Date emitent” (nume + CUI) — sunt obligatorii pe factură.' } } };
   const vr = _issuerVatRate(iss);
   const tip = b.tip === 'proforma' ? 'proforma' : 'invoice';
   const liniiPrimite = Array.isArray(b.lines) ? b.lines : [];
@@ -19372,8 +19372,8 @@ app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
       issuer: iss, client: _clientSnapshot(co), note: k.note, createdBy: req.auth && req.auth.userId,
       fel: fel, luna: luna
     });
-    // Lucrările de montaj puse pe document: pe o factură FISCALĂ trec pe „facturat clientului" (cu factura ținută
-    // minte); pe o PROFORMĂ rămân rezervate pe ea și trec pe factură la „Încasată" (01.10, punctul 19).
+    // Lucrările de montaj puse pe document: pe o factură FISCALĂ trec pe „facturat clientului” (cu factura ținută
+    // minte); pe o PROFORMĂ rămân rezervate pe ea și trec pe factură la „Încasată” (01.10, punctul 19).
     let montajeFacturate = 0, montajePeProforma = 0;
     if (Array.isArray(b.montaje) && b.montaje.length) {
       try {
@@ -19388,7 +19388,7 @@ app.post('/api/invoices', requireAuth, requireSuperadmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 // Previzualizarea: aceeași compunere, aceeași hârtie (factura_pdf.js), dar NIMIC salvat, niciun număr luat,
-// nimic trimis. Pe hârtie scrie „PREVIZUALIZARE", iar numărul se pune abia la emitere.
+// nimic trimis. Pe hârtie scrie „PREVIZUALIZARE”, iar numărul se pune abia la emitere.
 app.post('/api/invoices/previzualizare', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     if (!facturaPdf) return res.status(503).json({ error: 'Hârtia facturii nu e disponibilă pe server.' });
@@ -19410,9 +19410,9 @@ app.post('/api/invoices/previzualizare', requireAuth, requireSuperadmin, async (
 function _laAnaf(inv) { return !!inv && inv.type !== 'proforma' && (inv.efactura_status === 'uploaded' || inv.efactura_status === 'validated'); }
 // Stare document: 'paid' | 'canceled'.
 //   • factură: 'paid' = încasarea, scrisă ATOMIC cu factura (plată + stare într-o singură tranzacție). NU mai
-//     prelungește niciun „acces până la" (ceasul vechi, scos pe 28.09) — o factură plătită iese singură din
+//     prelungește niciun „acces până la” (ceasul vechi, scos pe 28.09) — o factură plătită iese singură din
 //     socoteala neplății, deci accesul unei firme oprite revine pe loc;
-//   • proformă: 'paid' = „Încasată": se emite pe loc FACTURA FISCALĂ, cu aceleași rânduri, în seria facturilor,
+//   • proformă: 'paid' = „Încasată”: se emite pe loc FACTURA FISCALĂ, cu aceleași rânduri, în seria facturilor,
 //     marcată plătită; proforma rămâne legată de ea (`factura_id` ↔ `din_proforma`).
 app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -19423,7 +19423,7 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
     if (status === 'canceled') {
       if (inv.status === 'paid') return res.status(400).json({ error: inv.type === 'proforma' ? 'Proforma e încasată și are factură fiscală — anularea se face pe factură, prin storno.' : 'Factura e plătită — folosește storno, nu anulare.' });
       // O factură ajunsă la ANAF (din 30.09 pleacă singură) rămâne valabilă în SPV-ul clientului orice am scrie la noi:
-      // „anulată" aici + refăcută = DOUĂ facturi la ANAF pe aceeași lună. O asemenea factură se stornează (cu minus).
+      // „anulată” aici + refăcută = DOUĂ facturi la ANAF pe aceeași lună. O asemenea factură se stornează (cu minus).
       if (_laAnaf(inv)) return res.status(409).json({ laAnaf: true, error: 'Factura ' + (inv.full_number || '') + ' e deja la ANAF, deci nu se mai anulează: acolo rămâne valabilă. Se corectează printr-o factură de stornare (cu minus), cu contabilul.' });
       await db.updateInvoice(inv.id, { status: 'canceled' });
       _invalidateAccessCache(inv.company_id);
@@ -19439,7 +19439,7 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
         if (inv.status === 'paid') return res.json({ ok: true, already: true, invoice: inv.factura_id ? await db.getInvoice(inv.factura_id) : null });
         if (inv.status === 'canceled') return res.status(400).json({ error: 'Proforma e anulată.' });
         const iss = ((await getSystemSettings()).invoice_issuer) || {};
-        if (!iss.name || !iss.cui) return res.status(400).json({ error: 'Completează întâi „Date emitent" (nume + CUI) — sunt obligatorii pe factură.' });
+        if (!iss.name || !iss.cui) return res.status(400).json({ error: 'Completează întâi „Date emitent” (nume + CUI) — sunt obligatorii pe factură.' });
         const co = await db.getCompanyById(inv.company_id); if (!co) return res.status(404).json({ error: 'Companie inexistentă' });
         // Dintr-o bucată (01.10, punctul 18): proforma se revendică, iar factura fiscală, plata, legătura și lucrările de
         // pe proformă se scriu în aceeași tranzacție. A doua apăsare (web + telefon, în aceeași secundă) găsește proforma
@@ -19453,7 +19453,7 @@ app.put('/api/invoices/:id/status', requireAuth, requireSuperadmin, async (req, 
         _invalidateAccessCache(inv.company_id);
         auditReq(req, 'paid', 'proforma', inv.id, { factura: r.invoice.full_number, factura_id: r.invoice.id, paymentId: r.payment && r.payment.id, montaje: r.montaje });
         // Factura fiscală a avansului pleacă și ea singură: clientului (pentru contabilitatea lui) și la ANAF. DUPĂ ce
-        // totul e scris — un email sau o trimitere la ANAF nu se pot „întoarce" odată cu o tranzacție.
+        // totul e scris — un email sau o trimitere la ANAF nu se pot „întoarce” odată cu o tranzacție.
         const trimisa = await _trimiteFactura(r.invoice, co, iss);
         return res.json({ ok: true, invoice: r.invoice, payment: r.payment, dinProforma: inv.id, montajeFacturate: r.montaje, trimisa: trimisa });
       }
@@ -19494,7 +19494,7 @@ app.post('/api/invoices/:id/efactura', requireAuth, requireSuperadmin, async (re
     if (_laAnaf(inv)) {
       return res.status(409).json({ error: inv.efactura_status === 'validated'
         ? 'Factura e deja validată de ANAF — nu se mai trimite.'
-        : 'Factura e deja la ANAF, în procesare. Apasă „Verifică status ANAF"; se retrimite doar dacă e respinsă.' });
+        : 'Factura e deja la ANAF, în procesare. Apasă „Verifică status ANAF”; se retrimite doar dacă e respinsă.' });
     }
     if (!efactura.enabled()) return res.status(400).json({ error: 'e-Factura e dormantă — setează ANAF_EFACTURA_TOKEN + ANAF_CIF pe server.' });
     const r = await efactura.uploadInvoice(inv, {});
@@ -19525,7 +19525,7 @@ app.get('/api/admin/backup/status', requireAuth, requireSuperadmin, (req, res) =
 // ─── Stare producție (super-admin) ────────────────────────────────────────────────────────────────
 // Multe lucruri critice depind de variabile de mediu setate în Railway și, până acum, singurul mod de a
 // ști dacă sunt puse era să te uiți în panoul Railway (invizibil din aplicație). Aici răspundem la
-// întrebarea „ce e configurat ACUM pe serverul care rulează", cu verdicte, nu cu valori:
+// întrebarea „ce e configurat ACUM pe serverul care rulează”, cu verdicte, nu cu valori:
 // NU întoarcem NICIODATĂ conținutul variabilelor (chei, parole, DSN) — doar dacă sunt setate.
 app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) => {
   const isSet = (v) => !!(v && String(v).trim());
@@ -19538,12 +19538,12 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   const ts = (typeof db.getTimescaleStatus === 'function') ? db.getTimescaleStatus() : null;
   const bk = backup.getStatus();
 
-  // „checks" = lista care înlocuiește verificarea manuală din Railway. level: ok | warn | crit | info
+  // „checks” = lista care înlocuiește verificarea manuală din Railway. level: ok | warn | crit | info
   const checks = [];
   const add = (key, label, level, detail) => checks.push({ key, label, level, detail });
 
   // PGlite scrie în directorul containerului. Pe Railway acel disc e EFEMER: la fiecare redeploy se pierd
-  // companiile, utilizatorii, vehiculele, plățile. Verdictul „ok" pe PGlite era cel mai periculos verde
+  // companiile, utilizatorii, vehiculele, plățile. Verdictul „ok” pe PGlite era cel mai periculos verde
   // posibil — arăta bine exact în scenariul în care pierzi tot. Local (dev) rămâne normal.
   const _onPlatform = !!(process.env.RAILWAY_GIT_COMMIT_SHA || process.env.RAILWAY_PROJECT_ID || process.env.NODE_ENV === 'production');
   if (!dbOk) add('db', 'Bază de date', 'crit', 'inaccesibilă');
@@ -19573,7 +19573,7 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     }
   } catch (e) {}
 
-  // Conexiunile la bază: paginile și recepția au rezerve separate. „În așteptare" > 0 = cineva stă la coadă
+  // Conexiunile la bază: paginile și recepția au rezerve separate. „În așteptare” > 0 = cineva stă la coadă
   // după o conexiune liberă — primul semn că baza sau numărul de conexiuni nu mai țin pasul.
   if (poolStats && Number.isFinite(poolStats.total)) {
     const _ocup = function (p) { return (p.total - p.idle) + ' din ' + p.total + (p.waiting ? ' · ' + p.waiting + ' la coadă' : ''); };
@@ -19595,14 +19595,14 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
             : 'OPRIT — o recepție moartă nu anunță pe nimeni');
   }
 
-  // Contul „admin" se creează la primul boot cu parola din ADMIN_PASSWORD, altfel cu una IMPLICITĂ, publică.
+  // Contul „admin” se creează la primul boot cu parola din ADMIN_PASSWORD, altfel cu una IMPLICITĂ, publică.
   // Verificăm efectiv hash-ul din DB — nu prezența variabilei (care poate fi adăugată după ce contul există).
   try {
     const _a = await db.getUserByUsername('admin');
     if (_a && _a.password_hash) {
       const _weak = await bcrypt.compare('admin123', _a.password_hash);
       // NU scriem parola în răspuns: ecranul ăsta ajunge în capturi de ecran și în bug reports.
-      add('admin_password', 'Parola contului „admin"', _weak ? 'crit' : 'ok',
+      add('admin_password', 'Parola contului „admin”', _weak ? 'crit' : 'ok',
         _weak ? 'este ÎNCĂ parola implicită de instalare, cunoscută public (vezi DEPLOY_RAILWAY.md). Schimb-o acum: setează ADMIN_PASSWORD, redeploy, apoi ȘTERGE variabila — altfel parola se resetează din ea la fiecare pornire.'
               : 'schimbată față de cea implicită');
     }
@@ -19645,12 +19645,12 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   add('backup_crypt', 'Criptare backup', bk.passphraseSet ? 'ok' : (bk.s3Configured ? 'crit' : 'warn'),
     bk.passphraseSet ? 'BACKUP_PASSPHRASE setat (AES-256-GCM)' : 'BACKUP_PASSPHRASE nesetat → dump-ul (hash-uri de parole, chei API) ar pleca necriptat');
   // Distingem cele trei stări care înainte arătau la fel: proaspăt · vechi de zile (pană reală) · niciodată.
-  // Marca de timp e persistată, deci „niciodată" chiar înseamnă niciodată, nu „serverul s-a repornit".
+  // Marca de timp e persistată, deci „niciodată” chiar înseamnă niciodată, nu „serverul s-a repornit”.
   add('backup_fresh', 'Prospețime backup', bk.never ? 'info' : (bk.dead ? 'crit' : (bk.stale ? 'warn' : 'ok')),
     bk.never ? 'nicio rulare înregistrată încă (prima pornește la 5 minute după boot)'
       : (bk.dead ? ('ULTIMA COPIE ARE ' + String(bk.ageHours).replace('.', ',') + ' h — workerul de backup nu mai rulează' + (bk.error ? ': ' + bk.error : ''))
         : ('acum ' + String(bk.ageHours).replace('.', ',') + ' h')));
-  add('cookie_secure', 'Cookie sesiune „secure"', process.env.COOKIE_SECURE === 'true' ? 'ok' : 'crit',
+  add('cookie_secure', 'Cookie sesiune „secure”', process.env.COOKIE_SECURE === 'true' ? 'ok' : 'crit',
     process.env.COOKIE_SECURE === 'true' ? 'da (+ HSTS)' : 'COOKIE_SECURE≠true → cookie-ul de sesiune poate pleca și pe HTTP');
   add('session_secret', 'SESSION_SECRET', isSet(process.env.SESSION_SECRET) ? 'ok' : 'warn',
     isSet(process.env.SESSION_SECRET) ? 'setat din mediu' : 'negenerat din mediu → se folosește fișierul local; la reconstruirea containerului toate sesiunile pică');
@@ -19658,9 +19658,9 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   // Din 22.10, roșu și când emailul e pus, dar ultimul n-a plecat (până atunci rândul era verde cât timp exista o cheie, iar
   // Brevo refuza serverul de câteva zile) — cu ce s-a întâmplat, pe înțeles, și ce e de făcut.
   // Din 28.10 rândul spune și ce a răspuns Brevo la verificarea de la pornire (fără email trimis) și ultimul email care a plecat, dar
-  // n-a ajuns (livrare.js) — „verde" nu mai înseamnă doar „a plecat".
+  // n-a ajuns (livrare.js) — „verde” nu mai înseamnă doar „a plecat”.
   {
-    const { pus, es, vf, picat, vfPicat, m } = await _emailVerdict();   // aceeași socoteală ca „Azi la noi" (30.10)
+    const { pus, es, vf, picat, vfPicat, m } = await _emailVerdict();   // aceeași socoteală ca „Azi la noi” (30.10)
     const cand = function (t) { return new Date(t).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' }); };
     const cale = pus ? (mailer.fel() === 'brevo' ? 'Brevo' : 'SMTP') : '';
     let liv = { rau: null, bun: null }; try { if (pus) liv = await db.ultimeleLivrari(); } catch (e) {}
@@ -19708,7 +19708,7 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
         : 'OSRM_URL nesetat → funcția e OPRITĂ, traseele se afișează brute. Implicitul public era serverul de demonstrație FOSSGIS, interzis în producție — l-am scos deliberat, nu e o defecțiune.');
   } catch (e) {}
   // Informativ, NU avertisment: de când demo-ul se acordă la cerere, compania demo e parte din produs.
-  // Cât timp rămânea „warn", ecranul nu putea ajunge niciodată pe verde, iar un semnal veșnic portocaliu
+  // Cât timp rămânea „warn”, ecranul nu putea ajunge niciodată pe verde, iar un semnal veșnic portocaliu
   // e un semnal pe care nu-l mai citește nimeni.
   const _ds = demoSimStatus();
   add('demo', 'Companie DEMO', 'info', demoLeft
@@ -19727,7 +19727,7 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     _anafTok ? (_anafTest ? 'token setat, dar rulează în mediul de TEST (implicit) → pune ANAF_EFACTURA_TEST=false / ANAF_ETRANSPORT_TEST=false pentru trimiteri reale' : 'mediu de PRODUCȚIE')
       : 'fără token SPV → modulele ANAF rămân demonstrative');
   // Anthropic (04.11): cheia, refuzul de acum (creditul terminat, limita, cheia respinsă) și soldul la zi — aceleași texte ca banda de pe
-  // „Acasă" (sold_ai.randSold). Soldul nescris e doar „info" (nu înroșește ecranul); unul pe terminate, da.
+  // „Acasă” (sold_ai.randSold). Soldul nescris e doar „info” (nu înroșește ecranul); unul pe terminate, da.
   try {
     const r = ai && ai.aiEnabled() ? await _aiRefuzAcum() : null;
     if (!ai || !ai.aiEnabled()) add('ai', 'Cheie AI (Anthropic)', 'info', 'nesetată → asistentul liber și rezumatele AI sunt oprite');
@@ -19737,7 +19737,7 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
       add('ai', 'Cheie AI (Anthropic)', !so ? 'info' : (rs.nivel === 'r' ? 'crit' : (rs.nivel === 'w' ? 'warn' : 'ok')), 'setată · ' + rs.text.replace(/\*\*/g, ''));
     }
   } catch (e) { add('ai', 'Cheie AI (Anthropic)', ai && ai.aiEnabled() ? 'ok' : 'info', ai && ai.aiEnabled() ? 'setată' : 'nesetată'); }
-  // „Sursă externă" în RA Insight (28.10): comutatorul nostru, dacă modelul primește căutarea pe internet, ultima căutare cu eroare.
+  // „Sursă externă” în RA Insight (28.10): comutatorul nostru, dacă modelul primește căutarea pe internet, ultima căutare cu eroare.
   try {
     const plat = await _sursaPlatforma(), modS = await _sursaModelCitit();
     const err = _sursaEroare && Date.now() - _sursaEroare.la < 86400000 ? _sursaEroare : null;
@@ -19747,7 +19747,7 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
         (/not enabled|web search/i.test(String(err.eroare)) ? ' → căutarea pe internet e oprită în contul Anthropic: Console › Settings › Capabilities' : '') : ''));
   } catch (e) {}
 
-  // Nivelul „info" e context, nu problemă: nu împiedică ecranul să ajungă pe verde.
+  // Nivelul „info” e context, nu problemă: nu împiedică ecranul să ajungă pe verde.
   const worst = checks.some(c => c.level === 'crit') ? 'crit' : (checks.some(c => c.level === 'warn') ? 'warn' : 'ok');
   const counts = { crit: checks.filter(c => c.level === 'crit').length, warn: checks.filter(c => c.level === 'warn').length, ok: checks.filter(c => c.level === 'ok').length };
   res.set('Cache-Control', 'no-store');
@@ -19941,7 +19941,7 @@ async function fetchRailwayUsage() {
     }
     if (!rows) {
       let error = lastErr || 'Eroare GraphQL Railway';
-      if (isAuthz(error)) error = 'Railway „Not Authorized": RAILWAY_API_TOKEN trebuie să fie un ACCOUNT token (creat la railway.com/account/tokens cu dropdown-ul de workspace pe „No workspace"), iar contul lui să fie membru al workspace-ului care deține acest proiect.';
+      if (isAuthz(error)) error = 'Railway „Not Authorized”: RAILWAY_API_TOKEN trebuie să fie un ACCOUNT token (creat la railway.com/account/tokens cu dropdown-ul de workspace pe „No workspace”), iar contul lui să fie membru al workspace-ului care deține acest proiect.';
       return { configured: true, error: error };
     }
     const byMeasure = {}; let estUsd = planFee;
@@ -20073,7 +20073,7 @@ app.get('/api/admin/costs/gsc', requireAuth, requireSuperadmin, async (req, res)
 });
 // Anthropic: cheltuiala lunii curente (USD) din Admin API cost_report. DOAR cu ANTHROPIC_ADMIN_KEY (cheie ADMIN sk-ant-admin01, separată de cea runtime din ai.js).
 const _anthSpendCache = new Map(); // startingAt -> { at, data } — TTL 60s, ca panoul + cardul să nu lovească de 2x cost_report (anti rate-limit 429)
-// `endingAtISO` (04.11, soldul „la zi"): capătul, exclus — implicit mâine la 00:00 UTC. Întoarce și `byDay` ({ 'AAAA-LL-ZZ': usd }, din
+// `endingAtISO` (04.11, soldul „la zi”): capătul, exclus — implicit mâine la 00:00 UTC. Întoarce și `byDay` ({ 'AAAA-LL-ZZ': usd }, din
 // ziua fiecărei găleți), ca soldul să ia cifra Anthropic zi cu zi.
 async function fetchAnthropicSpend(startingAtISO, endingAtISO) {
   const ADMIN_KEY = process.env.ANTHROPIC_ADMIN_KEY;
@@ -20088,7 +20088,7 @@ async function fetchAnthropicSpend(startingAtISO, endingAtISO) {
   if (Date.parse(startingAt) >= Date.parse(endingAt)) return { configured: true, spentUsd: 0 }; // interval invalid (dată în viitor) → 0 cheltuit, fără apel API
   // Un interval care începe AZI (creditul trecut pe ziua de azi, sau 1 ale lunii) e refuzat de Anthropic cu 400 „ending date
   // must be after starting date" — costul vine pe zile încheiate. Nimic raportat încă = 0 cheltuit, fără apel (16.10, Robert:
-  // „Credite 4.08 la 16-Oct" dădea eroare în locul soldului).
+  // „Credite 4.08 la 16-Oct” dădea eroare în locul soldului).
   if (Date.parse(startingAt) >= Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0)) return { configured: true, spentUsd: 0 };
   const _ck = startingAt + '|' + endingAt; const _cc = _anthSpendCache.get(_ck);
   if (_cc && (Date.now() - _cc.at) < 60000) return _cc.data; // rezultat proaspăt din cache
@@ -20100,13 +20100,13 @@ async function fetchAnthropicSpend(startingAtISO, endingAtISO) {
       const url = new URL(BASE);
       url.searchParams.set('starting_at', startingAt);
       url.searchParams.set('ending_at', endingAt);
-      url.searchParams.set('bucket_width', '1d');     // cost report acceptă DOAR „1d"
+      url.searchParams.set('bucket_width', '1d');     // cost report acceptă DOAR „1d”
       url.searchParams.set('limit', '31');            // default e 7 → ar trunchia luna la ultimele 7 zile
       url.searchParams.append('group_by[]', 'workspace_id');
       if (page) url.searchParams.set('page', page);
       const res = await fetch(url, { headers: headers, signal: AbortSignal.timeout(10000) });
       if (!res.ok) {
-        if (res.status === 401 || res.status === 403) return { configured: true, spentUsd: 0, error: 'Cheia Anthropic nu e acceptată de Admin API. Folosește o cheie ADMIN (prefix „sk-ant-admin01-…") în ANTHROPIC_ADMIN_KEY, nu una standard „sk-ant-api03-…". (HTTP ' + res.status + ')' };
+        if (res.status === 401 || res.status === 403) return { configured: true, spentUsd: 0, error: 'Cheia Anthropic nu e acceptată de Admin API. Folosește o cheie ADMIN (prefix „sk-ant-admin01-…”) în ANTHROPIC_ADMIN_KEY, nu una standard „sk-ant-api03-…”. (HTTP ' + res.status + ')' };
         if (res.status === 429) return { configured: true, spentUsd: 0, error: 'Anthropic Admin API: prea multe cereri (429). Reîncearcă peste un minut.' };
         let detail = ''; try { detail = (await res.text()).slice(0, 200); } catch (e) {}
         return { configured: true, spentUsd: 0, error: 'Anthropic Admin API a răspuns ' + res.status + '. ' + detail };
@@ -20149,23 +20149,23 @@ app.get('/api/admin/costs/anthropic', requireAuth, requireSuperadmin, async (req
     let budget = 0; try { const v = parseFloat(await db.getSetting('anthropic_monthly_budget')); if (Number.isFinite(v) && v >= 0) budget = v; } catch (e) {}
     let available = null;
     if (spend.configured && !spend.error && budget > 0) available = Math.max(0, Math.round((budget - spend.spentUsd) * 100) / 100);
-    // SOLDUL (04.11): același ca în „RA Insight · control" și pe „Acasă" (_soldAnthropic — locul unic), nu o a doua socoteală. Câmpurile
+    // SOLDUL (04.11): același ca în „RA Insight · control” și pe „Acasă” (_soldAnthropic — locul unic), nu o a doua socoteală. Câmpurile
     // vechi (creditUsd, creditDate, spentSince, soldRemaining) rămân pentru telefonul de azi (CostControl), până la APK-ul următor.
     const so = await _soldAnthropic();
     res.json(Object.assign({}, spend, { budget: budget, available: available, creditUsd: so ? so.scris : 0, creditDate: so && so.la ? new Date(so.la).toISOString().slice(0, 10) : null,
       creditConfigured: !!so, spentSince: so ? so.cheltuit : null, soldRemaining: so ? so.usd : null, soldError: null, sold: so }));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// ─── Panoul Mail (Robert, 12.10: „noi adminii să avem un panou de mail") ─────────────────
-// Etapa 1: „Trimise" (ce trimitem NOI: facturi, contracte, avertismente, invitații, mesajele scrise aici) + „Scrie".
+// ─── Panoul Mail (Robert, 12.10: „noi adminii să avem un panou de mail”) ─────────────────
+// Etapa 1: „Trimise” (ce trimitem NOI: facturi, contracte, avertismente, invitații, mesajele scrise aici) + „Scrie”.
 // Adresele: cea COMUNĂ = expeditorul aplicației (EMAIL_FROM — contact@ratrack.ro), pe care o văd toți fondatorii, plus câte
 // una pentru fiecare fondator (super-admin activ) cu email pe același domeniu (robert.gherbali@…, alin.tilvar@…), pe care
-// o vede și de pe care scrie DOAR el (Robert, 12.10: „1 este ok"). Fără listă scrisă de mână: un fondator nou cu adresă pe
-// domeniu apare singur. Mesajele altuia nu se văd: „nu există" (404), ca peste tot.
+// o vede și de pe care scrie DOAR el (Robert, 12.10: „1 este ok”). Fără listă scrisă de mână: un fondator nou cu adresă pe
+// domeniu apare singur. Mesajele altuia nu se văd: „nu există” (404), ca peste tot.
 const MAIL_FEL = { factura: 'Factură', proforma: 'Proformă', contract: 'Contract', contract_montaj: 'Contract montaj', pachet: 'Pachet RA Insight', neplata: 'Neplată',
   invitatie: 'Invitație', parola: 'Link de parolă', formular: 'Cerere din site', suport: 'Suport', mesaj: 'Mesaj', raspuns: 'Răspuns',
   redirectionat: 'Redirecționat', cerere: 'Cererea clientului' };
-// „Șterge" în „Trimise" (Robert, 13.10: „3. da"): DOAR emailurile scrise de mână. Facturile, contractele, avertismentele și
+// „Șterge” în „Trimise” (Robert, 13.10: „3. da”): DOAR emailurile scrise de mână. Facturile, contractele, avertismentele și
 // invitațiile rămân — sunt dovada că le-am trimis.
 const MAIL_TRIMISE_STERGIBILE = ['mesaj', 'raspuns', 'redirectionat'];
 const MAIL_ATAS_MAX = 4 * 1024 * 1024;   // corpul JSON are voie la 6 MB; atașamentele în base64 cresc cu o treime
@@ -20187,8 +20187,8 @@ async function _mailAdrese(req) {
   });
   return out;
 }
-// Semnătura emailurilor scrise din panou (13.10): pe adresa comună „Echipa RA Track"; pe cea personală numele și telefonul
-// din fișa omului (Robert: „trebuie să avem în fișă numărul de telefon").
+// Semnătura emailurilor scrise din panou (13.10): pe adresa comună „Echipa RA Track”; pe cea personală numele și telefonul
+// din fișa omului (Robert: „trebuie să avem în fișă numărul de telefon”).
 function _mailSemnatura(a) {
   return mailer ? mailer.semnatura(a && !a.comuna ? { nume: a.nume, functie: a.functie, telefon: a.telefon, email: a.adresa } : { nume: 'Echipa RA Track', email: a && a.adresa })
     : { text: '', html: '', rand: '' };
@@ -20256,8 +20256,8 @@ app.post('/api/mail/trimite', requireAuth, requireSuperadmin, async (req, res) =
     if (!catre.length) return res.status(400).json({ error: 'Scrie cel puțin un destinatar.' });
     if (catre.length + cc.length > MAIL_DESTINATARI_MAX) return res.status(400).json({ error: 'Cel mult ' + MAIL_DESTINATARI_MAX + ' destinatari într-un email.' });
     const rau = catre.concat(cc).filter(function (x) { return !_EMAIL_RE.test(x) || x.length > 200; });
-    if (rau.length) return res.status(400).json({ error: 'Adresa „' + rau[0].slice(0, 80) + '" nu arată a email.' });
-    // Răspunsul la un email din „Primite" (etapa 2): pleacă de pe adresa pe care a venit emailul, se leagă de el.
+    if (rau.length) return res.status(400).json({ error: 'Adresa „' + rau[0].slice(0, 80) + '” nu arată a email.' });
+    // Răspunsul la un email din „Primite” (etapa 2): pleacă de pe adresa pe care a venit emailul, se leagă de el.
     let primit = null;
     if (b.raspunsLa != null) {
       const pid = parseInt(b.raspunsLa);
@@ -20265,7 +20265,7 @@ app.post('/api/mail/trimite', requireAuth, requireSuperadmin, async (req, res) =
       if (!primit || !adrese.some(function (a) { return a.adresa === String(primit.catre).toLowerCase(); })) return res.status(404).json({ error: 'Emailul la care răspunzi nu există.' });
       if (de.adresa !== String(primit.catre).toLowerCase()) return res.status(400).json({ error: 'Răspunsul pleacă de pe adresa pe care a venit emailul: ' + primit.catre + '.' });
     }
-    // „Redirecționează" (13.10): un email primit (cu atașamentele lui păstrate) sau unul trimis de noi (doar textul) — văzut de om.
+    // „Redirecționează” (13.10): un email primit (cu atașamentele lui păstrate) sau unul trimis de noi (doar textul) — văzut de om.
     let redirPrimit = null, redirTrimis = null;
     if (b.redirectioneazaPrimit != null) {
       const rid = parseInt(b.redirectioneazaPrimit);
@@ -20332,9 +20332,9 @@ app.delete('/api/mail/trimise/:id', requireAuth, requireSuperadmin, async (req, 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── 13.10 (Robert: „vreau să fie un mail cât mai complet"): Coșul, Spamul, acțiunile pe mai multe emailuri, ciornele ───
-// Robert: „1, da" (Coșul: 30 de zile, cu „Recuperează"); „2. a" (în Spam merg singure doar emailurile expeditorilor marcați de
-// voi); „3. a, b, c" (ciorne, adrese sugerate, stea). O SINGURĂ funcție face acțiunile — din rândul listei, din bara pentru
+// ─── 13.10 (Robert: „vreau să fie un mail cât mai complet”): Coșul, Spamul, acțiunile pe mai multe emailuri, ciornele ───
+// Robert: „1, da” (Coșul: 30 de zile, cu „Recuperează”); „2. a” (în Spam merg singure doar emailurile expeditorilor marcați de
+// voi); „3. a, b, c” (ciorne, adrese sugerate, stea). O SINGURĂ funcție face acțiunile — din rândul listei, din bara pentru
 // cele bifate, din fereastra emailului și din vechile rute DELETE. Cine vede ce: ca peste tot (comuna — toți; a ta — doar tu).
 const MAIL_ZILE_DOSARE = 30;   // Spamul și Coșul se golesc singure după atâtea zile
 const MAIL_ACTIUNI = ['citit', 'necitit', 'stea', 'farastea', 'spam', 'nuspam', 'sterge', 'recupereaza', 'definitiv'];
@@ -20446,7 +20446,7 @@ app.delete('/api/mail/ciorne/:id', requireAuth, requireSuperadmin, async (req, r
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Adresele sugerate la „Către" / „Cc" (Robert: „3. b"): cei care ne-au scris, cei cărora le-am scris, firmele, oamenii lor.
+// Adresele sugerate la „Către” / „Cc” (Robert: „3. b”): cei care ne-au scris, cei cărora le-am scris, firmele, oamenii lor.
 // Cele mai recente întâi; fără adresele noastre; cel mult 8.
 app.get('/api/mail/sugestii', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -20486,7 +20486,7 @@ app.post('/api/admin/mail/goleste-vechi', requireAuth, requireSuperadmin, async 
   try { res.json(await golesteMailVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Etapa 2: „Primite" (Robert, 12.10: „hai cu etapa 2") ───
+// ─── Etapa 2: „Primite” (Robert, 12.10: „hai cu etapa 2”) ───
 // Emailul vine de la Cloudflare Email Routing, printr-un Email Worker (tools/mail-worker.js): emailul întreg (MIME) +
 // antetele X-RA-Secret (parola comună, MAIL_INBOUND_SECRET în Railway = RA_SECRET în Worker) și X-RA-Catre (adresa
 // noastră pe care a venit). Fără parola bună: 401. Pe o adresă care nu e a noastră: 422. Peste plafon: 429. La orice
@@ -20552,7 +20552,7 @@ app.post('/api/mail/primeste', _mailPrimireUsa, express.raw({ type: function () 
       if (_mailPrimiriDe.size > 5000) { for (const [k, v] of _mailPrimiriDe) if (!v.length || acum - v[v.length - 1] > 3600000) _mailPrimiriDe.delete(k); }
     }
     m.catre = catre; m.octeti = raw.length;
-    if (m.de_la && await db.mailEsteSpam(catre, m.de_la)) m.dosar = 'spam';   // l-ați marcat odată: direct în Spam (13.10, „2. a")
+    if (m.de_la && await db.mailEsteSpam(catre, m.de_la)) m.dosar = 'spam';   // l-ați marcat odată: direct în Spam (13.10, „2. a”)
     try { m.company_id = await db.firmaDupaEmail(m.de_la); } catch (e) { m.company_id = null; }
     const r = await db.noteazaMailPrimit(m);
     console.log('[MAIL] primit pe ' + catre + ' (' + Math.round(raw.length / 1024) + ' KB)' + (r.deja ? ' — deja era' : ''));
@@ -20655,8 +20655,8 @@ app.get('/api/admin/demo-requests', requireAuth, requireSuperadmin, async (req, 
   try { res.json(await db.listDemoRequests({ status: req.query.status || null })); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Bulina din meniu (30.10, Alin: „da acum"): câte cereri sunt NOI — se numără de la pornire și la fiecare cerere nouă, nu din lista
-// filtrată a paginii (pe fila „Aprobate" bulina dispărea, deși așteptau cereri).
+// Bulina din meniu (30.10, Alin: „da acum”): câte cereri sunt NOI — se numără de la pornire și la fiecare cerere nouă, nu din lista
+// filtrată a paginii (pe fila „Aprobate” bulina dispărea, deși așteptau cereri).
 app.get('/api/admin/demo-requests/numar', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json({ noi: await db.demoRequestsNoi() }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -20688,9 +20688,9 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
     invalidateAccessCache(u.id); roleCache.delete(u.id); // altfel cache-ul de 30s ar întârzia accesul
 
     // Aceeași regulă ca la orice cont nou (16.09): dacă emailul nu poate pleca, linkul se ÎNTOARCE, ca să-l ducă
-    // fondatorul mai departe. Înainte, aici se spunea „trimite-i manual linkul de resetare", fără niciun link.
+    // fondatorul mai departe. Înainte, aici se spunea „trimite-i manual linkul de resetare”, fără niciun link.
     // `warning` rămâne pentru ecranele care nu arată linkul (web-ul de azi, APK-urile vechi): le trimite la butonul
-    // „Trimite link de parolă" din Utilizatori, care există pe web și pe telefon.
+    // „Trimite link de parolă” din Utilizatori, care există pe web și pe telefon.
     let rez = { trimis: false, link: null, motiv: null };
     try { rez = await trimiteLinkParola(req, Object.assign({}, u, { email: uname }), { invite: true }); }
     catch (e) { rez = { trimis: false, link: null, motiv: e.message }; }
@@ -20702,7 +20702,7 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
       link: invited ? undefined : (rez.link || undefined),
       motiv: invited ? undefined : (rez.motiv || 'Emailul nu a plecat.'),
       warning: invited ? null
-        : 'Contul e activ, dar linkul de parolă NU a plecat pe email (' + String(rez.motiv || 'trimitere eșuată').replace(/\.+\s*$/, '') + '). Trimite-i-l din Utilizatori, cu „Trimite link de parolă" (pe web sau în aplicația actualizată).' });
+        : 'Contul e activ, dar linkul de parolă NU a plecat pe email (' + String(rez.motiv || 'trimitere eșuată').replace(/\.+\s*$/, '') + '). Trimite-i-l din Utilizatori, cu „Trimite link de parolă” (pe web sau în aplicația actualizată).' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/admin/demo-requests/:id/reject', requireAuth, requireSuperadmin, async (req, res) => {
@@ -20742,7 +20742,7 @@ app.put('/api/users/:id/access-until', requireAuth, requireSuperadmin, async (re
 
 // Starea simulatorului demo + pornire manuală pe termen scurt.
 // De ce butonul: de când simulatorul merge doar pentru conturi demo active, super-adminul care vrea să arate
-// aplicația „vie" unui prospect, fără să creeze cont, ar fi găsit cinci camioane înghețate. Termenul e scurt
+// aplicația „vie” unui prospect, fără să creeze cont, ar fi găsit cinci camioane înghețate. Termenul e scurt
 // și ține în memorie: la un redeploy pornirea forțată dispare, ceea ce e exact comportamentul dorit.
 app.get('/api/admin/demo-sim', requireAuth, requireSuperadmin, (req, res) => res.json(demoSimStatus()));
 app.post('/api/admin/demo-sim', requireAuth, requireSuperadmin, async (req, res) => {
@@ -20760,7 +20760,7 @@ app.post('/api/admin/demo-sim', requireAuth, requireSuperadmin, async (req, res)
 });
 
 // ─── Ofertare Live: CRUD oferte salvate (super-admin) ───
-// ── începe „pâlnia de oferte" ────────────────────────────────────────────────────────────────────
+// ── începe „pâlnia de oferte” ────────────────────────────────────────────────────────────────────
 // O ofertă trăia fără stare și fără termen: nu știai care e trimisă, care e acceptată, care e moartă
 // de trei luni, și nici până când mai ține prețul (Alin, 21.09). Cele patru stări, cât ține o ofertă
 // și motivele pentru care se pierde stau AICI, într-un singur loc, și se trimit ecranului — ca să nu
@@ -20782,7 +20782,7 @@ const OFERTA_MOTIVE_PIERDUT = [
 app.get('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await db.listOffers()); } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// Oferta ca FIȘIER descărcat, nu ca fereastră de printare (Alin, 21.09: „la fel ca la rapoarte").
+// Oferta ca FIȘIER descărcat, nu ca fereastră de printare (Alin, 21.09: „la fel ca la rapoarte”).
 // Cifrele vin de pe ecran, socotite acolo — ruta doar le pune pe hârtie. E un document, nu un rând
 // în bază: nu se salvează nimic aici. Termenul de valabilitate îl pune SERVERUL, din aceeași
 // constantă ca pâlnia, ca hârtia să nu poată spune alt termen decât ecranul.
@@ -20802,7 +20802,7 @@ app.get('/api/admin/offers/meta', requireAuth, requireSuperadmin, (req, res) => 
   res.json({ stari: OFERTA_STARI, valabilZile: OFERTA_VALABIL_ZILE, motivePierdut: OFERTA_MOTIVE_PIERDUT,
     // Închirierea (25.09): durata minimă și marja se socotesc în pagină, dar cifrele vin DE AICI.
     chirie: { luniMin: contracte.CHIRIE_LUNI_MIN, marja: contracte.CHIRIE_MARJA, zileRetur: contracte.CHIRIE_ZILE_RETUR },
-    // Pachetele RA Insight (14.10, pasul 5): ce primește fiecare și cum se socotește „ce rămâne la noi" (costul unei întrebări
+    // Pachetele RA Insight (14.10, pasul 5): ce primește fiecare și cum se socotește „ce rămâne la noi” (costul unei întrebări
     // obișnuite și plasa) — pagina le citește de aici; prețurile de listă sunt în tarifele ofertei (pkBasic / pkPro / pkBusiness).
     ..._ofMetaPachete() });
 });
@@ -20811,7 +20811,7 @@ function _ofMetaPachete() {
   return { pachete: pachete.PACHETE.map(function (p) { return { cod: p.cod, nume: p.nume, ai: p.ai, conturi: p.conturi, intrebari: p.intrebari, descriere: pachete.descriere(p) }; }),
     pachetCost: { intrebareLei: pachete.COST_INTREBARE_LEI, plasa: pachete.PLASA } };
 }
-// Mută oferta dintr-o stare în alta. Ecranul NU trimite date: „când a fost trimisă" se scrie pe
+// Mută oferta dintr-o stare în alta. Ecranul NU trimite date: „când a fost trimisă” se scrie pe
 // server, la fel ca oriunde altundeva unde un fapt se naște dintr-o apăsare de buton.
 app.put('/api/admin/offers/:id/stare', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -20837,8 +20837,8 @@ app.put('/api/admin/offers/:id/stare', requireAuth, requireSuperadmin, async (re
     res.json(out);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// ── sfârșit „pâlnia de oferte" ──
-// ── începe „poarta telefonului la oferte" ──
+// ── sfârșit „pâlnia de oferte” ──
+// ── începe „poarta telefonului la oferte” ──
 // APK-ul 1.0.1 (și 1.0.2) are calculatorul din iulie (Asistent AI 150 lei, agenți 300 lei, fără conturi
 // RA Insight): o ofertă salvată de acolo strica oferta de pe web și ducea prețuri greșite în contract.
 // De aceea, până pe 24.09, NICIO cerere cu cheie (telefonul) nu putea scrie o ofertă.
@@ -20860,7 +20860,7 @@ function _ofConfigCurat(c) {
   if (!c || typeof c !== 'object' || Array.isArray(c) || c.prices == null) return c;
   return Object.assign({}, c, { prices: _ofPreturiCurate(c.prices) });
 }
-// ── sfârșit „poarta telefonului la oferte" ──
+// ── sfârșit „poarta telefonului la oferte” ──
 app.post('/api/admin/offers', requireAuth, requireSuperadmin, async (req, res) => {
   try {
   if (_telefonVechi(req)) return res.status(409).json({ error: OFERTA_TELEFON_VECHI });
@@ -20889,12 +20889,12 @@ app.delete('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, 
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// ── începe „Ofertare pe server" ──────────────────────────────────────────────────────────────────
+// ── începe „Ofertare pe server” ──────────────────────────────────────────────────────────────────
 // Calculatorul de ofertă de pe telefon NU are socoteala lui (regula casei: nicio regulă de bani scrisă a
 // doua oară). Nici serverul nu o copiază: ia din public/index.html EXACT bucățile după care lucrează
-// ecranul „Ofertare Live" — calculatorul (`_ofCalc`), grila RA Insight, textele care se scriu singure,
-// formularul, rezumatul, „Ce rămâne la noi", plicul pentru hârtie — și le rulează aici, într-un vm, pe
-// un DOM de carton. Telefonul îi trimite ce e în câmpuri și ce a atins omul; serverul „apasă" în pagină
+// ecranul „Ofertare Live” — calculatorul (`_ofCalc`), grila RA Insight, textele care se scriu singure,
+// formularul, rezumatul, „Ce rămâne la noi”, plicul pentru hârtie — și le rulează aici, într-un vm, pe
+// un DOM de carton. Telefonul îi trimite ce e în câmpuri și ce a atins omul; serverul „apasă” în pagină
 // exact ce ar apăsa omul pe web (aceleași funcții `oninput`/`onchange` din formular) și întoarce ce ar
 // fi scris pagina: sumele, rezumatul, propunerile, corpul salvării și al PDF-ului.
 //
@@ -20906,7 +20906,7 @@ app.delete('/api/admin/offers/:id', requireAuth, requireSuperadmin, async (req, 
 const _ofVm = require('vm');
 let _ofPagina = null;            // Promise<{ ctx, ver }> — pagina pregătită o singură dată
 let _ofDom = null;               // DOM-ul de carton al cererii de acum (id → element)
-let _ofPrins = null;             // ce „trimite" pagina (fetch, mesaje, ferestre), prins în loc să plece
+let _ofPrins = null;             // ce „trimite” pagina (fetch, mesaje, ferestre), prins în loc să plece
 let _ofTimere = [];              // setTimeout-urile paginii, rulate de noi, în ordine
 let _ofAsteapta = [];            // desenarea formularului e async (`raxLoadOfertare`) — o așteptăm
 let _ofCoada = Promise.resolve(); // o singură socoteală odată: pagina are o singură stare
@@ -20929,17 +20929,17 @@ function _ofDecupeaza(html) {
     rand('function esc(s) {'),
     rand('function _raxDe(n) {'),
     rand('function _raxNumar(n) {'),
-    intre('// ── începe „Calculatorul de ofertă"', '// ── sfârșit „Calculatorul de ofertă" ──'),
-    // Grila RA Insight + propunerea prețului + costul pe întrebare (până la „ce rămâne la noi").
-    intre('// ── începe „Tarife după mărimea flotei"', '// ── începe „ce rămâne la noi"'),
-    intre('// ── începe „ce rămâne la noi"', '// ── sfârșit „ce rămâne la noi" ──'),
-    // Sumele scrise românește, „Cum se plătește" și rezumatul (`raxOfRecalc`).
+    intre('// ── începe „Calculatorul de ofertă”', '// ── sfârșit „Calculatorul de ofertă” ──'),
+    // Grila RA Insight + propunerea prețului + costul pe întrebare (până la „ce rămâne la noi”).
+    intre('// ── începe „Tarife după mărimea flotei”', '// ── începe „ce rămâne la noi”'),
+    intre('// ── începe „ce rămâne la noi”', '// ── sfârșit „ce rămâne la noi” ──'),
+    // Sumele scrise românește, „Cum se plătește” și rezumatul (`raxOfRecalc`).
     intre('function _lei2eur(v)', '// ─── Inventar dispozitive GPS'),
     // Formularul (`raxLoadOfertare`) și salvarea (`raxOfSave`).
-    intre('window.raxLoadOfertare = async function', '// ── începe „pâlnia de oferte"'),
-    // Termenul ofertei + deschiderea unei oferte salvate (`raxOfLoad`) și „Ofertă nouă" (`raxOfReset`).
-    intre('// ── începe „pâlnia de oferte"', '// ── începe „Oferta pe hârtie"'),
-    intre('// ── începe „Oferta pe hârtie"', '// ── sfârșit „Oferta pe hârtie" ──'),
+    intre('window.raxLoadOfertare = async function', '// ── începe „pâlnia de oferte”'),
+    // Termenul ofertei + deschiderea unei oferte salvate (`raxOfLoad`) și „Ofertă nouă” (`raxOfReset`).
+    intre('// ── începe „pâlnia de oferte”', '// ── începe „Oferta pe hârtie”'),
+    intre('// ── începe „Oferta pe hârtie”', '// ── sfârșit „Oferta pe hârtie” ──'),
     // Ce duce contractul făcut din ofertă (prețul pe mașină + rândurile anexei).
     intre('function _coSocotealaOfertei(o)', '// Durata în lista de alegere:'),
   ].join('\n;\n');
@@ -21049,7 +21049,7 @@ function _ofPregateste() {
     _ofVm.runInContext(cod, ctx, { filename: 'public/index.html (Ofertare Live)' });
     // Lista de oferte și derularea paginii n-au ce căuta aici: pagina le-ar cere de la /api.
     ctx.raxOfLoadList = function () {}; ctx.raxOfLaLista = function () {};
-    // „Prețurile noastre" deschide o fereastră: îi prindem conținutul (valorile de acum).
+    // „Prețurile noastre” deschide o fereastră: îi prindem conținutul (valorile de acum).
     ctx._ofFereastra = function (titlu, ic, corp) { if (_ofPrins) _ofPrins.ferestre.push({ titlu: String(titlu), corp: String(corp) }); };
     // Formularul se desenează async: îl urmărim, ca să-l putem aștepta.
     const deseneaza = ctx.raxLoadOfertare;
@@ -21076,7 +21076,7 @@ function _ofCuTermen(p, ms) {
 }
 // Comenzile formularului (`oninput`/`onchange`), luate o dată dintr-o desenare CURATĂ: prețurile scrise în
 // cod, fără nicio ofertă din bază și fără lista casei. Formularul are mereu aceleași comenzi — diferă doar
-// valorile din câmpuri — deci o comandă care nu e în listă a intrat din DATE (un „preț" care închide
+// valorile din câmpuri — deci o comandă care nu e în listă a intrat din DATE (un „preț” care închide
 // ghilimelele și își scrie singur un `oninput`), nu din pagină. Aia nu se rulează: vm-ul NU e o cutie
 // închisă (are obiectele serverului în el), deci un cod străin rulat aici ar ajunge la tot procesul.
 const _ofComenzi = new WeakMap();   // ctx → Set de comenzi
@@ -21098,9 +21098,9 @@ function _ofHandler(ctx, cod) {
   return fn;
 }
 // HTML-ul paginii, fără ce nu merge pe telefon: iconițele Font Awesome (goale acolo) și `onclick`-urile.
-// Linkurile care fac ceva pe web devin semne pe care telefonul le înțelege: „Prețurile noastre" și
-// „Poate e: …" (modelul propus pentru o mașină din „Mașinile clientului"). La fel butoanele sfaturilor (29.09): comutatorul CAN
-// și „Aplică recomandarea" / „Trece în ofertă" — telefonul le trimite înapoi, serverul le apasă în pagină.
+// Linkurile care fac ceva pe web devin semne pe care telefonul le înțelege: „Prețurile noastre” și
+// „Poate e: …” (modelul propus pentru o mașină din „Mașinile clientului”). La fel butoanele sfaturilor (29.09): comutatorul CAN
+// și „Aplică recomandarea” / „Trece în ofertă” — telefonul le trimite înapoi, serverul le apasă în pagină.
 function _ofAtrScris(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function _ofCurat(h) {
   return String(h || '')
@@ -21120,8 +21120,8 @@ function _ofCurat(h) {
       const cm = la.match(/raxOfCanMod\('(lvcan|fmc150)'\)/);
       const act = cm ? ' data-act="canMod" data-val="' + cm[1] + '"' : (/raxOfAplicaRecomandarea\(\)/.test(la) ? ' data-act="aplicaRec"' : '');
       if (!act) return m;   // alt buton: ca până acum (i se scot doar comenzile, mai jos)
-      // Fără stilul din pagină (butoane mici, de birou): telefonul le dă mărimea lui. Rămâne clasa — „primary"
-      // e alegerea de acum a comutatorului — și `disabled` („Trece în ofertă" cât se mai caută).
+      // Fără stilul din pagină (butoane mici, de birou): telefonul le dă mărimea lui. Rămâne clasa — „primary”
+      // e alegerea de acum a comutatorului — și `disabled` („Trece în ofertă” cât se mai caută).
       const cls = _ofAtr(atr, 'class');
       return '<button type="button"' + act + (cls ? ' class="' + _ofAtrScris(cls) + '"' : '') + (_ofAreAtr(atr, 'disabled') ? ' disabled' : '') + '>';
     })
@@ -21130,7 +21130,7 @@ function _ofCurat(h) {
     .replace(/<\/?(script|iframe|object|embed|form)\b[^>]*>/gi, '');
 }
 // Prețurile unei oferte: DOAR numere (sau gol, `null`, cum le lasă web-ul). Pagina le scrie în formular
-// fără să le curețe (`value="…"`), deci un „preț" text ar putea închide ghilimelele și aduce o comandă a
+// fără să le curețe (`value="…"`), deci un „preț” text ar putea închide ghilimelele și aduce o comandă a
 // lui în câmp — care aici, pe server, s-ar rula. Un text care nu e număr cade: rămâne tariful casei.
 function _ofPreturiCurate(pr) {
   const o = {};
@@ -21145,7 +21145,7 @@ function _ofPreturiCurate(pr) {
   });
   return o;
 }
-// „Mașinile clientului", cum le trimite telefonul (sau cum stau în oferta din bază): doar câmpurile unui rând
+// „Mașinile clientului”, cum le trimite telefonul (sau cum stau în oferta din bază): doar câmpurile unui rând
 // al paginii (`_ofMsDinCfg`), cu lungimi de om, un combustibil și un aparat din listele serverului — nimic
 // altceva nu intră în pagină. Rândurile pe jumătate scrise rămân (omul abia le scrie); se numără doar cele cu
 // marcă și model, ca pe web.
@@ -21201,12 +21201,12 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
       P._raxOf = { editingId: null, offers: pag ? [pag] : [], prices: P._ofTarifeDeBaza() };
       const el = (id) => _ofDom.get(id) || null;
       const out = { calcVer: ver, fx: { eur: P._fxRate, date: P._fxDate || null, sursa: P._fxSursa || null } };
-      // „Mașinile clientului" și comutatorul CAN (28.09) sunt stare a PAGINII (`_ofMasini`, `_ofMsMotor`,
+      // „Mașinile clientului” și comutatorul CAN (28.09) sunt stare a PAGINII (`_ofMasini`, `_ofMsMotor`,
       // `_ofCanMod` — variabile globale ale ei), iar pagina de aici e UNA, a tuturor cererilor. Deci se pun la
       // FIECARE cerere: altfel o salvare ar fi dus lista rămasă de la cererea dinainte — a altei oferte, sau
-      // nimic, dacă între timp cineva a apăsat „Ofertă nouă" (găsit la lotul 3, 29.09).
+      // nimic, dacă între timp cineva a apăsat „Ofertă nouă” (găsit la lotul 3, 29.09).
       //   • lista: cea trimisă de telefon; dacă nu trimite (aplicația 1.0.3), cea salvată în ofertă; altfel goală.
-      //   • comutatorul CAN: al telefonului, „FMC130 + LV-CAN200" dacă nu spune (ca la deschiderea paginii).
+      //   • comutatorul CAN: al telefonului, „FMC130 + LV-CAN200” dacă nu spune (ca la deschiderea paginii).
       // ⚠ Regula ține pentru ORICE variabilă globală a paginii care păstrează stare între apăsări: pe web trăiește
       // cât pagina, aici ar trece de la o cerere la alta — deci de la o ofertă la alta. Una nouă se pune tot aici.
       const cfgPag = (pag && pag.config && pag.config.cfg) || {};
@@ -21229,10 +21229,10 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
 
       let mod = null;
       if (b.incarca && pag) {
-        // Creionul din listă: `raxOfLoad` pune oferta în formular și marchează totul „scris de mână".
+        // Creionul din listă: `raxOfLoad` pune oferta în formular și marchează totul „scris de mână”.
         P.raxOfLoad(pag.id); await _ofGata(); potriveste(); mod = 'incarca';
       } else if (b.campuri && typeof b.campuri === 'object') {
-        // Formularul de pe telefon, cu ce a atins omul; apoi „apăsăm" câmpurile schimbate, în ordine.
+        // Formularul de pe telefon, cu ce a atins omul; apoi „apăsăm” câmpurile schimbate, în ordine.
         if (pag) {
           P._raxOf.editingId = pag.id;
           P._raxOf.prices = Object.assign({}, P._ofTarifeDeBaza(), (pag.config && pag.config.prices) || {});
@@ -21263,16 +21263,16 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
           if (k === 'echipMod') return;
           // Comutatorul CAN de la pasul 4: butonul paginii (reface cantitățile neatinse pe alegerea nouă).
           if (k === 'canMod') { if (typeof P.raxOfCanMod === 'function') P.raxOfCanMod(P._ofCanMod); return; }
-          // Casetele listei de mașini nu se „apasă": lista vine întreagă (`masini`), iar comenzile lor ar
+          // Casetele listei de mașini nu se „apasă”: lista vine întreagă (`masini`), iar comenzile lor ar
           // șterge rezultatele și ar aștepta un răspuns care aici nu vine.
           if (/^ms-/.test(String(k))) return;
-          // Valoarea scrisă de om se pune din nou înainte de „apăsare": un câmp schimbat mai devreme în
+          // Valoarea scrisă de om se pune din nou înainte de „apăsare”: un câmp schimbat mai devreme în
           // aceeași rundă (ex. numărul de mașini) i-ar fi putut scrie o propunere peste.
           const e = (k in b.campuri) ? pune(k, b.campuri[k]) : el('of-' + k); if (!e || !e._la) return;
           _ofHandler(P, e._la).call(e, { target: e, preventDefault() {} });
         });
         await _ofGata();
-        // „Aplică recomandarea în ofertă" (pasul 4) / „Trece în ofertă" (lista mașinilor): același buton al
+        // „Aplică recomandarea în ofertă” (pasul 4) / „Trece în ofertă” (lista mașinilor): același buton al
         // paginii, apăsat DUPĂ ce s-a scris tot ce a scris omul. Mesajul lui ajunge pe telefon.
         if (b.aplicaRecomandarea === true && typeof P.raxOfAplicaRecomandarea === 'function') {
           _ofPrins.mesaje = [];
@@ -21305,7 +21305,7 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         const aiA = _ofCurat((pkAles ? '<b>' + pachete.descriere(pkAles) + '</b><br>' : '') + ((el('of-mod-hint-aiA') || {}).innerHTML || ''));
         out.html = { rezumat: cutie('rax-of-summary'), aiA: aiA, tahograf: cutie('of-mod-hint-tahograf'),
           etransport: cutie('of-mod-hint-etransport'), aiqCost: '' };
-        // RA Insight pe pachete (14.10): nu mai există caseta conturilor („aiq"); prețul pachetului se arată cât e ales unul cu AI.
+        // RA Insight pe pachete (14.10): nu mai există caseta conturilor („aiq”); prețul pachetului se arată cât e ales unul cu AI.
         out.arata = { aiq: false, pachetPret: ((el('of-pPachet-wrap') || {}).style || {}).display !== 'none', retCustom: ((el('of-retcustom-wrap') || {}).style || {}).display !== 'none',
           inchiriere: typeof P._ofInchiriere === 'function' ? !!P._ofInchiriere() : false };
         // Închirierea: explicația de sub aparate și, lângă fiecare chirie, cât ne costă aparatul (din pagină).
@@ -21316,13 +21316,13 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         ['chFmc130', 'chFmc150', 'chFmc650', 'chLvCan'].forEach((k) => { out.chcost[k] = cutie('of-chcost-' + k); });
         out.echiv = {};
         _ofDom.forEach((e, id) => { if (/^eurx-/.test(id)) out.echiv[id.slice(5)] = String(e.textContent || ''); });
-        // Sfaturile doar pentru noi (25.09): „Ce recomanzi" de la pasul 2 și „Recomandarea pentru flota asta"
-        // de la pasul 4, cu comutatorul CAN și „Aplică recomandarea". Le-a scris `raxOfRecalc`, mai sus.
+        // Sfaturile doar pentru noi (25.09): „Ce recomanzi” de la pasul 2 și „Recomandarea pentru flota asta”
+        // de la pasul 4, cu comutatorul CAN și „Aplică recomandarea”. Le-a scris `raxOfRecalc`, mai sus.
         // Nu ajung pe hârtie: plicul PDF-ului e `_ofPayload`, care nu le are.
         out.html.sfatFlota = cutie('of-sfat-flota');
         out.html.sfatMontaj = cutie('of-sfat-montaj');
         out.canMod = P._ofCanMod;
-        // „Mașinile clientului": rândurile (ca telefonul să le arate la deschidere), și, pe fiecare, ce a scris
+        // „Mașinile clientului”: rândurile (ca telefonul să le arate la deschidere), și, pe fiecare, ce a scris
         // pagina sub el — fără lista de alegere a aparatului, pe care telefonul o face nativă, din `aparate`.
         const alege = '<div class="raof-ms-alege">';
         out.masini = {
@@ -21338,7 +21338,7 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
           aparate: Object.keys(compat.APARATE).map((k) => ({ k, et: compat.APARATE[k].et })),
           combustibili: Object.keys(compat.COMBUSTIBILI).map((k) => ({ k, et: compat.COMBUSTIBILI[k] })),
         };
-        // Salvarea, PDF-ul și „Salvează ca tarifele noastre": corpul pe care l-ar trimite pagina.
+        // Salvarea, PDF-ul și „Salvează ca tarifele noastre”: corpul pe care l-ar trimite pagina.
         _ofPrins.cereri = []; _ofPrins.mesaje = [];
         P.raxOfSave();
         const s = _ofPrins.cereri[0];
@@ -21352,7 +21352,7 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
         out.salvareTarife = (_ofPrins.cereri[0] || {}).corp || null;
       }
       if (b.hartie && pag) {
-        // „Vezi hârtia" / „Descarcă" din listă: din ce s-a SALVAT în ofertă, la cursul ei înghețat.
+        // „Vezi hârtia” / „Descarcă” din listă: din ce s-a SALVAT în ofertă, la cursul ei înghețat.
         _ofPrins.cereri = []; P.raxOfPreview(pag.id);
         out.hartieSalvata = (_ofPrins.cereri[0] || {}).corp || null;
       }
@@ -21377,15 +21377,15 @@ async function _ofSocoteste(cerere, oferta, st, fx) {
   _ofCoada = p.catch(() => {});
   return p;
 }
-// ── sfârșit „Ofertare pe server" ──
+// ── sfârșit „Ofertare pe server” ──
 // Calculatorul de ofertă, pentru telefon (și pentru orice alt ecran care n-are pagina web în el).
 // Doar noi: sumele, costurile noastre și profitul nu ies din `requireSuperadmin`.
-//   { nou: true }                                   → „Ofertă nouă": formularul de la zero, din lista casei
+//   { nou: true }                                   → „Ofertă nouă”: formularul de la zero, din lista casei
 //   { offer_id, incarca: true }                     → creionul: oferta salvată, pusă în formular
 //   { campuri, atinse, schimbate, offer_id? }        → formularul de pe telefon, după ce omul a scris
-//   { offer_id, hartie: true }                      → plicul pentru PDF-ul ofertei SALVATE („Vezi hârtia")
+//   { offer_id, hartie: true }                      → plicul pentru PDF-ul ofertei SALVATE („Vezi hârtia”)
 //   { offer_id, contract: true }                    → ce duce contractul făcut din ofertă (`pentruContract`)
-//   { preturi: true }                               → „Prețurile noastre": rândurile și valorile de acum
+//   { preturi: true }                               → „Prețurile noastre”: rândurile și valorile de acum
 app.post('/api/admin/offers/calc', requireAuth, requireSuperadmin, async (req, res) => {
   try {
     const b = req.body || {};
@@ -21403,8 +21403,8 @@ app.post('/api/admin/offers/calc', requireAuth, requireSuperadmin, async (req, r
     res.status(500).json({ error: 'Calculatorul de ofertă nu a mers: ' + (err && err.message) });
   }
 });
-// ── începe „mașinile clientului" (28.09) ──────────────────────────────────────────────────────────
-// Alin: „să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact".
+// ── începe „mașinile clientului” (28.09) ──────────────────────────────────────────────────────────
+// Alin: „să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact”.
 // Regula stă în compatibilitate.js; aici doar listele și ușile. Listele sunt în bază (`liste_compat`),
 // câte una pe fel; până se încarcă una din aplicație, se folosește copia de pornire din depozit
 // (liste/teltonika.json.gz — listele trimise de Alin pe 28.09, făcută cu tools/liste-teltonika.js).
@@ -21488,8 +21488,8 @@ app.get('/api/admin/masini/modele', requireAuth, requireSuperadmin, async (req, 
     res.json({ modele: compat.modele(Object.values(L).map((x) => x.peMarca), String(req.query.marca || '').slice(0, 60)).slice(0, 300) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// Șablonul mașinilor (Alin, 28.09: „buton de export a unui șablon fix... și buton de încărcare"). În locul
-// „Lipește din Excel", care a fost SCOS. GET = îl descarci (cu logo, cu listele de ales), POST = încarci
+// Șablonul mașinilor (Alin, 28.09: „buton de export a unui șablon fix... și buton de încărcare”). În locul
+// „Lipește din Excel”, care a fost SCOS. GET = îl descarci (cu logo, cu listele de ales), POST = încarci
 // șablonul completat și primești mașinile + ce n-a mers, pe rând. Coloanele: compatibilitate.SABLON_COLOANE.
 app.get('/api/admin/masini/sablon', requireAuth, requireSuperadmin, async (req, res) => {
   try {
@@ -21590,12 +21590,12 @@ app.post('/api/admin/masini/potrivire', requireAuth, requireSuperadmin, async (r
     res.json({ rezultate: _compatPotrivire(L, b.vehicule, b.pref, b.vreaMotor), aparate: compat.APARATE });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// ── sfârșit „mașinile clientului" ──
+// ── sfârșit „mașinile clientului” ──
 // ⚠ Aici a stat, până pe 22.09, `POST /api/admin/offers/:id/apply-to-company` — ușa butonului ✨ din
 // lista de oferte. A plecat cu el: ce s-a vândut într-o ofertă se aprinde SINGUR pe firmă la
 // semnarea contractului (`_aplicaOfertaPeFirma`, mai sus), deci ruta era a doua cale spre același
 // lucru, pe un ecran unde clientul de obicei nici nu există încă. Nu o reintroduce; cota se pune și
-// din fișa firmei, „Abonament & plăți".
+// din fișa firmei, „Abonament & plăți”.
 // Facturile companiei CURENTE — pentru ADMINUL firmei (manageUsers). Userii fără manageUsers primesc 403 (nu văd facturi).
 // Super-adminul (fără companie proprie) folosește în continuare Facturarea completă; aici primește listă goală.
 //
@@ -21644,7 +21644,7 @@ app.get('/api/billing/my-invoices', requireAuth, requirePerm('manageUsers'), wit
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// (Ruta „PUT /api/companies/:id/access", care punea de mână data „acces până la", a fost ȘTEARSĂ pe
+// (Ruta „PUT /api/companies/:id/access”, care punea de mână data „acces până la”, a fost ȘTEARSĂ pe
 // 28.09 odată cu ceasul vechi. Oprirea unei firme se face cu `PUT /api/companies/:id/suspend`, cu motiv.)
 
 // Web Push: cheie publică VAPID + abonare/dezabonare dispozitiv
@@ -21697,7 +21697,7 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
     if (!q) return res.status(400).json({ error: 'Adaugă ?q=nume/imei (ex. ?q=logan)' });
     const devs = await db.getDevicesLite();
     const dev = devs.find(function (d) { return (d.imei && String(d.imei).toLowerCase().includes(q)) || (d.name && String(d.name).toLowerCase().includes(q)) || (d.plate && String(d.plate).toLowerCase().includes(q)); });
-    if (!dev) return res.status(404).json({ error: 'Vehicul negăsit pentru „' + q + '"' });
+    if (!dev) return res.status(404).json({ error: 'Vehicul negăsit pentru „' + q + '”' });
     let canIface = null; try { const dr = await db.pool.query('SELECT can_interface FROM devices WHERE imei = $1', [dev.imei]); canIface = dr.rows[0] && dr.rows[0].can_interface; } catch (e) {}
     const to = new Date(), from = new Date(to.getTime() - 24 * 3600 * 1000);
     const hist = await db.getDeviceHistory(dev.imei, from.toISOString(), to.toISOString(), 5000);
@@ -21705,8 +21705,8 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
     const io = (last && last.io_data) || {};
     const odometer_fields = {};
     for (const k of Object.keys(io)) if (/mileage|odometer|odo|distance/i.test(k)) odometer_fields[k] = io[k];
-    // Debug „Ore funcționare azi": de ce engineOnTime = 0? Arată valorile reale de ignition + calculul.
-    // „Azi" = de la miezul nopții României (23.10): cu `setHours` pe serverul pe UTC, ziua pornea vara la 03:00.
+    // Debug „Ore funcționare azi”: de ce engineOnTime = 0? Arată valorile reale de ignition + calculul.
+    // „Azi” = de la miezul nopții României (23.10): cu `setHours` pe serverul pe UTC, ziua pornea vara la 03:00.
     const dayStart = new Date(insight.perioada({ period: 'today' }, Date.now()).from);
     const todayH = await db.getDeviceHistory(dev.imei, dayStart.toISOString(), to.toISOString(), 10000);
     let ignOn = 0, engineOnSec = 0, kmToday = 0; const ignitionValues = {};
@@ -21721,7 +21721,7 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
       }
     }
     const today_debug = { points: todayH.length, ignition_on_samples: ignOn, ignition_values_seen: ignitionValues, engine_on_sec: Math.round(engineOnSec), engine_on_fmt: Math.floor(engineOnSec / 3600) + ' h ' + Math.floor((engineOnSec % 3600) / 60) + ' min', km_today: +kmToday.toFixed(1) };
-    // Diagnostic combustibil: are CONTOR cumulativ (consum exact) sau doar NIVEL (consum mic = „est.")?
+    // Diagnostic combustibil: are CONTOR cumulativ (consum exact) sau doar NIVEL (consum mic = „est.”)?
     let fCumFirst = null, fCumLast = null, fLvlFirst = null, fLvlLast = null, cumSum = 0, prevCum = null, prevLvl = null, lvlMaxJump = 0, lvlDropSum = 0;
     for (const r of todayH) {
       const rio = r.io_data || {};
@@ -21752,9 +21752,9 @@ app.get('/api/admin/io-peek', requireAuth, requireSuperadmin, async (req, res) =
       consum_din_nivel_L_per_100km: _dropPer100,
       toate_cheile_combustibil: Object.keys(io).filter(function (k) { return /fuel|carbur|consum/i.test(k); }).sort(),
       verdict: _ok
-        ? ('MĂSURAT din contor: ' + cumSum.toFixed(1) + ' L azi (' + _sumPer100 + ' L/100km) → NU mai e „est.".')
+        ? ('MĂSURAT din contor: ' + cumSum.toFixed(1) + ' L azi (' + _sumPer100 + ' L/100km) → NU mai e „est.”.')
         : (_levelOk
-          ? ('MĂSURAT din scăderile de nivel: ' + lvlDropSum.toFixed(1) + ' L azi (' + _dropPer100 + ' L/100km) → NU mai e „est.".')
+          ? ('MĂSURAT din scăderile de nivel: ' + lvlDropSum.toFixed(1) + ' L azi (' + _dropPer100 + ' L/100km) → NU mai e „est.”.')
           : (fLvlFirst != null
             ? ('Nivelul NU arată scăderi reale azi (suma scăderi ' + lvlDropSum.toFixed(2) + ' L pe ' + _km + ' km) — senzor amortizat/grosier sau drum prea scurt → estimat. Pe drumuri mai lungi se măsoară.')
             : 'Niciun semnal de combustibil.')),
@@ -21768,7 +21768,7 @@ app.get('/api/admin/ignition-check', requireAuth, requireSuperadmin, async (req,
     if (!q) return res.status(400).json({ error: 'Adaugă ?q=nume/nr/imei (ex. ?q=caddy)' });
     const devs = await db.getDevicesLite();
     const dev = devs.find(function (d) { return (d.imei && String(d.imei).toLowerCase().includes(q)) || (d.name && String(d.name).toLowerCase().includes(q)) || (d.plate && String(d.plate).toLowerCase().includes(q)); });
-    if (!dev) return res.status(404).json({ error: 'Vehicul negăsit pentru „' + q + '"' });
+    if (!dev) return res.status(404).json({ error: 'Vehicul negăsit pentru „' + q + '”' });
     const imei = dev.imei;
     const to = new Date(), from = new Date(to.getTime() - 48 * 3600 * 1000);
     const hist = await db.getDeviceHistory(imei, from.toISOString(), to.toISOString(), 100000);
@@ -21843,7 +21843,7 @@ if (process.env.SEED_TEST === '1') {
         latitude: (lat != null ? lat : 45.75), longitude: (lng != null ? lng : 21.23), angle: Number(angle) || 0 };
       // simulare: desfacem starile (usi, lumini, martori) exact ca la ingestul TCP (server.js:773).
       // Fara randul asta, pozitia simulata ajunge cu semnalele BRUTE (can_ssf_*) si fara
-      // `_security_flags`, iar ecranele de stare scriu „masina nu trimite semnale" — desi trimite.
+      // `_security_flags`, iar ecranele de stare scriu „masina nu trimite semnale” — desi trimite.
       try { expandCanFlags(data.io); } catch (e) { /* io stricat -> il lasam cum e */ }
       // aplică maparea de sonde (ca în ingestul TCP)
       try { const fsensors = await getFuelSensors(imei); if (fsensors && fsensors.length) computeFuelFromSensors(data.io, fsensors); } catch (e) {}
@@ -21970,7 +21970,7 @@ function _inchideLegaturileCheii(keyId) {
 }
 // Parola schimbată închide ce era deschis cu cea veche, în afară de locul din care s-a schimbat (`pastreaza`: { sid } sau { keyId }):
 // sesiunile web, tokenurile de telefon și legăturile lor live. Până pe 02.11, un telefon pierdut rămânea în cont până la 90 de zile.
-// Cheile de integrare (fără „mobile:" în nume) nu țin de parolă: rămân, se revocă separat. O eroare aici nu întoarce schimbarea parolei.
+// Cheile de integrare (fără „mobile:” în nume) nu țin de parolă: rămân, se revocă separat. O eroare aici nu întoarce schimbarea parolei.
 async function _inchideDupaParola(userId, pastreaza) {
   const p = pastreaza || {};
   let rez = { sesiuni: 0, telefoane: 0, chei: [] };
@@ -22205,7 +22205,7 @@ async function start() {
   await db.initDb();
   await loadRegisteredImeis(); // allow-list mod strict — ÎNAINTE de a porni serverul TCP (altfel s-ar bloca la boot)
   await db.migreazaPornireaAbonamentelor();   // o singură dată: aparatele care transmiteau deja rămân pe luna întreagă
-  await db.migreazaAparateNoiAnuntate();      // o singură dată: ce era deja în „Neasignate" nu se anunță ca „nou" (30.09)
+  await db.migreazaAparateNoiAnuntate();      // o singură dată: ce era deja în „Neasignate” nu se anunță ca „nou” (30.09)
   await db.migreazaTermeneEtransport(etr.termenDinFormular);   // o singură dată: termenele UIT pe miezul nopții României (23.10)
   // Legăturile rămase de pe vremea când mutarea unei mașini pe altă firmă nu le rupea (05.11): șoferul / grupa altei firme. ÎNAINTEA
   // istoricului, ca un șofer al altei firme să nu primească un rând nou.
@@ -22237,7 +22237,7 @@ async function start() {
     adminPass = require('crypto').randomBytes(18).toString('base64url'); // ~24 caractere
     _generata = true;
   }
-  // ── Contul de instalare „admin" se RETRAGE ─────────────────────────────────────────────────────
+  // ── Contul de instalare „admin” se RETRAGE ─────────────────────────────────────────────────────
   // Decizie 2026-08-11: nu mai trebuie să funcționeze. E un cont cu nume previzibil, cunoscut public
   // din documentația de deploy, care administrează TOATE companiile — prima țintă a oricui.
   // Singura condiție care oprește retragerea: să existe ALT super-admin activ. Altfel v-ar închide
@@ -22247,16 +22247,16 @@ async function start() {
   const _alti = await db.altiSuperadminiActivi().catch(() => 0);
   if (_alti > 0 && !process.env.ADMIN_PASSWORD) {
     const retras = await db.dezactiveazaContulDeInstalare().catch(() => false);
-    if (retras) console.log('[AUTH] Contul de instalare „admin" a fost DEZACTIVAT (există ' + _alti + ' super-admin activ). Autentificarea se face cu conturile personale.');
+    if (retras) console.log('[AUTH] Contul de instalare „admin” a fost DEZACTIVAT (există ' + _alti + ' super-admin activ). Autentificarea se face cu conturile personale.');
   }
-  // Avertismentul pentru cazul „e singurul super-admin" se dă mai jos, DUPĂ crearea contului —
+  // Avertismentul pentru cazul „e singurul super-admin” se dă mai jos, DUPĂ crearea contului —
   // aici, pe o instalare nouă, el încă nu există.
 
   const adminUser = await db.getUserByUsername('admin');
   if (!adminUser && _alti > 0) {
     // Cineva l-a șters, dar platforma are deja super-admini. NU-l readucem la viață: ar fi exact contul
     // previzibil pe care tocmai l-am retras.
-    console.log('[AUTH] Contul „admin" nu există și NU se recreează — platforma are ' + _alti + ' super-admin activ.');
+    console.log('[AUTH] Contul „admin” nu există și NU se recreează — platforma are ' + _alti + ' super-admin activ.');
   } else if (!adminUser) {
     const hash = await bcrypt.hash(adminPass, 10);
     // proprietarul platformei = super-admin (vede/administrează toate companiile)
@@ -22264,7 +22264,7 @@ async function start() {
     console.log('[AUTH] Utilizator super-admin creat (admin)');
     if (_generata) {
       console.log('\n══════════════════════════════════════════════════════════════');
-      console.log('  PAROLA CONTULUI „admin" (generată acum, se afișează O SINGURĂ DATĂ):');
+      console.log('  PAROLA CONTULUI „admin” (generată acum, se afișează O SINGURĂ DATĂ):');
       console.log('  ' + adminPass);
       console.log('  Notează-o ACUM și schimb-o din aplicație după prima autentificare.');
       console.log('══════════════════════════════════════════════════════════════\n');
@@ -22275,15 +22275,15 @@ async function start() {
     const hash = await bcrypt.hash(adminPass, 10);
     await db.updateUserPassword(adminUser.id, hash);
     const reactivat = await db.reactiveazaContulDeInstalare().catch(() => false);
-    console.log('[AUTH] Parola contului „admin" actualizată din ADMIN_PASSWORD' + (reactivat ? ' + cont REACTIVAT (cale de avarie)' : ''));
+    console.log('[AUTH] Parola contului „admin” actualizată din ADMIN_PASSWORD' + (reactivat ? ' + cont REACTIVAT (cale de avarie)' : ''));
     if (reactivat) console.warn('[AUTH] ⚠ Contul de instalare e activ din nou. Șterge ADMIN_PASSWORD din mediu după ce-ți recapeți accesul — altfel se reactivează la fiecare pornire.');
   }
 
   // Avertismentul se dă AICI, după ce știm sigur că respectivul cont există: pe o instalare nouă,
-  // verificarea de mai sus rulează înainte ca „admin" să fie creat.
+  // verificarea de mai sus rulează înainte ca „admin” să fie creat.
   if (_alti === 0) {
     const _a = await db.getUserByUsername('admin');
-    if (_a && _a.active !== false) console.warn('[AUTH] ⚠ Contul „admin" e ÎNCĂ activ fiindcă e singurul super-admin. Creează-ți un cont personal de super-admin — „admin" se va retrage singur la următoarea pornire.');
+    if (_a && _a.active !== false) console.warn('[AUTH] ⚠ Contul „admin” e ÎNCĂ activ fiindcă e singurul super-admin. Creează-ți un cont personal de super-admin — „admin” se va retrage singur la următoarea pornire.');
   }
 
   // Seed de test (doar pentru rularea testelor): SEED_TEST=1
@@ -22356,7 +22356,7 @@ async function start() {
       satellites: pos.satellites,
       io: _io,
       can_stale: _stale,
-      // seed histerezis „s-a mișcat recent" din ultima poziție (dacă mergea) → status corect imediat după restart, până la primul pachet
+      // seed histerezis „s-a mișcat recent” din ultima poziție (dacă mergea) → status corect imediat după restart, până la primul pachet
       moved_at: ((pos.speed || 0) > 3) ? new Date(pos.timestamp).getTime() : null,
       name: info.name || null,
       vehicle_type: info.vehicle_type || null,
@@ -22370,8 +22370,8 @@ async function start() {
     try {
       let demo = await db.getCompanyBySlug('demo');
       if (!demo) demo = await db.createCompany({ name: 'RA Track Demo', slug: 'demo', is_demo: true });
-      // Marca e „RA Track", ca domeniul (Robert, 09.10). Pe 09.10, pentru câteva ore, compania a fost redenumită
-      // „RA Tracks Demo"; numele acela se întoarce o singură dată la pornire. Doar dacă scrie exact numele acela: un nume
+      // Marca e „RA Track”, ca domeniul (Robert, 09.10). Pe 09.10, pentru câteva ore, compania a fost redenumită
+      // „RA Tracks Demo”; numele acela se întoarce o singură dată la pornire. Doar dacă scrie exact numele acela: un nume
       // pus de noi de mână rămâne cum e.
       if (demo && demo.name === 'RA Tracks Demo') {
         try { await db.updateCompany(demo.id, { name: 'RA Track Demo' }); demo.name = 'RA Track Demo'; } catch (e) { /* nu oprește pornirea */ }
@@ -22406,7 +22406,7 @@ async function start() {
       console.log('[DEMO] DEMO_DISABLED=true → simulatorul e OPRIT' + (dc ? ' (compania demo rămâne, pentru conturile acordate la cerere)' : ' (nu există companie demo)'));
     } catch (e) { console.warn('[DEMO] stare:', e.message); demoCompanyId = null; }
   }
-  // Evaluarea stării se face pe AMBELE ramuri, altfel „Stare producție" ar arăta „neinițializat" până la
+  // Evaluarea stării se face pe AMBELE ramuri, altfel „Stare producție” ar arăta „neinițializat” până la
   // prima acțiune administrativă. Verificarea periodică e singurul lucru care observă EXPIRAREA unui termen:
   // `userAccessExpired` e verificat leneș, per cerere, deci fără ea simulatorul ar merge până la următorul login.
   await syncDemoSim('pornire server').catch((e) => console.warn('[DEMO] sync:', e.message));
@@ -22421,7 +22421,7 @@ async function start() {
 
   // Copiile zilnice: backup-ul datelor de business și arhiva pozițiilor pe S3. Vezi backup.js.
   // Starea ULTIMEI rulări se încarcă din bază: pe Railway procesul repornește des, iar fără asta ecranul
-  // spunea „nicio rulare de la pornirea serverului" chiar cu bucket-ul plin de copii.
+  // spunea „nicio rulare de la pornirea serverului” chiar cu bucket-ul plin de copii.
   await backup.loadState(db).catch(() => {});
   // O DATĂ pe zi, după BACKUP_HOUR (ora României, implicit 3 noaptea) — nu la 5 minute după fiecare pornire, cum
   // era: cu deploy-urile dese, backup-ul complet rula de câteva ori pe zi, exact după valul de reconectare al
@@ -22480,7 +22480,7 @@ async function start() {
     try { for (const [k, v] of _clientErrHits) if (now - v.ts > 5 * 60000) _clientErrHits.delete(k); } catch (e) {}
     try { for (const [k, v] of _demoReqHits) if (now - v.ts > DEMO_REQ_WINDOW_MS) _demoReqHits.delete(k); } catch (e) {}
     try { for (const [k, v] of alertCooldowns) if (now - v > 24 * 3600000) alertCooldowns.delete(k); } catch (e) {}
-    // Starea alertelor „de stare" neatinsă de o săptămână (mașina nu mai transmite, regula ștearsă) iese din memorie.
+    // Starea alertelor „de stare” neatinsă de o săptămână (mașina nu mai transmite, regula ștearsă) iese din memorie.
     try { for (const [k, s] of _stariAlerte) if (now - (s.atins || 0) > 7 * 24 * 3600000) _stariAlerte.delete(k); } catch (e) {}
     try { for (const [k, v] of _userEvtCooldown) if (now - v > 24 * 3600000) _userEvtCooldown.delete(k); } catch (e) {}
     try { for (const [k, v] of _wsCooldown) if (now - v > 24 * 3600000) _wsCooldown.delete(k); } catch (e) {}
@@ -22557,7 +22557,7 @@ async function start() {
         await notify({
           type: 'config', severity: 'warning', imei: d.imei, companyId: d.company_id, dedupHours: 24 * 7,
           title: 'Interfață CAN nesetată · ' + d.imei,
-          body: 'Vehicul „' + (d.vehicle_type || 'camion') + '" transmite date CAN, dar interfața nu e configurată — unele valori pot fi interpretate greșit. Super-admin: setează „FMS" pe vehicul (fișă → interfață CAN).',
+          body: 'Vehicul „' + (d.vehicle_type || 'camion') + '” transmite date CAN, dar interfața nu e configurată — unele valori pot fi interpretate greșit. Super-admin: setează „FMS” pe vehicul (fișă → interfață CAN).',
           data: { key: 'iface-unset-' + d.imei, imei: d.imei }
         });
       }
@@ -22576,33 +22576,33 @@ async function start() {
   // Agenți AI: agenții rulează automat din oră în oră (prima dată la 1 min după pornire) — o oră e realist și pentru flote mari
   if (agents) { setTimeout(runAgentsWorker, 60 * 1000); setInterval(runAgentsWorker, 60 * 60 * 1000); }
 
-  // Webhooks: reîmprospătează flag-ul „există webhook-uri active" (fast-path pentru evaluateUserEvents).
+  // Webhooks: reîmprospătează flag-ul „există webhook-uri active” (fast-path pentru evaluateUserEvents).
   setTimeout(refreshAnyWebhooks, 8000);
   setInterval(refreshAnyWebhooks, 60 * 1000);
 
-  // Override „contact din DIN1": încarcă lista IMEI-urilor cu override (la pornire + periodic).
+  // Override „contact din DIN1”: încarcă lista IMEI-urilor cu override (la pornire + periodic).
   setTimeout(refreshDin1Set, 5000);
   setInterval(refreshDin1Set, 60 * 1000);
 
-  // Reconciliere „arhivat": scoate din harta live orice vehicul arhivat (boot-seed/drift) + re-sincronizează
+  // Reconciliere „arhivat”: scoate din harta live orice vehicul arhivat (boot-seed/drift) + re-sincronizează
   // setul cu DB. Rulează curând după pornire (după ce s-a încărcat livePositions) + la fiecare 2 min.
   setTimeout(reconcileArchived, 6000);
   setInterval(reconcileArchived, 2 * 60 * 1000);
   setInterval(loadRegisteredImeis, 2 * 60 * 1000); // backstop: re-sincronizează allow-list-ul (mod strict) cu DB
 
-  // (Până pe 28.09 rula aici și un al doilea anunț, „abonamentul a expirat, 15 zile de grație", legat de
-  // ceasul vechi „acces până la". A plecat odată cu el: singurul care anunță restanțele e ceasul de mai jos.)
+  // (Până pe 28.09 rula aici și un al doilea anunț, „abonamentul a expirat, 15 zile de grație”, legat de
+  // ceasul vechi „acces până la”. A plecat odată cu el: singurul care anunță restanțele e ceasul de mai jos.)
   // Ceasul neplății: de patru ori pe zi. Nu o dată, fiindcă avertismentele au trepte pe zile și
-  // vrem ca ziua a 16-a să însemne ziua a 16-a, nu „când s-a nimerit să ruleze".
+  // vrem ca ziua a 16-a să însemne ziua a 16-a, nu „când s-a nimerit să ruleze”.
   setTimeout(() => neplataTick().then(r => { if (r && (r.avertizate.length || r.suspendate.length)) console.log('[NEPLATĂ] ' + r.avertizate.length + ' avertismente, ' + r.suspendate.length + ' suspendări'); }).catch(() => {}), 150 * 1000);
   setInterval(() => neplataTick().catch(() => {}), 6 * 60 * 60 * 1000);
   // Ceasul contractelor: o dată pe zi ajunge — un contract nu expiră între două ore. Prima
   // verificare la 2 minute după pornire, ca să nu se piardă nimic dacă serverul se repornește des.
   setTimeout(() => contractExpiryTick().then(r => { if (r && r.anuntate && r.anuntate.length) console.log('[CONTRACTE] ' + r.anuntate.length + ' contracte aproape de expirare — anunțate'); }).catch(() => {}), 120 * 1000);
   setInterval(() => contractExpiryTick().catch(() => {}), 24 * 60 * 60 * 1000);
-  // „Aparate noi transmit" (30.09): la 3 minute — loturile se strâng singure (20 de minute fără un aparat nou).
+  // „Aparate noi transmit” (30.09): la 3 minute — loturile se strâng singure (20 de minute fără un aparat nou).
   setInterval(() => aparateNoiTick().catch(() => {}), 3 * 60 * 1000);
-  // „Distribuie locația" (21.10): linkurile expirate se șterg la minut (pagina publică le refuză oricum din clipa expirării).
+  // „Distribuie locația” (21.10): linkurile expirate se șterg la minut (pagina publică le refuză oricum din clipa expirării).
   setInterval(() => db.stergeLocatiiDistribuiteExpirate(Date.now()).catch(() => {}), 60 * 1000);
   // Montajul de facturat (30.09): o dată pe oră, iar anunțul pleacă o singură dată pe firmă și pe perioada încheiată,
   // între 8 și 20 (o săptămână se încheie duminică la miezul nopții — anunțul vine luni dimineață, nu noaptea).
@@ -22610,7 +22610,7 @@ async function start() {
   setInterval(() => montajDeFacturatTick().catch(() => {}), 60 * 60 * 1000);
   // Pachetele RA Insight (pasul 4): anunțul pentru noi la 60% din plasă și la plasă — la 15 minute.
   setInterval(() => plasaAnuntTick().catch(() => {}), 15 * 60 * 1000);
-  // Banii pentru AI (04.11): soldul pus într-un singur loc (o dată, din „Control costuri"), anunțurile la 14 / 7 / 3 zile și la 80% / 100%
+  // Banii pentru AI (04.11): soldul pus într-un singur loc (o dată, din „Control costuri”), anunțurile la 14 / 7 / 3 zile și la 80% / 100%
   // din întrebări — la 15 minute; cheia Anthropic verificată la pornire și din oră în oră (în probe doar cu AI_VERIFICARE_LA_MS pus).
   _soldUnLoc().catch(() => {});
   _cheiCifreVechi().catch(() => {});   // cifrele date înainte de 16.11 rămân, cu cheia pachetului de acum
@@ -22626,8 +22626,8 @@ async function start() {
   setInterval(() => _verificaEmailServer().catch(() => {}), 60 * 60 * 1000);
   setInterval(() => livrareEmailTick().catch(() => {}), 5 * 60 * 1000);
   setInterval(() => db.stergeLivrariVechi(Date.now(), 30).catch(() => {}), 24 * 60 * 60 * 1000);
-  // „Sursă externă" (28.10): primește modelul căutarea pe internet? Anthropic o spune în Models API (gratuit, fără nimic din
-  // aplicație) — la pornire, apoi la 6 ore; răspunsul stă în „Stare producție" și în „RA Insight · control". În probe doar cu
+  // „Sursă externă” (28.10): primește modelul căutarea pe internet? Anthropic o spune în Models API (gratuit, fără nimic din
+  // aplicație) — la pornire, apoi la 6 ore; răspunsul stă în „Stare producție” și în „RA Insight · control”. În probe doar cu
   // SURSA_VERIFICARE_LA_MS pus (modelul simulat al celorlalte probe răspunde la orice cerere către Anthropic).
   if (process.env.NODE_ENV !== 'test' || process.env.SURSA_VERIFICARE_LA_MS) {
     setTimeout(() => _verificaModelSursa().catch(() => {}), Number(process.env.SURSA_VERIFICARE_LA_MS) || 25 * 1000);
@@ -22646,10 +22646,10 @@ async function start() {
 
   // ───────────────────────────────────────────────────────────────
   // Cleanup periodic peste livePositions — fără el, vehiculele care își pierd semnalul GSM
-  // rămân „online" în UI cu timestamp tot mai vechi („acum 24 min", „acum 2h", etc.) până
+  // rămân „online” în UI cu timestamp tot mai vechi („acum 24 min”, „acum 2h”, etc.) până
   // la restart de proces. Înainte de fix, Map-ul nu era niciodată șters (grep livePositions.delete = 0).
   //
-  //  - LIVE_STALE_MS = 5 min  → marchez vehiculul stale (speed=0) + broadcast WS „stale"
+  //  - LIVE_STALE_MS = 5 min  → marchez vehiculul stale (speed=0) + broadcast WS „stale”
   //  - LIVE_PURGE_MS = 24h   → șterg complet din Map (evită memory leak la nesfârșit)
   //  - Bonus: dacă mai există socket activ asociat unui IMEI stale → e clar zombie → socket.destroy()
   // ───────────────────────────────────────────────────────────────

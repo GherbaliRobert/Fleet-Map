@@ -5,7 +5,7 @@
 const { nr, cant } = require('./ai_raport');
 
 const ZI = 86400000;
-// O zi din bază (DATE, citită la miezul nopții UTC) → „12.10" (cu anul doar dacă nu e anul de acum).
+// O zi din bază (DATE, citită la miezul nopții UTC) → „12.10” (cu anul doar dacă nu e anul de acum).
 function zz(data, acum) {
   const d = new Date(data); if (isNaN(d)) return '';
   const an = new Date(acum || Date.now()).getUTCFullYear();
@@ -16,7 +16,7 @@ function zilePana(data, acum) { const t = new Date(data).getTime(); return isNaN
 
 // ═══ Mentenanță & acte ═══════════════════════════════════════════════════════════════════════════════
 // Un rând: { fel: 'act'|'revizie'|'permis', stare: 'depasit'|'curand', cine, ce, zile, data, kmRamasi, laKm, … }.
-// „Când", în cuvinte: un act sau un permis după dată; o revizie după dată și / sau după km (cea mai urgentă întâi).
+// „Când”, în cuvinte: un act sau un permis după dată; o revizie după dată și / sau după km (cea mai urgentă întâi).
 function candData(zile, data, acum, expira) {
   const z = zz(data, acum), v = expira ? 'expiră' : 'e scadentă';
   if (zile == null) return '';
@@ -60,11 +60,11 @@ function rezumatMentenanta(randuri, faraData) {
   });
   return r;
 }
-// „Cum se socotește" — preavizul firmei, cu cifrele ei.
+// „Cum se socotește” — preavizul firmei, cu cifrele ei.
 function explicatiiMentenanta(prag) {
   const p = prag || {};
   return [
-    { titlu: 'Când devine „urmează"', text: 'Actele mașinilor cu ' + cant(p.docDays || 30, 'zi', 'zile') + ' înainte de expirare; reviziile cu ' +
+    { titlu: 'Când devine „urmează”', text: 'Actele mașinilor cu ' + cant(p.docDays || 30, 'zi', 'zile') + ' înainte de expirare; reviziile cu ' +
       cant(p.days || 14, 'zi', 'zile') + ' sau ' + cant(p.km || 500, 'km', 'km') + ' înainte de termen; permisele șoferilor cu ' +
       cant(p.permis || 30, 'zi', 'zile') + ' înainte. Aceleași praguri colorează listele din Mentenanță și Documente și trimit anunțurile pe telefon.' },
     { titlu: 'De unde vin', text: 'Actele din Documente, reviziile din Mentenanță (pe dată și pe kilometrajul mașinii, din calculatorul ei de bord), permisele din fișa șoferului. Ce se rezolvă acolo dispare de aici.' },
@@ -74,14 +74,14 @@ function explicatiiMentenanta(prag) {
 
 // ═══ Combustibil ═════════════════════════════════════════════════════════════════════════════════════
 // Cifrele vin din motorul rapoartelor Consum / Costuri (reports.js → _consumptionMap: contorul CAN, altfel nivelul din
-// rezervor, altfel estimarea din fișă) și din raportul „Alimentări & scăderi" (evenimentele). Aici doar se adună și se
-// spun. „Peste normă" se spune DOAR pe consum măsurat (nu estimat), cu destul drum, față de consumul trecut în fișă.
+// rezervor, altfel estimarea din fișă) și din raportul „Alimentări & scăderi” (evenimentele). Aici doar se adună și se
+// spun. „Peste normă” se spune DOAR pe consum măsurat (nu estimat), cu destul drum, față de consumul trecut în fișă.
 const PESTE_NORMA = 0.15;          // cu peste 15% peste consumul din fișă
 const KM_MIN_NORMA = 100;          // pe mai puțin drum, o cifră de consum spune prea puțin
 const lei = function (n) { return cant(Math.round(n), 'leu', 'lei'); };
 const litri = function (n) { return cant(Math.round(n), 'litru', 'litri'); };
 function _l100(l, km) { return km > 1 ? Math.round(l / km * 1000) / 10 : null; }
-// Ora României, pentru „12.10, 02:14".
+// Ora României, pentru „12.10, 02:14”.
 const _fmtOra = new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 function cand(iso) { const d = new Date(iso); return isNaN(d) ? '' : _fmtOra.format(d).replace(/\s+/g, ' '); }
 // o = { masini: [{ imei, eticheta }], cm, cmI (luna dinainte, aceleași zile), ev (evenimente), panaAzi, etInainte, inaintePregatita }
@@ -153,7 +153,7 @@ function recomandariCombustibil(x) {
 }
 function explicatiiCombustibil(o) {
   return [
-    { titlu: 'Litrii', text: 'Din contorul de combustibil al mașinii, unde îl are; altfel din nivelul rezervorului (senzorul); altfel estimați din consumul trecut în fișă × km, plus ralantiul. Aceeași socoteală ca rapoartele Consum și Costuri — coloana „Sursa" spune de unde vine fiecare cifră.' },
+    { titlu: 'Litrii', text: 'Din contorul de combustibil al mașinii, unde îl are; altfel din nivelul rezervorului (senzorul); altfel estimați din consumul trecut în fișă × km, plus ralantiul. Aceeași socoteală ca rapoartele Consum și Costuri — coloana „Sursa” spune de unde vine fiecare cifră.' },
     { titlu: 'Prețul', text: 'Al mașinii, din fișa ei; altfel cel al firmei (Setări → Prețuri combustibil); altfel media națională a zilei.' },
     { titlu: 'Peste normă', text: 'Doar unde consumul e măsurat (nu estimat), cu cel puțin ' + cant(KM_MIN_NORMA, 'km', 'km') + ' de drum și cu peste ' + Math.round(PESTE_NORMA * 100) + '% față de cel mai mare consum trecut în fișă (de obicei „Consum oraș”) — ca drumurile prin oraș să nu pară risipă.' },
     { titlu: 'Scăderi suspecte', text: 'O scădere de cel puțin ' + cant((o && o.dropMin) || 10, 'litru', 'litri') + ' dintr-o dată: cu motorul oprit (oricât a stat mașina, până la 3 zile) sau cu motorul pornit (într-o oră). Ca raportul Alimentări & scăderi.' },
@@ -161,7 +161,7 @@ function explicatiiCombustibil(o) {
 }
 
 // ═══ Ore de condus ══════════════════════════════════════════════════════════════════════════════════
-// Cifrele vin din raportul „Condus & repaus (Reg. 561)" (reports.js → rHos: starea din tahograf, unde mașina o trimite; altfel
+// Cifrele vin din raportul „Condus & repaus (Reg. 561)” (reports.js → rHos: starea din tahograf, unde mașina o trimite; altfel
 // estimarea din GPS), zi cu zi, pe șofer — fiecare zi pe cine avea mașina atunci. Aici doar se adună pe săptămână și se spun.
 // Încălcările sunt ALE RAPORTULUI (aceleași cuvinte), nu o a doua regulă.
 const ZILE_SAPT = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
@@ -170,7 +170,7 @@ function durata(sec) {
   const m = Math.round((Number(sec) || 0) / 60), h = Math.floor(m / 60), r = m % 60;
   return h ? h + ' h' + (r ? ' ' + r + ' min' : '') : r + ' min';
 }
-// „luni, 05.10"
+// „luni, 05.10”
 function ziText(zi, acum) { const d = new Date(zi + 'T12:00:00Z'); return isNaN(d) ? String(zi || '') : ZILE_SAPT[d.getUTCDay()] + ', ' + zz(zi, acum); }
 // o = { valori (zilele săptămânii, din rHos), valoriInainte (aceleași zile din săptămâna dinainte), azi ('AAAA-LL-ZZ' sau null),
 //       eticheta, etInainte, panaAzi, inaintePregatita, acum }
@@ -232,24 +232,24 @@ function recomandariOreCondus(x) {
     out.push({ fel: 'atentie', text: s.nume + ': ' + (s.incalcari === 1 ? 'o încălcare' : cant(s.incalcari, 'încălcare', 'încălcări')) + ' a Reg. 561 — ' + lista + '. ' +
       (s.sursa === 'GPS' ? 'E o estimare din GPS: verifică pe tahograf, apoi vorbește cu el.' : 'Vorbește cu el și verifică planificarea curselor.') });
   });
-  if (x.soferi.length && !x.flota.supusi) out.push({ fel: 'info', text: 'Reg. 561 (orele de condus ale camioanelor și autobuzelor) nu se aplică la autoturisme și dube — orele de mai jos arată doar cât a condus fiecare. Dacă un camion apare aici, trece-i tipul în fișa mașinii („Camion", „Autotractor"…).' });
+  if (x.soferi.length && !x.flota.supusi) out.push({ fel: 'info', text: 'Reg. 561 (orele de condus ale camioanelor și autobuzelor) nu se aplică la autoturisme și dube — orele de mai jos arată doar cât a condus fiecare. Dacă un camion apare aici, trece-i tipul în fișa mașinii („Camion”, „Autotractor”…).' });
   const gps = x.soferi.filter(function (s) { return s.supus && s.sursa === 'GPS'; }).length;
   if (gps) out.push({ fel: 'info', text: (gps === 1 ? 'La un șofer' : 'La ' + gps + ' șoferi') + ' orele sunt estimate din GPS (mașina nu trimite datele tahografului): în mers = condus. Pentru un control oficial contează tahograful.' });
   if (x.flota.faraSofer) out.push({ fel: 'info', text: (x.flota.faraSofer === 1 ? 'O mașină a mers' : cant(x.flota.faraSofer, 'mașină a mers', 'mașini au mers')) + ' fără șofer trecut în aplicație — orele nu se pot pune pe un om. Șoferul se trece din Management → Șoferi.' });
   if (x.flota.supusi && !x.flota.incalcari) out.push({ fel: 'bun', text: 'Nicio încălcare a Reg. 561 în ' + (x.eticheta || 'perioada asta') + '.' });
   return out;
 }
-// Cifrele din „Încălcări" sunt ale raportului (reports.js → rHos); proba le leagă de codul lui.
+// Cifrele din „Încălcări” sunt ale raportului (reports.js → rHos); proba le leagă de codul lui.
 function explicatiiOreCondus() {
   return [
-    { titlu: 'Orele', text: 'Din tahograf, unde mașina trimite starea șoferului (condus, muncă, disponibil, odihnă); altfel estimate din GPS: mașina în mers = condus, motor pornit pe loc = muncă. Aceeași socoteală ca raportul „Condus & repaus (Reg. 561)".' },
+    { titlu: 'Orele', text: 'Din tahograf, unde mașina trimite starea șoferului (condus, muncă, disponibil, odihnă); altfel estimate din GPS: mașina în mers = condus, motor pornit pe loc = muncă. Aceeași socoteală ca raportul „Condus & repaus (Reg. 561)”.' },
     { titlu: 'Pe cine', text: 'Fiecare zi merge pe șoferul care avea mașina atunci (Management → Șoferi). Mașinile care au mers fără șofer trecut apar cu numele lor.' },
     { titlu: 'Încălcările', text: 'Ale Regulamentului CE 561/2006, la camioane, autotractoare, TIR-uri, autobuze și autocare (după tipul din fișa mașinii) și la orice mașină care trimite date de tahograf — nu la autoturisme și dube: condus continuu peste 4h30 fără o pauză de 45 de minute; condus zilnic peste 10 ore, sau peste 9 ore de mai mult de două ori pe săptămână; condus săptămânal peste 56 de ore; peste 90 de ore în două săptămâni la rând. Săptămânile se socotesc întregi, de luni. Repausul zilnic sub 9 ore se verifică doar cu tahograful (din GPS nu se vede).' },
     { titlu: 'Săptămâna', text: 'De luni până duminică, pe ora României. Săptămâna de acum se compară cu aceleași zile din săptămâna trecută.' },
   ];
 }
 
-// (Aici stătea „Scrisoarea de luni": faptele, textul pe reguli, instrucțiunile și paza cifrelor — scoasă pe 04.11, cu Alin: „o scoatem de tot".)
+// (Aici stătea „Scrisoarea de luni”: faptele, textul pe reguli, instrucțiunile și paza cifrelor — scoasă pe 04.11, cu Alin: „o scoatem de tot”.)
 
 module.exports = {
   ZI, zz, zilePana,

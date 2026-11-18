@@ -1,5 +1,5 @@
-// „Istoric activitate" — jurnalul firmei, scris pe românește. În bază, un rând arată așa: action=update,
-// entity=device, entity_id=350317170000101. Pe ecran trebuie să scrie „Ion a modificat mașina CJ 12 ABC".
+// „Istoric activitate” — jurnalul firmei, scris pe românește. În bază, un rând arată așa: action=update,
+// entity=device, entity_id=350317170000101. Pe ecran trebuie să scrie „Ion a modificat mașina CJ 12 ABC”.
 // Aceleași cuvinte ca pe web (IST_VERB, IST_OBIECT din public/index.html); iconițele sunt cele ale telefonului.
 // Acțiunile pe care nu le-am botezat încă NU se ascund: apar cu un verb neutru și numele lor tehnic în
 // paranteză — un jurnal care tace la ce nu cunoaște e mai rău decât unul urât.
@@ -10,7 +10,7 @@ type Verb = [string, IconName, string];
 export const IST_VERB: Record<string, Verb> = {
   login:             ['s-a conectat', 'arrowRight', 'var(--text-muted)'],
   // Conectarea din aplicația de telefon. Serverul o scrie deocamdată FĂRĂ firmă, deci încă nu apare în
-  // istoricul firmei (cerere pentru server); cuvântul e pregătit, ca rândul să nu iasă „necunoscut".
+  // istoricul firmei (cerere pentru server); cuvântul e pregătit, ca rândul să nu iasă „necunoscut”.
   mobile_login:      ['s-a conectat de pe telefon', 'phone', 'var(--text-muted)'],
   logout:            ['a ieșit din cont', 'logout', 'var(--text-muted)'],
   create:            ['a adăugat', 'plus', 'var(--fm-ok)'],
@@ -66,7 +66,7 @@ export function istFapta(r: any): Fapta {
   return { verb: v[0], ic: v[1], col: v[2], obiect: ob, tinta: tinta != null ? String(tinta) : null };
 }
 
-// Ziua, scrisă cum o spune omul: „Azi", „Ieri", altfel data.
+// Ziua, scrisă cum o spune omul: „Azi”, „Ieri”, altfel data.
 export function istZi(ts: any, acum: number): string {
   const d = new Date(ts), a = new Date(acum);
   const zi = (x: Date) => x.getFullYear() + '-' + x.getMonth() + '-' + x.getDate();
@@ -75,7 +75,7 @@ export function istZi(ts: any, acum: number): string {
   return d.toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: d.getFullYear() === a.getFullYear() ? undefined : 'numeric' });
 }
 
-// Zilele, cu „de" doar unde îl cere limba: „1 zi", „7 zile", „19 zile", dar „20 de zile", „30 de zile", „101 zile".
+// Zilele, cu „de” doar unde îl cere limba: „1 zi”, „7 zile”, „19 zile”, dar „20 de zile”, „30 de zile”, „101 zile”.
 export function istZile(n: any): string {
   const z = Math.max(0, Math.round(Number(n) || 0));
   if (z === 1) return '1 zi';
@@ -83,7 +83,7 @@ export function istZile(n: any): string {
   return z + (z > 0 && (r === 0 || r >= 20) ? ' de zile' : ' zile');
 }
 
-// Minutele, pe înțelesul omului: „12 h 30 min", nu „750".
+// Minutele, pe înțelesul omului: „12 h 30 min”, nu „750”.
 export function istOre(min: any): string {
   const m0 = Math.max(0, Math.round(Number(min) || 0));
   if (m0 < 60) return m0 + ' min';

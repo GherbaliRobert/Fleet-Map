@@ -133,7 +133,7 @@ export function Dispatch() {
                     <div class="sub">
                       {v.distanceKm} km · ~{fmtEta(v.etaMin)}
                       {' · '}
-                      {/* „Liber" se bazează pe ULTIMA poziție primită. Dacă e veche de zeci de minute,
+                      {/* „Liber” se bazează pe ULTIMA poziție primită. Dacă e veche de zeci de minute,
                           spunem asta — altfel dispecerul trimite pe cineva după o mașină care între timp a plecat. */}
                       {v.available
                         ? (v.ageMin > 10 ? 'oprit la ultima poziție (acum ' + fmtEta(v.ageMin) + ')' : 'liber acum')
@@ -154,7 +154,7 @@ export function Dispatch() {
           {list && !busy && list.length > 0 && (
             <div style="font-size:11.5px;color:var(--text-muted);line-height:1.45;margin-top:10px">
               Timpul e o estimare din distanța în linie dreaptă (40 km/h mediu), nu un traseu calculat pe drum.
-              „Liber" înseamnă că ultima poziție primită arăta vehiculul oprit — verifică și cât de recentă e.
+              „Liber” înseamnă că ultima poziție primită arăta vehiculul oprit — verifică și cât de recentă e.
             </div>
           )}
         </div>

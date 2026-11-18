@@ -4,14 +4,14 @@ import '../screens/fondator.css';
 import { nrDe } from '../lib/numar';
 
 // Bucăți comune ecranelor fondatorului (lotul 2b). Aceleași chenare ca pe web: un grup pe firmă (.rax-devgr),
-// o bandă pentru ce trebuie văzut, nu căutat, și drumul „Deschide firma" — o SINGURĂ adresă pentru toate
+// o bandă pentru ce trebuie văzut, nu căutat, și drumul „Deschide firma” — o SINGURĂ adresă pentru toate
 // ecranele (Dispozitive, Arhivate, Tahograf, e-Transport), ca pe web raxOpenCompanyDetail(id): fișa firmei
 // (CompanySheet, /admin/companies/:id, cu `?tab=` opțional).
 
 export const adresaFirmei = (id: number | string, tab?: string) =>
   '/admin/companies/' + encodeURIComponent(String(id)) + (tab ? '?tab=' + encodeURIComponent(tab) : '');
 
-// „azi" / „ieri" / „acum 5 zile" / data — ca `_raxCand` de pe web.
+// „azi” / „ieri” / „acum 5 zile” / data — ca `_raxCand` de pe web.
 export function cand(iso: any): string {
   if (!iso) return '—';
   const t = new Date(iso).getTime();
@@ -32,7 +32,7 @@ export function Banda({ ton = 'warn', icon, children, onClick }: { ton?: 'warn' 
   return <div class={'fd-band ' + ton}><Icon name={ic} size={16} /><span>{children}</span></div>;
 }
 
-// Capul unui grup: săgeata, numele, sumarul și (dacă e o firmă) butonul „Deschide firma".
+// Capul unui grup: săgeata, numele, sumarul și (dacă e o firmă) butonul „Deschide firma”.
 export function GrupFirma({ nume, sumar, deschis, onToggle, onFirma, children }: {
   nume: string; sumar: ComponentChildren; deschis: boolean; onToggle: () => void; onFirma?: () => void; children: ComponentChildren;
 }) {

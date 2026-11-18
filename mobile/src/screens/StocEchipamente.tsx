@@ -11,11 +11,11 @@ import { raCauta } from '../lib/format';
 import { nrDe, deNr } from '../lib/numar';
 import './admin.css';   // .frm / .fld / .frm-actions
 import './detail.css';  // .sheet*
-import './flota.css';   // .fl-btn2 („Renunț" din foi, ca în Confirma)
+import './flota.css';   // .fl-btn2 („Renunț” din foi, ca în Confirma)
 import './fondator.css';
 import './stoc.css';
 
-// „Stoc echipamente" (Gestiune, doar la noi) — oglinda secțiunii de pe web (_raxStoc / raxLoadStoc, 25.09).
+// „Stoc echipamente” (Gestiune, doar la noi) — oglinda secțiunii de pe web (_raxStoc / raxLoadStoc, 25.09).
 // Un rând = o BUCATĂ (un GPS, un modul), cu seria ei: UNDE e (depozit → instalator → montat la client → returnat /
 // defect / casat) și AL CUI e (al nostru sau vândut). Aparatele închiriate rămân ale noastre și stau la clienți,
 // deci trebuie să știm oricând unde e fiecare. Clientul nu vede nimic de aici.

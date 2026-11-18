@@ -30,7 +30,7 @@ const PRAG_EXPIRA_ZILE = 60;
 // Cât mai ținem datele unui client după încetare: 30 de zile, în care el poate cere să le primească
 // înapoi; apoi se șterg. Așa scrie în Anexa GDPR a contractului, și așa face aplicația (arhivarea unui
 // aparat = încetarea pentru el). O SINGURĂ cifră, citită și de hârtie, și de ștergerea automată, și de
-// ecran — hotărât cu Alin pe 24.09 („exact așa facem"), după ce aplicația ținea istoricul 2 ani.
+// ecran — hotărât cu Alin pe 24.09 („exact așa facem”), după ce aplicația ținea istoricul 2 ani.
 // GDPR, art. 28: la încetare, împuternicitul șterge sau returnează datele; nicio lege nu ne obligă să
 // păstrăm pozițiile GPS ale clientului. NU o face variabilă de mediu: e o promisiune semnată.
 const ZILE_DATE_DUPA_INCETARE = 30;
@@ -42,7 +42,7 @@ const ZILE_DATE_DUPA_INCETARE = 30;
 // Până pe 24.09 ținea 6 luni pentru toți, iar 24/36 de luni se vindeau și se semnau fără să se livreze.
 // NU o face variabilă de mediu: e o promisiune semnată (vezi `POSITION_RETENTION_DAYS`, retrasă).
 const LUNI_ISTORIC_INCLUSE = 12;
-// Plafon de bun-simț pentru „alt număr de luni": o greșeală de tastare (360 în loc de 36) n-ar trebui
+// Plafon de bun-simț pentru „alt număr de luni”: o greșeală de tastare (360 în loc de 36) n-ar trebui
 // să țină datele de localizare ale unor oameni 30 de ani.
 const LUNI_ISTORIC_MAX = 60;
 
@@ -66,7 +66,7 @@ function pastrareFirma(settings) {
     platita: true
   };
 }
-// Ce se scrie pe firmă, din ce trimite ecranul „Abonament & plăți" sau din oferta acceptată.
+// Ce se scrie pe firmă, din ce trimite ecranul „Abonament & plăți” sau din oferta acceptată.
 // `null` = înapoi la cele 12 luni incluse (cheia se scoate). Orice nu e un număr de luni valid → `undefined`
 // (cererea se refuză, nu se ghicește).
 function curataPastrare(b) {
@@ -81,13 +81,13 @@ function curataPastrare(b) {
 }
 
 // Cât se ține JURNALUL DE AUDIT (cine a făcut ce în aplicație): 12 luni, apoi se șterge singur. Decizie
-// Alin, 24.09: „șterge-l la 12 luni dacă nu avem restricții legale". Nu avem: nicio lege nu cere o
+// Alin, 24.09: „șterge-l la 12 luni dacă nu avem restricții legale”. Nu avem: nicio lege nu cere o
 // durată pentru jurnalul unei aplicații (GDPR cere doar să nu ținem date mai mult decât e nevoie).
 // Documentele cu termen legal stau în tabelele LOR și nu sunt atinse: facturile (legea contabilității)
 // și contractele. Cifra e scrisă și pe pagina publică de confidențialitate — legată printr-o probă.
 const LUNI_JURNAL_AUDIT = 12;
 // Cât se țin CONVERSAȚIILE cu RA Insight: 12 luni de la ultimul mesaj, apoi se șterg singure (Alin, 02.10:
-// „da, fă tot" — recomandarea era 12 luni, ca jurnalul). Le vede doar omul care le-a scris. Cifra e scrisă
+// „da, fă tot” — recomandarea era 12 luni, ca jurnalul). Le vede doar omul care le-a scris. Cifra e scrisă
 // și pe pagina publică de confidențialitate — legată printr-o probă (verify_insight.js).
 const LUNI_CONVERSATII_AI = 12;
 // Cât se țin CERERILE DIN FORMULARUL DE CONTACT de pe site (nume, email, firmă, telefon, mesaj, dacă vrea cont demo): 12 luni de la
@@ -110,7 +110,7 @@ const CHIRIE_LUNI_MIN = 24;
 const CHIRIE_MARJA = 0.5;
 const CHIRIE_ZILE_RETUR = 15;
 
-// Aparatele VÂNDUTE (decizie Alin, 29.09: „1.A, 2.DA, 3.DA"). Se plătesc integral în AVANS, pe proformă;
+// Aparatele VÂNDUTE (decizie Alin, 29.09: „1.A, 2.DA, 3.DA”). Se plătesc integral în AVANS, pe proformă;
 // montajul, după executare, pe mașinile montate efectiv. Termenul nostru curge de la ÎNCASARE, nu de la
 // semnare — nu promitem nimic pe bani pe care nu i-am primit. Dacă avansul nu vine, oricare parte poate
 // renunța, fără penalități. Contractul și oferta citesc cifrele de aici; NU le face variabile de mediu:
@@ -168,7 +168,7 @@ const ETICHETE_STARE = {
   incheiat: 'încheiat'
 };
 // Ce urmează firesc după fiecare stare: [starea următoare, ce scrie pe buton].
-// „aprobat" e treapta pe care o cerea Alin: din clipa aia hârtia nu mai e ciornă, se printează.
+// „aprobat” e treapta pe care o cerea Alin: din clipa aia hârtia nu mai e ciornă, se printează.
 const URMATORUL_PAS = {
   ciorna: ['aprobat', 'Aprobă contractul'],
   aprobat: ['trimis', 'Am trimis contractul la client'],
@@ -177,9 +177,9 @@ const URMATORUL_PAS = {
   incheiat: null
 };
 
-// Un număr cu cuvântul lui, pe românește: „1 lună", „12 luni", dar „24 DE luni", „100 DE întrebări".
-// Numerele care se termină în 1–19 merg fără „de", restul cu. Pe o hârtie semnată greșeala asta se
-// vede (până pe 23.09 contractul scria „100 de întrebări", dar și „15 de întrebări").
+// Un număr cu cuvântul lui, pe românește: „1 lună”, „12 luni”, dar „24 DE luni”, „100 DE întrebări”.
+// Numerele care se termină în 1–19 merg fără „de”, restul cu. Pe o hârtie semnată greșeala asta se
+// vede (până pe 23.09 contractul scria „100 de întrebări”, dar și „15 de întrebări”).
 function numar(n, unu, multe) {
   const x = Math.abs(Math.round(Number(n) || 0));
   if (x === 1) return '1 ' + unu;
@@ -216,9 +216,9 @@ function sfarsitContract(c) {
   return (c.start_at && c.months) ? calcSfarsit(c.start_at, Number(c.months) + plus) : calcSfarsit(baza, plus);
 }
 
-// Termenul CURENT. Un contract care se reînnoiește singur continuă „pe perioade succesive egale",
+// Termenul CURENT. Un contract care se reînnoiește singur continuă „pe perioade succesive egale”,
 // cum scrie în el — deci după primul termen urmează altul la fel de lung. Fără asta, în anul doi
-// ecranul arăta un capăt și o „ultimă zi de preaviz" din trecut (găsit 23.09: „13.09.2025", azi
+// ecranul arăta un capăt și o „ultimă zi de preaviz” din trecut (găsit 23.09: „13.09.2025”, azi
 // fiind 23.09.2026). La un contract care NU se reînnoiește, termenul e cel scris, chiar dacă a trecut.
 function sfarsitCurent(c, acum) {
   const s = sfarsitContract(c);
@@ -263,8 +263,8 @@ function stareDosar(firma, contract, acum) {
     return { nivel: 'incheiat', eticheta: 'contract încheiat', lipsuri: [], text: '', zileRamase: null };
   }
   if (contract.status !== 'activ') {
-    // Aici NU trecem „data semnării" la lipsuri, chiar dacă e goală: eticheta spune deja unde e
-    // contractul pe drum, iar a scrie „lipsește data semnării" lângă un câmp completat era pur și
+    // Aici NU trecem „data semnării” la lipsuri, chiar dacă e goală: eticheta spune deja unde e
+    // contractul pe drum, iar a scrie „lipsește data semnării” lângă un câmp completat era pur și
     // simplu fals. Rămân doar lipsurile adevărate ale firmei (CUI, sediu, reprezentant).
     const et = ETICHETE_STARE[contract.status] || ETICHETE_STARE.ciorna;
     return { nivel: 'nesemnat', eticheta: et, lipsuri: lipsuri, text: _text(lipsuri), zileRamase: null };
@@ -297,10 +297,10 @@ function _text(lipsuri) {
   return lipsuri.map(function (k) { return ETICHETE[k] || k; }).join(', ');
 }
 
-// „Fără contract" = nicio hârtie în vigoare sau pe drum: niciun contract, SAU unul încheiat la o firmă care intră în
-// continuare (accesul neoprit). NU „dosar incomplet": o firmă cu contract semnat căreia îi lipsește doar acordul GDPR
-// are contract. Aceeași regulă ca banda roșie din Contracte, filtrul „Fără contract" din Companii (web
-// `_coEsteFaraContract`, telefon `faraContract`) și cifra de sub „Companii" de pe „Acasă" (/api/admin/counts) — legate
+// „Fără contract” = nicio hârtie în vigoare sau pe drum: niciun contract, SAU unul încheiat la o firmă care intră în
+// continuare (accesul neoprit). NU „dosar incomplet”: o firmă cu contract semnat căreia îi lipsește doar acordul GDPR
+// are contract. Aceeași regulă ca banda roșie din Contracte, filtrul „Fără contract” din Companii (web
+// `_coEsteFaraContract`, telefon `faraContract`) și cifra de sub „Companii” de pe „Acasă” (/api/admin/counts) — legate
 // prin probă (verify_companii.js). `dosar` = ce întoarce `stareDosar` (demo → nivel 'demo' → nu).
 function faraContract(dosar, statusAcces) {
   if (!dosar) return false;
@@ -453,20 +453,20 @@ function facAnexa(vehicule, pret) {
 }
 
 // ─── Drumul clientului: de la ofertă la prima factură (Alin, 24.09) ──────────────────────────────
-// Alin: „pare alambicat, trec din aia, ies în aia". Drumul avea opt opriri în cinci ecrane și nimic
+// Alin: „pare alambicat, trec din aia, ies în aia”. Drumul avea opt opriri în cinci ecrane și nimic
 // nu spunea UNDE ești pe el. Acum e o singură linie de pași, socotită AICI (o singură regulă, pentru
 // fișa firmei și pentru lista Contracte), fiecare pas cu butonul lui pe ecran.
 //
 // Stări: 'gata' · 'acum' (primul pas nefăcut — ăsta are butonul) · 'urmeaza' · 'nu_e_cazul' (ex. un
-// contract fără montaj, sau făcut fără ofertă). Un contract încheiat n-are „acum": drumul s-a terminat.
+// contract fără montaj, sau făcut fără ofertă). Un contract încheiat n-are „acum”: drumul s-a terminat.
 const PASI_DRUM = [
   ['oferta', 'Oferta'], ['trimis', 'Trimis la semnat'], ['semnat', 'Semnat'],
   ['montaj', 'Montajul'], ['aparate', 'Aparatele la firmă'], ['factura', 'Prima factură']
 ];
 const MONTAJ_EXECUTAT = ['executat', 'facturat_de_partener', 'facturat_clientului'];
-// ─── Termenul de montaj (Alin, 30.09: „aplicația să numere cele 30 de zile") ───
+// ─── Termenul de montaj (Alin, 30.09: „aplicația să numere cele 30 de zile”) ───
 // Contractul (cap. V) promite livrarea și montajul în cel mult MONTAJ_ZILE_DUPA_AVANS zile de la ÎNCASAREA avansului
-// pentru aparate. Până pe 30.09 nu-l număra nimeni. Aici se socotește, o singură dată, pentru „Drumul clientului"
+// pentru aparate. Până pe 30.09 nu-l număra nimeni. Aici se socotește, o singură dată, pentru „Drumul clientului”
 // (fișa firmei și lista Contracte) și pentru anunțul zilnic către noi: cu MONTAJ_AVERTIZARE_ZILE înainte și la depășire.
 const MONTAJ_AVERTIZARE_ZILE = 7;
 function _jsonC(v) { if (v && typeof v === 'object') return v; if (typeof v === 'string' && v) { try { return JSON.parse(v); } catch (e) {} } return null; }
@@ -477,7 +477,7 @@ function masiniDeMontat(contract) {
     .reduce(function (s, r) { return s + (Number(r.buc) || 0); }, 0);
 }
 // Avansul unui contract = PRIMA proformă încasată după ce s-a făcut contractul. O firmă cu un contract vechi, încheiat,
-// nu-și moștenește avansul de atunci (altfel contractul nou ar porni cu termenul „depășit cu 400 de zile").
+// nu-și moștenește avansul de atunci (altfel contractul nou ar porni cu termenul „depășit cu 400 de zile”).
 // `incasari` = clipele încasărilor de proformă ale firmei (factura fiscală născută din proformă), în orice ordine.
 function avansContract(incasari, contract) {
   const de = Number(contract && contract.created_at) || 0;
@@ -494,17 +494,17 @@ function termenMontaj(contract, avansLa, montate, acum) {
   if (!(deMontat > 0)) return null;
   const pana = Number(avansLa) + MONTAJ_ZILE_DUPA_AVANS * ZI;
   const m = Math.max(0, Number(montate) || 0);
-  // Zile de CALENDAR (ora României), nu ore împărțite la 24: în ziua termenului scrie „azi e ultima zi", nu „mai e o zi".
+  // Zile de CALENDAR (ora României), nu ore împărțite la 24: în ziua termenului scrie „azi e ultima zi”, nu „mai e o zi”.
   const ziCal = function (ms) { return Math.round(Date.parse(new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest' }) + 'T00:00:00Z') / ZI); };
   const zile = ziCal(pana) - ziCal(Number(acum) || Date.now());
   const stare = m >= deMontat ? 'gata' : zile < 0 ? 'depasit' : zile <= MONTAJ_AVERTIZARE_ZILE ? 'curand' : 'in_termen';
   return { pana: pana, deMontat: deMontat, montate: m, zile: zile, stare: stare };
 }
-// „10 din 50 de mașini montate", „0 din 1 mașină montată" — același text pe drum, în anunțul zilnic și pe ecran.
+// „10 din 50 de mașini montate”, „0 din 1 mașină montată” — același text pe drum, în anunțul zilnic și pe ecran.
 function montateText(montate, deMontat) {
   return (Math.max(0, Number(montate) || 0)) + ' din ' + numar(deMontat, 'mașină', 'mașini') + (Number(deMontat) === 1 ? ' montată' : ' montate');
 }
-// „mai sunt 21 de zile", „mai e o zi", „azi e ultima zi", „depășit cu 3 zile".
+// „mai sunt 21 de zile”, „mai e o zi”, „azi e ultima zi”, „depășit cu 3 zile”.
 function termenText(t) {
   if (!t) return '';
   if (t.zile < 0) return 'depășit cu ' + numar(-t.zile, 'zi', 'zile');
@@ -553,14 +553,14 @@ function drumulClientului(d) {
   }
   const socotiti = pasi.filter(function (x) { return x.stare !== 'nu_e_cazul'; });
   return { pasi: pasi, urmatorul: urmatorul, gata: socotiti.filter(function (x) { return x.stare === 'gata'; }).length, din: socotiti.length,
-    // Cu textele gata scrise, ca ecranul să nu-și facă a doua regulă de „mai sunt N zile".
+    // Cu textele gata scrise, ca ecranul să nu-și facă a doua regulă de „mai sunt N zile”.
     termenMontaj: termen && termen.stare !== 'gata'
       ? Object.assign({}, termen, { text: termenText(termen), cate: montateText(termen.montate, termen.deMontat) }) : null };
 }
 
 // Ce trebuie păstrat dintr-o anexă când se re-salvează DOAR lista de aparate: serviciile lunare,
 // compoziția din ofertă și pachetul RA Insight. Ecranul trimite doar aparatele — fără asta, fiecare
-// „Salvează anexa" ștergea restul.
+// „Salvează anexa” ștergea restul.
 function dinAnexaDePastrat(anexa) {
   const a = anexa || {};
   const out = {};
@@ -571,7 +571,7 @@ function dinAnexaDePastrat(anexa) {
 }
 
 // Anexa care e în vigoare ACUM: a ultimului act adițional SEMNAT care a schimbat lista de aparate,
-// altfel cea din contract. Contractul și actele sunt fotografii; asta e doar „care fotografie contează".
+// altfel cea din contract. Contractul și actele sunt fotografii; asta e doar „care fotografie contează”.
 function anexaInVigoare(contract, acte) {
   const semnate = (acte || []).filter(function (a) {
     return a && a.status === 'activ' && a.annex && (a.annex.vehicles || []).length;
