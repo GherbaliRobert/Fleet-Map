@@ -350,7 +350,7 @@ function parteaUtilizatorilor() {
     // Fila „Acces": funcția paginii, rulată.
     const scoala = (s) => {
       const ids = { 'rax-cod-acces': { innerHTML: '' } };
-      const fn = new Function('_raxCfg', 'document', 'esc', '_RAX_MODS', '_RAX_AGS', '_raxModAuto', functie(html, 'function _raxRenderCfg()') + '; return _raxRenderCfg;')(s, { getElementById: (id) => ids[id] || null }, esc, [], [], () => '');
+      const fn = new Function('_raxCfg', 'document', 'esc', '_RAX_MODS', '_raxAgs', '_raxModAuto', functie(html, 'function _raxRenderCfg()') + '; return _raxRenderCfg;')(s, { getElementById: (id) => ids[id] || null }, esc, [], () => [], () => '');
       fn();
       return ids['rax-cod-acces'].innerHTML;
     };

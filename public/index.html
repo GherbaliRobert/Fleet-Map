@@ -18961,7 +18961,7 @@ const pozitii = await r.json();</code></pre>
           '<div class="info-item-icon purple"><i class="fas fa-user"></i></div>' +
           '<div class="info-item-text">' +
             '<div class="info-item-value" style="font-size:12px;">' + (driverNameByImei[imei] || data.driver_name || 'Nealocat') + '</div>' +
-            '<div class="info-item-label">Sofer</div>' +
+            '<div class="info-item-label">Șofer</div>' +
           '</div>' +
         '</div>' +
 
@@ -24362,14 +24362,13 @@ const pozitii = await r.json();</code></pre>
       ['tahograf', 'Tahograf', 'Analiză fișiere tahograf (.ddd)'],
       ['incarcare', 'Simulator încărcare', 'Planul de încărcare, semiremorcile și remorcile, fila „Încărcare” din fișa vehiculului — inclus în abonament']
     ];
-    var _RAX_AGS = [
-      ['watch', 'RA Watch', 'Vehicule offline + scădere combustibil + ralanti prelungit'],
-      ['dispatch', 'RA Dispatch', 'Alocare curse — vehicul disponibil aproape de destinație'],
-      ['care', 'RA Care', 'Mentenanță — revizii, ITP, RCA scadente'],
-      ['optimize', 'RA Optimize', 'Eco-driving — scor șofer, frânări/accelerări bruște'],
-      ['compliance', 'RA Compliance', 'Ore de condus (estimativ, Reg. CE 561/2006)'],
-      ['client', 'RA Client', 'Raport zilnic automat — sinteză flotă']
-    ];
+    // Agenții din fila „Acces": numele și descrierea din AGP_META, sursa unică (ca pagina „Agenți AI"), în ordinea ei (18.11, găsit pe
+    // drum; Alin: „fă-le cum le-ai propus"). Aici stătea o a doua listă, rămasă cu texte vechi: „Vehicule offline", „Eco-driving — scor
+    // șofer" (scorul e pe vehicul), „Raport zilnic automat" (RA Client nu trimite raport). NU scrie din nou o listă de nume și descrieri.
+    function _raxAgs() {
+      var M = window.AGP_META || {}, ord = window.AGP_ORDER || Object.keys(M);
+      return ord.filter(function (k) { return M[k]; }).map(function (k) { return [k, M[k].name, M[k].desc]; });
+    }
     // Doar UN panou de companie deschis odată (drill-down / config / editare / plată) — fără stivuire de modaluri.
     function _raxSoloOverlay(keepId) {
       ['rax-codetail-overlay', 'rax-coedit-overlay', 'rax-pay-overlay'].forEach(function (id) {
@@ -24438,7 +24437,7 @@ const pozitii = await r.json();</code></pre>
         }).join('') + '</div>';
       var agOff = !s.feats.agents;
       html += '<div style="' + SEC + '"><div style="' + H + '">Agenți AI' + (agOff ? ' <span style="font-size:10px;color:var(--orange);font-weight:600;">(modul oprit → niciunul nu rulează)</span>' : '') + '</div>' +
-        _RAX_AGS.map(function (a) {
+        _raxAgs().map(function (a) {
           var on = s.agents.indexOf(a[0]) >= 0;
           return '<div style="' + ROW + 'cursor:default;' + (agOff ? 'opacity:.55;' : '') + '"><span style="flex:1;"><span style="font-weight:600;font-size:13px;">' + a[1] + '</span><br><span style="font-size:11.5px;color:var(--text-muted);">' + a[2] + '</span></span><label class="rax-sw"><input type="checkbox" ' + (on ? 'checked' : '') + (agOff ? ' disabled' : '') + ' onchange="raxCfgToggleAgent(\'' + a[0] + '\',this.checked)"><span class="sl"></span></label></div>';
         }).join('') + '</div>';
@@ -34413,6 +34412,7 @@ const pozitii = await r.json();</code></pre>
     };
     window.AGP_META = AGP_META; // sursă UNICĂ pentru nume/descrieri de agenți (și panoul Administrare o folosește)
     var AGP_ORDER = ['watch', 'dispatch', 'care', 'optimize', 'compliance', 'client'];
+    window.AGP_ORDER = AGP_ORDER; // și fila „Acces” a firmei (_raxAgs) îi ia în ordinea asta
     // Agenți „live" (stare de moment, calculată la cerere) — oglindește LIVE_AGENTS din server.js.
     var LIVE_AGENT_KEYS = ['dispatch', 'care', 'optimize', 'compliance', 'client'];
     var _agpLast = {}, _agpLastRun = {}, _agpOptEvaluated = null, _agpCompMonitored = null, _agpState = { findings: [], canCfg: false, mode: 'grid', agent: null };
@@ -34454,6 +34454,21 @@ const pozitii = await r.json();</code></pre>
       }
       var t = _agpLastRun[k];
       return '<div class="agp-find"><span class="fd" style="background:var(--accent)"></span><span class="ft" style="color:var(--text-muted)"><i class="fas fa-circle-check" style="color:var(--accent)"></i> Totul e în regulă' + (t ? ' · verificat ' + _agpTime(t) : '') + '</span></div>';
+    }
+    // Cartonașul unui agent, într-un singur loc (18.11): constatările în ordinea gravității, câte intră în rândul de stare și
+    // insigna („3 semnalări”, „de verificat”). Prima pagină a site-ului (agenti-demo.js, pe tabletă și pe telefon) arată
+    // aceleași rânduri: verify_agenti_demo.js rulează funcțiile astea pe ce scriu agenții pe flota de probă.
+    function _agpSortate(fs) {
+      var rk = function (s) { return s === 'critical' ? 2 : s === 'warning' ? 1 : 0; };
+      return (fs || []).slice().sort(function (a, b) { return rk(b.severity) - rk(a.severity) || (new Date(b.created_at) - new Date(a.created_at)); });
+    }
+    // RA Optimize: în rândul de stare intră doar vehiculele cu scor slab (fără notificarea de ralanti pe flotă).
+    function _agpCate(k, fs) { return k === 'optimize' ? fs.filter(function (f) { return (f.fkey || '').indexOf('opt_eco') === 0; }).length : fs.length; }
+    // RA Client e o SINTEZĂ (mereu o constatare) — „1 semnalare" ar fi înșelător.
+    function _agpInsigna(k, fs) {
+      var n = fs.length, sev = n ? fs[0].severity : 'info';
+      if (k === 'client') return n && sev !== 'info' ? { t: 'de verificat', sev: sev } : { t: 'sinteză', ok: true, ic: 'fa-file-lines' };
+      return n ? { t: n + ' ' + (n === 1 ? 'semnalare' : _rDe(n) + 'semnalări'), sev: sev } : { t: 'ok', ok: true, ic: 'fa-check' };
     }
     function _agpEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
     function _agpAgo(ts) {
@@ -34538,21 +34553,14 @@ const pozitii = await r.json();</code></pre>
       _agpState.findings = findings; _agpState.canCfg = canCfg; _agpState.mode = 'grid'; _agpState.agent = null;
       var cards = keys.map(function (k, i) {
         var m = AGP_META[k];
-        var _rk = function (s) { return s === 'critical' ? 2 : s === 'warning' ? 1 : 0; };
-        var fs = (byAgent[k] || []).slice().sort(function (a, b) { return _rk(b.severity) - _rk(a.severity) || (new Date(b.created_at) - new Date(a.created_at)); });
+        var fs = _agpSortate(byAgent[k]);
         var last = fs[0]; // cea mai gravă semnalare (pt. preview + culoare)
         _agpLast[k] = last ? (last.title || '') : null;
-        var nNew = fs.length;
-        var sev = last ? last.severity : 'info';
-        var summaryCount = (k === 'optimize') ? fs.filter(function (f) { return (f.fkey || '').indexOf('opt_eco') === 0; }).length : nNew; // optimize: doar vehiculele cu scor slab (fără notificarea de ralanti-flotă)
-        // RA Client e o SINTEZĂ (mereu o constatare) — „1 semnalare" ar fi înșelător.
-        var badge = (k === 'client')
-          ? (nNew && sev !== 'info'
-              ? '<span class="agp-badge" style="color:' + _agpSevCol(sev) + ';border-color:' + _agpSevCol(sev) + '66;">de verificat</span>'
-              : '<span class="agp-badge ok"><i class="fas fa-file-lines"></i> sinteză</span>')
-          : (nNew
-              ? '<span class="agp-badge" style="color:' + _agpSevCol(sev) + ';border-color:' + _agpSevCol(sev) + '66;">' + nNew + ' ' + (nNew === 1 ? 'semnalare' : _rDe(nNew) + 'semnalări') + '</span>'
-              : '<span class="agp-badge ok"><i class="fas fa-check"></i> ok</span>');
+        var summaryCount = _agpCate(k, fs);
+        var ins = _agpInsigna(k, fs);
+        var badge = ins.ok
+          ? '<span class="agp-badge ok"><i class="fas ' + ins.ic + '"></i> ' + ins.t + '</span>'
+          : '<span class="agp-badge" style="color:' + _agpSevCol(ins.sev) + ';border-color:' + _agpSevCol(ins.sev) + '66;">' + ins.t + '</span>';
         return '<button type="button" class="agp-card agp-cascade" style="animation-delay:' + (i * 55) + 'ms;" onclick="agpOpen(\'' + k + '\')">'
           + '<div class="agp-ch"><div class="agp-ct ag-t-green"><i class="fas ' + m.icon + '"></i></div>'
           + '<div class="agp-cn"><div class="agp-an">' + m.name + '</div><div class="agp-role">' + m.role + '</div></div>'

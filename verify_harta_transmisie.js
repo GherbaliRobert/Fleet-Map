@@ -106,6 +106,8 @@ T('fără poziție: nicio eroare, mașina rămâne în listă, lista se reîmpro
   !fara.eroare && fara.inLista && fara.lista === 1 && fara.markere === 0, JSON.stringify(fara));
 const cu = ruleazaUM({ imei: '862', name: 'Camion', latitude: 45.75, longitude: 21.22 });
 T('cu poziție: markerul se pune ca înainte', !cu.eroare && cu.markere === 1 && cu.lista === 1, JSON.stringify(cu));
+// 18.11 (găsit pe drum; Alin: „fă-le cum le-ai propus”): în fișa mașinii, eticheta de sub numele șoferului scria „Sofer”.
+T('fișa mașinii: eticheta „Șofer”, cu diacritice', html.includes('<div class="info-item-label">Șofer</div>') && !/info-item-label">Sofer</.test(html));
 
 console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
 process.exit(rele ? 1 : 0);

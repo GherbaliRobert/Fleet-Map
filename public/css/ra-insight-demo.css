@@ -159,6 +159,9 @@
 .ri-pk-sel { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.03); border: 1px solid var(--ri-c-line, #313842); }
 .ri-pk-b { font: inherit; font-size: 13px; font-weight: 800; color: var(--ri-c-mut, #C2CAD6); background: transparent; border: 0; border-radius: 999px; padding: 6px 16px; cursor: pointer; line-height: 1.3; }
 .ri-pk-b[aria-pressed="true"] { background: #3FE07D; color: #06210F; }
+/* „Start" în comutator: doar pe telefon (≤ 720 px), unde coloana Start de alături se ascunde (18.11; ra-insight-demo.js → platit). */
+.ri-pk-sel .ri-pk-start { display: none; }
+@media (max-width: 720px) { .ri-pk-sel .ri-pk-start { display: inline-block; } }
 .ri-pk-info { max-width: 34ch; text-align: center; font-size: 13.5px; line-height: 1.5; color: var(--ri-c-mut, #C2CAD6); min-height: 60px; }
 .ri-pk-info b { color: var(--ri-c-fg, #FFFFFF); font-weight: 800; }
 .ri-pk-cifre { margin-top: 4px; font-size: 12px; }

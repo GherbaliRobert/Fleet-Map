@@ -1396,11 +1396,11 @@ const PAGINI_PUBLICE = [
   { cale: '/', fisier: 'landing.html', modificat: '2026-11-18', amprenta: 'be4e1c30f2ef', prio: '1.0', freq: 'weekly' },
   { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-11-18', amprenta: 'ec90b221a78e', prio: '0.8', freq: 'monthly' },
   { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-11-18', amprenta: 'a4ba61409c87', prio: '0.8', freq: 'monthly' },
-  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-18', amprenta: '55a7f837b46d', prio: '0.8', freq: 'monthly' },
+  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-18', amprenta: '9b5cfea3c05f', prio: '0.8', freq: 'monthly' },
   { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-18', amprenta: 'a894272e9db2', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-11-18', amprenta: '61224572cb62', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-18', amprenta: '051224d9e52a', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-18', amprenta: '90adc2304111', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-18', amprenta: 'c07d8bc79a51', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -10846,6 +10846,9 @@ app.post('/api/public/demo-request', async (req, res) => {
 });
 // Anunțarea super-adminilor. NU folosim notify(): acela difuzează pe email/Telegram/webhook, iar aici
 // ar căra date personale. Datele solicitantului rămân EXCLUSIV în demo_requests; notificarea trimite doar id-ul.
+// Subiectele emailului trimis de formularul de contact (notifyDemoRequest). După ele se recunoaște copia emailului din „Primite” la
+// ștergerea de la 12 luni (stergeCereriFormularVechi) — o singură scriere a lor.
+const FORMULAR_SUBIECTE = ['Cerere de cont demo', 'Mesaj din site'];
 async function notifyDemoRequest(row) {
   if (!row) return;
   try {
@@ -10874,7 +10877,7 @@ async function notifyDemoRequest(row) {
       const cine = un(row.company) || un(row.name) || row.email;
       const r = await mailer.send({
         to: to, replyTo: row.email,
-        subject: (row.wants_demo ? 'Cerere de cont demo' : 'Mesaj din site') + ' · ' + cine,
+        subject: (row.wants_demo ? FORMULAR_SUBIECTE[0] : FORMULAR_SUBIECTE[1]) + ' · ' + cine,
         text: [row.wants_demo ? 'CERERE DE CONT DEMO' : 'Mesaj de contact', 'Nume: ' + (row.name || '—'), 'Firmă: ' + (row.company || '—'),
           'Email: ' + row.email, 'Telefon: ' + (row.phone || '—'), '', (row.message || ''), '',
           row.wants_demo ? 'Se aprobă din Administrare → Cereri demo. „Răspunde" la acest email ajunge la cel care a scris.' : '„Răspunde" la acest email ajunge la cel care a scris.'].join('\n'),
@@ -13277,6 +13280,21 @@ async function stergeAuditVechi() {
   }
   return { sterse: n, luni: luni };
 }
+// Cererile din formularul de contact se țin 12 luni, apoi se șterg (contracts.js → `LUNI_CERERI_FORMULAR`; Alin, 18.11): cererea
+// din „Cereri demo” și copiile emailului ei din panoul Mail. Rând în jurnal cu câte s-au șters (fără date personale).
+async function stergeCereriFormularVechi() {
+  const luni = contracte.LUNI_CERERI_FORMULAR;
+  const adrese = (await _mailAdrese({})).map(function (a) { return a.adresa; });
+  const r = await db.stergeCereriFormularVechi(luni, adrese, FORMULAR_SUBIECTE);
+  if (r.cereri || r.trimise || r.primite) {
+    console.log('[FORMULAR] Șterse cererile mai vechi de ' + luni + ' luni: ' + JSON.stringify(r));
+    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'cereri_formular', entityId: null, details: Object.assign({ maiVechiDeLuni: luni }, r), ip: null, companyId: null }); } catch (e) {}
+  }
+  return Object.assign({ luni: luni }, r);
+}
+app.post('/api/admin/formular/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await stergeCereriFormularVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/admin/audit/sterge-vechi', requireAuth, requireSuperadmin, async (req, res) => {
   try { res.json(await stergeAuditVechi()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -13310,6 +13328,28 @@ if (process.env.SEED_TEST === '1') {
          VALUES ('proba', 'update', 'proba', $2, (NOW() - make_interval(months => $1::int, days => 1))::timestamp) RETURNING id`,
         [Math.max(0, parseInt(b.luni) || 0), String(b.eticheta || '')]);
       res.json({ id: r.rows[0].id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  // Cererile din formularul de contact (18.11): o cerere de acum N luni + copiile emailului ei (Trimise / Primite), plus două emailuri
+  // care NU sunt ale formularului (subiect obișnuit de la noi, subiectul formularului de la altcineva) — ca proba să vadă ce rămâne.
+  app.post('/api/test/formular-vechi', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const luni = Math.max(0, parseInt((req.body || {}).luni) || 0), noi = (await _mailAdrese({}))[0].adresa;
+      const la = "(NOW() - make_interval(months => $1::int, days => 1))::timestamp";
+      const c = await db.pool.query("INSERT INTO demo_requests (name, email, message, wants_demo, consent, status, created_at, updated_at) VALUES ('Proba', 'proba@exemplu.ro', 'test', true, true, 'new', " +
+        "(EXTRACT(EPOCH FROM (NOW() - make_interval(months => $1::int, days => 1))) * 1000)::bigint, 0) RETURNING id", [luni]);
+      const tr = await db.pool.query("INSERT INTO mail_trimise (creat_la, de_la, catre, subiect, fel, text) VALUES (" + la + ", $2, $3, $4, 'formular', 'Nume: Proba') RETURNING id", [luni, noi, noi, FORMULAR_SUBIECTE[0] + ' · Proba']);
+      const pr = async (de, sub) => Number((await db.pool.query("INSERT INTO mail_primite (primit_la, catre, de_la, subiect, text) VALUES (" + la + ", $2, $3, $4, 'Nume: Proba') RETURNING id", [luni, noi, de, sub])).rows[0].id);
+      res.json({ cerere: Number(c.rows[0].id), trimis: Number(tr.rows[0].id), primit: await pr(noi, FORMULAR_SUBIECTE[1] + ' · Proba'),
+        altSubiect: await pr(noi, 'Factură RAT-0001'), altExpeditor: await pr('cineva@exemplu.ro', FORMULAR_SUBIECTE[0] + ' · Altcineva') });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  app.post('/api/test/formular-exista', requireAuth, requireSuperadmin, async (req, res) => {
+    try {
+      const b = req.body || {}, n = async (s, id) => id ? Number((await db.pool.query(s, [id])).rows[0].n) > 0 : null;
+      res.json({ cerere: await n('SELECT COUNT(*)::int AS n FROM demo_requests WHERE id = $1', b.cerere), trimis: await n('SELECT COUNT(*)::int AS n FROM mail_trimise WHERE id = $1', b.trimis),
+        primit: await n('SELECT COUNT(*)::int AS n FROM mail_primite WHERE id = $1', b.primit), altSubiect: await n('SELECT COUNT(*)::int AS n FROM mail_primite WHERE id = $1', b.altSubiect),
+        altExpeditor: await n('SELECT COUNT(*)::int AS n FROM mail_primite WHERE id = $1', b.altExpeditor) });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
   app.post('/api/test/audit-exista', requireAuth, requireSuperadmin, async (req, res) => {
@@ -22468,6 +22508,11 @@ async function start() {
   const runAuditPurge = () => stergeAuditVechi().catch(e => console.warn('[AUDIT] ștergere amânată:', e.message));
   setTimeout(runAuditPurge, 90 * 1000);
   setInterval(runAuditPurge, 24 * 60 * 60 * 1000);
+
+  // Cererile din formularul de contact: 12 luni, apoi se șterg (zilnic). Vezi `stergeCereriFormularVechi`.
+  const runFormularPurge = () => stergeCereriFormularVechi().catch(e => console.warn('[FORMULAR] ștergere amânată:', e.message));
+  setTimeout(runFormularPurge, 100 * 1000);
+  setInterval(runFormularPurge, 24 * 60 * 60 * 1000);
 
   // Panoul Mail: Spamul și Coșul se golesc singure după 30 de zile (zilnic). Vezi `golesteMailVechi`.
   const runMailPurge = () => golesteMailVechi().catch(e => console.warn('[MAIL] golire amânată:', e.message));

@@ -615,6 +615,53 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-18
 
+### AMÂNDOI · Prima pagină pe telefon și pe tabletă: agenții pe cartonașe, un singur telefon la pachete
+*Alin, 18.11, la macheta „Agenții pe telefon”: „1. da, 2. da, 3. da (iar când intri la compară, să nu mai apară telefon, ci doar comparația)”.*
+
+**Ce am schimbat:**
+- **Agenții AI, pe tabletă și pe ecranele înguste** (sub 1.000 px lățime): în locul butoanelor și al telefonului desenat stau
+  cartonașele din pagina „Agenți AI” a aplicației, câte două pe rând. Fiecare are numele, rolul, insigna („3 semnalări”), descrierea și ce
+  a găsit agentul azi; „Vezi ce a găsit azi” îl deschide.
+- **Agenții AI, pe telefon** (sub 620 px): un rând pe agent, cu ce a găsit azi; atingi rândul și se deschide (unul deodată). Pe
+  calculator rămâne varianta B, neschimbată.
+- **Pachetele, pe telefon** (sub 720 px): un singur telefon, cu butoanele Start · Basic · Pro · Business (Start întâi). Coloana Start se
+  ascunde; textele ei le ia telefonul din pagină. Pe calculator rămân cele două telefoane.
+- Pe iPhone 16 Pro, prima pagină are acum 2 telefoane desenate în loc de 4, iar pachetele ocupă 848 px în loc de 1.891.
+- Insigna și rândul de stare de pe cartonașe le scrie aceeași regulă ca pagina „Agenți AI” din aplicație (am adus-o într-un singur loc).
+- „Compară pachetele RA Insight” arată doar comparația (publicat azi-dimineață, mai jos).
+
+**Ce vede fondatorul:** pe ratrack.ro, de pe telefon sau tabletă, cartonașele agenților și un singur telefon la pachete. În aplicație,
+pagina „Agenți AI” arată la fel ca înainte.
+
+**Ce vede clientul:** la fel, pe ratrack.ro.
+
+Reper: `public/js/agenti-demo.js` (`cartonase`, `card` în `date()`), `public/css/agenti-demo.css`, `public/js/ra-insight-demo.js`
+(`platit`, `INGUST`), `public/css/ra-insight-demo.css`, `public/landing.html` (stilul `.ri-unul`), `public/index.html` (`_agpSortate`,
+`_agpCate`, `_agpInsigna`); probe: `verify_agenti_demo.js` (6), `verify_ra_insight_demo.js`.
+
+### AMÂNDOI · Găsite pe drum (4, 5, 6, 8), rezolvate
+*Alin, 18.11: „cele găsite pe drum, toate, fă-le cum le-ai propus”. Punctul 7 (ghilimelele din aplicație) vine separat.*
+
+**Ce am schimbat:**
+- **4. Pagina „Agenți AI” de pe site:** rolurile agenților au numele din aplicație și de pe prima pagină: Supraveghere, Dispecerat,
+  Mentenanță, Condus economic, Ore de condus, Sinteza zilei (scria „Paznicul”, „Dispeceratul”, „Condusul economic”…).
+- **5. Fișa firmei → „Acces” (doar la noi):** descrierile agenților sunt cele din pagina „Agenți AI” a aplicației. Scria „Vehicule
+  offline”, „Eco-driving — scor șofer” (scorul e pe mașină) și „Raport zilnic automat” (RA Client nu trimite raport).
+- **6. Fișa mașinii, pe hartă:** „Șofer” cu diacritice (scria „Sofer”).
+- **8. Formularul de contact:** cererile se păstrează 12 luni de la trimitere, apoi se șterg singure, în fiecare zi: cererea din „Cereri
+  demo” și copiile emailului ei din panoul Mail („Trimise” și „Primite”). Celelalte emailuri nu se ating. În Confidențialitate, la „Cât
+  păstrăm datele”, e un rând nou cu asta (data paginii rămâne 18.11.2026).
+
+**Ce vede fondatorul:** rolurile noi pe site; descrierile noi în „Acces”; „Șofer” pe hartă; cererile din formular mai vechi de 12 luni
+dispar din „Cereri demo” și din Mail. Ștergerea se poate porni și de mână (pentru probe).
+
+**Ce vede clientul:** rolurile noi pe site, „Șofer” pe hartă și rândul nou din Confidențialitate.
+
+Reper: `public/agenti-ai.html`, `public/index.html` (`_raxAgs`, `window.AGP_ORDER`, „Șofer”), `contracts.js` (`LUNI_CERERI_FORMULAR`),
+`db.js` (`stergeCereriFormularVechi`), `server.js` (`FORMULAR_SUBIECTE`, `stergeCereriFormularVechi`, ruta
+`POST /api/admin/formular/sterge-vechi`), `public/confidentialitate.html`, amprentele din `PAGINI_PUBLICE`; probe: `verify_agenti_demo.js`
+(rolurile, „Acces”), `verify_harta_transmisie.js` („Șofer”), `verify_pastrare.js` (6c + pe server pornit), `verify_telefon_pachete.js`.
+
 ### AMÂNDOI · Pagina „Pachetele RA Insight” fără telefoane: doar comparațiile
 *Alin, 18.11: „în compară pachetele RA Insight scoate telefoanele și lasă doar comparațiile, ca deja telefoanele sunt pe pagina principală.”*
 

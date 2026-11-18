@@ -2653,6 +2653,26 @@ async function stergeMailDosareVechi(zile) {
   const t = await pool.query("DELETE FROM mail_trimise WHERE dosar = 'cos' AND dosar_la IS NOT NULL AND dosar_la < NOW() - ($1 || ' days')::interval RETURNING id", [String(z)]);
   return { primite: ids.length, trimise: (t.rows || []).length };
 }
+// Cererile din formularul de contact mai vechi de `luni` luni (contracts.js → `LUNI_CERERI_FORMULAR`) și copiile emailului lor din
+// panoul Mail: în „Trimise”, felul „formular”; în „Primite”, emailul sosit de la o adresă de-a noastră cu subiectul formularului.
+async function stergeCereriFormularVechi(luni, adreseNoastre, subiecte) {
+  const l = Math.max(1, parseInt(luni) || 12);
+  const c = await pool.query('DELETE FROM demo_requests WHERE created_at < (EXTRACT(EPOCH FROM (NOW() - make_interval(months => $1::int))) * 1000)::bigint RETURNING id', [l]);
+  const t = await pool.query("DELETE FROM mail_trimise WHERE fel = 'formular' AND creat_la < NOW() - make_interval(months => $1::int) RETURNING id", [l]);
+  const adr = (adreseNoastre || []).map(function (x) { return String(x || '').trim().toLowerCase(); }).filter(Boolean);
+  const sub = (subiecte || []).filter(Boolean);
+  let ids = [];
+  if (adr.length && sub.length) {
+    const v = await pool.query('SELECT id FROM mail_primite WHERE primit_la < NOW() - make_interval(months => $1::int) AND lower(de_la) = ANY($2) AND (' +
+      sub.map(function (_, i) { return 'subiect LIKE $' + (i + 3); }).join(' OR ') + ')', [l, adr].concat(sub.map(function (s) { return s + ' · %'; })));
+    ids = v.rows.map(function (x) { return Number(x.id); });
+    if (ids.length) {
+      await pool.query('DELETE FROM mail_atasamente WHERE mail_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM mail_primite WHERE id = ANY($1)', [ids]);
+    }
+  }
+  return { cereri: (c.rows || []).length, trimise: (t.rows || []).length, primite: ids.length };
+}
 // Ciornele omului.
 const _CIORNE_MAX = 100;
 async function listMailCiorne(userId) {
@@ -7383,7 +7403,7 @@ module.exports = {
   pruneAgentFindings,
   listPlatformCosts, getPlatformCostById, createPlatformCost, updatePlatformCost, deletePlatformCost, getCostPayments, markCostPaid, getFinanceSummary, getDbCapacity, noteazaMailTrimis, listMailTrimise, getMailTrimis, stergeMailTrimis, mailSpatiu,
   mailNumarDosare, listMailCos, mailMutaPrimite, mailRecupereazaPrimite, mailMutaTrimise, mailStea, mailCitit, mailSpamExpeditor, mailEsteSpam,
-  stergeMailDosareVechi, listMailCiorne, getMailCiorna, salveazaMailCiorna, stergeMailCiorna, numarMailCiorne, mailSugestii,
+  stergeMailDosareVechi, stergeCereriFormularVechi, listMailCiorne, getMailCiorna, salveazaMailCiorna, stergeMailCiorna, numarMailCiorne, mailSugestii,
   noteazaMailPrimit, listMailPrimite, getMailPrimit, atasamenteMailPrimit, getAtasamentMailPrimit, marcheazaMailCitit, marcheazaMailRaspuns, stergeMailPrimit, mailNecitite, firmaDupaEmail,
   listOffers, getOfferById, ofertaContractului, createOffer, updateOffer, deleteOffer, setOfferStatus,
   listContracts, getCompanyContract, getContractById, getContractFile, createContract,

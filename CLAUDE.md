@@ -436,6 +436,11 @@ Confidențialitate.
   „nu avem un responsabil cu protecția datelor desemnat". Cine primește date stă în secțiunea 5 a Confidențialității: Railway, Cloudflare,
   Google Firebase (notificările pe telefon), Anthropic (funcțiile AI ȘI pozele actelor — `/api/documents/scan` merge și fără modulul AI), Brevo.
   Un furnizor NOU care primește date = un rând acolo. Datele din formularul de contact au rândul lor în tabel (temeiul: bifa din formular).
+  **Cererile din formular se țin 12 luni, apoi se șterg singure** (18.11, Alin: „fă-le cum le-ai propus”): `contracts.LUNI_CERERI_FORMULAR`
+  (legată de rândul din „Cât păstrăm datele”) → `stergeCereriFormularVechi` (zilnic; de mână `POST /api/admin/formular/sterge-vechi`) →
+  `db.stergeCereriFormularVechi`: cererea din „Cereri demo” + copiile emailului ei din panoul Mail („Trimise”, felul `formular`; „Primite”,
+  de la adresa noastră, cu subiectul din `FORMULAR_SUBIECTE` — scris o dată, folosit la trimitere și la ștergere). Celelalte emailuri
+  nu se ating. Un loc NOU în care ajung datele din formular se șterge tot de aici. Păzit de `verify_pastrare.js` (6c + pe server pornit).
 - **Site-ul vorbește cu „tu”, cu ghilimele românești (17.11, Alin: „4. Tu", „1. Da"):** toate paginile, și descrierile și întrebările pentru
   Google; Termenii rămân la persoana a treia („Clientul”). Fără „dumneavoastră”, „vă”, „Vreți / Vedeți / Cereți…”; ghilimeaua de închidere e
   ”, nu ". Textele luate din aplicație (telefoanele animate, caseta RA Insight, pachetele) se schimbă și în aplicație. Păzit de
@@ -506,6 +511,11 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
 - **Mașinile, oamenii și cifrele sunt de probă** (B 204 RAT, B 77 TIR; Andrei, Maria, Radu); sub fiecare telefon scrie „Exemplu cu o flotă de
   probă". Zilele se socotesc față de azi, pe ora României, cu anul doar când e altul (ca `_zi` din propuneri.js / `ramuri.zz`) — NU scrie date
   de mână. Fără prețuri, fără numele furnizorului de AI, fără „gratuit" / „tokeni" / „24/7" (proba citește toate textele fișierului).
+- **Pachetele pe telefon: UN telefon** (≤ 720 px — `INGUST`, aceeași lățime în foaia telefonului și în pagina unde coloanele trec una sub
+  alta; 18.11, Alin: „3. da”): `platit()` găsește coloana Start de alături, o marchează (`ri-unul` / `ri-col-start`; pagina le ascunde pe
+  telefon, cu titlul celeilalte coloane) și pune „Start” primul în comutator (`.ri-pk-start`, ascuns pe calculator). Textele Start le ia din
+  coloana Start a paginii (clonate) — NU le scrie în script. Fără coloană Start (aplicația) nu se schimbă nimic. Păzit de
+  `verify_ra_insight_demo.js` (402 px).
 - **Clasele telefonului încep cu „ri-"**; `ri-w` = cuvintele care se aprind (opacity 0) — NU-l da altui element (punctul portocaliu din „Azi la
   tine" a fost `ri-w` și nu se vedea; acum `ri-st-w`). Culorile comenzilor din jur (`--ri-c-fg / mut / line`) au în foaia telefonului doar valori
   de rezervă (site-ul, închis); aplicația le dă din tema ei (`.insp-pk-demo`, app.css) — NU le defini pe elementele telefonului.
@@ -2041,9 +2051,10 @@ pe un șir. JavaScript nu se plânge; scrie „NaN" și merge mai departe.
   uitându-te la ecranul desenat.
 
 ### Reguli de respectat aici
-- **Numele/descrierile agenților au o SINGURĂ sursă: `AGP_META`** (expus ca `window.AGP_META`).
-  Panoul Administrare le citește de acolo. NU rescrie liste paralele de `labels`/`descs` — exact așa
-  apăruseră descrieri vechi, nesincronizate.
+- **Numele/descrierile agenților au o SINGURĂ sursă: `AGP_META`** (expus ca `window.AGP_META`, ordinea `window.AGP_ORDER`).
+  Panoul Administrare le citește de acolo; fila „Acces” a firmei prin `_raxAgs()` (18.11: până atunci avea a doua listă, `_RAX_AGS`, cu
+  „Vehicule offline”, „Eco-driving — scor șofer”, „Raport zilnic automat”). NU rescrie liste paralele de `labels`/`descs` — exact așa
+  apăruseră descrieri vechi, nesincronizate. Rolurile de pe pagina publică `/agenti-ai` = `AGENTS[k].role` (păzit de `verify_agenti_demo.js`).
 - Câmpurile numerice din ofertă sunt generate cu `fNum(id, val, ph, w, step)`; pentru valori zecimale
   (ex. €/apel) **trebuie dat `step`** — altfel browserul respinge valoarea (step implicit = 1).
 - **RA Insight se vinde pe PACHETE pe firmă (din 14.10)** — `settings.ai_pachet = { cod, pretRON, de_la }` (+ `ai_pachet_urmator`,
@@ -3511,8 +3522,13 @@ Macheta: https://claude.ai/artifact/E2G99v9is5kxgLpF2HKowC (varianta B). Partea 
   după 12) și compară titlul, textul, culoarea și ordinea fiecărei constatări, plus cartonașul lui RA Client. Numele, rolurile, descrierile =
   `AGENTS` (agents.js); iconițele = `AGP_META`; etichetele = `agpOpen` / `agpLiveRefresh` / `_agpClientCard`. Schimbi un text la agenți → proba
   pică până schimbi și `date()` din telefon (sau flota, dacă s-a schimbat regula). Zilele (ITP peste 12 zile, RCA peste 19) se socotesc față de azi.
-- Pe ≤ 1000 px butoanele trec pe 3 coloane (doar numele), telefonul dedesubt; pe ≤ 620 px pe 2. Totul încape în telefon la fiecare agent —
-  proba măsoară, pe calculator și la 360 px; un rând nou în telefon = măsurat din nou.
+- Totul încape în telefon la fiecare agent — proba măsoară pe calculator; un rând nou în telefon = măsurat din nou.
+- **Pe tabletă și pe telefon (≤ 1000 px; 18.11, Alin: „1. da, 2. da”, macheta https://claude.ai/artifact/9QPDcc4q6Y2XxqDA6Neaf9) NU se
+  arată telefonul desenat:** `cartonase()` pune cartonașele paginii „Agenți AI” din aplicație (`.agd-cart`, `.agd-cr`) — două coloane pe
+  tabletă, cu „Vezi ce a găsit azi”; un rând pe agent pe telefon (≤ 620 px), cu „Atinge un agent…”; unul deschis odată. Insigna și rândul
+  de stare = `card` din `date()`, comparat de probă cu `_agpSortate` / `_agpCate` / `_agpInsigna` / `_agpStatusLine` din pagină (rulate pe ce
+  scriu agenții); pagina „Agenți AI” folosește aceleași funcții. Descrierea = textul butonului de pe site (`.agd-b-d`). ⚠ `.agd-c` e deja
+  culoarea constatării critice — cartonașele au `agd-cr` / `agd-cart`. Proba măsoară la 820, 402 și 360 px (fiecare se deschide și încape).
 - Păzit de **`verify_agenti_demo.js`** (în `npm test`; partea din browser se sare fără Chromium), plus `verify_ra_insight_demo.js` (ordinea
   capitolului) și `verify_site_public.js` (`LEGATE`).
 

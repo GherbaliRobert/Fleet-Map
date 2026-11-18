@@ -155,6 +155,15 @@ T('...iar istoricul scrie tot regula adevărată (12 luni)', /Pozițiile și ist
 T('ștergerea jurnalului rulează zilnic', /const runAuditPurge = \(\) => stergeAuditVechi\(\)/.test(server) && /setInterval\(runAuditPurge, 24 \* 60 \* 60 \* 1000\)/.test(server));
 T('...și citește cifra din contracts.js', /const luni = contracte\.LUNI_JURNAL_AUDIT;/.test(server));
 
+sect('6c. Cererile din formularul de contact: 12 luni, apoi se șterg (Alin, 18.11)');
+T('cifra e 12 luni, într-un singur loc', C.LUNI_CERERI_FORMULAR === 12);
+const lForm = parseInt(((conf.match(/Cererile trimise din formularul de contact[^<]*<b>(\d+) luni<\/b>/) || [])[1]), 10);
+T('pagina de confidențialitate spune ACEEAȘI cifră', lForm === C.LUNI_CERERI_FORMULAR, lForm + ' vs ' + C.LUNI_CERERI_FORMULAR);
+T('ștergerea rulează zilnic și citește cifra din contracts.js', /const runFormularPurge = \(\) => stergeCereriFormularVechi\(\)/.test(server) &&
+  /setInterval\(runFormularPurge, 24 \* 60 \* 60 \* 1000\)/.test(server) && /const luni = contracte\.LUNI_CERERI_FORMULAR;/.test(server));
+T('subiectele emailului formularului sunt scrise o dată (FORMULAR_SUBIECTE), la trimitere și la ștergere',
+  /subject: \(row\.wants_demo \? FORMULAR_SUBIECTE\[0\] : FORMULAR_SUBIECTE\[1\]\)/.test(server) && /db\.stergeCereriFormularVechi\(luni, adrese, FORMULAR_SUBIECTE\)/.test(server));
+
 // ─── 7. Pe server pornit ─────────────────────────────────────────────────────────────────────
 // Variabila veche e SETATĂ la 180, dinadins: istoricul de 7 luni trebuie să rămână (12 luni incluse),
 // iar „Stare producție" trebuie să spună că variabila nu mai e folosită.
@@ -266,6 +275,18 @@ function gata() {
     ovD.comparatie.pastrare.firmaLuni === 24 && ovD.comparatie.pastrare.facturaLei === 50 && ovD.comparatie.pastrare.contractLei === 50,
     JSON.stringify(ovD.comparatie && ovD.comparatie.pastrare));
   T('păstrarea nu mai stă la „nefacturate"', ovD.comparatie && !(ovD.comparatie.nefacturate || []).some((x) => /Păstrare/.test(x.nume)));
+
+  // Cererile din formularul de contact (18.11): cele de acum 13 luni pleacă, cu copiile emailului lor; cele de acum 11 rămân, la fel
+  // emailurile vechi care nu sunt ale formularului.
+  const fv = (await R('POST', '/api/test/formular-vechi', { luni: 13 })).j || {};
+  const fn = (await R('POST', '/api/test/formular-vechi', { luni: 11 })).j || {};
+  const rf = await R('POST', '/api/admin/formular/sterge-vechi');
+  const ev = (await R('POST', '/api/test/formular-exista', fv)).j || {}, en = (await R('POST', '/api/test/formular-exista', fn)).j || {};
+  T('formularul: cererea de acum 13 luni se șterge, cu emailul din „Trimise” și din „Primite”', rf.s === 200 && ev.cerere === false && ev.trimis === false && ev.primit === false,
+    JSON.stringify({ r: rf.j, ev }));
+  T('...cele de acum 11 luni rămân', en.cerere === true && en.trimis === true && en.primit === true, JSON.stringify(en));
+  T('...iar emailurile vechi care nu sunt ale formularului rămân (alt subiect de la noi, subiectul formularului de la altcineva)', ev.altSubiect === true && ev.altExpeditor === true, JSON.stringify(ev));
+  T('...raportul numără exact ce s-a șters', rf.j && rf.j.luni === 12 && rf.j.cereri === 1 && rf.j.trimise === 1 && rf.j.primite === 1, JSON.stringify(rf.j));
 
   // Jurnalul de audit: un rând de acum 13 luni pleacă, unul de acum 11 rămâne.
   const vechi = ((await R('POST', '/api/test/audit-vechi', { luni: 13, eticheta: 'vechi' })).j || {}).id;

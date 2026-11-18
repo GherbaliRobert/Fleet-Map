@@ -90,6 +90,11 @@ const LUNI_JURNAL_AUDIT = 12;
 // „da, fă tot" — recomandarea era 12 luni, ca jurnalul). Le vede doar omul care le-a scris. Cifra e scrisă
 // și pe pagina publică de confidențialitate — legată printr-o probă (verify_insight.js).
 const LUNI_CONVERSATII_AI = 12;
+// Cât se țin CERERILE DIN FORMULARUL DE CONTACT de pe site (nume, email, firmă, telefon, mesaj, dacă vrea cont demo): 12 luni de la
+// trimitere, apoi se șterg singure — cererea din „Cereri demo” și copiile emailului ei din panoul Mail. Alin, 18.11 („fă-le cum le-ai
+// propus”: 12 luni); până atunci nu se ștergeau deloc, iar Confidențialitatea nu spunea cât le ținem. Cifra e scrisă și pe pagina
+// publică de confidențialitate — legată printr-o probă (verify_site_public.js, LEGATE).
+const LUNI_CERERI_FORMULAR = 12;
 
 // ─── Echipamentele ÎNCHIRIATE (decizie Alin, 25.09) ──────────────────────────────────────────────
 // Nu orice client vrea să cumpere aparatele. Cine le închiriază plătește la semnare doar montajul, iar
@@ -576,7 +581,7 @@ function anexaInVigoare(contract, acte) {
 
 module.exports = {
   ZI, LIPSURI, ETICHETE, PRAG_EXPIRA_ZILE, ZILE_DATE_DUPA_INCETARE, ETICHETE_STARE, URMATORUL_PAS, numar,
-  LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT, LUNI_CONVERSATII_AI,
+  LUNI_ISTORIC_INCLUSE, LUNI_ISTORIC_MAX, pastrareFirma, curataPastrare, LUNI_JURNAL_AUDIT, LUNI_CONVERSATII_AI, LUNI_CERERI_FORMULAR,
   CHIRIE_LUNI_MIN, CHIRIE_MARJA, CHIRIE_ZILE_RETUR, chirieLunara, chirieFirma, curataChirie,
   MONTAJ_ZILE_DUPA_AVANS, AVANS_ZILE_RENUNTARE,
   PASI_DRUM, MONTAJ_EXECUTAT, drumulClientului,

@@ -83,18 +83,76 @@
 .agd-f span { min-width: 0; }
 .agd-f b { color: #C2CAD6; }
 
+/* Tableta și telefonul (≤ 1000 px; 18.11): în locul butoanelor și al telefonului desenat, cartonașele paginii „Agenți AI" din
+   aplicație (agenti-demo.js → cartonase). Tableta: două coloane, „Vezi ce a găsit azi"; telefonul (≤ 620 px): un rând pe agent. */
+.agd-cart { display: none; }
+.agd-cart-ind { display: none; margin: 0 0 8px; font-size: 13px; color: #9AA4B2; }
+.agd-cart-l { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.agd-cart .ri-exemplu { display: block; text-align: center; margin-top: 12px; }
+.agd-cr { background: linear-gradient(180deg, #15181D 0%, #121519 100%); border: 1px solid #242A31; border-radius: 14px; min-width: 0; }
+.agd-cr.agd-cr-on { border-color: #313842; }
+.agd-cr-cap { -webkit-appearance: none; appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%;
+  background: none; border: 0; border-radius: 14px; padding: 14px; display: grid; grid-template-columns: 38px minmax(0, 1fr) auto;
+  grid-template-areas: "ic n ins" "d d d" "l l l" "v v v"; gap: 10px; align-items: center; }
+.agd-cr-cap:focus-visible { outline: 2px solid #3FE07D; outline-offset: 2px; }
+.agd-cr-ic { grid-area: ic; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 16px; color: #3FE07D;
+  background: rgba(63,224,125,.08); border: 1px solid rgba(63,224,125,.25); }
+.agd-cr-n { grid-area: n; min-width: 0; }
+.agd-cr-n b { display: block; font-size: 15px; font-weight: 800; line-height: 1.25; color: #FFFFFF; }
+.agd-cr-n small { display: block; font-size: 12px; font-weight: 600; color: #8A93A3; }
+.agd-cr-ins { grid-area: ins; font-size: 11.5px; font-weight: 800; line-height: 1.5; white-space: nowrap; border: 1px solid currentColor;
+  border-radius: 999px; padding: 1px 8px; color: #3FE07D; }
+.agd-cr.agd-s-c .agd-cr-ins { color: #f87171; }
+.agd-cr.agd-s-w .agd-cr-ins { color: #fb923c; }
+.agd-cr-sag { grid-area: sag; display: none; font-size: 12px; color: #8A93A3; transition: transform .2s; }
+.agd-cr.agd-cr-on .agd-cr-sag, .agd-cr.agd-cr-on .agd-cr-vezi i { transform: rotate(180deg); }
+.agd-cr-d { grid-area: d; font-size: 13px; line-height: 1.5; color: #9AA4B2; text-wrap: pretty; }
+.agd-cr-l { grid-area: l; display: flex; gap: 8px; align-items: baseline; font-size: 13px; line-height: 1.45; color: #C2CAD6;
+  border-top: 1px solid #242A31; padding-top: 10px; min-width: 0; }
+.agd-cr-l .agd-fd { margin-top: 0; transform: translateY(-1px); }
+.agd-cr.agd-s-c .agd-cr-l .agd-fd { background: #ef4444; }
+.agd-cr.agd-s-w .agd-cr-l .agd-fd { background: #f97316; }
+.agd-cr-lt { min-width: 0; }
+.agd-cr-lt b { color: #FFFFFF; }
+.agd-cr-tm { color: #8A93A3; }
+.agd-cr-vezi { grid-area: v; justify-self: end; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #3FE07D; }
+.agd-cr-vezi i { font-size: 11px; transition: transform .2s; }
+.agd-cr-det { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 0 14px 14px; }
+.agd-cr-det[hidden] { display: none; }
+.agd-cr-det .agd-fi { padding: 8px 10px; }
+.agd-cr-det .agd-ti { font-size: 13px; }
+.agd-cr-det .agd-bo { font-size: 12.5px; -webkit-line-clamp: unset; display: block; }
+.agd-cr-det .agd-tm { font-size: 11.5px; }
+.agd-cr-det .agd-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.agd-cr-det .agd-tile b { font-size: 16px; }
+.agd-cr-det .agd-tile span, .agd-cr-det .agd-dv > div { font-size: 11px; }
+.agd-cr-det .agd-lin, .agd-cr-det .agd-dv button { font-size: 12.5px; }
+.agd-cr-det .agd-dv-t { white-space: normal; }
+
 @media (max-width: 1000px) {
-  .agd { grid-template-columns: minmax(0, 1fr); gap: 22px; }
-  .agd-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .agd-b-d { display: none; }
+  .agd { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .agd > .agd-lista, .agd > .agd-tel-col { display: none; }
+  .agd-cart { display: block; }
 }
 @media (max-width: 620px) {
-  .agd-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .agd-b { padding: 10px 11px; column-gap: 10px; }
-  .agd-b-ic { width: 34px; height: 34px; font-size: 14px; border-radius: 10px; }
-  .agd-b-n { font-size: 14px; }
+  .agd-cart-ind { display: block; }
+  .agd-cart-l { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .agd-cr { border-radius: 12px; }
+  .agd-cr-cap { padding: 10px 12px; border-radius: 12px; grid-template-columns: 34px minmax(0, 1fr) auto 14px;
+    grid-template-areas: "ic n ins sag" ". l l l" ". d d d"; gap: 4px 10px; }
+  .agd-cr-ic { width: 34px; height: 34px; font-size: 14px; border-radius: 10px; align-self: start; grid-row: 1 / 3; }
+  .agd-cr-n { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; }
+  .agd-cr-n b, .agd-cr-n small { display: inline; }
+  .agd-cr-n small { font-size: 12.5px; }
+  .agd-cr-sag { display: block; }
+  .agd-cr-vezi { display: none; }
+  .agd-cr-l { border-top: 0; padding-top: 0; }
+  .agd-cr-d { display: none; margin-top: 6px; }
+  .agd-cr.agd-cr-on .agd-cr-d { display: block; }
+  .agd-cr-det { padding: 0 12px 12px 56px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .agd-corp, .agd-fi { transition: none; }
   .agd-b[aria-pressed="true"] .agd-bara { animation: none; width: 0; }
+  .agd-cr-sag, .agd-cr-vezi i { transition: none; }
 }

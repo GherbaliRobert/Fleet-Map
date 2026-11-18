@@ -396,19 +396,40 @@
   }
 
   // ── Pachetele plătite: comutatorul Basic / Pro / Business, cine întreabă, câte întrebări are; trece singur de la unul la altul ──
+  // Pe telefon (≤ 720 px, unde cele două telefoane ar sta unul sub altul; 18.11, Alin: „3. da"): coloana Start de alături se ascunde
+  // (`ri-col-start` în `ri-unul`, stilul în pagină), iar telefonul ăsta primește și butonul „Start" — UN telefon cu Start · Basic · Pro ·
+  // Business. Textele Start NU se scriu aici: se iau din coloana Start a paginii (aceeași hârtie, legată de pachete.js prin probe).
+  var INGUST = '(max-width: 720px)';
   function platit(gazda) {
     gazda.innerHTML = '';
+    var doi = gazda.closest ? gazda.closest('.tel-doi') : null;
+    var tStart = doi ? doi.querySelector('[data-ri-demo="start"]') : null;
+    var colStart = tStart && tStart.parentNode && tStart.parentNode !== gazda ? tStart.parentNode : null;
+    var ingust = colStart && window.matchMedia ? window.matchMedia(INGUST) : null;
+    var lista = function () { return ingust && ingust.matches ? ['start'].concat(PLANURI) : PLANURI; };
+    if (colStart) { doi.classList.add('ri-unul'); colStart.classList.add('ri-col-start'); }
     var sel = el('div', 'ri-pk-sel'); sel.setAttribute('role', 'group'); sel.setAttribute('aria-label', 'Alege pachetul');
+    if (colStart) { var bs = el('button', 'ri-pk-b ri-pk-start'); bs.type = 'button'; bs.textContent = 'Start'; bs.setAttribute('data-pk', 'start'); bs.setAttribute('aria-pressed', 'false'); sel.appendChild(bs); }
     PLANURI.forEach(function (k) { var b = el('button', 'ri-pk-b'); b.type = 'button'; b.textContent = PACHETE[k].nume; b.setAttribute('data-pk', k); b.setAttribute('aria-pressed', 'false'); sel.appendChild(b); });
     var info = el('div', 'ri-pk-info');
     var tel = el('div', 'ri-tel');
     var cine = el('div', 'ri-exemplu');
     gazda.appendChild(sel); gazda.appendChild(info); gazda.appendChild(tel); gazda.appendChild(cine);
     var T = new Telefon(tel, { sursa: { on: false, nr: '' } });
+    var acum = null;
     var marcheaza = function (k) {
-      var p = PACHETE[k];
+      acum = k;
       sel.querySelectorAll('[data-pk]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-pk') === k)); });
       info.innerHTML = '';
+      if (k === 'start') {
+        var si = colStart.querySelector('.ri-pk-info'), se = colStart.querySelector('.ri-exemplu');
+        if (si) Array.prototype.slice.call(si.childNodes).forEach(function (n) { info.appendChild(n.cloneNode(true)); });
+        cine.textContent = se ? se.textContent : '';
+        T.o.start = true; T.sursa = null; T.cine = START.cine; T.contor = START.contor[0]; T.o.contorDupa = START.contor[1];
+        return;
+      }
+      T.o.start = false;
+      var p = PACHETE[k];
       info.appendChild(el('b', null)).textContent = p.titlu;
       info.appendChild(document.createTextNode(' ' + p.pentru));
       var c = el('div', 'ri-pk-cifre');
@@ -418,24 +439,28 @@
       T.cine = p.cine; T.o.contorDupa = p.contor[1];
       T.contor = p.contor[0]; T.sursa = { on: false, nr: '', ramase: p.sursaRamase, total: p.sursa };
     };
+    var scena = function (k) { return k === 'start' ? 'ieri' : PACHETE[k].sc; };
     async function bucla(de) {
-      var i = Math.max(0, PLANURI.indexOf(de || 'basic'));
+      var l = lista(), i = Math.max(0, l.indexOf(de || l[0]));
       var g = ++T.gen;
       for (;;) {
-        var k = PLANURI[i];
+        var k = l[i];
         marcheaza(k); T.deseneazaGol();
         if (!(await T.pauza(g, 1800))) return;
-        if (!(await T.joacaUna(g, PACHETE[k].sc))) return;
+        if (!(await T.joacaUna(g, scena(k)))) return;
         if (!(await T.pauza(g, 5600))) return;
-        i = (i + 1) % PLANURI.length;
+        l = lista(); i = (l.indexOf(k) + 1) % l.length;
       }
     }
+    var arata = function (k) { if (MISCARE) bucla(k); else { marcheaza(k); T.static([scena(k)]); } };
     sel.addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('[data-pk]') : null; if (!b) return;
-      var k = b.getAttribute('data-pk');
-      if (MISCARE) bucla(k); else { marcheaza(k); T.static([PACHETE[k].sc]); }
+      arata(b.getAttribute('data-pk'));
     });
-    if (MISCARE) bucla(); else { marcheaza('basic'); T.static([PACHETE.basic.sc]); }
+    // Ecranul s-a lățit cât timp telefonul arăta Start: Start are din nou coloana lui, deci telefonul ăsta trece la Basic.
+    if (ingust) { var laSchimbare = function () { if (!ingust.matches && acum === 'start') arata('basic'); };
+      if (ingust.addEventListener) ingust.addEventListener('change', laSchimbare); else if (ingust.addListener) ingust.addListener(laSchimbare); }
+    arata(lista()[0]);
     return T;
   }
 

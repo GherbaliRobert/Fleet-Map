@@ -408,6 +408,9 @@
     .tel-col .tel-p{margin:0;text-align:center;color:var(--muted);font-size:14px;line-height:1.55;max-width:40ch;min-height:3.1em}
     .tel-col [data-ri-demo="platit"]{width:100%}
     @media (max-width:720px){.tel-doi{grid-template-columns:minmax(0,1fr)}.tel-col .tel-p{min-height:0}}
+    /* Pe telefon, UN telefon cu Start · Basic · Pro · Business (18.11, Alin: „3. da"): ra-insight-demo.js pune „Start" în comutatorul
+       pachetelor plătite și marchează coloanele; coloana Start și titlul celeilalte se ascund (titlul secțiunii le spune pe amândouă). */
+    @media (max-width:720px){.ri-unul .ri-col-start{display:none}.ri-unul .tel-col:not(.ri-col-start)>h3,.ri-unul .tel-col:not(.ri-col-start)>.tel-p{display:none}}
 
     /* ---------- ABOUT ---------- */
     .about{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center}
