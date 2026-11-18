@@ -262,8 +262,8 @@ function rezumat(deRezolvat, inRegula, liberi) {
 const TEXTE = {
   deCand: 'din clipa în care apeși Da',
   faraDa: 'Fără „Da" nu schimb nimic.',
-  anulare: 'Se poate anula ' + ANULARE_MIN + ' minute.',
-  sofeiNuPrimesc: 'Fiecare schimbare intră în istoricul mașinii și se poate anula ' + ANULARE_MIN + ' minute. Șoferii nu primesc niciun mesaj.',
+  anulare: 'Se poate anula în următoarele ' + ANULARE_MIN + ' minute.',
+  sofeiNuPrimesc: 'Fiecare schimbare intră în istoricul mașinii și se poate anula în următoarele ' + ANULARE_MIN + ' minute. Șoferii nu primesc niciun mesaj.',
   intro: 'Din fișele șoferilor (categoriile și valabilitatea permisului) și din cine a mai fost trecut pe fiecare mașină. Nu se schimbă nimic până nu apeși „Aplică”.',
   nuStie: 'Aplicația știe cine e trecut pe mașină, nu cine a condus-o: potrivirea se face pe fișe.'
 };

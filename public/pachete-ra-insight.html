@@ -74,7 +74,7 @@
             "name": "Pot schimba pachetul?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Da, administratorul firmei îl schimbă din aplicație. Un pachet mai mare se aplică din ziua confirmării, iar luna aceea se facturează pe zile; unul mai mic, de la 1 a lunii următoare. Confirmarea vine pe email, în PDF."
+              "text": "Da, administratorul firmei îl schimbă din aplicație. Un pachet mai mare se aplică din ziua confirmării, iar luna aceea se facturează pe zile; unul mai mic, din prima zi a lunii următoare. Confirmarea vine pe email, în PDF."
             }
           },
           {
@@ -181,7 +181,7 @@
     <nav class="firimituri" aria-label="Unde te afli"><a href="/">RA Track</a> › Pachetele RA Insight</nav>
 
     <h1>Pachetele RA Insight</h1>
-    <p class="intro">RA Insight e asistentul flotei: îl întrebi ce vrei să afli, iar el caută răspunsul în rapoartele aplicației — câți kilometri a făcut o mașină, de ce a crescut consumul, ce acte expiră luna asta. Se alege pe firmă, într-unul din cele patru pachete de mai jos. Start e inclus în orice contract; pentru celelalte, prețul îl primești în ofertă.</p>
+    <p class="intro">RA Insight e asistentul flotei: îl întrebi ce vrei să afli, iar el caută răspunsul în rapoartele aplicației — câți kilometri a făcut o mașină, de ce a crescut consumul, ce acte expiră luna asta. Se alege pe firmă, într-unul dintre cele patru pachete de mai jos. Start e inclus în orice contract; pentru celelalte, prețul îl primești în ofertă.</p>
 
     <!-- RA Insight pe telefon (16.11, Alin: „3. DA, cu comutator la telefonul care arată pachetele plătite"): stânga Start (un buton),
          dreapta pachetele plătite, cu Basic / Pro / Business. Le desenează /js/ra-insight-demo.js — același telefon ca pe prima pagină
@@ -303,7 +303,7 @@
             <td class="v">nelimitate</td>
           </tr>
           <tr>
-            <th scope="row">Împarți întrebările pe oameni<small>Fiecare coleg are câte întrebări îi dai tu; ce nu dai rămâne la administrator</small></th>
+            <th scope="row">Împarți întrebările pe oameni<small>Fiecare coleg are câte întrebări îi dai tu; ce nu dai rămâne la tine</small></th>
             <td class="v"><span class="nu" aria-label="nu">—</span></td>
             <td class="v ai"><span class="da" aria-label="inclus">✓</span></td>
             <td class="v"><span class="da" aria-label="inclus">✓</span></td>
@@ -361,14 +361,14 @@
           </tr>
           <tr class="g"><th scope="rowgroup" colspan="5">Lucrează pentru tine</th></tr>
           <tr>
-            <th scope="row">„Azi la tine”<small>Mașinile care nu transmit, termenele, ce au găsit agenții — fără să întrebi; nu se numără</small></th>
+            <th scope="row">„Azi la tine”<small>Mașinile care nu transmit, termenele, ce au găsit agenții — fără să întrebi; inclus în pachet</small></th>
             <td class="v"><span class="da" aria-label="inclus">✓</span></td>
             <td class="v ai"><span class="da" aria-label="inclus">✓</span></td>
             <td class="v"><span class="da" aria-label="inclus">✓</span></td>
             <td class="v"><span class="da" aria-label="inclus">✓</span></td>
           </tr>
           <tr>
-            <th scope="row">RA Insight face, cu „Da”-ul tău<small>Pune șoferul pe mașină, verificând permisul · alertă de viteză · „Am vorbit cu el” · programează revizia · trece ITP-ul, RCA-ul · programează un raport pe email. „Anulează” timp de 10 minute; nu se numără.</small></th>
+            <th scope="row">RA Insight face, cu „Da”-ul tău<small>Pune șoferul pe mașină, verificând permisul · alertă de viteză · „Am vorbit cu el” · programează revizia · trece ITP-ul, RCA-ul · programează un raport pe email. „Anulează” timp de 10 minute; inclus în pachet.</small></th>
             <td class="v"><span class="nu" aria-label="nu">—</span></td>
             <td class="v ai"><span class="da" aria-label="inclus">✓</span></td>
             <td class="v"><span class="da" aria-label="inclus">✓</span></td>
@@ -387,18 +387,18 @@
 
     <h2>În toate pachetele</h2>
     <ul class="toate-lista">
-      <li><b>Cifrele vin din rapoartele aplicației</b> Sub răspuns scrie „Cifrele le-am luat din rapoarte”. O cifră care nu se regăsește e spusă pe față.</li>
+      <li><b>Cifrele vin din rapoartele aplicației</b> Sub răspunsurile cu analiză scrie de unde sunt cifrele („Cifrele le-am luat din rapoarte”). O cifră care nu se regăsește e spusă pe față.</li>
       <li><b>„Am găsit o problemă”, cu butonul spre locul exact</b> Viteză reală sau eroare de GPS, consum socotit din fișă, fișa mașinii necompletată.</li>
       <li><b>Fiecare om își vede doar conversațiile lui</b> Nici administratorul firmei, nici echipa RA Track nu le citesc. Se păstrează 12 luni.</li>
-      <li><b>La fiecare răspuns scrie dacă s-a numărat</b> „Analiză · 1 întrebare” sau „Instant · din rapoarte”.</li>
-      <li><b>Nimic peste prețul pachetului</b> Nu se vând întrebări în plus. Pachetul se reîncarcă pe 1 a fiecărei luni.</li>
+      <li><b>La fiecare răspuns scrie dacă se scade din pachet</b> „Analiză · 1 întrebare” sau „Instant · din rapoarte”.</li>
+      <li><b>Nimic peste prețul pachetului</b> Nu se vând întrebări în plus. Pachetul se reîncarcă în prima zi a fiecărei luni.</li>
     </ul>
 
     <h2>Cum se schimbă pachetul</h2>
     <ul>
       <li><b>Din aplicație, de către administratorul firmei.</b> Alege pachetul, citește ce se schimbă și confirmă; confirmarea vine pe email, în PDF.</li>
       <li><b>Un pachet mai mare</b> se aplică din ziua confirmării, iar luna aceea se facturează pe zile, pentru fiecare pachet.</li>
-      <li><b>Un pachet mai mic</b> se aplică de la 1 a lunii următoare.</li>
+      <li><b>Un pachet mai mic</b> se aplică din prima zi a lunii următoare.</li>
     </ul>
     <p>RA Insight vede doar ce vede contul care întreabă: un utilizator cu acces la cinci mașini primește răspunsuri despre acele cinci.</p>
 
@@ -409,7 +409,7 @@
     </details>
     <details>
       <summary><h3>Pot schimba pachetul?</h3></summary>
-      <p>Da, administratorul firmei îl schimbă din aplicație. Un pachet mai mare se aplică din ziua confirmării, iar luna aceea se facturează pe zile; unul mai mic, de la 1 a lunii următoare. Confirmarea vine pe email, în PDF.</p>
+      <p>Da, administratorul firmei îl schimbă din aplicație. Un pachet mai mare se aplică din ziua confirmării, iar luna aceea se facturează pe zile; unul mai mic, din prima zi a lunii următoare. Confirmarea vine pe email, în PDF.</p>
     </details>
     <details>
       <summary><h3>Ce date vede RA Insight?</h3></summary>

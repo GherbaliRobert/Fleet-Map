@@ -352,7 +352,7 @@ function cardRevizie(o) {
     campuri: { imei: String(o.imei || ''), tip: o.tip, km: tp.km || '', data: tp.data || '', tipuri: (o.tipuri || maintTypes.WORK.map(function (w) { return w.type; })), kmMin: KM_MIN, kmMax: KM_MAX,
       interval: o.interval || null, odo: o.odo || null },
     dovezi: dov,
-    sub: o.poate ? 'Se face exact ca din Management › Mentenanță › Adaugă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula ' + soferiMasini.ANULARE_MIN + ' minute.'
+    sub: o.poate ? 'Se face exact ca din Management › Mentenanță › Adaugă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.'
       : 'Doar cine poate schimba mentenanța apasă „Da"' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, programează', poate: !!o.poate
   };
@@ -406,7 +406,7 @@ function cardAct(o) {
     randuri: randuri,
     campuri: { imei: String(o.imei || ''), tip: o.tip, data: o.data || '', tipuri: o.tipuri || maintTypes.DOCS.slice() },
     dovezi: dov,
-    sub: o.poate ? 'Se face exact ca din Management › Documente › Adaugă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula ' + soferiMasini.ANULARE_MIN + ' minute.'
+    sub: o.poate ? 'Se face exact ca din Management › Documente › Adaugă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.'
       : 'Doar cine poate schimba documentele apasă „Da"' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, trec actul', poate: !!o.poate
   };
@@ -474,7 +474,7 @@ function cardRaport(o) {
       email: o.email || '', optiuni: o.optiuni || [], frecvente: FRECVENTE.map(function (f) { return { v: f, t: ET_FRECVENTA[f] }; }),
       perioade: PERIOADE.map(function (p) { return { v: p, t: ET_PERIOADA[p].charAt(0).toUpperCase() + ET_PERIOADA[p].slice(1) }; }), formate: FORMATE.map(function (f) { return { v: f, t: ET_FORMAT[f] }; }) },
     dovezi: dov,
-    sub: o.poate ? 'Se face exact ca din Rapoarte › Programări, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula ' + soferiMasini.ANULARE_MIN + ' minute.'
+    sub: o.poate ? 'Se face exact ca din Rapoarte › Programări, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.'
       : 'Doar cine vede rapoartele apasă „Da"' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, programează', poate: !!o.poate
   };

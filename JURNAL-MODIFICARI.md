@@ -613,6 +613,40 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-18
+
+### AMÂNDOI · Site-ul: cele 55 de texte „de discutat” din inventar; cartela SIM nu mai apare nicăieri
+*Alin, 18.11: „6 da la toate cu excepția lui P52, unde clientul nu are treabă cu cartela SIM. Nu o spunem nicăieri.”*
+
+**Ce am schimbat (pe scurt, după pagină):**
+- **Prima pagină:** alertele fără „instant” (eticheta „16 tipuri”); „fișa mașinii completată din acte”; „cele mai apropiate mașini, care dintre ele
+  sunt libere”; „Urmărești consumul…”; „Dai conturi oamenilor din firmă…” (nu „mai mulți clienți”); „desenată pe drumurile pe care a mers”; „linkul
+  prin care îți pui parola”; agenții „verifică flota, fiecare pe domeniul lui”; „Le vezi din timp, ca să nu ajungi la penalizări”; „aparate pe rețeaua
+  4G”; „Compatibil cu aparatele Teltonika”; „le aprobi cu un clic”; „se poate anula în următoarele 10 minute” (și pe cartonașele din aplicație); mesajul
+  de după formular: „După ce o aprobăm, îți trimitem pe email linkul prin care îți pui parola”. În telefonul Pro, viteza peste 90 o are dubița
+  B 18 VAN, nu camionul (camioanele au limitator la 90).
+- **Combustibil:** „cu sursa scrisă lângă fiecare cifră”, „Pe lângă ele”, „ajung ca notificări… aplicația pentru Android”, „Vezi alimentările”.
+- **Alerte ITP:** „…ITP, RCA și a rovinietei”; „și când vin reviziile”.
+- **Agenți AI:** descrierea cu toți cei șase (și mașinile libere, și sinteza zilei); RA Insight „(întrebările libere sunt de la pachetul Basic)”;
+  raportul „rămâne 7 zile în Istoric rapoarte”; „Pe Start nu pleacă nimic în afara aplicației”; „dintre”.
+- **Pachete:** „inclus în pachet” în loc de „nu se numără”; „scrie dacă se scade din pachet”; „ce nu dai rămâne la tine”; „din prima zi a lunii
+  următoare”; rândul „Cifrele le-am luat din rapoarte” doar „sub răspunsurile cu analiză”; „dintre” (și în aplicație, la „Vezi pachetele”).
+- **Întrebări frecvente:** aparatul se leagă la calculatorul de bord și la mașinile mici, printr-un cititor CAN; exportul datelor „la cerere”; agenții
+  incluși și RA Insight pe pachete, pe firmă; **costul unic = aparatele (dacă le cumperi; se pot și închiria) și instalarea — cartela SIM nu mai apare,
+  nici la cost, nici la echipament** („transmite singur”); „Din trei surse”; actele pe telefon „dacă o ceri”; „Partea care durează”; remorcile — „soluția
+  se stabilește la ofertă”.
+- **Termeni:** „Termeni și condiții”, „istoricul traseelor”, „informarea în scris a șoferilor”, „convenite” (nu „agreate”), „Serviciului”, „din cauze
+  tehnice”. **Confidențialitate:** „Clientul”, „nu vindem date nimănui”, „Stabilit de Client”, „plus termenele cerute de lege”, virgula mutată,
+  „Funcțiile AI pot fi oprite pentru o firmă, la cererea ei”. „Ultima actualizare”: 18.11.2026.
+
+**Ce vede fondatorul:** paginile publice de mai sus; în aplicație, „inclus în pachet” și „în următoarele 10 minute” pe cartonașele RA Insight.
+
+**Ce vede clientul:** la fel, pe ratrack.ro și în aplicație.
+
+Reper: paginile din `public/`, `pachete.js`, `public/js/ra-insight-demo.js`, `propuneri.js` / `programari.js` / `soferi_masini.js` / server.js (fraza
+„Anulează”), amprentele din `PAGINI_PUBLICE`; probe: `verify_site_public.js` (fără cartela SIM pe site; „7 zile” legat de `ZILE_ISTORIC_RAPOARTE`),
+`verify_soferi_masini.js`, `verify_ra_insight_demo.js`.
+
 ## 2026-11-17
 
 ### AMÂNDOI · Duratele, peste tot în aplicație: „3 h 10 min”, nu „3h 10m”

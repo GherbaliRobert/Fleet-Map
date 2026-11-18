@@ -617,11 +617,11 @@ const DESCRIERE = {
 };
 // Ce au toate pachetele (sub comparație, în aplicație și pe site). Textele insignelor = cele din `insigna` (legate în probă).
 const IN_TOATE = [
-  { t: 'Cifrele vin din rapoartele aplicației', d: 'Sub răspuns scrie „Cifrele le-am luat din rapoarte”. O cifră care nu se regăsește e spusă pe față.' },
+  { t: 'Cifrele vin din rapoartele aplicației', d: 'Sub răspunsurile cu analiză scrie de unde sunt cifrele („Cifrele le-am luat din rapoarte”). O cifră care nu se regăsește e spusă pe față.' },
   { t: '„Am găsit o problemă”, cu butonul spre locul exact', d: 'Viteză reală sau eroare de GPS, consum socotit din fișă, fișa mașinii necompletată.' },
   { t: 'Fiecare om își vede doar conversațiile lui', d: 'Nici administratorul firmei, nici echipa RA Track nu le citesc. Se păstrează 12 luni.' },
-  { t: 'La fiecare răspuns scrie dacă s-a numărat', d: '„Analiză · 1 întrebare” sau „Instant · din rapoarte”.' },
-  { t: 'Nimic peste prețul pachetului', d: 'Nu se vând întrebări în plus. Pachetul se reîncarcă pe 1 a fiecărei luni.' },
+  { t: 'La fiecare răspuns scrie dacă se scade din pachet', d: '„Analiză · 1 întrebare” sau „Instant · din rapoarte”.' },
+  { t: 'Nimic peste prețul pachetului', d: 'Nu se vând întrebări în plus. Pachetul se reîncarcă în prima zi a fiecărei luni.' },
 ];
 function _nrRo(n) { return Number(n).toLocaleString('ro-RO'); }
 // Cifrele de pe cartonaș, din PACHETE (nu scrise de mână): câte conturi, câte întrebări libere, câte răspunsuri pe loc.
@@ -669,12 +669,12 @@ function comparatie(o) {
   return [
     { grup: 'Cine îl folosește', randuri: [
       { t: 'Conturi RA Insight', v: pe(function (p) { return p.doarAdmin ? tx('1', 'administratorul') : tx(cifre(p)[0].val); }) },
-      { t: 'Împarți întrebările pe oameni', d: 'Fiecare coleg are câte întrebări îi dai tu; ce nu dai rămâne la administrator', v: pe(function (p) { return da(p.imparte); }) },
+      { t: 'Împarți întrebările pe oameni', d: 'Fiecare coleg are câte întrebări îi dai tu; ce nu dai rămâne la tine', v: pe(function (p) { return da(p.imparte); }) },
     ] },
     { grup: 'Întrebări și răspunsuri', randuri: intrebari },
     { grup: 'Lucrează pentru tine', randuri: [
-      { t: '„Azi la tine”', d: 'Mașinile care nu transmit, termenele, ce au găsit agenții — fără să întrebi; nu se numără', v: pe(function () { return da(true); }) },
-      { t: 'RA Insight face, cu „Da”-ul tău', d: 'Pune șoferul pe mașină, verificând permisul · alertă de viteză · „Am vorbit cu el” · programează revizia · trece ITP-ul, RCA-ul · programează un raport pe email. „Anulează” timp de 10 minute; nu se numără.',
+      { t: '„Azi la tine”', d: 'Mașinile care nu transmit, termenele, ce au găsit agenții — fără să întrebi; inclus în pachet', v: pe(function () { return da(true); }) },
+      { t: 'RA Insight face, cu „Da”-ul tău', d: 'Pune șoferul pe mașină, verificând permisul · alertă de viteză · „Am vorbit cu el” · programează revizia · trece ITP-ul, RCA-ul · programează un raport pe email. „Anulează” timp de 10 minute; inclus în pachet.',
         v: pe(function (p) { return da(p.ramuri); }) },
       { t: 'Domeniile RA Insight', d: 'RA Drive (condus & costuri) · Combustibil · Ore de condus · Mentenanță & acte · Șoferi pe mașini', v: pe(function (p) { return da(p.ramuri); }) },
     ] },

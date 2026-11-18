@@ -1393,14 +1393,14 @@ const NO_CACHE = 'no-cache, no-store, must-revalidate';
 // care Google învață s-o ignore. `amprenta` n-o citește serverul: e amprenta textului, verificată de
 // `verify_site_public.js`. Schimbi textul unei pagini și uiți data → proba pică și îți spune ce să scrii.
 const PAGINI_PUBLICE = [
-  { cale: '/', fisier: 'landing.html', modificat: '2026-11-17', amprenta: 'fd7091c6c15c', prio: '1.0', freq: 'weekly' },
-  { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-11-17', amprenta: '373179ab627a', prio: '0.8', freq: 'monthly' },
-  { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-11-17', amprenta: 'a0a77644c573', prio: '0.8', freq: 'monthly' },
-  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-17', amprenta: '2d94ab844069', prio: '0.8', freq: 'monthly' },
-  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-17', amprenta: 'a8acf68be822', prio: '0.8', freq: 'monthly' },
-  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-11-17', amprenta: 'c39f943632e6', prio: '0.7', freq: 'monthly' },
-  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-17', amprenta: '34b07dc8d8fb', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-17', amprenta: '7581ef1083d8', prio: '0.3', freq: 'yearly' },
+  { cale: '/', fisier: 'landing.html', modificat: '2026-11-18', amprenta: 'be4e1c30f2ef', prio: '1.0', freq: 'weekly' },
+  { cale: '/monitorizare-combustibil', fisier: 'monitorizare-combustibil.html', modificat: '2026-11-18', amprenta: 'ec90b221a78e', prio: '0.8', freq: 'monthly' },
+  { cale: '/alerte-itp-rca-rovinieta', fisier: 'alerte-itp-rca-rovinieta.html', modificat: '2026-11-18', amprenta: 'a4ba61409c87', prio: '0.8', freq: 'monthly' },
+  { cale: '/agenti-ai', fisier: 'agenti-ai.html', modificat: '2026-11-18', amprenta: '55a7f837b46d', prio: '0.8', freq: 'monthly' },
+  { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-18', amprenta: '6a4aff69ab70', prio: '0.8', freq: 'monthly' },
+  { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-11-18', amprenta: '61224572cb62', prio: '0.7', freq: 'monthly' },
+  { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-18', amprenta: '051224d9e52a', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-18', amprenta: '90adc2304111', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -7077,7 +7077,7 @@ app.post('/api/insight/soferi-masini/aplica', requireAuth, requireEdit('vehicule
     const gata = rez.aplicate.map(function (s) { return { imei: s.imei, nr: s.nr, text: s.la != null ? (nume[s.la] || 'Șoferul') + ' e pe ' + s.nr + '.' : s.nr + ' nu mai are șofer trecut.' }; });
     await db.treceActiuneInsight(id, userId, 'aplicata', { stare: 'aplicata', date: { sursa: 'pagina', schimbari: schimbari, aplicate: rez.aplicate, sarite: toateSarite, gataPagina: gata } });
     res.json({ ok: true, actiuneId: id, gata: gata, sarite: toateSarite, ramasMs: Math.max(0, prins.aplicat_la + soferiMasini.ANULARE_MIN * 60000 - Date.now()),
-      text: 'Gata: ' + (gata.length === 1 ? 'o schimbare' : gata.length + ' schimbări') + '. Se ' + (gata.length === 1 ? 'poate' : 'pot') + ' anula ' + soferiMasini.ANULARE_MIN + ' minute.' });
+      text: 'Gata: ' + (gata.length === 1 ? 'o schimbare' : gata.length + ' schimbări') + '. Se ' + (gata.length === 1 ? 'poate' : 'pot') + ' anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // „Da" pe cartonașul din discuție. Drepturile = ale ecranului de care ține propunerea (`_poateActiunea`): șoferul — Vehicule › fișa

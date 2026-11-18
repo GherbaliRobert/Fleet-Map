@@ -92,7 +92,7 @@ T('cartonașul „Trec șoferul pe B 77 TIR" (M1): Ion Popescu → Mihai Ionescu
   dv[0] === 'ok Mihai Ionescu are permis CE, valabil până pe 14.03.2031. Autotractorul cere CE.' && dv[1] === 'ok Mihai Ionescu nu e trecut acum pe nicio altă mașină.' &&
   dv[2] === 'w Ion Popescu rămâne fără mașină. Are doar permis B, deci nu poate conduce autotractorul.' &&
   c1.card.nuSeSchimba === 'Nu se schimbă: grupa mașinii (Camioane), alertele și rapoartele programate.' &&
-  c1.card.sub === 'Se face exact ca din Vehicule › fișa mașinii › Șofer, cu drepturile tale. În jurnal: „Ana Pop, prin RA Insight”. Se poate anula 10 minute.' &&
+  c1.card.sub === 'Se face exact ca din Vehicule › fișa mașinii › Șofer, cu drepturile tale. În jurnal: „Ana Pop, prin RA Insight”. Se poate anula în următoarele 10 minute.' &&
   c1.card.butonDa === 'Da, trece-l' && c1.card.deCand === 'din clipa în care apeși Da' && JSON.stringify(c1.card.schimbari) === '[{"imei":"A4","deLa":3,"la":4}]', JSON.stringify(c1.card).slice(0, 400));
 const c2 = SM.propunerePereche(an, Object.assign({ imei: 'A4', soferId: 1 }, o0));
 T('un permis care nu acoperă mașina nu primește cartonaș: spune de ce și propune șoferii liberi potriviți, ca butoane',
@@ -352,7 +352,7 @@ const ziIso = (zile) => new Date(Date.now() + zile * 86400000).toISOString().sli
   const toate = await json('POST', '/api/insight/soferi-masini/aplica', ana.ck, { schimbari: (p0.j.propuneri || []).map((p) => ({ imei: p.imei, la: p.la })) });
   const dupaAp = [await masina(3), await masina(1), await masina(2)].map((x) => x.sofer);
   T('„Aplică cele bifate (3)": Mihai pe TIR, Ion pe dubă, Andrei scos — în ordine, o acțiune cu „Anulează"', toate.status === 200 && toate.j.gata.length === 3 && JSON.stringify(dupaAp) === JSON.stringify([mihai.id, ion.id, null]) && toate.j.actiuneId > 0 && toate.j.ramasMs > 0 &&
-    toate.j.text === 'Gata: 3 schimbări. Se pot anula 10 minute.', toate.text.slice(0, 300) + ' ' + JSON.stringify(dupaAp));
+    toate.j.text === 'Gata: 3 schimbări. Se pot anula în următoarele 10 minute.', toate.text.slice(0, 300) + ' ' + JSON.stringify(dupaAp));
   const p1 = await json('GET', '/api/insight/soferi-masini', ana.ck);
   T('…după: trei în regulă; rămâne doar B 112 RFG fără șofer (scos până trece permisul nou), fără altă propunere; numărul de lângă pagină = 1',
     p1.j.rezumat.inRegula === 3 && p1.j.rezumat.deRezolvat === 1 && p1.j.rezumat.deRezolvatText === 'o mașină fără șofer' && !(p1.j.propuneri || []).length &&

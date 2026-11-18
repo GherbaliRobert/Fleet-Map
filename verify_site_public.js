@@ -266,15 +266,17 @@ const LEGATE = [
   ['/agenti-ai', 'ralantiul de peste două ore', num(AG, /const IDLE_MIN_MINUTES = (\d+);/) === 120, 'IDLE_MIN_MINUTES din agents.js'],
   ['/agenti-ai', 'cel mult 4h30 fără o pauză de 45 de minute și 9 ore pe zi', /CONT_LIMIT_MIN = 270, DAILY_LIMIT_MIN = 540/.test(AG) && /segmentTrack\(pts, 45 \* 60\)/.test(AG), 'limitele din raCompliance (agents.js)'],
   ['/agenti-ai', 'o oprire de cel puțin 45 de minute e socotită pauză', /segmentTrack\(pts, 45 \* 60\)/.test(AG), 'pauza din raCompliance (agents.js)'],
+  // P33 din inventar (18.11): raportul cerut stă 7 zile în Istoric rapoarte, cât ține și aplicația.
+  ['/agenti-ai', 'rămâne 7 zile în Istoric rapoarte', /const ZILE_ISTORIC_RAPOARTE = 7;/.test(SRV), 'ZILE_ISTORIC_RAPOARTE din server.js'],
   ['/agenti-ai', 'reapare abia după 12 ore', /if \(ageH < 12\) return null;/.test(DBJS), 'fereastra din createAgentFinding (db.js)'],
   // Pachetele RA Insight (14.10): regula trecerii și Start, din pachete.js.
   ['/agenti-ai', 'RA Insight are pachetul Start inclus', PK.dupaCod('start').pret === 0, 'Start din pachete.js nu mai e inclus (0 lei)'],
   ['/pachete-ra-insight', 'Pe Start, cele 50 de răspunsuri se reîncarcă tot pe 1', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
   ['/pachete-ra-insight', '<b>Un pachet mai mare</b> se aplică din ziua confirmării, iar luna aceea se facturează pe zile', /const deLa = inceputZi\(acum\)/.test(PKJS) && /function liniiFactura\(o\)/.test(PKJS), 'trecerea la un pachet mai mare din pachete.js (din ziua confirmării, pe zile)'],
-  ['/pachete-ra-insight', '<b>Un pachet mai mic</b> se aplică de la 1 a lunii următoare', /const deLa = inceputLunaUrm\(acum\)/.test(PKJS), 'trecerea la un pachet mai mic din pachete.js (de la 1 a lunii următoare)'],
+  ['/pachete-ra-insight', '<b>Un pachet mai mic</b> se aplică din prima zi a lunii următoare', /const deLa = inceputLunaUrm\(acum\)/.test(PKJS), 'trecerea la un pachet mai mic din pachete.js (din prima zi a lunii următoare)'],
   ['/pachete-ra-insight', 'confirmarea vine pe email, în PDF', /_trimiteConfirmarePachet\(rand, r\.co, u\)/.test(SRV), 'emailul confirmării (server.js)'],
   // RA Insight în prim-plan (16.11, Alin: „1. A … 3. da"): cifrele scrise lângă telefoane.
-  ['/', 'și se poate anula 10 minute', require('./soferi_masini.js').ANULARE_MIN === 10, 'ANULARE_MIN din soferi_masini.js (cât ține „Anulează" după „Da")'],
+  ['/', 'și se poate anula în următoarele 10 minute', require('./soferi_masini.js').ANULARE_MIN === 10, 'ANULARE_MIN din soferi_masini.js (cât ține „Anulează" după „Da")'],
   ['/pachete-ra-insight', 'răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
   // Pachetele pe prima pagină = telefoanele de pe /pachete-ra-insight (17.11, Alin: „2. da").
   ['/', 'răspunsul vine pe loc, din rapoarte. 50 de răspunsuri pe lună.', PK.dupaCod('start').intrebari === 50, 'Start din pachete.js are ' + PK.dupaCod('start').intrebari + ' de răspunsuri'],
@@ -395,6 +397,11 @@ for (const [cale, t, adevarat, unde, doarme] of LEGATE) {
     const ld = (html.match(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g) || []).join(' ');
     const m = faraMarcaj(html).match(/„[^”"„]{1,80}"/) || ld.match(/„[^”"„\\]{1,80}\\"/);
     check(!m, p.cale + ': ghilimeaua de închidere e ” (cea românească), nu " — „' + (m ? m[0] : '') + '"');
+  }
+  // Cartela SIM e treaba NOASTRĂ (Alin, 18.11: „clientul nu are treabă cu cartela SIM. Nu o spunem nicăieri."): nici în costuri, nici la echipament.
+  for (const p of PAGINI) {
+    const m = (HTML[p.cale] || '').replace(/<!--[\s\S]*?-->/g, ' ').match(/cartel[aăe]\s*SIM|(?<![A-Za-z])SIM(?![A-Za-z])/);
+    check(!m, p.cale + ': cartela SIM nu se pomenește pe site — „' + (m ? m[0] : '') + '"');
   }
 }
 

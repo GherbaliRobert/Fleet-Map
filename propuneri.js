@@ -202,7 +202,7 @@ function cardAlerta(o) {
     randuri: [{ l: 'Ce urmăresc', v: 'Depășire viteză', b: true }, { l: 'Peste', v: o.prag + ' km/h' }, { l: 'Pe', v: opt.t }, { l: 'Numele alertei', v: nume }],
     campuri: { prag: o.prag, imei: String(o.imei || ''), nume: nume, optiuni: o.optiuni || [], min: PRAG_MIN, max: PRAG_MAX },
     dovT: 'Din ultimele ' + ZILE_ISTORIC + _de(ZILE_ISTORIC) + 'zile', dovezi: doveziViteza(o),
-    sub: o.poate ? 'Se face exact ca din Management › Alerte › Adaugă regulă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. O oprești oricând din lista de alerte; se poate anula ' + soferiMasini.ANULARE_MIN + ' minute.'
+    sub: o.poate ? 'Se face exact ca din Management › Alerte › Adaugă regulă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. O oprești oricând din lista de alerte; se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.'
       : 'Doar cine poate schimba alertele apasă „Da"' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, pune alerta', poate: !!o.poate
   };
@@ -280,7 +280,7 @@ function cardDiscutie(o) {
     randuri: [{ l: 'Șoferul', v: s.nume, b: true }, { l: 'Când', v: 'azi, din clipa în care apeși Da' }, { l: 'Despre', v: o.despre || '—' }],
     campuri: { nota: o.despre || '', max: NOTA_MAX },
     dovT: 'Din RA Drive', dovezi: dov,
-    sub: o.poate ? 'Se face exact ca din RA Drive › „Am vorbit cu el”. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula ' + soferiMasini.ANULARE_MIN + ' minute. Șoferul nu primește niciun mesaj.'
+    sub: o.poate ? 'Se face exact ca din RA Drive › „Am vorbit cu el”. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute. Șoferul nu primește niciun mesaj.'
       : 'Doar cine conduce flota apasă „Da"' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, notează', poate: !!o.poate
   };

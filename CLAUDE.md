@@ -440,6 +440,12 @@ Confidențialitate.
   Google; Termenii rămân la persoana a treia („Clientul”). Fără „dumneavoastră”, „vă”, „Vreți / Vedeți / Cereți…”; ghilimeaua de închidere e
   ”, nu ". Textele luate din aplicație (telefoanele animate, caseta RA Insight, pachetele) se schimbă și în aplicație. Păzit de
   `verify_site_public.js` (3f, pe tot HTML-ul, fără Termeni).
+- **Cartela SIM nu apare pe site** (Alin, 18.11: „clientul nu are treabă cu cartela SIM. Nu o spunem nicăieri."): costul unic = aparatele
+  (dacă le cumperi; se pot și închiria) și instalarea; aparatul „transmite singur”. Păzit de `verify_site_public.js` (3f).
+- **Cele 55 de texte „de discutat” din inventar** (18.11, „6 da"): pe lângă cele de mai sus, legătura la calculatorul de bord și la mașinile mici
+  (cititor CAN), exportul datelor „la cerere” (în aplicație nu e buton), RA Insight „de la pachetul Basic”, „Pe Start nu pleacă nimic în afara
+  aplicației”, raportul cerut „rămâne 7 zile în Istoric rapoarte” (LEGAT de `ZILE_ISTORIC_RAPOARTE`), „inclus în pachet” (nu „nu se numără”),
+  „se poate anula în următoarele 10 minute” (și pe cartonașele din aplicație — `ANULARE_MIN`). NU pune înapoi formele vechi.
 - **Programul de lucru NU ascunde poziții** (P48 din inventar, 17.11): aplicația anunță „Mișcare în afara programului”
   (`checkAfterHoursMovement`) și înregistrează pozițiile și atunci. Întrebările frecvente spun exact asta; NU promite pe site un „mod privat”
   care nu există.
@@ -503,7 +509,7 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
   de rezervă (site-ul, închis); aplicația le dă din tema ei (`.insp-pk-demo`, app.css) — NU le defini pe elementele telefonului.
 - **Pe site:** „RA Insight" primul în meniu (sus, pe telefon, subsol); caseta veche de sub agenți (`.ra-insight`) a ieșit; pachetele de pe prima
   pagină = cele două telefoane (`.tel-doi`, în `#ra-insight`; 3d le caută acolo); „de la Basic" pe analiză și pe propunerile cu „Da"; cifrele de lângă telefoane sunt în `LEGATE` („se
-  poate anula 10 minute" = `ANULARE_MIN`, „50 de răspunsuri" = Start). Chenarul Basic și coloana lui din comparație sunt VERZI (mov până pe 16.11).
+  poate anula în următoarele 10 minute" = `ANULARE_MIN`, „50 de răspunsuri" = Start). Chenarul Basic și coloana lui din comparație sunt VERZI (mov până pe 16.11).
 - **Primul ecran, textele din 17.11 (Alin, după patru variante: „Monitorizează-ți flota mi se pare autoritar"; „Vezi ce poate RA Insight,
   exclus"):** eticheta „RA Insight · asistentul AI al flotei tale", titlul „Monitorizare GPS și analiză cu inteligență artificială"
   (`.grad-ai`), sloganul „De la poziția mașinii la decizia potrivită" (`.hero-tag`), textul, UN buton „Descoperă RA Insight ↓" (`#ra-insight`).

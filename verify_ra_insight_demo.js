@@ -214,8 +214,8 @@ T('Start: telefonul numără din ' + PK.dupaCod('start').intrebari + ' și coloa
   H.includes('Conturi: ' + st0.cifre[0].val + ' · Răspunsuri pe loc: ' + st0.cifre[2].val) && H.includes(PK.dupaCod('start').intrebari + ' de răspunsuri pe lună')));
 
 console.log('\n4. Întrebările din telefoane trec prin regulile aplicației și ies cum le arată telefonul');
-const FISA = INS.fisaFlotei([{ imei: '1', name: 'VW Caddy', plate: 'B 204 RAT', driver_name: 'Mihai Ionescu' }, { imei: '2', name: 'Iveco Stralis', plate: 'B 77 TIR', driver_name: 'Ion Popa' },
-  { imei: '3', name: 'Dacia Logan', plate: 'B 31 LOG' }, { imei: '4', name: 'Ford Transit', plate: 'B 18 VAN' }]);
+const FISA = INS.fisaFlotei([{ imei: '1', name: 'VW Caddy', plate: 'B 204 RAT', driver_name: 'Mihai Ionescu' }, { imei: '2', name: 'Iveco Stralis', plate: 'B 77 TIR' },
+  { imei: '3', name: 'Dacia Logan', plate: 'B 31 LOG' }, { imei: '4', name: 'Ford Transit', plate: 'B 18 VAN', driver_name: 'Ion Popa' }]);
 const q = (k, singur) => (singur && TX.sc[k].qSingur) || TX.sc[k].q;
 const g1 = INS.gasesteInText(q('unde'), FISA);
 T('„' + q('unde') + '" → răspunsul pe loc „unde e", pe B 204 RAT', JSON.stringify(FQ.detectIntents(q('unde'))) === '["where"]' && INS.potrivitPentruRapid(q('unde'), g1, false) && g1.masini.map((m) => m.imei).join() === '1');

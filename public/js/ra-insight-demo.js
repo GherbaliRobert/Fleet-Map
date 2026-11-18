@@ -86,7 +86,7 @@
             '<div><i class="fa-solid fa-circle-info ri-ii"></i><span>Ca toate alertele de viteză din aplicație, sună cu 10 km/h peste prag: când trece de 130 km/h.</span></div>' +
             '<div><i class="fa-solid fa-circle-info ri-ii"></i><span>Ajunge la cei care primesc azi alertele firmei, ca orice altă alertă.</span></div></div>' +
             '<div class="ri-btns" data-rol="da">' + pas('fa-check', 'Da, pune alerta', 'ri-da') + pas('fa-pen', 'Schimbă') + pas('fa-xmark', 'Nu') + '</div>' +
-            '<div class="ri-sub">Se face exact ca din Management › Alerte › Adaugă regulă, cu drepturile tale. În jurnal: „Andrei, prin RA Insight”. O oprești oricând din lista de alerte; se poate anula 10 minute.</div></div>',
+            '<div class="ri-sub">Se face exact ca din Management › Alerte › Adaugă regulă, cu drepturile tale. În jurnal: „Andrei, prin RA Insight”. O oprești oricând din lista de alerte; se poate anula în următoarele 10 minute.</div></div>',
           apasat: 'Ai apăsat Da · ' + ORA,
           gata: '<div class="ri-gata"><div class="ri-gata-t"><i class="fa-solid fa-circle-check"></i><span>Gata. Alerta <b>Viteză peste 120 — B 204 RAT</b> e pornită de azi, ' + ORA + '.</span></div>' +
             '<div class="ri-btns">' + pas('fa-rotate-left', 'Anulează · mai ai 9:59', 'ri-anul') + pas('fa-bell', 'Vezi alertele') + '</div>' +
@@ -97,7 +97,7 @@
             '<tr><td>B 77 TIR</td><td>412</td><td>1</td><td>5 h 40 min</td></tr><tr><td>B 31 LOG</td><td>268</td><td>1</td><td>3 h 55 min</td></tr>' +
             '<tr><td>B 204 RAT</td><td>184</td><td>1</td><td>4 h 12 min</td></tr><tr><td>B 18 VAN</td><td>151</td><td>1</td><td>3 h 5 min</td></tr></tbody></table>' },
         soferi: { q: 'Care șofer a mers cel mai mult peste 90 km/h săptămâna trecută?', fel: 'ai', det: '1 întrebare', dur: '6 secunde', gand: 2100, numara: true,
-          corp: '<p><b>Ion Popa</b> (B 77 TIR) a mers cel mai mult peste 90 km/h săptămâna trecută: <b>126 km</b>, în 4 zile. Urmează <b>Mihai Ionescu</b> (B 204 RAT), cu <b>41 km</b>.</p>' +
+          corp: '<p><b>Ion Popa</b> (B 18 VAN) a mers cel mai mult peste 90 km/h săptămâna trecută: <b>126 km</b>, în 4 zile. Urmează <b>Mihai Ionescu</b> (B 204 RAT), cu <b>41 km</b>.</p>' +
             '<p>Ceilalți șoferi au sub 10 km fiecare.</p>',
           dupa: ok('Cifrele le-am luat din rapoarte.') },
         ore: { q: 'Câte ore poate conduce un șofer de camion într-o săptămână?', fel: 'ai', det: '1 întrebare · sursă externă, 1 căutare', dur: '9 secunde', gand: 2600, numara: true, sursa: true,
