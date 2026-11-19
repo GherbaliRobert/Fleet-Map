@@ -616,6 +616,20 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-19
 
+### AMÂNDOI · Pagina „Setează-ți parola”: „ochiul” și sfaturile pentru o parolă puternică
+*Alin, 19.11, cu poza paginii („Parola asta e prea cunoscută”): „vreau la parolă să existe «ochi» să vizualizezi ce parolă scrii și
+sugestii pentru a face parola puternică — semne, cifre, litere mari”.*
+
+**Ce am schimbat:** pe pagina din linkul de parolă (orice cont nou, invitație sau „Trimite link de parolă”): un ochi în fiecare casetă,
+care arată sau ascunde ce scrii (în amândouă deodată); sub prima casetă, o bară „Slabă / Acceptabilă / Bună / Puternică” și lista „Pentru o
+parolă puternică”, bifată pe loc: cel puțin 10 caractere (obligatoriu), litere mari și mici, cifre, semne; un exemplu („Camionul-Verde-7!”)
+și „nu folosi numele tău sau adresa de email”; sub a doua casetă, „Parolele coincid ✓” sau „nu coincid încă”. Regula serverului nu s-a
+schimbat (10 caractere, două feluri, fără parolele foarte cunoscute): restul sunt sfaturi, nu obligații.
+
+**Ce vede fondatorul / clientul:** aceeași pagină, la orice link de parolă.
+
+Reper: `public/set-password.html`; probă: `verify_utilizatori.js` (ochiul, sfaturile, aceeași cifră ca serverul).
+
 ### AMÂNDOI · Linkul de parolă nu pleca de pe ratrack.ro („date/time field value out of range”) + „Prelungește” trimite un link nou
 *Alin, 19.11, cu o poză, după prima cerere de cont demo pe ratrack.ro: „Acces acordat, DAR: Contul e activ, dar linkul de parolă NU a
 plecat pe email (date/time field value out of range: "1795691771321")… am verificat mailul și nu am primit linkul”.*

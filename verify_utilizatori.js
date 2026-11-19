@@ -141,6 +141,12 @@ T('„Cereri demo”: pe telefon, la fel (aceeași foaie cu linkul)',
   T('pagina de parolă cere minim ' + pmin + ' caractere, exact ca serverul',
     pmin >= 10 && minl.length === 2 && minl.every((n) => n === pmin) && jsMin === pmin && setp.indexOf('minim ' + pmin + ' caractere') >= 0,
     JSON.stringify({ pmin: pmin, minlength: minl, js: jsMin }));
+  // 19.11, Alin: „ochi” ca să vezi ce scrii + sfaturi pentru o parolă puternică (semne, cifre, litere mari).
+  T('pagina de parolă: „ochiul” pe amândouă casetele (arată / ascunde), cu nume pentru cititoarele de ecran',
+    (setp.match(/<button type="button" class="ochi" aria-label="Arată parola"/g) || []).length === 2 && /i1\.type = i2\.type = da \? 'text' : 'password'/.test(setp));
+  T('pagina de parolă: sfaturile bifate pe loc (10 caractere obligatoriu; litere mari și mici, cifre, semne) și „Parolele coincid”',
+    /Cel puțin 10 caractere <small>\(obligatoriu\)<\/small>/.test(setp) && /Litere mari și mici/.test(setp) && /Cifre \(0–9\)/.test(setp) && /Semne \(/.test(setp)
+    && /bifa\('s-lung', p\.length >= 10\)/.test(setp) && /Parolele coincid ✓/.test(setp));
 }
 
 sect('3. Ultimul administrator al unei firme');

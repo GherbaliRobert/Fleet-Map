@@ -2924,7 +2924,9 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
   arunca și scria „Fără administrator încă", deși contul exista — fără SMTP, fiecare client nou rămânea fără
   cale de a-și pune parola. Orice ecran nou care face conturi arată linkul întors de server.
 - **Pagina `set-password.html` cere `PAROLA_MIN`** (10), exact ca serverul — scria „min 6". Legate prin
-  `verify_utilizatori.js`; dacă schimbi cifra într-o parte, proba pică.
+  `verify_utilizatori.js`; dacă schimbi cifra într-o parte, proba pică. Din 19.11 (Alin): „ochiul” (`.ochi`, arată / ascunde ambele casete),
+  bara de tărie și sfaturile bifate pe loc (10 caractere = obligatoriu; litere mari și mici, cifre, semne = sfaturi — serverul NU le cere,
+  dinadins: `verificaParola` cere doar două feluri), „Parolele coincid ✓”. NU face din sfaturi obligații fără Alin.
 - Păzit de `verify_utilizatori.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Parola schimbată închide restul (02.11; Robert: „rezolvă")
