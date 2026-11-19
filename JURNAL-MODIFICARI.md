@@ -616,6 +616,33 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-19
 
+### AMÂNDOI · Linkul de parolă nu pleca de pe ratrack.ro („date/time field value out of range”) + „Prelungește” trimite un link nou
+*Alin, 19.11, cu o poză, după prima cerere de cont demo pe ratrack.ro: „Acces acordat, DAR: Contul e activ, dar linkul de parolă NU a
+plecat pe email (date/time field value out of range: "1795691771321")… am verificat mailul și nu am primit linkul”.*
+
+**Ce era:** aplicația scrie termenul linkului de parolă ca număr (milisecunde), dar baza de pe ratrack.ro, făcută demult, avea coloana
+ca dată, iar pornirea serverului nu schimbă o coloană care există deja. Baza din probe face singură dată din număr, de aceea nicio probă
+n-a văzut nimic; baza de pe server îl refuză. Pica orice link de parolă, nu doar cel demo: invitațiile, „Trimite link de parolă”.
+Reprodus întocmai pe un Postgres ca cel de pe server: aceeași eroare, cuvânt cu cuvânt.
+
+**Ce am schimbat:**
+- La pornire, serverul se uită la cele două coloane (termenul linkului și termenul accesului). Dacă le găsește ca dată, le trece pe
+  număr, cu valorile păstrate. Pe Postgres, cu baza veche: linkul pleacă, parola se pune, contul demo intră.
+- **„Prelungește”, la omul care n-a intrat încă în cont** (linkul n-a ajuns ori a expirat după 7 zile), trimite din nou emailul contului
+  demo, cu un link nou. Înainte îi scria „cu aceeași parolă”, deși omul n-avea una. Dacă emailul nu pleacă, linkul apare pe loc
+  (pe telefon se copiază).
+- Mesajul de la „Aprobă”, când linkul nu pleacă, trimite acum la „Prelungește”. Înainte trimitea în Utilizatori, unde fondatorul vede
+  doar colegii noștri, nu și conturile demo.
+
+**Ce vede fondatorul:** „Aprobă” trimite linkul. Pentru cererea de azi apeși „Prelungește”: omul primește emailul contului demo, cu un
+link nou. Fereastra „Prelungește” spune că, dacă omul n-a intrat încă, primește și un link nou.
+
+**Ce vede clientul:** linkul de parolă ajunge pe email, la orice cont nou sau la „Trimite link de parolă”.
+
+Reper: `db.js` (coloanele `users.reset_expires` / `access_until` aduse la BIGINT la pornire), `server.js` (aprobarea, `/prelungeste`),
+`cont_demo.js` (`dupaPrelungire`), `public/index.html` (`raxDemoReqPrelungeste`), telefonul (`DemoRequests.tsx`); probă nouă:
+`verify_coloane_ms.js` (în `npm test`; o bază veche, eroarea de pe server ca martor, apoi pornirea), `verify_demo.js` (8 verificări noi).
+
 ### AMÂNDOI · Contul demo: RA Insight pe butoane, flota de pe site, agenții, „Prelungește” (+ găsite pe drum: „Email”, „Vizualizare”, „30 de zile”)
 *Alin, 19.11: „după ce îi dăm cont demo, poate accesa RA Insight din contul demo?… cel de pe Start… dacă nu e făcut traseul ăsta, să-l facem”;
 „aici ar trebui să aibă niște texte despre demo 1, demo 2”; „1. varianta 2; 2. fără întrebări taxate pe contul demo, ci doar predefinite conform

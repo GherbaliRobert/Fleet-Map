@@ -137,6 +137,18 @@ const cont = require('./cont_demo');
     T('telefonul: „24 de ore”, „30 de zile”, „Prelungește”', /label: '24 de ore'/.test(tel) && /label: '30 de zile'/.test(tel) && /Prelungește/.test(tel) && /prelungesteDemoRequest/.test(ep));
     const menu = fs.readFileSync(P('mobile/src/screens/Menu.tsx'), 'utf8');
     T('telefonul: rolul „Vizualizare”', /viewer: 'Vizualizare'/.test(menu) && !/'Viewer'/.test(menu));
+    // 19.11, pe ratrack.ro: linkul de parolă n-a plecat la aprobare, iar mesajul îl trimitea pe fondator în Utilizatori — unde el vede
+    // doar colegii noștri, nu și conturile demo. Acum „Prelungește” îi trimite omului care n-a intrat încă un link nou.
+    const srvSrc = fs.readFileSync(P('server.js'), 'utf8');
+    T('aprobarea fără link trimite la „Prelungește”, nu în Utilizatori', /Apasă „Prelungește” pe cerere: cât omul n-a intrat în cont, primește din nou linkul\./.test(srvSrc)
+      && !/Trimite-i-l din Utilizatori, cu „Trimite link de parolă”/.test(srvSrc));
+    T('fereastra „Prelungește” nu mai promite „aceeași parolă” (web și telefon)', /Dacă n-a intrat încă în cont, primește și un link nou de parolă\./.test(html) && /Dacă n-a intrat încă în cont, primește și un link nou de parolă\./.test(tel)
+      && !/aceeași adresă și aceeași parolă; îi scriem/.test(html) && !/cu aceeași adresă și aceeași parolă\. Îi scriem/.test(tel));
+    T('linkul nou care n-a plecat pe email se arată pe loc (web) / se copiază (telefon)', /if \(j\.link && window\._usrAratLinkul\) \{ raxToast\(j\.text \|\| 'Prelungit'/.test(html) && /navigator\.clipboard\.writeText\(r\.link\)/.test(tel));
+    T('textul de după: „N-a intrat încă în cont: i-am trimis pe email un link nou de parolă.”',
+      /N-a intrat încă în cont: i-am trimis pe email un link nou de parolă\.$/.test(cont.dupaPrelungire({ nume: 'Ion', pana: z0 + 86400000, trimis: true, linkNou: true }))
+      && /N-a intrat încă în cont: emailul n-a plecat; trimite-i tu linkul nou de parolă\.$/.test(cont.dupaPrelungire({ nume: 'Ion', pana: z0 + 86400000, trimis: false, linkNou: true }))
+      && /I-am scris pe email\.$/.test(cont.dupaPrelungire({ nume: 'Ion', pana: z0 + 86400000, trimis: true })));
 
     sect('4. Pe server pornit (fără cheie de AI, Brevo fals)');
     await peServer();
@@ -237,6 +249,20 @@ async function peServer() {
     lst = (await J('GET', '/api/admin/demo-requests', S)).j || [];
     const id3 = (lst.find((r) => r.email === 'ion@nou.ro') || {}).id;
     T('o cerere neaprobată nu se prelungește (400)', (await J('POST', '/api/admin/demo-requests/' + id3 + '/prelungeste', S, { hours: 24 })).s === 400);
+    // Omul care n-a intrat încă (linkul n-a ajuns ori a expirat): „Prelungește” îi trimite din nou emailul contului demo, cu un link NOU.
+    T('„Prelungește” la omul care a intrat deja: emailul prelungirii, fără link nou', pr.j.linkNou === false, pr.j);
+    const ap3 = await J('POST', '/api/admin/demo-requests/' + id3 + '/approve', S, { hours: 24 });
+    T('a treia cerere, aprobată pe 24 de ore', ap3.s === 200 && ap3.j.invited === true, ap3.j);
+    const inainte = emailuri.length;
+    const pr3 = await J('POST', '/api/admin/demo-requests/' + id3 + '/prelungeste', S, { hours: 168 });
+    await sleep(500);
+    const nou3 = emailuri.slice(inainte).filter((x) => (x.to || []).some((t) => t.email === 'ion@nou.ro'));
+    const tok3 = nou3[0] ? (String(nou3[0].textContent || '').match(/token=([0-9a-f]+)/) || [])[1] : null;
+    T('„Prelungește” la omul care n-a intrat încă: emailul contului demo, cu un link NOU de parolă', pr3.s === 200 && pr3.j.linkNou === true && pr3.j.email === true
+      && nou3.length === 1 && nou3[0].subject === 'Contul tău demo RA Track' && /Îl ai 7 zile/.test(String(nou3[0].textContent || '')) && !!tok3
+      && /N-a intrat încă în cont: i-am trimis pe email un link nou de parolă\./.test(pr3.j.text), { j: pr3.j, subiecte: nou3.map((x) => x.subject) });
+    T('linkul nou merge: își pune parola și intră', !!tok3 && (await J('POST', '/api/auth/set-password', null, { token: tok3, password: 'Duba-Verde-2026!' })).s === 200
+      && !!(await login('ion@nou.ro', 'Duba-Verde-2026!')));
   } finally {
     try { srv.kill(); } catch (e) {}
     try { fals.close(); } catch (e) {}

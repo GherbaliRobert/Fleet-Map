@@ -80,7 +80,9 @@ export function DemoRequests() {
     setBusy(true);
     try {
       const r: any = await Api.prelungesteDemoRequest(prel.id, { hours });
-      showToast(r?.text || 'Prelungit', !r?.email);
+      // Linkul nou de parolă n-a plecat pe email (omul n-a intrat încă în cont): îl copiem, ca să-l trimiți tu.
+      if (r?.link) { try { await navigator.clipboard.writeText(r.link); } catch (e) { /* fără clipboard: textul spune ce e de făcut */ } }
+      showToast((r?.text || 'Prelungit') + (r?.link ? ' Linkul e copiat.' : ''), !r?.email);
       setPrel(null); reload();
     } catch (e: any) { showToast(e?.message || 'Nu s-a putut prelungi', true); }
     finally { setBusy(false); }
@@ -178,7 +180,7 @@ export function DemoRequests() {
             <div class="sheet-body">
               <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:12px">
                 {prel
-                  ? <>Contul <b>{prel.email}</b> merge încă atât, de acum, cu aceeași adresă și aceeași parolă. Îi scriem pe email noua dată.</>
+                  ? <>Contul <b>{prel.email}</b> merge încă atât, de acum. Îi scriem pe email noua dată. Dacă n-a intrat încă în cont, primește și un link nou de parolă.</>
                   : <>Se creează un cont pe <b>{(approving as any).email}</b>, cu vehiculele demonstrative, și îi trimitem link de setare a parolei.</>}
               </div>
               <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:6px">Durata accesului</div>

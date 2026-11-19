@@ -230,6 +230,16 @@ Pe GitHub, fiecare împingere trece prin cinci pași, **în serie, cu oprire la 
   atunci la 30, `DOC_DAYS_LEAD`, ca telefonul să sune când se colorează lista). Întâi întreabă care
   e regula de azi; abia apoi decide cine greșește, codul sau proba. Iar când o rescrii, **rescrie-o
   pe regula nouă** — nu-i slăbi asertul ca să treacă.
+- **PGlite (probele) iartă ce Postgres-ul de pe ratrack.ro refuză (19.11).** Un număr (milisecunde) într-o coloană de DATĂ merge în probe
+  (PGlite îl face singur dată), dar pe server pică: „date/time field value out of range: "1795691771321"”. Așa n-a plecat niciun link de
+  parolă de pe ratrack.ro (`users.reset_expires` era dată în baza veche; `ADD COLUMN IF NOT EXISTS … BIGINT` nu schimbă o coloană care
+  există). Acum db.js aduce `users.reset_expires` / `access_until` la BIGINT la pornire (păzit de `verify_coloane_ms.js`). De reținut:
+  (1) o coloană în milisecunde e BIGINT, iar o schimbare de TIP pentru o coloană care există e un pas la pornire, nu doar `ADD COLUMN`;
+  (2) un drum nou care scrie în bază se încearcă și pe Postgres adevărat — în cutie există `/usr/lib/postgresql/16/bin` (`initdb` ca
+  utilizatorul `postgres`, apoi `DATABASE_URL` spre el); (3) o eroare care apare doar pe ratrack.ro se reproduce pe o bază „veche” făcută
+  de mână (coloana cu tipul vechi), nu pe una nouă — cea nouă are tipurile din cod și nu arată nimic.
+- **O poartă oprită la jumătate lasă servere de probă pornite** (19.11): următoarea rulare dă de portul ocupat și vorbește cu serverul
+  vechi („Username-ul există deja” în `verify_preferinte.js`). După ce oprești poarta: `ps … | grep "node server.js"` în `fm-gate`, oprește-le.
 
 ## Emailul: o singură cale, `mailer.js` — Brevo pe HTTPS sau SMTP (Robert, 12.10)
 Railway Hobby blochează SMTP, iar aplicația trimitea doar prin SMTP: nu pleca nimic (facturi, contracte, invitații).
@@ -597,6 +607,9 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
   zilele în jos (abia aprobat pe 7 zile scria „încă 6 zile”, 19.11).
 - **„Prelungește”** = `POST /api/admin/demo-requests/:id/prelungeste` (super-admin, cerere aprobată, contul încă în firma demo): termenul nou de
   ACUM, pe cont și pe cerere, email la om. Web: `raxDemoReqPrelungeste` (aceleași durate ca la aprobare, `_dqDurate`); telefon: `DemoRequests.tsx`.
+  **Omul care n-a intrat încă** (`last_login` gol: linkul n-a ajuns sau a expirat după 7 zile) primește din nou emailul contului demo, cu un link
+  NOU (`trimiteLinkParola` cu `demo`), nu „aceeași parolă”; dacă emailul nu pleacă, `link` în răspuns (web: `_usrAratLinkul`; telefon: copiat).
+  E singura cale a fondatorului spre el: în Utilizatori vede doar colegii noștri — de aceea mesajul de la „Aprobă” trimite la „Prelungește”.
 - Păzit de **`verify_demo.js`** (în `npm test`; agenții adevărați pe o zi de lucru fixă, la 15:00; pe server pornit, fără cheie de AI, Brevo fals).
 
 ## RA Insight — vedeta: un singur asistent, cu memorie (Alin, 02.10: „da, fă tot")

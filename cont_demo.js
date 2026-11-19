@@ -95,7 +95,12 @@ function emailPrelungire(o) {
     '— Echipa RA Track'
   ].join('\n') };
 }
-// Mesajul de după „Prelungește” (pe ecranul nostru).
-function dupaPrelungire(o) { return 'Contul demo al lui ' + (o.nume || o.email) + ' merge până pe ' + cand(o.pana) + '.' + (o.trimis ? ' I-am scris pe email.' : ' Emailul n-a plecat; spune-i tu.'); }
+// Mesajul de după „Prelungește” (pe ecranul nostru). `linkNou`: omul n-a intrat încă în cont, deci a primit (sau trebuie să
+// primească de la noi) un link nou de parolă, nu „aceeași parolă”.
+function dupaPrelungire(o) {
+  const cine = 'Contul demo al lui ' + (o.nume || o.email) + ' merge până pe ' + cand(o.pana) + '.';
+  if (o.linkNou) return cine + ' N-a intrat încă în cont: ' + (o.trimis ? 'i-am trimis pe email un link nou de parolă.' : 'emailul n-a plecat; trimite-i tu linkul nou de parolă.');
+  return cine + (o.trimis ? ' I-am scris pe email.' : ' Emailul n-a plecat; spune-i tu.');
+}
 
 module.exports = { LINK_MAX_ORE, LINK_OFERTA, CE_GASESTI, de, cate, durata, conturiActive, cand, ramas, banda, email, emailPrelungire, dupaPrelungire };

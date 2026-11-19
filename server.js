@@ -20814,7 +20814,7 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
       link: invited ? undefined : (rez.link || undefined),
       motiv: invited ? undefined : (rez.motiv || 'Emailul nu a plecat.'),
       warning: invited ? null
-        : 'Contul e activ, dar linkul de parolă NU a plecat pe email (' + String(rez.motiv || 'trimitere eșuată').replace(/\.+\s*$/, '') + '). Trimite-i-l din Utilizatori, cu „Trimite link de parolă” (pe web sau în aplicația actualizată).' });
+        : 'Contul e activ, dar linkul de parolă NU a plecat pe email (' + String(rez.motiv || 'trimitere eșuată').replace(/\.+\s*$/, '') + '). Apasă „Prelungește” pe cerere: cât omul n-a intrat în cont, primește din nou linkul.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/admin/demo-requests/:id/reject', requireAuth, requireSuperadmin, async (req, res) => {
@@ -20841,17 +20841,29 @@ app.post('/api/admin/demo-requests/:id/prelungeste', requireAuth, requireSuperad
     await db.updateDemoRequest(id, { access_until: until });
     invalidateAccessCache(u.id); roleCache.delete(u.id);
     await syncDemoSim('cont demo prelungit').catch(() => {});
-    let trimis = false;
-    try {
-      if (channels.emailConfigured && channels.emailConfigured() && u.email) {
-        const e = contDemo.emailPrelungire({ nume: u.full_name, email: u.email, pana: until, aplicatie: appBaseUrl(req) + '/app' });
-        await channels.sendEmailTo(u.email, e.subiect, e.text, null, null, { jurnal: { fel: 'invitatie', companyId: u.company_id } });
-        trimis = true;
-      }
-    } catch (e) { trimis = false; }
-    auditReq(req, 'set_access', 'demo_request', id, { user: u.username, hours: hours, until: until, email: trimis });
-    res.json({ ok: true, accessUntil: until, duration: contDemo.durata(hours), email: trimis,
-      text: contDemo.dupaPrelungire({ nume: u.full_name, email: u.email, pana: until, trimis: trimis }) });
+    // Omul care n-a intrat încă niciodată n-are parolă (linkul n-a ajuns, ori a expirat după 7 zile): primește din nou emailul
+    // contului demo, cu un link nou — nu „aceeași parolă”. Fondatorul n-are altă cale spre el: în Utilizatori vede doar colegii
+    // noștri (19.11, după ce linkul nu plecase de pe ratrack.ro).
+    const faraParola = u.last_login == null;
+    let trimis = false, link = null, motiv = null;
+    if (faraParola) {
+      let rez = { trimis: false, link: null, motiv: null };
+      try { rez = await trimiteLinkParola(req, Object.assign({}, u, { email: u.email || u.username }), { invite: true, demo: { ore: hours, pana: until } }); }
+      catch (e) { rez = { trimis: false, link: null, motiv: e.message }; }
+      trimis = !!rez.trimis; link = trimis ? null : (rez.link || null); motiv = trimis ? null : (rez.motiv || null);
+    } else {
+      try {
+        if (channels.emailConfigured && channels.emailConfigured() && u.email) {
+          const e = contDemo.emailPrelungire({ nume: u.full_name, email: u.email, pana: until, aplicatie: appBaseUrl(req) + '/app' });
+          await channels.sendEmailTo(u.email, e.subiect, e.text, null, null, { jurnal: { fel: 'invitatie', companyId: u.company_id } });
+          trimis = true;
+        }
+      } catch (e) { trimis = false; }
+    }
+    auditReq(req, 'set_access', 'demo_request', id, { user: u.username, hours: hours, until: until, email: trimis, linkNou: faraParola });
+    res.json({ ok: true, accessUntil: until, duration: contDemo.durata(hours), email: trimis, linkNou: faraParola,
+      username: u.username, link: link || undefined, motiv: motiv || undefined,
+      text: contDemo.dupaPrelungire({ nume: u.full_name, email: u.email, pana: until, trimis: trimis, linkNou: faraParola }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/admin/demo-requests/:id', requireAuth, requireSuperadmin, async (req, res) => {

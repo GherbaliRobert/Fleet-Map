@@ -644,6 +644,21 @@ async function initDb() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS demo_request_id INTEGER;
       END $$
     `);
+    // Termenul linkului de parolă și cel al accesului se scriu în MILISECUNDE (BIGINT). O bază mai veche (ratrack.ro) poate avea
+    // coloana ca DATĂ — `ADD COLUMN IF NOT EXISTS` nu schimbă o coloană care există. PGlite (probele) face singur dată din
+    // milisecunde; Postgres-ul de pe server le refuză: 19.11, Alin la „Aprobă” în Cereri demo: „linkul de parolă NU a plecat
+    // (date/time field value out of range: "1795691771321")” — orice link de parolă pica, nu doar cel demo. Coloana se aduce la
+    // BIGINT o dată, cu valorile păstrate. Păzit de verify_coloane_ms.js.
+    for (const col of ['reset_expires', 'access_until']) {
+      try {
+        const t = await client.query(`SELECT data_type FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = $1`, [col]);
+        const tip = t.rows[0] && t.rows[0].data_type;
+        if (tip && /^(timestamp|date)/.test(tip)) {
+          await client.query(`ALTER TABLE users ALTER COLUMN ${col} TYPE BIGINT USING (EXTRACT(EPOCH FROM ${col}) * 1000)::BIGINT`);
+          console.warn(`[DB] users.${col} era „${tip}” — adusă la BIGINT (milisecunde), cum o scrie codul.`);
+        }
+      } catch (e) { console.warn(`[DB] users.${col}: n-am putut-o aduce la BIGINT — ${e.message}`); }
+    }
 
     // Acces pe vehicule individuale (user -> imei)
     await client.query(`

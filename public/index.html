@@ -30968,12 +30968,14 @@ const pozitii = await r.json();</code></pre>
     window.raxDemoReqPrelungeste = async function (id) {
       var sel = $('dq-days-' + id); var hours = sel ? parseInt(sel.value) : 168;
       var lbl = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : (hours + ' ore');
-      if (!await raConfirm('Prelungești contul demo cu ' + lbl + ', de acum?\n\nOmul păstrează aceeași adresă și aceeași parolă; îi scriem pe email noua dată.', { okLabel: 'Prelungește', danger: false })) return;
+      if (!await raConfirm('Prelungești contul demo cu ' + lbl + ', de acum?\n\nÎi scriem pe email noua dată. Dacă n-a intrat încă în cont, primește și un link nou de parolă.', { okLabel: 'Prelungește', danger: false })) return;
       try {
         var r = await fetch('/api/admin/demo-requests/' + id + '/prelungeste', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ hours: hours }) });
         var j = await r.json();
         if (!r.ok) { raxToast(j.error || 'Nu s-a putut prelungi', 'error', 6000); return; }
-        raxToast(j.text || 'Prelungit', j.email ? 'success' : 'error', 6000);
+        // Linkul nou de parolă n-a plecat pe email: îl arătăm pe loc, în aceeași fereastră ca la aprobare.
+        if (j.link && window._usrAratLinkul) { raxToast(j.text || 'Prelungit', 'success', 4000); await window._usrAratLinkul(j.username || '', j.link, j.motiv); }
+        else raxToast(j.text || 'Prelungit', j.email ? 'success' : 'error', 6000);
       } catch (e) { raxToast('Eroare de rețea', 'error'); }
       raxLoadDemoReq();
     };
