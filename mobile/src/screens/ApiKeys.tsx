@@ -13,7 +13,7 @@ import './fondator.css';
 // serverul lasă și adminul de firmă (requireAdmin) — nu se atinge. Cheia în clar apare O SINGURĂ DATĂ.
 //
 // Numele rolurilor, ca pe web (ROLE_LABELS). Rolul propriu al firmei, dacă omul are unul, bate numele standard.
-const ROL: Record<string, string> = { superadmin: 'Super-admin', company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer' };
+const ROL: Record<string, string> = { superadmin: 'Super-admin', company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare' };
 const rol = (r: any, propriu?: any) => String(propriu || ROL[r] || r || '');
 const zi = (v: any) => { if (!v) return '–'; try { return new Date(v).toLocaleDateString('ro-RO'); } catch { return '–'; } };
 const cand = (v: any) => { if (!v) return 'niciodată'; try { return new Date(v).toLocaleString('ro-RO'); } catch { return 'niciodată'; } };

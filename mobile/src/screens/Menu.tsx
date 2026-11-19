@@ -205,7 +205,7 @@ export function Menu() {
 // Rezervă, când serverul nu trimite roleLabel (firma n-a redenumit rolul). Aceleași nume ca pe web (ROLE_LABELS):
 // „Admin companie” e singurul nume al rolului (jurnal, 23.09).
 function roleLabel(r?: string) {
-  const m: Record<string, string> = { superadmin: 'Super-admin', company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer' };
+  const m: Record<string, string> = { superadmin: 'Super-admin', company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare' };
   return (r && m[r]) || r || '';
 }
 

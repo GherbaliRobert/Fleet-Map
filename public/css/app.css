@@ -5311,6 +5311,14 @@ body.dark #edit-modal .vf-jos-txt.schimbat { color: #fdba74; }
 }
 
 
+/* ═══ Banda contului demo (19.11; Alin: „varianta 2”) — deasupra barei de sus, ca banda accesului. Textul vine de la server
+   (cont_demo.js); „Cere ofertă” duce la formularul de pe site. Verdele casei, cu pereche pe ambele teme. ═══ */
+.demo-banda { display: none; align-items: center; justify-content: center; gap: 10px 14px; flex-wrap: wrap; flex: 0 0 auto; position: relative; z-index: 1200;
+  padding: 8px 14px; font-size: 13px; font-weight: 600; line-height: 1.35; text-align: center; background: #0f2a1b; color: #d1fae5; border-bottom: 1px solid #166534; }
+.demo-banda-b { display: inline-flex; align-items: center; padding: 4px 14px; border-radius: 999px; background: #3FE07D; color: #06210F; font-weight: 800; text-decoration: none; white-space: nowrap; }
+.demo-banda-b:hover { filter: brightness(1.06); }
+body:not(.dark) .demo-banda { background: #ecfdf5; color: #14532d; border-bottom-color: #86efac; }
+
 /* ═══ Casetele și listele derulante: UN SINGUR FEL, în toată aplicația (Alin, 06.11: „1 da, 2 da”) ═════════════════════
    Alin, cu trei poze (fișa șoferului, lista „Companie”, lista „Tip combustibil”): „casetele… și dropdown-urile… hai să le
    modernizăm, că sunt din anii 2000". Măsurat înainte (06.11, 42 de ecrane × 2 lățimi): 56 de feluri de casete — 8

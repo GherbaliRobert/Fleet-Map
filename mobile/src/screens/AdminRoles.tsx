@@ -31,7 +31,7 @@ const CAMPURI: Camp[] = ['drepturi', 'ecrane', 'editari', 'rapoarte'];
 const ROL_BAZE: [string, string, string][] = [
   ['manager', 'Manager', 'Vede toată flota și o modifică: mașini, șoferi, alerte, documente.'],
   ['dispatcher', 'Dispecer', 'Vede mașinile care i se dau, confirmă alerte și scoate rapoarte.'],
-  ['viewer', 'Viewer', 'Doar se uită la mașinile care i se dau. Nu modifică nimic.'],
+  ['viewer', 'Vizualizare', 'Doar se uită la mașinile care i se dau. Nu modifică nimic.'],
 ];
 
 type Edit = { r: any; nume: string; draft: Record<Camp, Bifa[]>; fila: Camp; msg: FmMesaj; busy: boolean };

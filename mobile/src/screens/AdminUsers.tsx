@@ -19,7 +19,7 @@ import { LINK_CONTURI, TITLU_RA, arataEticheta, cuPachetFirmei, randConturi } fr
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 // Numele standard din listă, ca pe web (ROLE_LABELS). Numele date de firmă le bat (vin din /api/company-roles).
 // UN SINGUR NUME pentru administratorul firmei. Rândurile vechi pot avea încă „admin” — scriu la fel.
-const LIST_NAME: Record<string, string> = { company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer', superadmin: 'Super-admin' };
+const LIST_NAME: Record<string, string> = { company_admin: 'Admin companie', admin: 'Admin companie', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare', superadmin: 'Super-admin' };
 // Explicația din paranteză din formularul de adăugare (web: #new-role). La redenumire se schimbă doar numele.
 const EXPL: Record<string, string> = { manager: 'toată flota, editează', dispatcher: 'atribuit + confirmă alerte', viewer: 'vede doar vehiculele atribuite' };
 // Rolurile care au „Vede toată flota” din oficiu (ROLE_PERMISSIONS.viewAll pe server). Firma îl poate tăia din manager.
@@ -157,7 +157,7 @@ export function AdminUsers() {
       return { v: k, baza: k, label: forAdd && EXPL[k] ? n + ' (' + EXPL[k] + ')' : n };
     };
     const admin: RoleOpt = { v: 'company_admin', baza: 'company_admin', label: forAdd ? 'Admin companie (control total în firma ta)' : 'Admin companie' };
-    const company = [std('manager', 'Manager'), std('dispatcher', 'Dispecer'), std('viewer', 'Viewer')];
+    const company = [std('manager', 'Manager'), std('dispatcher', 'Dispecer'), std('viewer', 'Vizualizare')];
     const proprii: RoleOpt[] = roles.filter((r) => r && r.propriu && r.baza)
       .map((r) => ({ v: r.rol, baza: r.baza, label: (r.nume || r.numeStandard || r.rol) + ' (rol propriu)', propriu: true }));
     const firma = [admin, ...company, ...proprii];

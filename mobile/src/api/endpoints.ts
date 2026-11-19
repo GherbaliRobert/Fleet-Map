@@ -314,6 +314,8 @@ export const Api = {
   demoRequests: (status?: string) => api<any[]>('/api/admin/demo-requests' + (status ? '?status=' + encodeURIComponent(status) : '')),
   approveDemoRequest: (id: number, b: any) => api<any>(`/api/admin/demo-requests/${id}/approve`, { method: 'POST', body: b }),
   rejectDemoRequest: (id: number) => api<any>(`/api/admin/demo-requests/${id}/reject`, { method: 'POST' }),
+  // „Prelungește” (19.11): contul demo al unei cereri aprobate merge încă `hours` ore, de acum; omul află pe email.
+  prelungesteDemoRequest: (id: number, b: { hours: number }) => api<any>(`/api/admin/demo-requests/${id}/prelungeste`, { method: 'POST', body: b }),
   deleteDemoRequest: (id: number) => api<any>(`/api/admin/demo-requests/${id}`, { method: 'DELETE' }),
   // Simulatorul demo merge doar cât timp există un cont demo valabil; pornirea manuală e pentru prezentări.
   demoSim: () => api<any>('/api/admin/demo-sim'),

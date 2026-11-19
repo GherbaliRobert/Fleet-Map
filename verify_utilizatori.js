@@ -46,7 +46,7 @@ const mediu = `
   var document = { getElementById: function () { return _nodAcasa; } };
   var _nodAcasa = { innerHTML: '' };
   var currentUser = { username: 'eu@ratracks.ro', role: 'superadmin' };
-  var ROLE_LABELS = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', viewer: 'Viewer', client: 'Client' };
+  var ROLE_LABELS = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', viewer: 'Vizualizare', client: 'Client' };
   var _USR_ADMIN_ROLES = ['admin', 'company_admin', 'superadmin'];
   var _PRIVESC_CA_FIRMA = false;
   function setPrivescCaFirma() { return _PRIVESC_CA_FIRMA; }
@@ -405,11 +405,15 @@ T('DAR nu-și poate face cont de PLATFORMĂ — linia care contează rămâne î
 T('rolul de administrator NU poate fi ajustat de firmă (și-ar tăia singură dreptul)',
   /const ROLURI_AJUSTABILE = \['manager', 'dispatcher', 'viewer'\];/.test(server) &&
   !/ROLURI_AJUSTABILE = \[[^\]]*company_admin/.test(server));
-T('„Client” a ieșit din formulare — avea exact drepturile unui Viewer',
+T('„Client” a ieșit din formulare — avea exact drepturile rolului „Vizualizare”',
   !/\['client', 'Client \(vede doar vehiculele atribuite\)'\]/.test(html) &&
   !/\['client', 'Client'\]/.test(html));
 T('și în fișa omului adminul firmei poate PROMOVA la administrator',
-  /\['company_admin', 'Admin companie'\], \['manager', 'Manager'\], \['dispatcher', 'Dispecer'\], \['viewer', 'Viewer'\]/.test(html));
+  /\['company_admin', 'Admin companie'\], \['manager', 'Manager'\], \['dispatcher', 'Dispecer'\], \['viewer', 'Vizualizare'\]/.test(html));
+// 19.11 (găsit pe drum, Alin: „rezolvă acum”): rolul se cheamă „Vizualizare” peste tot — sub numele omului scria „Viewer”.
+T('rolul „viewer” se cheamă „Vizualizare” peste tot (fișa omului, lista rolurilor, serverul), nu „Viewer”',
+  !/'Viewer[ ')]|>Viewer[ <(]/.test(html.replace(/adăugat ca <b>Viewer<\/b>/g, '')) && /viewer: 'Vizualizare'/.test(server));
+T('autentificarea cere „Email”, nu „Username”', /<label>Email<\/label>\s*<input type="text" id="login-username"/.test(html) && !/<label>Username<\/label>/.test(html));
 T('plasa de la ultimul administrator rămâne — acum apără firma și de ea însăși',
   /_ultimulAdminAlFirmei/.test(server) && /Nu te poți dezactiva sau retrograda pe tine/.test(server));
 

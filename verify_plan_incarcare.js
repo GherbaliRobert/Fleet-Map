@@ -385,7 +385,7 @@ const dateN = (n) => { let d = n && n.data; if (typeof d === 'string') { try { d
   x = await D1.GET('/api/incarcare/destinatari');
   const oameni = Array.isArray(x.j) ? x.j : [];
   T('oamenii cărora le poate trimite: cei activi ai firmei, cu rolul scris pe înțelesul omului, fără conturile noastre și fără alte firme',
-    x.s === 200 && J(oameni.map((o) => o.nume + ' / ' + o.rol)) === J(['Admin Unu / Admin companie', 'Dispecer Unu / Dispecer', 'Ion Șofer / Viewer', 'Vasile Șofer / Viewer']), J(oameni));
+    x.s === 200 && J(oameni.map((o) => o.nume + ' / ' + o.rol)) === J(['Admin Unu / Admin companie', 'Dispecer Unu / Dispecer', 'Ion Șofer / Vizualizare', 'Vasile Șofer / Vizualizare']), J(oameni));
   T('șoferul nu cere lista de oameni', (await V1.GET('/api/incarcare/destinatari')).s === 403);
   x = await D1.POST('/api/incarcare/planuri/' + plan.id + '/trimite', { user_id: ids['adm2@ci.ro'] });
   T('nu se trimite unui om al altei firme', x.s === 400 && x.j.error === 'Alege un om din firmă, cu cont activ.', J(x));

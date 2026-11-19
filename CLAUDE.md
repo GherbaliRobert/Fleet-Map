@@ -544,7 +544,7 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
 - Păzit de **`verify_ra_insight_demo.js`** (în `npm test`; partea din browser se sare fără Chromium) și `verify_site_public.js`.
 
 ## Compania DEMO (acces la CERERE, aprobat de super-admin)
-Aplicația seedează la pornire o **companie demo** built-in — „RA Track Demo" (pe 09.10, câteva ore, „RA Tracks Demo"; numele acela se corectează o dată, la pornire), 5 vehicule **sintetice** (DEMO-1..5: Timișoara, București, Iași, Brașov, Cluj-Napoca) + cont `demo` (viewer) + simulator de poziții. Vezi `server.js` (blocul „DEMO mode", gated pe `process.env.DEMO_DISABLED !== 'true'`) + `demo-sim.js` (`DEMO_IMEIS`, `ROUTES`).
+Aplicația seedează la pornire o **companie demo** built-in — „RA Track Demo" (pe 09.10, câteva ore, „RA Tracks Demo"; numele acela se corectează o dată, la pornire), cu **flota de probă de pe site** (8 mașini, din 19.11 — vezi „Contul demo, varianta 2", mai jos) + cont `demo` (viewer) + simulator de poziții. Vezi `server.js` (blocul „DEMO mode", gated pe `process.env.DEMO_DISABLED !== 'true'`) + `demo_flota.js` + `demo-sim.js` (`DEMO_IMEIS`).
 
 - **Sunt ascunse de flota REALĂ peste tot** prin `DEMO_SET` (= `demoSim.DEMO_IMEIS`) + `demoCompanyId`: `canAccessImei` (hartă live, dispecerizare, insight/analitice, dashboards), `resolveReportImeis` (rapoarte live) și ramura super-admin din `report_schedules.js` (rapoarte programate). Regula: `if (req.companyId !== demoCompanyId) ... filtrează !DEMO_SET.has(imei)`. La orice cale NOUĂ care listează vehicule/poziții pentru flota reală, exclude demo la fel.
 - **NU apar în niciun raport** (live sau programat). Dacă adaugi o cale de raport/analiză nouă, mirror-uiește excluderea demo.
@@ -572,6 +572,30 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
 - **`DEMO_DISABLED=true` NU mai șterge nimic.** De când demo-ul se acordă la cerere, compania demo e parte din
   produs (acolo trăiesc conturile temporare). Comutatorul oprește DOAR simulatorul de poziții. Ștergerea
   completă rămâne o operație deliberată, nu efectul unei variabile de mediu.
+
+### Contul demo, varianta 2 (19.11; Alin: „poate accesa RA Insight?… cel de pe Start”, „1. varianta 2”, „2. fără întrebări taxate… doar predefinite conform planului Start”)
+- **Flota de probă = `demo_flota.js` (curat):** 8 mașini cu numerele și modelele din telefoanele de pe prima pagină (VW Caddy B 204 RAT, Iveco
+  Stralis B 77 TIR, Dacia Logan B 31 LOG…; `name` = modelul, `plate` = numărul), 7 șoferi, 3 grupe, actele și reviziile (socotite față de azi),
+  și ZILE întregi de mers. O zi e o funcție de (mașină, numărul zilei de la `EPOCA`, 01.09.2026): mereu aceleași poziții, deci istoricul și harta
+  live (`stareaLa`) spun același lucru. Kilometrajul și motorina se adună de la EPOCA (`_stareZi`), cu planurile OBIȘNUITE. Ce se întâmplă „azi”
+  (motorina scăzută noaptea la B 90 CTR — pusă la loc dimineața —, ralantiul frigorificului, oprirea de 25 de minute a camionului, frânările
+  bruște) e NEUTRU: nu schimbă km și motorina de la capătul zilei. Un eveniment nou de „azi” trebuie să fie la fel (proba compară), iar hazardul
+  se trage în aceeași ordine (altfel restul zilei iese altfel). Drumurile sunt linii între locuri adevărate, nu pe străzi — străzile se discută separat.
+- **Simulatorul (`demo-sim.js`) doar citește planul:** la pornire umple istoricul lipsă (`_demoZileIstoric`: 30 de zile; în probe, 2 sau
+  `DEMO_ISTORIC_ZILE`), socotește cursele (workerul de curse sare mașinile demo) și șterge ce e mai vechi de o lună; apoi scrie din minut în minut și
+  refăce cursele la 15 minute. Merge DOAR cât există un cont demo valabil (`syncDemoSim`). Șoferii, grupele, actele, reviziile: `_demoFlotaRest`
+  (o rulare deodată, o dată pe zi cât merge). Istoricul vechi: o dată pe `DEMO_FLOTA_VERSIUNE` (`_demoFlotaVersiune`) — schimbi generatorul
+  într-un fel care rupe istoricul → schimbi versiunea.
+- **Agenții verifică firma demo cât merge simulatorul** (`co.is_demo && !demoSim.isRunning()` → sare), iar după umplere o dată pe loc (`laGata`).
+- **RA Insight ca pe Start:** aprobarea dă contului `ai_seat` (și conturilor demo valabile, la pornire); răspunsurile pe butoane se numără PE CONT
+  în firma demo (`_starePachet`: `rr.om` în loc de `rr.firma`), deci fiecare cont are cele 50 ale lui; întrebările libere primesc mesajul de Start.
+  Fără model, fără cost. NU da conturilor demo un pachet cu AI fără Alin.
+- **Textele: `cont_demo.js`** — emailul cu linkul (cont DEMO, cât ține, ce poate încerca; linkul ține cât contul, cel mult 7 zile — `trimiteLinkParola`
+  cu `opts.demo`), banda din aplicație (`/api/me` → `demo`, pagina: `applyDemoBanner`, cu „Cere ofertă” → `/?oferta=1#contact`, unde landing-ul
+  scoate bifa de cont demo), emailul și mesajul prelungirii, `durata` („30 de zile”), `conturiActive` („1 cont demo activ”).
+- **„Prelungește”** = `POST /api/admin/demo-requests/:id/prelungeste` (super-admin, cerere aprobată, contul încă în firma demo): termenul nou de
+  ACUM, pe cont și pe cerere, email la om. Web: `raxDemoReqPrelungeste` (aceleași durate ca la aprobare, `_dqDurate`); telefon: `DemoRequests.tsx`.
+- Păzit de **`verify_demo.js`** (în `npm test`; agenții adevărați pe o zi de lucru fixă, la 15:00; pe server pornit, fără cheie de AI, Brevo fals).
 
 ## RA Insight — vedeta: un singur asistent, cu memorie (Alin, 02.10: „da, fă tot")
 

@@ -520,7 +520,8 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (`confirmare`) și `DELETE /api/insight/fisa` (răspunsul are `mesaj`). Doar pentru cine are cont RA Insight (`aiCont`) și doar cu
   `activ: true` (pe Start blocul lipsește — Alin, 11.11). Tot cu APK-ul ăsta pleacă și textele corectate pe 11.11: actul citit fără
   „gratuit" / „citire AI", exemplul din notițele firmei, mesajul de la capătul lunii pe regula veche.
-- [ ] **Alin: contul demo și RA Insight — de discutat ce presupune. Adăugat pe 17.11** (Alin: „hai să-l lăsăm după ce facem astea
+- [ ] **Robert: telefonul și contul demo (APK-ul următor). Adăugat pe 19.11.** Codul e gata: în „Cereri demo”, butonul „Prelungește” pe cererile aprobate (aceleași durate ca la aprobare), duratele „24 de ore” / „30 de zile” și rolul „Vizualizare” (nu „Viewer”). Pe web sunt deja pe ratrack.ro; banda „Cont demo · îl ai până pe…” e doar pe web (contul demo se folosește de pe calculator).
+- [x] **FĂCUT (19.11): contul demo și RA Insight** (Alin: „1. varianta 2; 2. fără întrebări taxate… doar predefinite conform planului Start”). **Alin: contul demo și RA Insight — de discutat ce presupune. Adăugat pe 17.11** (Alin: „hai să-l lăsăm după ce facem astea
   două… trebuie să-l discutăm ce presupune, ce face"). Azi, cine cere cont demo de pe site (butonul stă acum chiar după secțiunea RA
   Insight și în banda de la final) primește un cont doar de vizualizare, în firma demo, care e pe Start. Deschide RA Insight și primește:
   „Firma ta are RA Insight, dar contul tău nu are încă acces. Administratorul firmei ți-l poate da…" — numai că el nu are niciun
@@ -614,6 +615,43 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-19
+
+### AMÂNDOI · Contul demo: RA Insight pe butoane, flota de pe site, agenții, „Prelungește” (+ găsite pe drum: „Email”, „Vizualizare”, „30 de zile”)
+*Alin, 19.11: „după ce îi dăm cont demo, poate accesa RA Insight din contul demo?… cel de pe Start… dacă nu e făcut traseul ăsta, să-l facem”;
+„aici ar trebui să aibă niște texte despre demo 1, demo 2”; „1. varianta 2; 2. fără întrebări taxate pe contul demo, ci doar predefinite conform
+planului Start; 3. cele găsite pe drum rezolvă acum”.*
+
+**Ce am schimbat:**
+- **RA Insight în contul demo, ca pe Start:** la aprobare, contul primește RA Insight (până azi îi spunea „cere-i acces administratorului”, iar firma
+  demo n-are administrator). Răspunde pe butoane și la întrebările pe care le înțeleg regulile (unde e o mașină, câți km, ce acte expiră,
+  rapoartele), fără niciun cost; o întrebare liberă primește mesajul de Start („de la pachetul Basic”). Fiecare cont demo are cele 50 de răspunsuri
+  ale lui pe lună (nu le împart toți vizitatorii). „Azi la tine” merge și el.
+- **Flota de probă, ca pe site:** 8 mașini cu numerele și modelele din telefoanele de pe prima pagină — VW Caddy (B 204 RAT), Iveco Stralis
+  (B 77 TIR), Renault Master (B 18 VAN), Dacia Logan (B 31 LOG), Iveco Eurocargo (B 90 CTR), VW Crafter (B 52 DUB), Mercedes Sprinter frigorific
+  (B 63 FRG), Skoda Octavia (B 88 AUT) —, cu 7 șoferi, 3 grupe, ITP / RCA / rovinietă / CASCO, revizii, și zile întregi de mers: livrări prin
+  București, naveta camionului la portul Constanța, drumuri la Ploiești și Pitești, opriri, alimentări, motorul oprit noaptea, ultimele 30 de zile
+  de istoric. Înainte: 5 camioane numite după orașe („DEMO-1 București”), care mergeau în cerc, fără șoferi, fără acte, fără istoric.
+- **Agenții au ce găsi** (textele vin din datele flotei, ca pe site): motorina scăzută noaptea la B 90 CTR, ralantiul frigorificului, ITP-ul de la
+  B 77 TIR în 12 zile, RCA-ul de la B 204 RAT în 19, rovinieta expirată la B 18 VAN, revizia la 320 km, scorul de condus slab la B 204 RAT, peste
+  4h30 de condus fără pauză la B 77 TIR, mașina de rezervă nefolosită. Agenții verifică firma demo doar cât există un cont demo valabil.
+- **Emailul primit de om** spune acum că e un cont demo, cât ține, ce poate încerca și că răspunde la email pentru ofertă (scria „Ai fost invitat
+  să administrezi un cont”). Linkul ține cât contul, cel mult 7 zile.
+- **Banda „Cont demo · îl ai până pe 26.11, ora 11:53 (încă 6 zile).”** sus în aplicație, cu „Cere ofertă” (formularul de pe site, fără bifa de
+  cont demo).
+- **„Prelungește”** la noi, în „Cereri demo” (web și telefon): contul merge încă 2 ore … 30 de zile, de acum; omul primește un email cu noua dată.
+- **Găsite pe drum, rezolvate:** la autentificare scrie „Email” (nu „Username”); rolul se cheamă „Vizualizare” peste tot (sub numele omului scria
+  „Viewer”; web, server, telefon); în „Cereri demo”: „30 de zile”, „24 de ore”, „1 cerere”, „1 cont demo activ”.
+
+**Ce vede fondatorul:** în „Cereri demo”, butonul „Prelungește” pe cererile aprobate și cuvintele corectate; pe flota demo, cele 8 mașini noi.
+
+**Ce vede clientul:** cine primește cont demo vede flota de probă de pe site, RA Insight pe butoane, agenții cu ce au găsit și banda cu zilele
+rămase. Toți clienții: „Email” la autentificare și „Vizualizare” în loc de „Viewer”.
+
+Reper: `demo_flota.js` (nou, curat: mașinile, planul fiecărei zile, actele, reviziile), `cont_demo.js` (nou: emailul, banda, prelungirea,
+„30 de zile”), `demo-sim.js` (rescris: harta live din plan, istoricul scris din minut în minut, cursele), `server.js` (`_demoFlotaMasini`,
+`_demoFlotaRest`, `_demoFlotaVersiune`, `_starePachet` pe cont în firma demo, aprobarea, `POST /api/admin/demo-requests/:id/prelungeste`,
+`/api/me` → `demo`, agenții pe firma demo), `public/index.html` (`applyDemoBanner`, `raxDemoReqPrelungeste`), `public/landing.html`
+(`?oferta=1`), telefonul (`DemoRequests.tsx`, rolul); probă nouă: `verify_demo.js` (în `npm test`).
 
 ### AMÂNDOI · Prima pagină: la pachete, un singur telefon și pe calculator
 *Alin, 19.11, cu o poză de pe calculator: „aici la pachete ți-am zis să avem un singur telefon care să includă și Start, cum e telefonul 2,

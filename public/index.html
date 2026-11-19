@@ -50,8 +50,8 @@
       <div id="login-error" class="login-error"></div>
       <form id="login-form">
         <div class="form-group">
-          <label>Username</label>
-          <input type="text" id="login-username" autocomplete="username" required placeholder="Introdu username">
+          <label>Email</label>
+          <input type="text" id="login-username" autocomplete="username" required placeholder="Introdu emailul">
         </div>
         <div class="form-group">
           <label>Parola</label>
@@ -1801,7 +1801,7 @@
           <select id="new-role">
             <option value="manager">Manager (toată flota, editează)</option>
             <option value="dispatcher">Dispecer (atribuit + confirmă alerte)</option>
-            <option value="viewer">Viewer (doar se uită, la mașinile atribuite)</option>
+            <option value="viewer">Vizualizare (doar se uită, la mașinile atribuite)</option>
           </select>
           <div class="rau-nota" id="usr-adauga-n" style="grid-column:1/-1;"><i class="fas fa-envelope-circle-check"></i><span>Îi trimitem un link pe email și își pune singur parola. Noi nu scriem parole.</span></div>
           <button onclick="addUser()" style="grid-column:1/-1;"><i class="fas fa-plus"></i> Adaugă utilizator</button>
@@ -1827,7 +1827,7 @@
             <option value="dispatcher">Dispecer</option>
             <option value="manager">Manager</option>
             <option value="company_admin">Admin companie</option>
-            <option value="viewer">Viewer</option>
+            <option value="viewer">Vizualizare</option>
           </select>
         </label>
         <label class="ue-field"><span>Status cont</span>
@@ -4158,7 +4158,7 @@ const pozitii = await r.json();</code></pre>
 
     // UN SINGUR NUME pentru administratorul firmei. Rândurile vechi din bază pot avea încă „admin”;
     // amândouă scriu la fel pe ecran, ca să nu apară două etichete pentru aceeași putere.
-    const ROLE_LABELS = { company_admin:'Admin companie', admin:'Admin companie', manager:'Manager', dispatcher:'Dispecer', client:'Client', viewer:'Viewer' };
+    const ROLE_LABELS = { company_admin:'Admin companie', admin:'Admin companie', manager:'Manager', dispatcher:'Dispecer', client:'Client', viewer:'Vizualizare' };
     let ueUsersCache = [];
 
     // ─── Administrare: taburi (super-admin) ───
@@ -4829,7 +4829,7 @@ const pozitii = await r.json();</code></pre>
     // ── sfârșit „lista de utilizatori” ──
     // Opțiunile formularului „Adaugă utilizator” depind de cine creează:
     //  • super-admin → poate face „Admin companie” (implicit, el creează contul de admin) + alege compania.
-    //  • admin de companie → NU poate crea alți admini (backend-ul i-ar coborî la Viewer) → fără opțiunea „Admin”,
+    //  • admin de companie → NU poate crea alți admini (backend-ul i-ar coborî la Vizualizare) → fără opțiunea „Admin”,
     //    iar compania e automat a lui.
     let _newUserCompaniesCache = null;
     async function _populateNewUserForm() {
@@ -4849,7 +4849,7 @@ const pozitii = await r.json();</code></pre>
         var opts = sup
           ? [['superadmin', 'Super-admin (PLATFORMĂ — toate companiile)']]
           : [['company_admin', 'Admin companie (control total în firma ta)'], ['manager', 'Manager (toată flota, editează)'],
-             ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['viewer', 'Viewer (vede doar vehiculele atribuite)']];
+             ['dispatcher', 'Dispecer (atribuit + confirmă alerte)'], ['viewer', 'Vizualizare (vede doar vehiculele atribuite)']];
         sel.innerHTML = opts.map(function (o, i) { return '<option value="' + o[0] + '"' + (i === 0 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
         sel.onchange = _usrRoleChanged;
       }
@@ -5116,8 +5116,8 @@ const pozitii = await r.json();</code></pre>
       // COMPANY_ASSIGNABLE_ROLES). Din 16.09 adminul firmei poate PROMOVA pe cineva la administrator
       // în firma lui — e o delegare, nu o escaladare. Contul de PLATFORMă rămâne doar al nostru.
       var _ueRoleOpts = (currentUser && currentUser.isSuper)
-        ? [['company_admin', 'Admin companie'], ['manager', 'Manager'], ['dispatcher', 'Dispecer'], ['viewer', 'Viewer'], ['superadmin', '⚠ Super-admin (platformă)']]
-        : [['company_admin', 'Admin companie'], ['manager', 'Manager'], ['dispatcher', 'Dispecer'], ['viewer', 'Viewer']];
+        ? [['company_admin', 'Admin companie'], ['manager', 'Manager'], ['dispatcher', 'Dispecer'], ['viewer', 'Vizualizare'], ['superadmin', '⚠ Super-admin (platformă)']]
+        : [['company_admin', 'Admin companie'], ['manager', 'Manager'], ['dispatcher', 'Dispecer'], ['viewer', 'Vizualizare']];
       if (!_ueRoleOpts.some(function (o) { return o[0] === u.role; })) _ueRoleOpts.unshift([u.role, (typeof ROLE_LABELS !== 'undefined' && ROLE_LABELS[u.role]) || u.role]); // arată rolul curent chiar dacă nu e în listă
       document.getElementById('ue-role').innerHTML = _ueRoleOpts.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('');
       // Numele date de firmă și rolurile ei proprii: lista se refăcea de la zero și le pierdea.
@@ -6612,7 +6612,7 @@ const pozitii = await r.json();</code></pre>
     var ROL_BAZE = [
       ['manager', 'Manager', 'Vede toată flota și o modifică: mașini, șoferi, alerte, documente.'],
       ['dispatcher', 'Dispecer', 'Vede mașinile care i se dau, confirmă alerte și scoate rapoarte.'],
-      ['viewer', 'Viewer', 'Doar se uită la mașinile care i se dau. Nu modifică nimic.']
+      ['viewer', 'Vizualizare', 'Doar se uită la mașinile care i se dau. Nu modifică nimic.']
     ];
     var _rolNou = { nume: '', baza: 'dispatcher', eroare: null, lucrez: false };
     function rolNouHtml(st) {
@@ -16047,7 +16047,25 @@ const pozitii = await r.json();</code></pre>
       //  „Statistici flotă”. Tabloul platformei a rămas la fondator, în Business.)
       document.body.classList.toggle('no-fleet', !can('manageFleet'));
       applyAccessBanner();
+      applyDemoBanner();
       applyAnnouncementBanner();
+    }
+    // Contul demo (19.11; Alin: „varianta 2”): „Cont demo · îl ai până pe 26.11, ora 06:53 (încă 7 zile).” + „Cere ofertă”
+    // (formularul de pe site, fără bifa de cont demo). Textul îl scrie serverul (cont_demo.js → `currentUser.demo`); aici doar se
+    // pune, cu textContent. Stă deasupra barei de sus, ca banda accesului.
+    function applyDemoBanner() {
+      var d = currentUser && currentUser.demo;
+      var el = document.getElementById('demo-banda');
+      if (!d || !d.text) { if (el) el.style.display = 'none'; return; }
+      if (!el) {
+        el = document.createElement('div'); el.id = 'demo-banda'; el.className = 'demo-banda';
+        var app = document.getElementById('app'); var tb = document.getElementById('topbar');
+        if (app && tb) app.insertBefore(el, tb); else document.body.insertBefore(el, document.body.firstChild);
+      }
+      el.innerHTML = '';
+      var t = document.createElement('span'); t.className = 'demo-banda-t'; t.textContent = d.text; el.appendChild(t);
+      if (d.buton && d.link) { var a = document.createElement('a'); a.className = 'demo-banda-b'; a.href = d.link; a.target = '_blank'; a.rel = 'noopener'; a.textContent = d.buton; el.appendChild(a); }
+      el.style.display = 'flex';
     }
     // Banner de anunț global (din Setări sistem) — pentru toți userii
     function applyAnnouncementBanner() {
@@ -30889,7 +30907,7 @@ const pozitii = await r.json();</code></pre>
         return '<button class="btn-sm' + (_demoReqFilter === t[0] ? ' btn-primary' : '') + '" onclick="raxDemoReqFiltru(\'' + t[0] + '\')">' + t[1] + '</button>';
       }).join(' ');
       var head = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">' + tabs +
-        '<span style="margin-left:auto;font-size:11.5px;color:var(--text-muted);">' + list.length + ' cereri</span></div>'
+        '<span style="margin-left:auto;font-size:11.5px;color:var(--text-muted);">' + list.length + _raxDe(list.length) + (list.length === 1 ? 'cerere' : 'cereri') + '</span></div>'
         + await _demoSimStrip();
 
       if (!list.length) { box.innerHTML = head + '<div class="rax-co-meta" style="padding:16px;">Nicio cerere.</div>'; return; }
@@ -30900,14 +30918,14 @@ const pozitii = await r.json();</code></pre>
         // Cu durate de ordinul orelor, doar data nu spune nimic → afișăm și ora expirării.
         var until = r.access_until ? new Date(Number(r.access_until)).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
         var acts = (r.status === 'new')
-          ? '<div class="dq-acts">'
-            + '<select id="dq-days-' + r.id + '" class="dq-days" title="Cât timp are acces contul">'
-              + '<optgroup label="Ore"><option value="2">2 ore</option><option value="6">6 ore</option><option value="12">12 ore</option><option value="24">24 de ore</option></optgroup>'
-              + '<optgroup label="Zile"><option value="72">3 zile</option><option value="168" selected>7 zile</option><option value="336">14 zile</option><option value="720">30 zile</option></optgroup></select>'
+          ? '<div class="dq-acts">' + _dqDurate(r.id, 'Cât timp are acces contul')
             + '<button class="rax-btn primary" onclick="raxDemoReqApprove(' + r.id + ')"><i class="fas fa-check"></i> Aprobă</button>'
             + '<button class="rax-btn" onclick="raxDemoReqReject(' + r.id + ')"><i class="fas fa-xmark"></i> Respinge</button>'
             + '</div>'
-          : '<div class="dq-acts"><button class="rax-btn" onclick="raxDemoReqDelete(' + r.id + ')" title="Șterge cererea din listă"><i class="fas fa-trash"></i></button></div>';
+          // Aprobată (19.11): „Prelungește” — contul merge încă atât, de acum; omul află pe email.
+          : '<div class="dq-acts">' + (r.status === 'approved' && r.user_id ? _dqDurate(r.id, 'Cât mai are acces contul, de acum')
+              + '<button class="rax-btn" onclick="raxDemoReqPrelungeste(' + r.id + ')"><i class="fas fa-clock-rotate-left"></i> Prelungește</button>' : '')
+            + '<button class="rax-btn" onclick="raxDemoReqDelete(' + r.id + ')" title="Șterge cererea din listă"><i class="fas fa-trash"></i></button></div>';
         return '<div class="dq-item" style="border-left:3px solid ' + (STC[r.status] || 'var(--border)') + ';">'
           + '<div style="min-width:0;flex:1;">'
             + '<div class="dq-nm">' + esc(r.name || '(fără nume)') + (r.company ? ' · <span style="color:var(--text-muted);font-weight:600;">' + esc(r.company) + '</span>' : '')
@@ -30938,6 +30956,24 @@ const pozitii = await r.json();</code></pre>
         } else {
           raxToast(j.warning ? ('Acces acordat, DAR: ' + j.warning) : ('Acces acordat: ' + (j.duration || lbl) + ' ✓ — invitația a plecat pe email'), j.warning ? 'error' : 'success', j.warning ? 9000 : 4000);
         }
+      } catch (e) { raxToast('Eroare de rețea', 'error'); }
+      raxLoadDemoReq();
+    };
+    // Duratele contului demo — aceeași listă la „Aprobă” și la „Prelungește” (valoarea e în ORE, ca pe server).
+    function _dqDurate(id, titlu) {
+      return '<select id="dq-days-' + id + '" class="dq-days" title="' + titlu + '">'
+        + '<optgroup label="Ore"><option value="2">2 ore</option><option value="6">6 ore</option><option value="12">12 ore</option><option value="24">24 de ore</option></optgroup>'
+        + '<optgroup label="Zile"><option value="72">3 zile</option><option value="168" selected>7 zile</option><option value="336">14 zile</option><option value="720">30 de zile</option></optgroup></select>';
+    }
+    window.raxDemoReqPrelungeste = async function (id) {
+      var sel = $('dq-days-' + id); var hours = sel ? parseInt(sel.value) : 168;
+      var lbl = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : (hours + ' ore');
+      if (!await raConfirm('Prelungești contul demo cu ' + lbl + ', de acum?\n\nOmul păstrează aceeași adresă și aceeași parolă; îi scriem pe email noua dată.', { okLabel: 'Prelungește', danger: false })) return;
+      try {
+        var r = await fetch('/api/admin/demo-requests/' + id + '/prelungeste', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ hours: hours }) });
+        var j = await r.json();
+        if (!r.ok) { raxToast(j.error || 'Nu s-a putut prelungi', 'error', 6000); return; }
+        raxToast(j.text || 'Prelungit', j.email ? 'success' : 'error', 6000);
       } catch (e) { raxToast('Eroare de rețea', 'error'); }
       raxLoadDemoReq();
     };

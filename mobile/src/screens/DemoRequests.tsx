@@ -14,8 +14,8 @@ const STATUS_LABEL: Record<string, string> = { new: 'nouă', approved: 'aprobat�
 const STATUS_COLOR: Record<string, string> = { new: 'var(--accent)', approved: 'var(--text-muted)', rejected: 'var(--red)' };
 // Durata se exprimă în ORE (serverul lucrează tot în ore): de la câteva ore la 30 de zile.
 const DURATIONS: { h: number; label: string }[] = [
-  { h: 2, label: '2 ore' }, { h: 6, label: '6 ore' }, { h: 12, label: '12 ore' }, { h: 24, label: '24 ore' },
-  { h: 72, label: '3 zile' }, { h: 168, label: '7 zile' }, { h: 336, label: '14 zile' }, { h: 720, label: '30 zile' },
+  { h: 2, label: '2 ore' }, { h: 6, label: '6 ore' }, { h: 12, label: '12 ore' }, { h: 24, label: '24 de ore' },
+  { h: 72, label: '3 zile' }, { h: 168, label: '7 zile' }, { h: 336, label: '14 zile' }, { h: 720, label: '30 de zile' },
 ];
 const fmtDT = (v: any) => { if (!v) return '—'; try { return new Date(Number(v)).toLocaleString('ro-RO'); } catch { return String(v); } };
 // Cu durate de ordinul orelor, doar data nu spune nimic → afișăm și ora.
@@ -29,6 +29,8 @@ export function DemoRequests() {
   const [filter, setFilter] = useState('');
   const [busy, setBusy] = useState(false);
   const [approving, setApproving] = useState<any | null>(null);
+  // „Prelungește” (19.11): aceeași foaie cu duratele, pe o cerere aprobată.
+  const [prel, setPrel] = useState<any | null>(null);
   const [hours, setHours] = useState(168); // implicit 7 zile
   const [sim, setSim] = useState<any | null>(null);
   const [link, setLink] = useState<LinkParola | null>(null);
@@ -71,6 +73,16 @@ export function DemoRequests() {
       }
       setApproving(null); reload();
     } catch (e: any) { showToast(e?.message || 'Nu s-a putut aproba', true); }
+    finally { setBusy(false); }
+  }
+  async function doPrelungeste() {
+    if (!prel) return;
+    setBusy(true);
+    try {
+      const r: any = await Api.prelungesteDemoRequest(prel.id, { hours });
+      showToast(r?.text || 'Prelungit', !r?.email);
+      setPrel(null); reload();
+    } catch (e: any) { showToast(e?.message || 'Nu s-a putut prelungi', true); }
     finally { setBusy(false); }
   }
   async function doReject(r: any) {
@@ -145,7 +157,10 @@ export function DemoRequests() {
                           <button disabled={busy} onClick={() => doReject(r)} style="flex:1;min-width:90px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:8px;font-size:12.5px;font-weight:700;font-family:inherit">Respinge</button>
                         </>
                       ) : (
-                        <button disabled={busy} onClick={() => doDelete(r)} style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;font-family:inherit"><Icon name="trash" size={13} /> Șterge</button>
+                        <>
+                          {r.status === 'approved' && r.user_id ? <button disabled={busy} onClick={() => { setHours(168); setPrel(r); }} style="flex:1;min-width:110px;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:8px;font-size:12.5px;font-weight:700;font-family:inherit">Prelungește</button> : null}
+                          <button disabled={busy} onClick={() => doDelete(r)} style="background:var(--bg-dark);border:1px solid var(--border);color:var(--text-muted);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;font-family:inherit"><Icon name="trash" size={13} /> Șterge</button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -156,13 +171,15 @@ export function DemoRequests() {
         )}
       </div>
 
-      {approving && (
-        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !busy) setApproving(null); }}>
+      {(approving || prel) && (
+        <div class="sheet-ov" onClick={(e) => { if (e.target === e.currentTarget && !busy) { setApproving(null); setPrel(null); } }}>
           <div class="sheet">
-            <div class="sheet-h"><b><Icon name="check" size={18} color="var(--accent)" /> Acordă acces demo</b><button class="h-btn" onClick={() => setApproving(null)}><Icon name="x" /></button></div>
+            <div class="sheet-h"><b><Icon name="check" size={18} color="var(--accent)" /> {prel ? 'Prelungește contul demo' : 'Acordă acces demo'}</b><button class="h-btn" onClick={() => { setApproving(null); setPrel(null); }}><Icon name="x" /></button></div>
             <div class="sheet-body">
               <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:12px">
-                Se creează un cont pe <b>{approving.email}</b>, cu vehiculele demonstrative, și îi trimitem link de setare a parolei.
+                {prel
+                  ? <>Contul <b>{prel.email}</b> merge încă atât, de acum, cu aceeași adresă și aceeași parolă. Îi scriem pe email noua dată.</>
+                  : <>Se creează un cont pe <b>{(approving as any).email}</b>, cu vehiculele demonstrative, și îi trimitem link de setare a parolei.</>}
               </div>
               <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:6px">Durata accesului</div>
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px">
@@ -177,7 +194,7 @@ export function DemoRequests() {
               <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px">
                 Expiră la <b>{new Date(Date.now() + hours * 3600 * 1000).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</b>
               </div>
-              <button class="btn btn-primary" disabled={busy} onClick={doApprove} style="width:100%">{busy ? 'Se acordă…' : 'Acordă ' + (DURATIONS.find((d) => d.h === hours)?.label || hours + ' ore')}</button>
+              <button class="btn btn-primary" disabled={busy} onClick={prel ? doPrelungeste : doApprove} style="width:100%">{busy ? (prel ? 'Se prelungește…' : 'Se acordă…') : (prel ? 'Prelungește cu ' : 'Acordă ') + (DURATIONS.find((d) => d.h === hours)?.label || hours + ' ore')}</button>
             </div>
           </div>
         </div>

@@ -1126,6 +1126,8 @@
       var d = document.getElementById('cf-demo'); if (d) d.checked = true;
       setTimeout(function () { var n = document.getElementById('cf-name'); if (n) n.focus({ preventScroll: true }); }, 420);
     };
+    // „Cere ofertă” din contul demo (19.11): /?oferta=1#contact — omul are deja cont demo, deci bifa „Vreau un cont demo” se scoate.
+    (function () { try { if (new URLSearchParams(location.search).get('oferta') === '1') { var d = document.getElementById('cf-demo'); if (d) d.checked = false; } } catch (e) {} })();
   </script>
 
   <!-- Bannerul de cookie-uri e construit de /js/consent.js, pe toate paginile publice.

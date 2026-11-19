@@ -240,6 +240,8 @@ const cereriEchipa = require('./cereri_echipa');   // „Anunță echipa RA Trac
 const locatieDistribuita = require('./locatie_distribuita'); // „Distribuie locația” (21.10): linkul public al unei mașini, ca pe WhatsApp
 const preaviz = require('./preaviz');            // cu cât timp înainte se anunță un termen (liste, anunțuri, RA Care, Scadențe)
 const demoSim = require('./demo-sim');
+const demoFlota = require('./demo_flota');       // flota de probă a companiei demo (19.11, „varianta 2”): mașinile, șoferii, actele, zilele de mers
+const contDemo = require('./cont_demo');         // textele contului demo: emailul, banda „Cont demo”, prelungirea, „30 de zile”
 const tacho = require('./tacho');
 let ioCatalog = null;
 try { ioCatalog = require('./io_catalog'); } catch (e) { console.warn('[IO_CATALOG] indisponibil:', e.message); }
@@ -300,8 +302,18 @@ async function syncDemoSim(reason) {
   }
   const shouldRun = !why && (active > 0 || forced);
   if (shouldRun && !demoSim.isRunning()) {
-    demoSim.start({ livePositions, broadcastWs, insertPositions: db.insertPositions });
-    console.log('[DEMO] Simulator PORNIT (' + (forced ? 'forțat de super-admin' : active + ' conturi demo active') + ') — ' + reason);
+    // Întâi istoricul vechi al flotei demo (o dată pe versiune), apoi șoferii, grupele, actele și reviziile, socotite față de azi.
+    try { await _demoPregatit; } catch (e) {}
+    try { await _demoFlotaRest(demoCompanyId); } catch (e) { console.warn('[DEMO] flota de probă:', e.message); }
+    if (!demoSim.isRunning()) {
+      demoSim.start({ livePositions, broadcastWs, db, reports, zileIstoric: _demoZileIstoric(),
+        // Istoricul e la zi: agenții se uită o dată pe loc la flota demo (altfel abia la tura de la oră).
+        laGata: function () { runAgentsWorker().catch(function () {}); } });
+      console.log('[DEMO] Simulator PORNIT (' + (forced ? 'forțat de super-admin' : contDemo.conturiActive(active)) + ') — ' + reason);
+    }
+  } else if (shouldRun && demoSim.isRunning() && _demoRestZi !== demoFlota.ziuaLa(now)) {
+    // O zi nouă: actele, reviziile și permisele se mută odată cu ea (ITP-ul expiră tot „în 12 zile”).
+    _demoFlotaRest(demoCompanyId).catch(function (e) { console.warn('[DEMO] flota de probă:', e.message); });
   } else if (!shouldRun && demoSim.isRunning()) {
     demoSim.stop();
     console.log('[DEMO] Simulator OPRIT (' + (why || 'niciun cont demo activ') + ') — ' + reason);
@@ -311,12 +323,103 @@ async function syncDemoSim(reason) {
     forcedUntil: forced ? _demoSimForcedUntil : null,
     // `blocked` = nici pornirea manuală nu are efect. Fără el, interfața ar arăta un buton care nu face nimic.
     blocked: !!why,
-    reason: why || (active > 0 ? active + ' conturi demo active' : (forced ? 'pornit manual de super-admin' : 'niciun cont demo activ')),
+    reason: why || (active > 0 ? contDemo.conturiActive(active) : (forced ? 'pornit manual de super-admin' : 'niciun cont demo activ')),
     at: new Date(now).toISOString(),
   };
   return _demoSimState;
 }
-function demoSimStatus() { return Object.assign({}, _demoSimState, { running: demoSim.isRunning() }); }
+function demoSimStatus() { return Object.assign({}, _demoSimState, { running: demoSim.isRunning(), istoric: demoSim.stare() }); }
+
+// ─── Flota de probă a companiei demo (19.11; Alin: „varianta 2” — mașinile de pe site, cu șoferi, acte, revizii, istoric) ───
+// Regulile și datele stau în demo_flota.js (curat). Aici doar se scriu în bază:
+//   · mașinile (fișa întreagă) — la fiecare pornire (_demoFlotaMasini);
+//   · șoferii, grupele, actele și reviziile — când pornește simulatorul și o dată pe zi cât merge (_demoFlotaRest), cu datele
+//     socotite față de azi (ITP-ul de la B 77 TIR expiră mereu „în 12 zile”);
+//   · istoricul vechi (cele 5 camioane care mergeau în cerc) — o dată pe versiunea flotei (_demoFlotaVersiune).
+// Pozițiile, cursele și harta live le scrie simulatorul (demo-sim.js), doar cât există un cont demo valabil.
+const DEMO_FLOTA_VERSIUNE = '2026-11-19';
+let _demoPregatit = Promise.resolve();
+let _demoRestZi = null, _demoRestAcum = null;
+// Câte zile de istoric umple simulatorul la pornire: 30 (ca în emailul contului demo). În probe, mai puține (PGlite e lent).
+function _demoZileIstoric() {
+  const n = parseInt(process.env.DEMO_ISTORIC_ZILE, 10);
+  if (n > 0) return Math.min(demoFlota.ZILE_ISTORIC, n);
+  return process.env.NODE_ENV === 'test' ? 2 : demoFlota.ZILE_ISTORIC;
+}
+async function _demoFlotaMasini(companyId) {
+  for (const m of demoFlota.MASINI) {
+    await db.pool.query(
+      "INSERT INTO devices (imei, name, vehicle_type, plate, company_id, last_seen) VALUES ($1,$2,$3,$5,$4,NOW()) ON CONFLICT (imei) DO UPDATE SET company_id = $4",
+      [m.imei, m.nume, m.tip, companyId, m.nr]);
+    await db.updateVehicleDetails(m.imei, demoFlota.fisa(m));
+  }
+}
+function _ziuaDin(v) { if (!v) return null; return v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10); }
+// Șoferii, grupele, actele și reviziile flotei demo. O singură rulare deodată (două cereri care pornesc simulatorul nu fac
+// șoferi dubli). Ce există se actualizează pe loc (același rând), ce lipsește se face.
+function _demoFlotaRest(companyId) {
+  if (companyId == null) return Promise.resolve();
+  if (_demoRestAcum) return _demoRestAcum;
+  _demoRestAcum = (async function () {
+    const acum = Date.now();
+    const gId = {}, sId = {};
+    const grupe = await db.getGroups(companyId);
+    for (const g of demoFlota.GRUPE) {
+      let x = grupe.find(function (y) { return y.name === g.nume; });
+      if (!x) x = await db.createGroup({ name: g.nume, description: 'Flota de probă', color: g.culoare }, companyId);
+      gId[g.nume] = x.id;
+    }
+    const sof = await db.getDrivers(companyId);
+    for (const s of demoFlota.soferi(acum)) {
+      let x = sof.find(function (y) { return y.name === s.name; });
+      if (!x) x = await db.createDriver(s, companyId);
+      else if (_ziuaDin(x.license_expiry) !== s.license_expiry || x.license_categories !== s.license_categories) {
+        await db.updateDriver(x.id, Object.assign({}, x, { license_expiry: s.license_expiry, license_categories: s.license_categories }));
+      }
+      sId[s.name] = x.id;
+    }
+    for (const m of demoFlota.MASINI) {
+      const r = await db.pool.query('SELECT driver_id, group_id FROM devices WHERE imei = $1', [m.imei]);
+      const d = r.rows[0] || {};
+      const sofer = m.sofer ? (sId[m.sofer] || null) : null, grupa = gId[m.grupa] || null;
+      // O schimbare intră în istoricul șoferilor doar dacă e chiar alta (assignDevice o scrie).
+      if ((d.driver_id || null) !== sofer || (d.group_id || null) !== grupa) await db.assignDevice(m.imei, sofer, grupa);
+    }
+    const acte = await db.getVehicleDocuments(null, companyId);
+    for (const a of demoFlota.acte(acum)) {
+      const x = acte.find(function (y) { return y.imei === a.imei && y.doc_type === a.doc_type; });
+      if (!x) await db.createVehicleDocument(a, companyId);
+      else if (_ziuaDin(x.expiry_date) !== a.expiry_date) await db.updateVehicleDocument(x.id, { expiry_date: a.expiry_date, issue_date: a.issue_date });
+    }
+    for (const rv of demoFlota.revizii(acum)) {
+      const ex = (await db.getMaintenance(rv.imei, companyId)).find(function (y) { return y.type === rv.type && !y.done_date && String(y.status || 'pending') === 'pending'; });
+      if (!ex) await db.createMaintenance(rv, companyId);
+      else await db.updateMaintenance(ex.id, Object.assign({}, ex, { description: rv.description, due_km: rv.due_km || null, due_date: rv.due_date || null, interval_km: rv.interval_km || null }));
+    }
+    _demoRestZi = demoFlota.ziuaLa(acum);
+  })().finally(function () { _demoRestAcum = null; });
+  return _demoRestAcum;
+}
+// O dată pe versiunea flotei: istoricul vechi al mașinilor demo (poziții, curse, alerte), constatările agenților pe firma demo.
+async function _demoFlotaVersiune(companyId) {
+  if (companyId == null) return;
+  let v = null; try { v = await db.getSetting('demo_flota_versiune'); } catch (e) { v = null; }
+  if (v === DEMO_FLOTA_VERSIUNE) return;
+  let rele = 0;
+  for (const imei of demoFlota.IMEIS) {
+    try {
+      const r = await db.stergeIstoricAparat(imei);
+      if (r && r.erori && r.erori.length) { rele++; console.warn('[DEMO] istoricul vechi ' + imei + ':', r.erori.join('; ')); }
+    } catch (e) { rele++; console.warn('[DEMO] istoricul vechi ' + imei + ':', e.message); }
+  }
+  try { await db.pool.query('UPDATE devices SET istoric_sters_at = NULL WHERE imei = ANY($1)', [demoFlota.IMEIS]); } catch (e) {}
+  try { await db.pool.query('DELETE FROM agent_findings WHERE company_id = $1', [companyId]); } catch (e) {}
+  // Ce n-a mers se reia la pornirea următoare: versiunea se scrie doar după o ștergere întreagă (altfel cercurile vechi ar
+  // rămâne amestecate cu istoricul nou, pentru totdeauna).
+  if (rele) { console.warn('[DEMO] istoricul vechi al flotei demo nu s-a șters întreg (' + rele + ' mașini); reîncerc la pornirea următoare.'); return; }
+  await db.setSetting('demo_flota_versiune', DEMO_FLOTA_VERSIUNE);
+  console.log('[DEMO] Flota de probă, versiunea ' + DEMO_FLOTA_VERSIUNE + ': istoricul vechi al mașinilor demo a fost șters.');
+}
 
 // Rezultatul ULTIMEI rulări a ștergerii istoricului vechi (`stergeIstoriculVechi`). O ștergere care nu
 // rulează arată identic cu una sănătoasă — singurul semn ar fi baza care crește — deci o spunem pe ecran.
@@ -1602,7 +1705,7 @@ function isSuper(role) { return role === 'superadmin'; }
 // rămâne pe dinafară din propriul cont, fără cale de întoarcere.
 const ROLURI_AJUSTABILE = ['manager', 'dispatcher', 'viewer'];
 // Numele standard, ca ecranul să arate „Dispecer (standard)” lângă numele ales de firmă.
-const ROLE_LABELS_RO = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Viewer' };
+const ROLE_LABELS_RO = { admin: 'Admin', manager: 'Manager', dispatcher: 'Dispecer', client: 'Client', viewer: 'Vizualizare' };
 // Adminul firmei NU e ajustabil: dacă și-ar tăia dreptul de administrare, ar rămâne pe dinafară din
 // propriul cont, fără cale de întoarcere. Nici rolurile de platformă, evident.
 // AICI apar DOAR drepturile care chiar păzesc ceva pe server. Verificat rută cu rută:
@@ -2076,13 +2179,7 @@ function _demoDurationHours(body) {
   if (h == null || !(h > 0)) h = 24 * 7; // implicit: o săptămână
   return Math.min(Math.max(Math.round(h), 1), DEMO_MAX_HOURS);
 }
-// Text pentru om: „6 ore” / „7 zile” / „2 zile și 6 ore”.
-function _demoDurationLabel(h) {
-  const d = Math.floor(h / 24), r = h % 24;
-  if (!d) return h + (h === 1 ? ' oră' : ' ore');
-  if (!r) return d + (d === 1 ? ' zi' : ' zile');
-  return d + (d === 1 ? ' zi' : ' zile') + ' și ' + r + (r === 1 ? ' oră' : ' ore');
-}
+// Textul duratei („6 ore”, „24 de ore”, „30 de zile”, „2 zile și 6 ore”) vine din cont_demo.durata (19.11: „30 zile” → „30 de zile”).
 const DEMO_EXPIRED_MSG = 'Accesul demo a expirat. Scrie-ne dacă vrei o prelungire sau o ofertă.';
 
 // Gardă anti-blocare: platforma trebuie să rămână MEREU cu cel puțin un super-admin activ.
@@ -3144,6 +3241,8 @@ app.get('/api/me', async (req, res) => {
     ecraneAscunse: _listaTaiata(req, 'ecrane'), rapoarteAscunse: _listaTaiata(req, 'rapoarte'),
     editariTaiate: _listaTaiata(req, 'editari'), viaApiKey: !!a.viaApiKey,
     accessUntil: (req._freshAuth && req._freshAuth.accessUntil != null) ? Number(req._freshAuth.accessUntil) : null,
+    // Contul demo (19.11): banda „Cont demo · îl ai până pe… (încă N zile)” cu „Cere ofertă” — textul îl scrie cont_demo.js.
+    demo: (company && company.is_demo && req._freshAuth && req._freshAuth.accessUntil != null) ? contDemo.banda(Number(req._freshAuth.accessUntil), Date.now()) : null,
     isSuper: isSuper(a.role), companyId: company ? company.id : null, company, features, access,
     // Are omul cont RA Insight? (Capitolul 2, pasul 1) Cine are, vede agenții în „Azi la tine” și nu mai are „Agenți AI” în meniu.
     // Noi (super-admin) n-avem o flotă pentru „Azi la tine”: păstrăm pagina agenților în meniu (acolo punem pragurile platformei).
@@ -3968,7 +4067,9 @@ async function _starePachet(companyId, userId, opts) {
       costLei = c.usd * k;
     } else {
       const rr = await db.raspunsuriReguliLuna(companyId, userId);
-      folositeFirma = rr.firma; folositeOm = rr.om;
+      // Firma demo (19.11, Alin: „RA Insight… cel de pe Start”): fiecare cont demo are cele 50 de răspunsuri ale lui — altfel
+      // primul vizitator curios le-ar termina pentru toți ceilalți.
+      folositeFirma = (demoCompanyId != null && companyId === demoCompanyId && userId != null) ? rr.om : rr.firma; folositeOm = rr.om;
     }
   } catch (e) { if (strict) throw e; }
   const st = pachete.stare({ pachet: p, peOm: userId != null, folositeFirma: folositeFirma, folositeOm: folositeOm, limitaOm: limitaOm, sumaLimite: sumaLimite,
@@ -8389,7 +8490,9 @@ async function _runAgentsWorkerBody() {
     let _nCo = 0, _nFind = 0;
     for (const co of companies) {
       await _yield(); // o companie per tick → agenții nu monopolizează pool-ul de conexiuni
-      if (co.is_demo) continue;
+      // Firma demo: doar cât merge simulatorul (adică există un cont demo valabil). Altfel mașinile ei stau înghețate și agenții
+      // ar scrie „fără semnal” pentru nimeni (19.11, Alin: „agenții… ar trebui să aibă texte despre mașinile demo”).
+      if (co.is_demo && !demoSim.isRunning()) continue;
       const enabled = (plans ? plans.enabledAgentsFor(co) : Object.keys(agents.AGENTS)).filter(function (k) { return !LIVE_AGENTS.has(k); }); // agenții live (dispatch/care) se calculează la deschiderea paginii, nu în fundal
       if (!enabled.length) continue; // planul „start” nu rulează niciun agent
       const imeis = await db.getCompanyActiveImeis(co.id); // agenții nu rulează pe vehicule arhivate
@@ -10702,7 +10805,8 @@ function appBaseUrl(req) {
 // se naște o parolă în RA Track: nimeni nu scrie parola altcuiva (vezi CLAUDE.md, „Parola nu există”).
 async function linkDeParola(req, user, opts) {
   const token = crypto.randomBytes(32).toString('hex');
-  const hours = (opts && opts.hours) || (24 * 7);
+  // Contul demo: linkul ține cât contul, dar cel mult 7 zile (19.11: „link valabil 7 zile” la un demo de 2 ore nu mai era adevărat).
+  const hours = (opts && opts.hours) || (opts && opts.demo ? Math.min(contDemo.LINK_MAX_ORE, Math.max(1, Math.round(opts.demo.ore))) : (24 * 7));
   await db.setUserResetToken(user.id, token, Date.now() + hours * 3600 * 1000);
   return appBaseUrl(req) + '/set-password.html?token=' + token;
 }
@@ -10728,9 +10832,14 @@ async function sendSetPasswordEmail(req, user, opts) {
 }
 async function _trimiteEmailulDeParola(req, user, link, opts) {
   opts = opts || {};
-  const hours = opts.hours || (24 * 7);
+  const hours = opts.hours || (opts.demo ? Math.min(contDemo.LINK_MAX_ORE, Math.max(1, Math.round(opts.demo.ore))) : (24 * 7));
   let subject, text;
-  if (opts.invite) {
+  if (opts.demo) {
+    // Contul demo (19.11): spune că e demo, cât ține și ce poate încerca. Până atunci primea invitația administratorului
+    // („Ai fost invitat să administrezi un cont”).
+    const e = contDemo.email({ nume: user.full_name, email: user.email, ore: opts.demo.ore, pana: opts.demo.pana, linkOre: hours, link: link, aplicatie: appBaseUrl(req) + '/app' });
+    subject = e.subiect; text = e.text;
+  } else if (opts.invite) {
     subject = 'Invitație RA Track' + (opts.company ? ' — ' + opts.company.name : '');
     text = 'Bună' + (user.full_name ? ' ' + user.full_name : '') + ',\n\n'
       + 'Ai fost invitat să administrezi ' + (opts.company ? '„' + opts.company.name + '”' : 'un cont') + ' în RA Track.\n'
@@ -20683,6 +20792,9 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
     }
     // Viewer NU are viewAll → fără ACL explicit n-ar vedea niciun vehicul.
     try { await db.setUserAccess(u.id, demoSim.DEMO_IMEIS, []); } catch (e) {}
+    // RA Insight, ca pe Start (19.11, Alin: „să vadă cum funcționează… cel de pe Start”): răspunsurile pe butoane, fără model,
+    // 50 pe lună pentru FIECARE cont demo (_starePachet le numără pe cont în firma demo). Până atunci: „cere-i acces administratorului”.
+    try { await db.setUserAiSeat(u.id, true); } catch (e) {}
     await db.setUserAccessUntil(u.id, until);
     try { await db.pool.query('UPDATE users SET demo_request_id = $2 WHERE id = $1', [u.id, id]); } catch (e) {}
     invalidateAccessCache(u.id); roleCache.delete(u.id); // altfel cache-ul de 30s ar întârzia accesul
@@ -20692,13 +20804,13 @@ app.post('/api/admin/demo-requests/:id/approve', requireAuth, requireSuperadmin,
     // `warning` rămâne pentru ecranele care nu arată linkul (web-ul de azi, APK-urile vechi): le trimite la butonul
     // „Trimite link de parolă” din Utilizatori, care există pe web și pe telefon.
     let rez = { trimis: false, link: null, motiv: null };
-    try { rez = await trimiteLinkParola(req, Object.assign({}, u, { email: uname }), { invite: true }); }
+    try { rez = await trimiteLinkParola(req, Object.assign({}, u, { email: uname, full_name: u.full_name || r.name || null }), { invite: true, demo: { ore: hours, pana: until } }); }
     catch (e) { rez = { trimis: false, link: null, motiv: e.message }; }
     const invited = !!rez.trimis;
     await db.updateDemoRequest(id, { status: 'approved', user_id: u.id, approved_by: getAuth(req).userId, access_until: until });
     await syncDemoSim('cerere demo aprobată').catch(() => {}); // contul nou → vehiculele demo trebuie să se miște
     auditReq(req, 'approve', 'demo_request', id, { user: uname, hours: hours, invitat: invited });
-    res.json({ ok: true, username: uname, email: uname, hours: hours, days: Math.round(hours / 24 * 10) / 10, duration: _demoDurationLabel(hours), accessUntil: until, created: created, invited: invited,
+    res.json({ ok: true, username: uname, email: uname, hours: hours, days: Math.round(hours / 24 * 10) / 10, duration: contDemo.durata(hours), accessUntil: until, created: created, invited: invited,
       link: invited ? undefined : (rez.link || undefined),
       motiv: invited ? undefined : (rez.motiv || 'Emailul nu a plecat.'),
       warning: invited ? null
@@ -20712,6 +20824,34 @@ app.post('/api/admin/demo-requests/:id/reject', requireAuth, requireSuperadmin, 
     if (!r) return res.status(404).json({ error: 'Cerere inexistentă' });
     auditReq(req, 'reject', 'demo_request', id, {});
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// „Prelungește” (19.11, varianta 1 + 2): contul demo al cererii merge încă `hours` ore DE ACUM (aceleași durate ca la aprobare).
+// Se schimbă și pe cont, și pe cerere (lista arată data nouă); omul află pe email. Până pe 19.11 nu exista niciun buton.
+app.post('/api/admin/demo-requests/:id/prelungeste', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalid' });
+    const r = await db.getDemoRequestById(id); if (!r) return res.status(404).json({ error: 'Cerere inexistentă' });
+    if (r.status !== 'approved' || r.user_id == null) return res.status(400).json({ error: 'Se prelungește doar o cerere aprobată.' });
+    const u = await db.getUserById(r.user_id);
+    if (!u || demoCompanyId == null || u.company_id !== demoCompanyId) return res.status(409).json({ error: 'Contul acestei cereri nu mai e un cont demo.' });
+    const hours = _demoDurationHours(req.body);
+    const until = Date.now() + hours * 3600 * 1000;
+    await db.setUserAccessUntil(u.id, until);
+    await db.updateDemoRequest(id, { access_until: until });
+    invalidateAccessCache(u.id); roleCache.delete(u.id);
+    await syncDemoSim('cont demo prelungit').catch(() => {});
+    let trimis = false;
+    try {
+      if (channels.emailConfigured && channels.emailConfigured() && u.email) {
+        const e = contDemo.emailPrelungire({ nume: u.full_name, email: u.email, pana: until, aplicatie: appBaseUrl(req) + '/app' });
+        await channels.sendEmailTo(u.email, e.subiect, e.text, null, null, { jurnal: { fel: 'invitatie', companyId: u.company_id } });
+        trimis = true;
+      }
+    } catch (e) { trimis = false; }
+    auditReq(req, 'set_access', 'demo_request', id, { user: u.username, hours: hours, until: until, email: trimis });
+    res.json({ ok: true, accessUntil: until, duration: contDemo.durata(hours), email: trimis,
+      text: contDemo.dupaPrelungire({ nume: u.full_name, email: u.email, pana: until, trimis: trimis }) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/admin/demo-requests/:id', requireAuth, requireSuperadmin, async (req, res) => {
@@ -22377,13 +22517,12 @@ async function start() {
         try { await db.updateCompany(demo.id, { name: 'RA Track Demo' }); demo.name = 'RA Track Demo'; } catch (e) { /* nu oprește pornirea */ }
       }
       demoCompanyId = demo.id;
-      for (let i = 0; i < demoSim.DEMO_IMEIS.length; i++) {
-        const imei = demoSim.DEMO_IMEIS[i];
-        await db.pool.query(
-          "INSERT INTO devices (imei, name, vehicle_type, plate, company_id, last_seen) VALUES ($1,$2,'truck',$3,$4,NOW()) ON CONFLICT (imei) DO UPDATE SET company_id = $4",
-          [imei, demoSim.ROUTES[i % demoSim.ROUTES.length].city, 'DEMO-' + (i + 1), demo.id]
-        );
-      }
+      // Flota de probă (19.11, „varianta 2”): opt mașini cu numerele de pe site și fișa lor întreagă. Istoricul vechi (cele 5
+      // camioane care mergeau în cerc) pleacă o dată, în fundal; simulatorul îl așteaptă înainte să scrie istoricul nou.
+      await _demoFlotaMasini(demo.id);
+      _demoPregatit = _demoFlotaVersiune(demo.id).catch(function (e) { console.warn('[DEMO] versiunea flotei:', e.message); });
+      // Conturile demo valabile primesc RA Insight pe butoane (ca pe Start), și cele aprobate înainte de 19.11.
+      try { await db.pool.query('UPDATE users SET ai_seat = true WHERE company_id = $1 AND access_until IS NOT NULL AND ai_seat IS NOT TRUE', [demo.id]); } catch (e) {}
       let demoUser = await db.getUserByUsername('demo');
       if (!demoUser) {
         const hash = await bcrypt.hash(crypto.randomBytes(12).toString('hex'), 10);
@@ -22404,6 +22543,14 @@ async function start() {
       const dc = await db.getCompanyBySlug('demo');
       demoCompanyId = dc ? dc.id : null;
       console.log('[DEMO] DEMO_DISABLED=true → simulatorul e OPRIT' + (dc ? ' (compania demo rămâne, pentru conturile acordate la cerere)' : ' (nu există companie demo)'));
+      // Comutatorul oprește DOAR simulatorul: mașinile, șoferii, actele și locul RA Insight al conturilor demo sunt ale flotei noi
+      // și aici (19.11), ca un cont demo să nu vadă flota veche, înghețată.
+      if (dc) {
+        await _demoFlotaMasini(dc.id);
+        _demoPregatit = _demoFlotaVersiune(dc.id).catch(function (e) { console.warn('[DEMO] versiunea flotei:', e.message); });
+        _demoPregatit.then(function () { return _demoFlotaRest(dc.id); }).catch(function (e) { console.warn('[DEMO] flota de probă:', e.message); });
+        try { await db.pool.query('UPDATE users SET ai_seat = true WHERE company_id = $1 AND access_until IS NOT NULL AND ai_seat IS NOT TRUE', [dc.id]); } catch (e) {}
+      }
     } catch (e) { console.warn('[DEMO] stare:', e.message); demoCompanyId = null; }
   }
   // Evaluarea stării se face pe AMBELE ramuri, altfel „Stare producție” ar arăta „neinițializat” până la
