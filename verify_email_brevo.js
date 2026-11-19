@@ -61,8 +61,14 @@ const fals = http.createServer((req, res) => {
   T('textul simplu devine HTML cu rândurile păstrate și linkul apăsabil (și textul simplu rămâne)',
     /white-space:pre-wrap/.test(c.corp.htmlContent) && c.corp.htmlContent.indexOf('<a href="https://ratrack.ro/set-password.html?token=abc&amp;x=1">') >= 0 &&
     /Linkul: https:\/\/ratrack\.ro/.test(c.corp.textContent), c.corp.htmlContent.slice(0, 200));
+  // 19.11, Alin pe telefon: „Cannot GET /app,” — linkul lua și virgula din propoziție („Intri la https://ratrack.ro/app, cu…”).
+  const linkuri = mailer._pentruBrevo({ to: 'a@b.ro', subject: 's', text: 'Intri la https://ratrack.ro/app, cu parola. Apoi https://ratrack.ro/app. Sau (vezi https://ratrack.ro/x) și „https://ratrack.ro/y”! Wiki: https://en.wikipedia.org/wiki/A_(b). Mai mic: <https://ratrack.ro/z>' }).htmlContent;
+  const hrefuri = (linkuri.match(/href="[^"]*"/g) || []).map((h) => h.slice(6, -1));
+  T('linkurile din text nu iau punctuația propoziției („/app,” „/app.” „)” „”” „>”), iar „(…)” din adresă rămâne',
+    JSON.stringify(hrefuri) === JSON.stringify(['https://ratrack.ro/app', 'https://ratrack.ro/app', 'https://ratrack.ro/x', 'https://ratrack.ro/y', 'https://en.wikipedia.org/wiki/A_(b)', 'https://ratrack.ro/z'])
+    && linkuri.indexOf('<a href="https://ratrack.ro/app">https://ratrack.ro/app</a>, cu parola.') >= 0, JSON.stringify(hrefuri));
 
-  const LOGO = { filename: 'logo.png', path: path.join(__dirname, 'public', 'logo.png'), cid: 'logo@ratrack.ro', contentType: 'image/png' };
+  const LOGO ={ filename: 'logo.png', path: path.join(__dirname, 'public', 'logo.png'), cid: 'logo@ratrack.ro', contentType: 'image/png' };
   r = await mailer.send({ to: 'ana@firma.ro', subject: 'Cu sigla', html: '<div><img src="cid:logo@ratrack.ro" alt="RA Track"></div>', attachments: [{ filename: 'f.pdf', content: PDF }, LOGO] });
   c = primite[primite.length - 1];
   T('sigla „în corp” (cid) se cere de pe site (Brevo nu primește cid) și NU apare ca atașament',

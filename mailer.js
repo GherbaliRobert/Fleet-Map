@@ -53,8 +53,24 @@ function _destinatari(to) {
 function _esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 // Brevo cere conținut HTML. Un email scris doar ca text (invitațiile, rapoartele) devine HTML cu același text, rândurile
 // păstrate și linkurile apăsabile (linkul de parolă trebuie să se poată apăsa).
+// Linkurile din text. Punctuația de la capătul unei adrese ține de propoziție, nu de adresă: „Intri la https://ratrack.ro/app, cu
+// aceeași parolă” ducea la „/app,” — pe telefon, „Cannot GET /app,” (Alin, 19.11, la emailul contului demo). La fel punctul de la
+// final de frază, „)” fără „(” în adresă, ghilimelele, „>” (escapat „&gt;”). Ghilimeaua dreaptă nu intră în adresă: ar rupe href-ul.
+function _linkuriInText(e) {
+  return e.replace(/https?:\/\/[^\s<"]+/g, function (u) {
+    let coada = '';
+    for (;;) {
+      const m = /(?:[.,;:!?\]}»”’'…]|&gt;|\))$/.exec(u);
+      if (!m) break;
+      if (m[0] === ')' && (u.match(/\(/g) || []).length >= (u.match(/\)/g) || []).length) break;   // „(…)” din adresă rămâne
+      u = u.slice(0, m.index); coada = m[0] + coada;
+    }
+    if (!/^https?:\/\/[^/\s]/.test(u)) return u + coada;
+    return '<a href="' + u + '">' + u + '</a>' + coada;
+  });
+}
 function _htmlDinText(text) {
-  const e = _esc(text || '').replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>');
+  const e = _linkuriInText(_esc(text || ''));
   return '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;white-space:pre-wrap;">' + e + '</div>';
 }
 function _baza() { return String(process.env.BASE_URL || 'https://ratrack.ro').replace(/\/$/, ''); }

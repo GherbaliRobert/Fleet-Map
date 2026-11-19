@@ -633,6 +633,10 @@ Reprodus întocmai pe un Postgres ca cel de pe server: aceeași eroare, cuvânt 
   (pe telefon se copiază).
 - Mesajul de la „Aprobă”, când linkul nu pleacă, trimite acum la „Prelungește”. Înainte trimitea în Utilizatori, unde fondatorul vede
   doar colegii noștri, nu și conturile demo.
+- **Linkul din email lua și virgula din propoziție** (Alin, cu poza de pe telefon: „Cannot GET /app,”). „Intri la https://ratrack.ro/app,
+  cu aceeași parolă” devenea linkul „…/app,”, pe care serverul nu-l știe. Acum linkurile din orice email scris ca text se opresc înaintea
+  punctuației („,” „.” „)” ghilimele), iar „/app,” și „/app.” din emailurile deja trimise duc tot în aplicație. În emailurile contului demo,
+  adresa stă acum la capăt de rând.
 
 **Ce vede fondatorul:** „Aprobă” trimite linkul. Pentru cererea de azi apeși „Prelungește”: omul primește emailul contului demo, cu un
 link nou. Fereastra „Prelungește” spune că, dacă omul n-a intrat încă, primește și un link nou.

@@ -1557,6 +1557,9 @@ for (const p of PAGINI_PUBLICE) {
 
 // Pagina pleacă cu amprenta ei scrisă înăuntru (banda „A apărut o versiune nouă”, 14.10 — vezi `amprentaPaginii`).
 app.get('/app', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('html'); res.send(_paginaCuAmprenta()); });
+// Emailurile trimise înainte de 19.11 aveau punctuația propoziției lipită de link („…/app,” „…/app.” — „Cannot GET /app,” pe
+// telefonul lui Alin): duc tot în aplicație. Linkurile noi nu mai iau punctuația (mailer.js, _linkuriInText).
+app.get(/^\/app[.,;:!?)\]”…]+$/, (req, res) => res.redirect(301, '/app'));
 // Documentație API pentru clienți (publică, fără secrete)
 app.get(['/api-docs', '/docs'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'api-docs.html')));
 app.get('/sw.js', (req, res) => { res.set('Cache-Control', NO_CACHE); res.type('application/javascript'); res.sendFile(path.join(__dirname, 'public', 'sw.js')); });

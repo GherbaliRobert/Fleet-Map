@@ -248,7 +248,10 @@ Railway Hobby blochează SMTP, iar aplicația trimitea doar prin SMTP: nu pleca 
   NU-i pune înapoi un transport propriu. `sendEmailTo` aruncă dacă emailul n-a plecat (invitația arată atunci linkul).
 - Expeditorul: `EMAIL_FROM`, apoi `SMTP_FROM`, apoi „RA Track <noreply@ratrack.ro>". La Brevo, pe un domeniu autentificat.
 - Brevo **nu primește imagini cid**: sigla din emailul cu factura (`EMAIL_LOGO`, din `public/`) se cere de la `BASE_URL`.
-  Textul simplu devine HTML cu linkurile apăsabile (`_htmlDinText`).
+  Textul simplu devine HTML cu linkurile apăsabile (`_htmlDinText`). **Linkul se oprește înaintea punctuației propoziției** (`_linkuriInText`:
+  „,” „.” „)” fără „(” în adresă, ghilimele, „&gt;”) — 19.11, „Intri la https://ratrack.ro/app, cu…” ducea la „Cannot GET /app,”. Emailurile
+  deja trimise: `/app` + punctuație → 301 spre `/app` (server.js). Într-un text nou de email, pune adresa la capăt de rând. Păzit de
+  `verify_email_brevo.js` și `verify_demo.js`.
 - „Stare producție", rândul `smtp`: „activ — Brevo/SMTP, de la …". Probele pot muta Brevo pe un server fals (`BREVO_API_URL`).
 - Păzit de `verify_email_brevo.js` (în `npm test`), inclusiv pe server pornit.
 - **Emailul care n-a plecat NU tace (22.10; Alin: „raportul… a funcționat, apoi nu a mai mers").** Cauza de atunci: Brevo

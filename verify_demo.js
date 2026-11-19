@@ -117,6 +117,11 @@ const cont = require('./cont_demo');
     T('banda nu se arată după termen', cont.banda(Date.now() - 1000, Date.now()) === null);
     const e = cont.email({ nume: 'Andrei Pop', email: 'andrei@exemplu.ro', ore: 168, pana: z0 + 7 * 86400000, linkOre: 168, link: 'https://ratrack.ro/set-password.html?token=x', aplicatie: 'https://ratrack.ro/app' });
     T('emailul spune că e un cont demo, cât ține și ce poate încerca (nu „administrezi”)', e.subiect === 'Contul tău demo RA Track' && /^Bună, Andrei!/.test(e.text) && /Îl ai 7 zile, până pe/.test(e.text) && /RA Insight, pe butoane/.test(e.text) && /set-password/.test(e.text) && !/administrezi/.test(e.text), e.text);
+    // 19.11, „Cannot GET /app,” pe telefon: adresa aplicației stă la capăt de rând, fără punctuație după ea.
+    const ep2 = cont.emailPrelungire({ nume: 'Andrei Pop', email: 'andrei@exemplu.ro', pana: z0 + 86400000, aplicatie: 'https://ratrack.ro/app' });
+    T('adresa aplicației, la capăt de rând, fără „.” sau „,” după ea (emailul contului și al prelungirii)',
+      /\nApoi intri în aplicație: https:\/\/ratrack\.ro\/app\n/.test(e.text) && /\nIntri cu aceeași adresă și aceeași parolă: https:\/\/ratrack\.ro\/app\n/.test(ep2.text)
+      && !/https:\/\/ratrack\.ro\/app[.,;:]/.test(e.text + ep2.text), e.text + '\n---\n' + ep2.text);
     const e2 = cont.email({ nume: '', email: 'office@firma.ro', ore: 720, pana: z0 + 30 * 86400000, linkOre: 168, link: 'L', aplicatie: 'A' });
     T('la 30 de zile, emailul spune că linkul ține 7 zile', /linkul e valabil 7 zile/.test(e2.text) && /^Bună ziua!/.test(e2.text), e2.text.slice(0, 200));
 
@@ -185,6 +190,10 @@ async function peServer() {
     await sleep(1200);
     const S = await login('admin', 'test1234');
     T('fără conturi demo, simulatorul stă', ((await J('GET', '/api/admin/demo-sim', S)).j || {}).running === false);
+    // Linkurile din emailurile trimise înainte de 19.11 („…/app,” „…/app.”) duc tot în aplicație.
+    const rv = await fetch(B + '/app,', { redirect: 'manual' }), rp = await fetch(B + '/app.', { redirect: 'manual' }), ra = await fetch(B + '/app', { redirect: 'manual' });
+    T('„/app,” și „/app.” (din emailurile vechi) duc în aplicație; „/app” rămâne pagina', rv.status === 301 && /\/app$/.test(rv.headers.get('location') || '') && rp.status === 301 && ra.status === 200,
+      [rv.status, rv.headers.get('location'), rp.status, ra.status]);
     await cerere('Andrei Pop', 'andrei@transportpop.ro');
     let lst = (await J('GET', '/api/admin/demo-requests', S)).j || [];
     const id1 = (lst.find((r) => r.email === 'andrei@transportpop.ro') || {}).id;
