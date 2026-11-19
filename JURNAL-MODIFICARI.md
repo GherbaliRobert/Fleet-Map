@@ -613,6 +613,25 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-19
+
+### AMÂNDOI · Prima pagină: la pachete, un singur telefon și pe calculator
+*Alin, 19.11, cu o poză de pe calculator: „aici la pachete ți-am zis să avem un singur telefon care să includă și Start, cum e telefonul 2,
+cu toggle — am prea multe telefoane pe pagină”. Pe 18.11 făcusem asta doar pe ecranele de telefon.*
+
+**Ce am schimbat:** pe calculator și pe tabletă, pachetele RA Insight stau acum într-un singur telefon, la mijloc, cu butoanele Start · Basic ·
+Pro · Business (Start întâi; trece singur de la unul la altul) — ca pe telefon. Telefonul separat al pachetului Start a plecat; textele lui
+(„Răspunsuri pe loc, din rapoarte…”, „Conturi: 1 · administratorul…”) apar când e ales Start. Pe calculator, prima pagină are acum 3 telefoane
+desenate (primul ecran, agenții, pachetele), nu 4. În aplicație („Vezi pachetele”) nu s-a schimbat nimic.
+
+**Ce vede fondatorul:** pe ratrack.ro, de pe calculator, un singur telefon la pachete.
+
+**Ce vede clientul:** la fel.
+
+Reper: `public/js/ra-insight-demo.js` (`platit`: Start mereu primul când are coloana Start; `start` a ieșit din `FELURI`),
+`public/css/ra-insight-demo.css`, `public/landing.html` (`.tel-doi.ri-unul`, fără @media); probă: `verify_ra_insight_demo.js` (1366: un
+telefon la mijloc, 3 pe pagină).
+
 ## 2026-11-18
 
 ### AMÂNDOI · Găsite pe drum (4, 5, 6), rezolvate: agenții din Ofertare, „Fără semnal”, telefonul de la pachete la 320 px

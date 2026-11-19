@@ -408,9 +408,11 @@
     .tel-col .tel-p{margin:0;text-align:center;color:var(--muted);font-size:14px;line-height:1.55;max-width:40ch;min-height:3.1em}
     .tel-col [data-ri-demo="platit"]{width:100%}
     @media (max-width:720px){.tel-doi{grid-template-columns:minmax(0,1fr)}.tel-col .tel-p{min-height:0}}
-    /* Pe telefon, UN telefon cu Start · Basic · Pro · Business (18.11, Alin: „3. da”): ra-insight-demo.js pune „Start” în comutatorul
-       pachetelor plătite și marchează coloanele; coloana Start și titlul celeilalte se ascund (titlul secțiunii le spune pe amândouă). */
-    @media (max-width:720px){.ri-unul .ri-col-start{display:none}.ri-unul .tel-col:not(.ri-col-start)>h3,.ri-unul .tel-col:not(.ri-col-start)>.tel-p{display:none}}
+    /* UN telefon cu Start · Basic · Pro · Business, pe toate lățimile (19.11, Alin: „un singur telefon care să includă și Start… am prea
+       multe telefoane pe pagină”; pe 18.11 doar sub 720 px): ra-insight-demo.js pune „Start” în comutator și marchează coloanele; coloana
+       Start și titlul celeilalte se ascund (titlul secțiunii le spune pe amândouă), iar ce rămâne stă într-o coloană, la mijloc. */
+    .tel-doi.ri-unul{grid-template-columns:minmax(0,1fr);max-width:480px;margin-left:auto;margin-right:auto}
+    .ri-unul .ri-col-start{display:none}.ri-unul .tel-col:not(.ri-col-start)>h3,.ri-unul .tel-col:not(.ri-col-start)>.tel-p{display:none}
 
     /* ---------- ABOUT ---------- */
     .about{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center}
@@ -746,9 +748,11 @@
       </div>
 
       <!-- Pachetele RA Insight (17.11, Alin: „mock-up-urile din compară pachetele să apară pe home… compararea scriptică să fie când dai
-           pe butonul Compară pachetele"): cele două telefoane de pe /pachete-ra-insight — Start și Basic / Pro / Business, cu comutatorul.
-           Le desenează /js/ra-insight-demo.js; textele pachetelor sunt cele din pachete.js (verify_ra_insight_demo.js, verify_site_public.js
-           3d). Comparația scrisă stă pe /pachete-ra-insight, la butonul „Compară pachetele RA Insight”. Până pe 17.11: patru cartonașe cu text. -->
+           pe butonul Compară pachetele"). Din 19.11 UN telefon, cu comutatorul Start · Basic · Pro · Business (Alin: „am prea multe telefoane
+           pe pagină”): coloana Start de mai jos rămâne în pagină doar ca sursă a textelor Start (ra-insight-demo.js o ascunde și le ia de aici;
+           fără script se văd amândouă coloanele). Le desenează /js/ra-insight-demo.js; textele pachetelor sunt cele din pachete.js
+           (verify_ra_insight_demo.js, verify_site_public.js 3d). Comparația scrisă stă pe /pachete-ra-insight, la butonul „Compară pachetele
+           RA Insight”. Până pe 17.11: patru cartonașe cu text. -->
       <div class="ai-parte ai-parte-pk reveal"><span class="ai-nr ai-nr-pk" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span><div><h3>Pachetele RA Insight</h3>
         <p>Start e inclus în orice contract; de la Basic întrebi orice, cu inteligență artificială.</p></div></div>
       <div class="tel-doi">

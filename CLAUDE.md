@@ -494,7 +494,8 @@ Confidențialitate.
 Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: „exact așa animat ca în machetă".
 - **UN fișier: `public/js/ra-insight-demo.js` + `public/css/ra-insight-demo.css`**, folosit în două locuri: prima pagină (primul ecran =
   `data-ri-demo="erou"` lângă titlu, cu butoanele `[data-ri-taburi] [data-sc]`; secțiunea `#ra-insight` imediat sub primul ecran, cu
-  bucățile `data-ri-demo="bucata"`; pachetele = `start` + `platit`, cu comutatorul Basic / Pro / Business, care trece și singur)
+  bucățile `data-ri-demo="bucata"`; pachetele = UN telefon `platit`, cu comutatorul Start · Basic · Pro · Business, care trece și singur —
+  coloana `start` de alături e doar sursa textelor Start, ascunsă)
   și aplicația („Vezi pachetele", `insightPachete`, doar `j.actual === 'start'`; `RaInsightDemo.porneste(ov)` după ce fereastra e pe ecran,
   `inchidePachete` → `opreste`). NU scrie a doua variantă: un `<div data-ri-demo="…">` și, dacă vine după încărcare, `porneste`.
   **`/pachete-ra-insight` NU are telefoane** (18.11, Alin: „scoate telefoanele și lasă doar comparațiile, ca deja telefoanele sunt pe pagina
@@ -511,11 +512,13 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
 - **Mașinile, oamenii și cifrele sunt de probă** (B 204 RAT, B 77 TIR; Andrei, Maria, Radu); sub fiecare telefon scrie „Exemplu cu o flotă de
   probă". Zilele se socotesc față de azi, pe ora României, cu anul doar când e altul (ca `_zi` din propuneri.js / `ramuri.zz`) — NU scrie date
   de mână. Fără prețuri, fără numele furnizorului de AI, fără „gratuit" / „tokeni" / „24/7" (proba citește toate textele fișierului).
-- **Pachetele pe telefon: UN telefon** (≤ 720 px — `INGUST`, aceeași lățime în foaia telefonului și în pagina unde coloanele trec una sub
-  alta; 18.11, Alin: „3. da”): `platit()` găsește coloana Start de alături, o marchează (`ri-unul` / `ri-col-start`; pagina le ascunde pe
-  telefon, cu titlul celeilalte coloane) și pune „Start” primul în comutator (`.ri-pk-start`, ascuns pe calculator). Textele Start le ia din
-  coloana Start a paginii (clonate) — NU le scrie în script. Fără coloană Start (aplicația) nu se schimbă nimic. Păzit de
-  `verify_ra_insight_demo.js` (402 px).
+- **Pachetele: UN telefon, pe TOATE lățimile** (18.11 doar pe telefon; 19.11, Alin, cu o poză de pe calculator: „un singur telefon care să
+  includă și Start, cum e telefonul 2, cu toggle — am prea multe telefoane pe pagină”): `platit()` găsește coloana Start de alături, o
+  marchează (`ri-unul` / `ri-col-start`; pagina o ascunde, cu titlul celeilalte coloane, fără @media, iar ce rămâne stă la mijloc, 480 px) și
+  pune „Start” primul în comutator (`.ri-pk-start`). Coloana Start rămâne în pagină DOAR ca sursă a textelor Start (clonate) — NU le scrie în
+  script; telefonul ei (`data-ri-demo="start"`) nu se mai desenează (`start` a ieșit din `FELURI`), e doar reperul. Fără coloană Start
+  (aplicația) rămân Basic / Pro / Business. Pe calculator, prima pagină are 3 telefoane desenate (erau 4). NU pune înapoi al doilea telefon.
+  Păzit de `verify_ra_insight_demo.js` (1366: un telefon la mijloc, 3 pe pagină; 402 px).
 - **Sub 360 px telefonul se strânge cu coloana** (18.11, găsit pe drum 6): `[data-ri-demo="platit"]` are `grid-template-columns: minmax(0, 1fr)`
   — fără ea, pista grilei rămânea cât telefonul (300 px) și ieșea din ecran cu 11 px la 320 px; comutatorul are mai puțin loc pe lângă text
   sub 360 px. NU scoate pista. Păzit de `verify_ra_insight_demo.js` (320 / 340 / 360 px: încape, centrat).
@@ -523,7 +526,7 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
   tine" a fost `ri-w` și nu se vedea; acum `ri-st-w`). Culorile comenzilor din jur (`--ri-c-fg / mut / line`) au în foaia telefonului doar valori
   de rezervă (site-ul, închis); aplicația le dă din tema ei (`.insp-pk-demo`, app.css) — NU le defini pe elementele telefonului.
 - **Pe site:** „RA Insight" primul în meniu (sus, pe telefon, subsol); caseta veche de sub agenți (`.ra-insight`) a ieșit; pachetele de pe prima
-  pagină = cele două telefoane (`.tel-doi`, în `#ra-insight`; 3d le caută acolo); „de la Basic" pe analiză și pe propunerile cu „Da"; cifrele de lângă telefoane sunt în `LEGATE` („se
+  pagină = UN telefon cu Start · Basic · Pro · Business (`.tel-doi`, în `#ra-insight`; 3d caută acolo și textele coloanei Start); „de la Basic" pe analiză și pe propunerile cu „Da"; cifrele de lângă telefoane sunt în `LEGATE` („se
   poate anula în următoarele 10 minute" = `ANULARE_MIN`, „50 de răspunsuri" = Start). Chenarul Basic și coloana lui din comparație sunt VERZI (mov până pe 16.11).
 - **Primul ecran, textele din 17.11 (Alin, după patru variante: „Monitorizează-ți flota mi se pare autoritar"; „Vezi ce poate RA Insight,
   exclus"):** eticheta „RA Insight · asistentul AI al flotei tale", titlul „Monitorizare GPS și analiză cu inteligență artificială"
@@ -535,7 +538,7 @@ Macheta aprobată: https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — Alin: �
   6 agenți stau ÎNTR-O secțiune (`#ra-insight`, imediat sub primul ecran, eticheta „Inteligență artificială"): partea 1 (`.ai-parte` cu `1`,
   RA Insight: `.ri-fct` + `.ri-inc`) → puntea „Azi la tine" (`.ai-punte`; adevărat: `_aziLaTine` citește și ce au scris agenții azi) → partea 2
   (`.ai-parte#agenti-ai` cu `2` + `.agd`, butoanele și telefonul cu agenții — vezi „Agenții AI pe prima pagină") → pachetele (`.ai-parte-pk` +
-  `.tel-doi`, telefoanele) → butoanele (`.ri-cta`, și „Ce face fiecare agent, pe larg"). Secțiunea separată a agenților (`.section-ai`, după
+  `.tel-doi`, un telefon din 19.11) → butoanele (`.ri-cta`, și „Ce face fiecare agent, pe larg"). Secțiunea separată a agenților (`.section-ai`, după
   „Funcții") a ieșit — NU o pune la loc. `#agenti-ai` are `scroll-margin-top` (bara de sus e lipită, 70 px). Textele `LEGATE` („RA Watch verifică
   flota în fiecare oră", „Verifică flota în fiecare oră:" de pe butonul RA Watch) stau în partea 2. Iconițele punții = cele ale butoanelor (AGP_META).
 - Păzit de **`verify_ra_insight_demo.js`** (în `npm test`; partea din browser se sare fără Chromium) și `verify_site_public.js`.
@@ -1667,9 +1670,9 @@ bifă, PDF pe email, fără Stripe) ✅ · 7 pagina pachetelor (aplicație + sit
   Start, „Cere ofertă" la celelalte. Textele sunt COPIA lui `pachete.publice({ cuPret: false })`, `comparatie({ cuPret: false })`
   (în ordinea din cod) și `IN_TOATE` — `verify_site_public.js` (3c) le compară cuvânt cu cuvânt și pică la orice preț pe pagină.
   **Pe prima pagină** (28.10, Alin: „fără preț în pagina publică, pe home page, și cu prețuri când clientul are cont și face
-  upgrade"; 17.11: „2. da"): în capitolul „Inteligență artificială", cele DOUĂ TELEFOANE (`.tel-doi`: Start cu
-  textele lui din pachete.js + Basic / Pro / Business cu comutatorul, `data-ri-demo="start"` / `"platit"`; din 18.11 DOAR aici, nu și pe
-  `/pachete-ra-insight`, care are doar cartonașele și tabelul) — NU cartonașe cu text (cele patru
+  upgrade"; 17.11: „2. da"): în capitolul „Inteligență artificială", telefonul pachetelor (`.tel-doi`: coloana Start cu
+  textele ei din pachete.js, ascunsă, + UN telefon cu Start · Basic · Pro · Business, `data-ri-demo="start"` / `"platit"` — un singur telefon
+  din 19.11; din 18.11 DOAR aici, nu și pe `/pachete-ra-insight`, care are doar cartonașele și tabelul) — NU cartonașe cu text (cele patru
   `.ri-pachete` au ieșit pe 17.11); comparația scrisă stă DOAR pe `/pachete-ra-insight`, la butonul „Compară pachetele RA Insight". Păzit de 3d
   și de `verify_ra_insight_demo.js`, fără prețuri. Schimbi `DESCRIERE` în pachete.js → schimbi și pagina pachetelor (și `amprenta` /
   `modificat`). Nicio pagină nu mai spune „RA Insight pe cont" (păzit).

@@ -164,9 +164,8 @@
 .ri-pk-b[aria-pressed="true"] { background: #3FE07D; color: #06210F; }
 /* Sub 360 px cele patru butoane (Start · Basic · Pro · Business, 276 px) nu încap în coloană: mai puțin loc pe lângă text (18.11). */
 @media (max-width: 359px) { .ri-pk-b { padding: 6px 11px; } }
-/* „Start” în comutator: doar pe telefon (≤ 720 px), unde coloana Start de alături se ascunde (18.11; ra-insight-demo.js → platit). */
-.ri-pk-sel .ri-pk-start { display: none; }
-@media (max-width: 720px) { .ri-pk-sel .ri-pk-start { display: inline-block; } }
+/* „Start” în comutator: îl pune ra-insight-demo.js (platit) doar când are lângă el coloana Start a primei pagini, pe care o ascunde —
+   un singur telefon cu Start · Basic · Pro · Business, pe toate lățimile (19.11; pe 18.11 doar sub 720 px). */
 .ri-pk-info { max-width: 34ch; text-align: center; font-size: 13.5px; line-height: 1.5; color: var(--ri-c-mut, #C2CAD6); min-height: 60px; }
 .ri-pk-info b { color: var(--ri-c-fg, #FFFFFF); font-weight: 800; }
 .ri-pk-cifre { margin-top: 4px; font-size: 12px; }

@@ -57,12 +57,15 @@ console.log('\n1. Un fișier, trei locuri');
 T('fișierele telefonului există (JS + CSS) și scriptul se încarcă', !!DEMO && typeof DEMO.porneste === 'function' && typeof DEMO.opreste === 'function' && CSS.length > 2000);
 T('prima pagină încarcă telefonul (foaia de stil + scriptul)', L.includes('<link rel="stylesheet" href="/css/ra-insight-demo.css">') && L.includes('<script src="/js/ra-insight-demo.js" defer></script>'));
 T('pagina pachetelor NU mai are telefoane (18.11, Alin: „lasă doar comparațiile”): fără foaia și scriptul lor, fără data-ri-demo; cartonașele și tabelul rămân', !P.includes('ra-insight-demo') && !/data-ri-demo/.test(P) && !/class="tel-doi"/.test(P) && /class="pachete"/.test(P) && /<table>/.test(P));
-// Pe telefon, UN telefon la pachete (18.11, Alin: „3. da”): aceeași lățime în script, în foaia telefonului și în pagină (unde cele două
-// coloane trec una sub alta); textele Start se iau din coloana Start a paginii — scriptul nu le are a doua oară.
-const ING = (JS.match(/var INGUST = '([^']+)';/) || [])[1];
-T('pe telefon (≤ 720 px), un singur telefon la pachete: aceeași lățime în script (INGUST), în foaia telefonului și în pagină',
-  ING === '(max-width: 720px)' && CSS.includes('@media ' + ING + ' { .ri-pk-sel .ri-pk-start { display: inline-block; } }') &&
-  L.includes('@media (max-width:720px){.tel-doi{grid-template-columns:minmax(0,1fr)}') && L.includes('@media (max-width:720px){.ri-unul .ri-col-start{display:none}'), ING);
+// UN telefon la pachete, pe TOATE lățimile (19.11, Alin: „un singur telefon care să includă și Start, cum e telefonul 2, cu toggle — am
+// prea multe telefoane pe pagină”; pe 18.11 doar sub 720 px): scriptul pune Start primul când are lângă el coloana Start, fără nicio
+// lățime; pagina ascunde coloana Start fără @media și strânge ce rămâne la mijloc; „Start” din comutator nu mai are o regulă care să-l
+// ascundă. Telefonul Start din coloană nu se mai desenează (e doar reperul coloanei). Textele Start se iau din coloana Start a paginii.
+T('UN telefon la pachete pe toate lățimile (19.11): Start primul în comutator, coloana Start ascunsă fără @media, ce rămâne la mijloc',
+  !/INGUST|matchMedia\(INGUST/.test(JS) && /var lista = colStart \? \['start'\]\.concat\(PLANURI\) : PLANURI;/.test(JS) &&
+  !/\.ri-pk-start \{ display: none; \}/.test(CSS) && !/@media \(max-width:720px\)\{\.ri-unul/.test(L) &&
+  L.includes('.tel-doi.ri-unul{grid-template-columns:minmax(0,1fr);max-width:480px;margin-left:auto;margin-right:auto}') &&
+  L.includes('.ri-unul .ri-col-start{display:none}') && !/start: start,/.test(JS) && /var FELURI = \{ erou: erou, platit: platit, bucata: bucata \};/.test(JS));
 T('…textele Start (rândul și „În telefon: …”) se iau din coloana Start a paginii, nu se scriu în script',
   /colStart\.querySelector\('\.ri-pk-info'\)/.test(JS) && /colStart\.querySelector\('\.ri-exemplu'\)/.test(JS) && !/Răspunsuri pe loc, din rapoarte|Pentru orice firmă, din prima zi|administratorul · Exemplu/.test(JS));
 T('aplicația îl încarcă', IX.includes('<link rel="stylesheet" href="/css/ra-insight-demo.css">') && IX.includes('<script src="/js/ra-insight-demo.js"></script>'));
@@ -90,7 +93,7 @@ T('secțiunea RA Insight stă imediat după primul ecran (înaintea „Funcții�
 const bucati = [...sec.matchAll(/data-ri-demo="bucata" data-sc="([a-z]+)"/g)].map((m) => m[1]);
 T('…cu cele patru bucăți de ecran (aceleași patru întrebări)', JSON.stringify(bucati) === JSON.stringify(DEMO._ORDINE.slice()), bucati);
 T('…„de la Basic” pe cele două lucruri care cer AI (analiza, propunerile cu „Da”)', (sec.match(/class="ri-de">de la Basic</g) || []).length === 2);
-T('…pachetele = cele două telefoane (Start + Basic / Pro / Business), cu butonul spre comparația scrisă (17.11, Alin: „2. da”)',
+T('…pachetele = coloana Start (sursa textelor, ascunsă de script) + telefonul cu Start · Basic · Pro · Business, cu butonul spre comparația scrisă (17.11; un telefon din 19.11)',
   /class="tel-doi"[\s\S]*data-ri-demo="start"[\s\S]*data-ri-demo="platit"/.test(sec) && !/class="ri-pachete"/.test(L) && sec.includes('href="/pachete-ra-insight"'));
 T('caseta veche de sub agenți a plecat (.ra-insight)', !/class="ra-insight/.test(L) && !/^\s*\.ra-insight[\s{.:,]/m.test(L));
 T('meniul de sus: „RA Insight” primul, spre secțiune', /<div class="nav-links">\s*<a href="#ra-insight">RA Insight<\/a>/.test(L));
@@ -311,14 +314,28 @@ void DARK;
     T('…apoi scrie întrebarea și răspunde (antetul RA Insight · Instant)', await astepta(p, () => !!document.querySelector('[data-ri-demo="erou"] .ri-pu') && /RA Insight/.test((document.querySelector('[data-ri-demo="erou"] .ri-cap') || {}).textContent || ''), null, 12000));
     T('…butonul „Unde e” e cel aprins', await astepta(p, () => (document.querySelector('[data-ri-taburi] [aria-pressed="true"]') || {}).getAttribute && document.querySelector('[data-ri-taburi] [aria-pressed="true"]').getAttribute('data-sc') === 'unde', null, 3000));
     T('…cele patru bucăți din secțiunea RA Insight sunt desenate', await p.evaluate(() => document.querySelectorAll('#ra-insight .ri-ecran .ri-pa').length) === 4);
-    T('…și telefoanele pachetelor de pe prima pagină: Start și comutatorul Basic / Pro / Business (17.11)', await astepta(p, () => !!document.querySelector('#ra-insight [data-ri-demo="start"] .ri-scr') && [...document.querySelectorAll('#ra-insight [data-ri-demo="platit"] .ri-pk-b')].filter((x) => getComputedStyle(x).display !== 'none').length === 3, null, 4000));
+    T('…și telefonul pachetelor: UNUL, cu Start · Basic · Pro · Business (19.11; coloana Start nu se vede și nu se desenează)', await astepta(p, () => {
+      const vz = (e) => !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().height > 0;
+      return [...document.querySelectorAll('#ra-insight [data-ri-demo="platit"] .ri-pk-b')].filter(vz).map((x) => x.textContent).join() === 'Start,Basic,Pro,Business' &&
+        !vz(document.querySelector('#ra-insight [data-ri-demo="start"]')) && !document.querySelector('#ra-insight [data-ri-demo="start"] .ri-scr');
+    }, null, 4000));
+    T('1366 px: trei telefoane desenate pe prima pagină (primul ecran, agenții, pachetele; erau patru), cel de la pachete la mijlocul coloanei', await p.evaluate(() => {
+      const vz = (e) => !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().height > 0;
+      const doi = document.querySelector('#ra-insight .tel-doi'), col = doi.querySelector('[data-ri-demo="platit"]').closest('.tel-col');
+      const a = doi.parentElement.getBoundingClientRect(), b = col.getBoundingClientRect();
+      return [...document.querySelectorAll('.ri-tel')].filter(vz).length === 3 && Math.abs((b.left - a.left) - (a.right - b.right)) <= 1;
+    }), await p.evaluate(() => [...document.querySelectorAll('.ri-tel')].filter((e) => getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().height > 0).length));
     T('…punctele din „Azi la tine” se văd (roșu, portocaliu, verde — clasele lor nu sunt „ri-w”, a cuvintelor care se aprind)', await p.evaluate(() => Array.from(document.querySelectorAll('[data-ri-demo="erou"] .ri-azi-st')).map((e) => getComputedStyle(e).opacity).join()) === '1,1,1');
     await p.click('[data-ri-taburi] [data-sc="alerta"]');
     T('„Alertă”: scrie, propune, apasă „Da” și ajunge la „Gata”', await astepta(p, () => !!document.querySelector('[data-ri-demo="erou"] .ri-gata') && !!document.querySelector('[data-ri-demo="erou"] .ri-prop.ri-inchis'), null, 16000));
     T('…fără erori în pagină și nimic ieșit din ecran', p._erori.length === 0 && await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), p._erori);
     await p.goto(B + '/landing.html', { waitUntil: 'load' });
     await p.evaluate(() => document.querySelector('#ra-insight [data-ri-demo="platit"]').scrollIntoView());
-    T('prima pagină, pachetele: comutatorul Basic / Pro / Business, iar „Start” stă în coloana lui (pagina pachetelor nu mai are telefoane din 18.11)', await astepta(p, () => [...document.querySelectorAll('#ra-insight [data-ri-demo="platit"] .ri-pk-b')].filter((x) => getComputedStyle(x).display !== 'none').map((x) => x.textContent).join() === 'Basic,Pro,Business' && getComputedStyle(document.querySelector('#ra-insight [data-ri-demo="start"]').closest('.tel-col')).display !== 'none', null, 4000));
+    T('prima pagină, pachetele: pornește pe „Start”, cu rândul și „În telefon: …” din coloana Start a paginii (pagina pachetelor n-are telefoane din 18.11)', await astepta(p, (o) => {
+      const z = document.querySelector('#ra-insight [data-ri-demo="platit"]'), col = document.querySelector('#ra-insight [data-ri-demo="start"]').closest('.tel-col');
+      return z.querySelector('[data-pk="start"]').getAttribute('aria-pressed') === 'true' && z.querySelector('.ri-pk-info').textContent === col.querySelector('.ri-pk-info').textContent &&
+        z.querySelector('.ri-exemplu').textContent === col.querySelector('.ri-exemplu').textContent && (z.querySelector('.ri-loc') || {}).textContent === o;
+    }, DEMO._LOC_START, 4000));
     await p.click('[data-ri-demo="platit"] [data-pk="pro"]');
     T('…„Pro”: rândul pachetului, Maria în telefon și contorul ei', await astepta(p, (o) => {
       const z = document.querySelector('[data-ri-demo="platit"]');
@@ -385,7 +402,8 @@ void DARK;
     T('„Agenți AI” din meniu (17.11): titlul părții 2 se vede sub bara de sus, nu acoperit de ea', await p.evaluate(() => {
       const t = document.getElementById('agenti-ai'); t.scrollIntoView(); const e = t.getBoundingClientRect(), h = document.getElementById('siteHeader').getBoundingClientRect();
       return e.top >= h.bottom && e.top < h.bottom + 60; }), await p.evaluate(() => Math.round(document.getElementById('agenti-ai').getBoundingClientRect().top)));
-    T('„mai puțină mișcare” și la telefoanele pachetelor de pe prima pagină (amândouă)', await p.evaluate(() => !!document.querySelector('#ra-insight [data-ri-demo="start"] .ri-pa') && !!document.querySelector('#ra-insight [data-ri-demo="platit"] .ri-pa')));
+    T('„mai puțină mișcare” și la telefonul pachetelor de pe prima pagină: răspunsul Start gata scris', await p.evaluate(() => !!document.querySelector('#ra-insight [data-ri-demo="platit"] .ri-pa') &&
+      document.querySelector('#ra-insight [data-ri-demo="platit"] [data-pk="start"]').getAttribute('aria-pressed') === 'true'));
     await p.context().close();
   } catch (e) { rele++; console.log('  ✗ partea din browser a crăpat: ' + (e && e.stack || e)); }
   try { await br.close(); } catch (e) {}

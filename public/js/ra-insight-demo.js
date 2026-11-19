@@ -1,12 +1,12 @@
 /* RA Insight — telefonul de prezentare (16.11; Alin: „1. A, 2. închis, 3. da, cu comutator Basic / Pro / Business, 4. da, 5. da”,
    la macheta https://claude.ai/artifact/WZp8wrbHtGe65SgywGATGt — „exact așa animat ca în machetă”).
 
-   UN SINGUR fișier, folosit în trei locuri:
-     - prima pagină: telefonul din primul ecran (patru întrebări în aceeași discuție, cu butoanele de sub el) și bucățile de
-       ecran din secțiunea RA Insight (starea finală a fiecărei întrebări);
-     - /pachete-ra-insight: telefonul pachetului Start (un buton) și telefonul pachetelor plătite, cu comutatorul Basic / Pro /
-       Business (cine întreabă, câte întrebări are, „Sursă externă”);
-     - aplicația, „Vezi pachetele”, la firmele de pe Start: același telefon al pachetelor plătite.
+   UN SINGUR fișier, folosit în două locuri:
+     - prima pagină: telefonul din primul ecran (patru întrebări în aceeași discuție, cu butoanele de sub el), bucățile de
+       ecran din secțiunea RA Insight (starea finală a fiecărei întrebări) și telefonul pachetelor, cu comutatorul Start · Basic ·
+       Pro · Business (cine întreabă, câte întrebări are, „Sursă externă”) — UN telefon din 19.11 (Alin: „am prea multe telefoane
+       pe pagină”); /pachete-ra-insight n-are telefoane din 18.11;
+     - aplicația, „Vezi pachetele”, la firmele de pe Start: același telefon, cu Basic / Pro / Business.
    NU scrie a doua variantă în pagină: pune un <div data-ri-demo="…"> și cheamă RaInsightDemo.porneste(container) dacă e pus după
    încărcare (aplicația).
 
@@ -380,33 +380,18 @@
     return T;
   }
 
-  // ── Pachetul Start: un buton („Ce a făcut flota ieri?”), răspunsul pe loc, contorul celor 50 ──
-  function start(gazda) {
-    var T = new Telefon(gazda, { start: true, cine: START.cine, contor: START.contor[0], contorDupa: START.contor[1] });
-    (async function () {
-      if (!MISCARE) { T.static(['ieri']); return; }
-      for (;;) {
-        var g = ++T.gen; T.puneContor(START.contor[0]); T.deseneazaGol();
-        if (!(await T.pauza(g, 1800))) return;
-        if (!(await T.joacaUna(g, 'ieri'))) return;
-        if (!(await T.pauza(g, 5600))) return;
-      }
-    })();
-    return T;
-  }
-
-  // ── Pachetele plătite: comutatorul Basic / Pro / Business, cine întreabă, câte întrebări are; trece singur de la unul la altul ──
-  // Pe telefon (≤ 720 px, unde cele două telefoane ar sta unul sub altul; 18.11, Alin: „3. da”): coloana Start de alături se ascunde
-  // (`ri-col-start` în `ri-unul`, stilul în pagină), iar telefonul ăsta primește și butonul „Start” — UN telefon cu Start · Basic · Pro ·
-  // Business. Textele Start NU se scriu aici: se iau din coloana Start a paginii (aceeași hârtie, legată de pachete.js prin probe).
-  var INGUST = '(max-width: 720px)';
+  // ── Pachetele: comutatorul, cine întreabă, câte întrebări are; trece singur de la unul la altul ──
+  // Pe prima pagină, UN telefon cu Start · Basic · Pro · Business, pe TOATE lățimile (19.11, Alin: „un singur telefon care să includă și
+  // Start, cum e telefonul 2, cu toggle — am prea multe telefoane pe pagină”; pe 18.11 fusese doar sub 720 px): coloana Start de alături
+  // se ascunde (`ri-col-start` în `ri-unul`, stilul în pagină), iar telefonul ăsta primește butonul „Start”, primul. Textele Start NU se
+  // scriu aici: se iau din coloana Start a paginii (aceeași hârtie, legată de pachete.js prin probe). În aplicație („Vezi pachetele”) nu
+  // e coloană Start: rămân Basic / Pro / Business.
   function platit(gazda) {
     gazda.innerHTML = '';
     var doi = gazda.closest ? gazda.closest('.tel-doi') : null;
     var tStart = doi ? doi.querySelector('[data-ri-demo="start"]') : null;
     var colStart = tStart && tStart.parentNode && tStart.parentNode !== gazda ? tStart.parentNode : null;
-    var ingust = colStart && window.matchMedia ? window.matchMedia(INGUST) : null;
-    var lista = function () { return ingust && ingust.matches ? ['start'].concat(PLANURI) : PLANURI; };
+    var lista = colStart ? ['start'].concat(PLANURI) : PLANURI;
     if (colStart) { doi.classList.add('ri-unul'); colStart.classList.add('ri-col-start'); }
     var sel = el('div', 'ri-pk-sel'); sel.setAttribute('role', 'group'); sel.setAttribute('aria-label', 'Alege pachetul');
     if (colStart) { var bs = el('button', 'ri-pk-b ri-pk-start'); bs.type = 'button'; bs.textContent = 'Start'; bs.setAttribute('data-pk', 'start'); bs.setAttribute('aria-pressed', 'false'); sel.appendChild(bs); }
@@ -416,9 +401,7 @@
     var cine = el('div', 'ri-exemplu');
     gazda.appendChild(sel); gazda.appendChild(info); gazda.appendChild(tel); gazda.appendChild(cine);
     var T = new Telefon(tel, { sursa: { on: false, nr: '' } });
-    var acum = null;
     var marcheaza = function (k) {
-      acum = k;
       sel.querySelectorAll('[data-pk]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-pk') === k)); });
       info.innerHTML = '';
       if (k === 'start') {
@@ -441,15 +424,15 @@
     };
     var scena = function (k) { return k === 'start' ? 'ieri' : PACHETE[k].sc; };
     async function bucla(de) {
-      var l = lista(), i = Math.max(0, l.indexOf(de || l[0]));
+      var i = Math.max(0, lista.indexOf(de || lista[0]));
       var g = ++T.gen;
       for (;;) {
-        var k = l[i];
+        var k = lista[i];
         marcheaza(k); T.deseneazaGol();
         if (!(await T.pauza(g, 1800))) return;
         if (!(await T.joacaUna(g, scena(k)))) return;
         if (!(await T.pauza(g, 5600))) return;
-        l = lista(); i = (l.indexOf(k) + 1) % l.length;
+        i = (i + 1) % lista.length;
       }
     }
     var arata = function (k) { if (MISCARE) bucla(k); else { marcheaza(k); T.static([scena(k)]); } };
@@ -457,10 +440,7 @@
       var b = e.target.closest ? e.target.closest('[data-pk]') : null; if (!b) return;
       arata(b.getAttribute('data-pk'));
     });
-    // Ecranul s-a lățit cât timp telefonul arăta Start: Start are din nou coloana lui, deci telefonul ăsta trece la Basic.
-    if (ingust) { var laSchimbare = function () { if (!ingust.matches && acum === 'start') arata('basic'); };
-      if (ingust.addEventListener) ingust.addEventListener('change', laSchimbare); else if (ingust.addListener) ingust.addListener(laSchimbare); }
-    arata(lista()[0]);
+    arata(lista[0]);
     return T;
   }
 
@@ -475,7 +455,9 @@
     return null;
   }
 
-  var FELURI = { erou: erou, start: start, platit: platit, bucata: bucata };
+  // `data-ri-demo="start"` (coloana Start a primei pagini) nu se mai desenează singur din 19.11: e doar reperul după care `platit` își
+  // găsește coloana Start, o ascunde și îi ia textele — pachetul Start se vede în telefonul cu comutator.
+  var FELURI = { erou: erou, platit: platit, bucata: bucata };
   function porneste(radacina) {
     var r = radacina || document;
     var l = Array.prototype.slice.call(r.querySelectorAll ? r.querySelectorAll('[data-ri-demo]') : []);
