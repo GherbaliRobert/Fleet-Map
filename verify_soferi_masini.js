@@ -174,7 +174,10 @@ T('culorile noi au pereche pe tema închisă', ['.chat-prop {', '.chat-prop-h .i
 
 // ─── 3. Serverul ────────────────────────────────────────────────────────────────────────────────────
 console.log('\n3. Serverul: calea ecranului, drepturile, de la Basic, nenumărat');
-T('schimbarea merge pe calea ecranului: db.assignDevice cu grupa de ACUM a mașinii (altfel i-ar șterge grupa)', /await db\.assignDevice\(s\.imei, la, d\.group_id\);/.test(SRV) && (SRV.match(/db\.assignDevice\(/g) || []).length === 2);
+// Locurile care schimbă șoferul unei mașini sunt NUMĂRATE: ruta ecranului, _aplicaSoferi (cu grupa de ACUM) și, din 19.11, flota de probă a
+// companiei demo (_demoFlotaRest), care pune dinadins și șoferul, și grupa din demo_flota.js. Un loc nou → te uiți dacă păstrează grupa.
+T('schimbarea merge pe calea ecranului: db.assignDevice cu grupa de ACUM a mașinii (altfel i-ar șterge grupa)', /await db\.assignDevice\(s\.imei, la, d\.group_id\);/.test(SRV) && (SRV.match(/db\.assignDevice\(/g) || []).length === 3
+  && /if \(\(d\.driver_id \|\| null\) !== sofer \|\| \(d\.group_id \|\| null\) !== grupa\) await db\.assignDevice\(m\.imei, sofer, grupa\);/.test(SRV));
 T('…verificată pe starea de acum: șoferul de acum = cel din propunere, șoferul nou din firma mașinii, nepus pe altă mașină', /if \(acum !== deLa\)/.test(SRV) && /await db\.soferAlFirmei\(la, d\.company_id\)/.test(SRV) && /await db\.masiniSofer\(la, d\.company_id\)/.test(SRV));
 T('…în jurnal „prin RA Insight”', /prin: 'RA Insight', actiune: x\.actiuneId \|\| null/.test(SRV));
 // 23.10 (partea 2): „Da” și „Anulează” sunt comune șoferului, alertei și discuției — drepturile le cere felul propunerii
