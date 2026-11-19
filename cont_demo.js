@@ -33,12 +33,13 @@ function _zi(ms) { const idx = flota.ziuaLa(ms); const p = flota.dataZi(idx).spl
 function _ora(ms) { const z = _zi(ms); const m = Math.floor((ms - z.z0) / MIN); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
 // „26.11.2026, ora 06:53”
 function cand(ms) { const z = _zi(ms); return z.zz + '.' + z.an + ', ora ' + _ora(ms); }
-// Cât mai e: „încă 7 zile” / „încă 5 ore” / „încă 40 de minute”.
+// Cât mai e, la ora întreagă cea mai apropiată și scris ca durata contului: „încă 7 zile” (abia aprobat pe 7 zile),
+// „încă 6 zile și 23 de ore”, „încă 20 de ore”; sub 2 ore, în minute („încă 40 de minute”). Până pe 19.11 zilele se tăiau în
+// jos: abia aprobat pe 7 zile, banda scria „încă 6 zile” — iar data din fața ei spunea altceva.
 function ramas(pana, acum) {
   const ms = Number(pana) - Number(acum);
   if (!(ms > 0)) return null;
-  if (ms >= 2 * ZI) return 'încă ' + cate(Math.floor(ms / ZI), 'zi', 'zile');
-  if (ms >= 2 * ORA) return 'încă ' + cate(Math.floor(ms / ORA), 'oră', 'ore');
+  if (ms >= 2 * ORA) return 'încă ' + durata(Math.round(ms / ORA));
   return 'încă ' + cate(Math.max(1, Math.floor(ms / MIN)), 'minut', 'minute');
 }
 

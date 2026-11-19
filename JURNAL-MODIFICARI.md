@@ -636,8 +636,9 @@ planului Start; 3. cele găsite pe drum rezolvă acum”.*
   4h30 de condus fără pauză la B 77 TIR, mașina de rezervă nefolosită. Agenții verifică firma demo doar cât există un cont demo valabil.
 - **Emailul primit de om** spune acum că e un cont demo, cât ține, ce poate încerca și că răspunde la email pentru ofertă (scria „Ai fost invitat
   să administrezi un cont”). Linkul ține cât contul, cel mult 7 zile.
-- **Banda „Cont demo · îl ai până pe 26.11, ora 11:53 (încă 6 zile).”** sus în aplicație, cu „Cere ofertă” (formularul de pe site, fără bifa de
-  cont demo).
+- **Banda „Cont demo · îl ai până pe 26.11, ora 11:53 (încă 7 zile).”** sus în aplicație, cu „Cere ofertă” (formularul de pe site, fără bifa de
+  cont demo). Timpul rămas e la ora întreagă, ca data din fața lui: „încă 7 zile”, după o oră „încă 6 zile și 23 de ore”, spre final
+  „încă 20 de ore”, „încă 40 de minute”. (Corectat tot pe 19.11, după prima publicare: abia aprobat pe 7 zile, banda scria „încă 6 zile”.)
 - **„Prelungește”** la noi, în „Cereri demo” (web și telefon): contul merge încă 2 ore … 30 de zile, de acum; omul primește un email cu noua dată.
 - **Găsite pe drum, rezolvate:** la autentificare scrie „Email” (nu „Username”); rolul se cheamă „Vizualizare” peste tot (sub numele omului scria
   „Viewer”; web, server, telefon); în „Cereri demo”: „30 de zile”, „24 de ore”, „1 cerere”, „1 cont demo activ”.

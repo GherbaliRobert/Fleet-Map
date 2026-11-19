@@ -104,7 +104,16 @@ const cont = require('./cont_demo');
     T('„1 cont demo activ”, „2 conturi demo active”, „20 de conturi demo active”', cont.conturiActive(1) === '1 cont demo activ' && cont.conturiActive(2) === '2 conturi demo active' && cont.conturiActive(20) === '20 de conturi demo active');
     const z0 = flota.inceputZi(flota.ziuaLa(Date.now()));
     const b = cont.banda(z0 + 7 * 86400000 + 8 * 3600000, z0 + 10 * 3600000);
-    T('banda: „Cont demo · îl ai până pe ZZ.LL, ora 08:00 (încă 6 zile).” + „Cere ofertă”', !!b && /^Cont demo · îl ai până pe \d\d\.\d\d, ora 08:00 \(încă 6 zile\)\.$/.test(b.text) && b.buton === 'Cere ofertă' && b.link === '/?oferta=1#contact', b);
+    T('banda: „Cont demo · îl ai până pe ZZ.LL, ora 08:00 (încă 6 zile și 22 de ore).” + „Cere ofertă”', !!b && /^Cont demo · îl ai până pe \d\d\.\d\d, ora 08:00 \(încă 6 zile și 22 de ore\)\.$/.test(b.text) && b.buton === 'Cere ofertă' && b.link === '/?oferta=1#contact', b);
+    // Abia aprobat pe 7 zile, banda spune 7 zile (până pe 19.11 tăia în jos: „încă 6 zile”); restul, cât arată data din fața ei.
+    const aprobat = z0 + 10 * 3600000 + 1234, ramasTxt = function (msInainte) { const x = cont.banda(aprobat + msInainte, aprobat); return x && (x.text.match(/\((încă [^)]+)\)/) || [])[1]; };
+    T('banda, abia aprobat: 7 zile → „încă 7 zile”, 30 de zile → „încă 30 de zile”, 24 de ore → „încă 1 zi”',
+      ramasTxt(7 * 86400000 - 5000) === 'încă 7 zile' && ramasTxt(30 * 86400000 - 5000) === 'încă 30 de zile' && ramasTxt(86400000 - 5000) === 'încă 1 zi',
+      [ramasTxt(7 * 86400000 - 5000), ramasTxt(30 * 86400000 - 5000), ramasTxt(86400000 - 5000)]);
+    T('banda, mai târziu: „încă 2 zile și 3 ore”, „încă 20 de ore”, „încă 3 ore”, „încă 90 de minute”, „încă 1 minut”',
+      ramasTxt(51 * 3600000 + 10 * 60000) === 'încă 2 zile și 3 ore' && ramasTxt(20 * 3600000) === 'încă 20 de ore' && ramasTxt(3 * 3600000 - 60000) === 'încă 3 ore' &&
+      ramasTxt(90 * 60000 + 20000) === 'încă 90 de minute' && ramasTxt(30000) === 'încă 1 minut',
+      [ramasTxt(51 * 3600000 + 10 * 60000), ramasTxt(20 * 3600000), ramasTxt(3 * 3600000 - 60000), ramasTxt(90 * 60000 + 20000), ramasTxt(30000)]);
     T('banda nu se arată după termen', cont.banda(Date.now() - 1000, Date.now()) === null);
     const e = cont.email({ nume: 'Andrei Pop', email: 'andrei@exemplu.ro', ore: 168, pana: z0 + 7 * 86400000, linkOre: 168, link: 'https://ratrack.ro/set-password.html?token=x', aplicatie: 'https://ratrack.ro/app' });
     T('emailul spune că e un cont demo, cât ține și ce poate încerca (nu „administrezi”)', e.subiect === 'Contul tău demo RA Track' && /^Bună, Andrei!/.test(e.text) && /Îl ai 7 zile, până pe/.test(e.text) && /RA Insight, pe butoane/.test(e.text) && /set-password/.test(e.text) && !/administrezi/.test(e.text), e.text);

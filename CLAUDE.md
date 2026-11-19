@@ -592,7 +592,9 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
   Fără model, fără cost. NU da conturilor demo un pachet cu AI fără Alin.
 - **Textele: `cont_demo.js`** — emailul cu linkul (cont DEMO, cât ține, ce poate încerca; linkul ține cât contul, cel mult 7 zile — `trimiteLinkParola`
   cu `opts.demo`), banda din aplicație (`/api/me` → `demo`, pagina: `applyDemoBanner`, cu „Cere ofertă” → `/?oferta=1#contact`, unde landing-ul
-  scoate bifa de cont demo), emailul și mesajul prelungirii, `durata` („30 de zile”), `conturiActive` („1 cont demo activ”).
+  scoate bifa de cont demo), emailul și mesajul prelungirii, `durata` („30 de zile”), `conturiActive` („1 cont demo activ”). Timpul rămas din bandă
+  (`ramas`) = `durata` la ora întreagă cea mai apropiată („încă 7 zile” abia aprobat, apoi „încă 6 zile și 23 de ore”; sub 2 ore, minute) — NU tăia
+  zilele în jos (abia aprobat pe 7 zile scria „încă 6 zile”, 19.11).
 - **„Prelungește”** = `POST /api/admin/demo-requests/:id/prelungeste` (super-admin, cerere aprobată, contul încă în firma demo): termenul nou de
   ACUM, pe cont și pe cerere, email la om. Web: `raxDemoReqPrelungeste` (aceleași durate ca la aprobare, `_dqDurate`); telefon: `DemoRequests.tsx`.
 - Păzit de **`verify_demo.js`** (în `npm test`; agenții adevărați pe o zi de lucru fixă, la 15:00; pe server pornit, fără cheie de AI, Brevo fals).
