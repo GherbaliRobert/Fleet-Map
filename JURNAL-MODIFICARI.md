@@ -14961,6 +14961,15 @@ tare doare dacă o sărim**, nu după cât e de greu de făcut.
   rapoartele generate până atunci sunt încă salvate și nu le mai citește nimic. De hotărât dacă le
   ștergem definitiv sau le păstrăm ca arhivă.
 
+- [ ] **(eu) Avertismentul de tahograf din fișa mașinii, pe hartă, îi cere clientului să verifice cablajul.** Scrie „Camion cu semnal și
+  cu contactul pornit, dar fără date de tahograf. Verifică cablajul / cardul de companie / RDD.” — contra regulii din 19.10 (aparatul și
+  montajul sunt treaba noastră), iar „RDD” e un cuvânt de-al nostru. Propunerea: textul lui RA Watch, care pomenește doar cardul de companie
+  din tahograf. Găsit pe drum pe 18.11 (punctul 7); Alin, 19.11: „hai să le lăsăm mai aproape de lansare”.
+
+- [ ] **(eu) Manualul și prezentările PDF scriu încă „offline”, „eco-driving”, „raport zilnic”** (manualul și „MRR/ARR, abonamente
+  active”). Nu sunt legate nici de site, nici de aplicație; se refac înainte să le trimitem cuiva. Găsit pe drum pe 18.11 (punctul 8);
+  Alin, 19.11: „mai aproape de lansare”.
+
 ---
 
 ### D. De confirmat din afară (nu depinde de cod)
