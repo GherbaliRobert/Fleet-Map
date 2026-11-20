@@ -4,7 +4,8 @@
   <!-- „Distribuie locația” (Robert, 21.10): pagina pe care o deschide cine a primit linkul unei mașini, ca locația live
        de pe WhatsApp. Fără cont, fără cookie-uri, fără analiză de trafic. Tokenul stă în adresă (/locatie/<token>); pagina
        cere la câteva secunde /api/public/locatie/<token>. Ce scrie aici vine gata scris de server (locatie_distribuita.js):
-       pagina doar arată. Când linkul a expirat sau a fost oprit, serverul răspunde 404 și pagina nu mai arată mașina. -->
+       pagina doar arată. Când linkul a expirat sau a fost oprit, serverul răspunde 404 și pagina nu mai arată mașina.
+       Balonul de sus (Robert, 20.11): manevrele bruște ale mașinii — frânare, accelerare, viraj — câteva secunde fiecare. -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Locație live | RA Track</title>
@@ -48,6 +49,21 @@
     .live i{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(63,224,125,.6);animation:puls 1.8s infinite}
     .live.oprit i{background:var(--muted);animation:none}
     @keyframes puls{0%{box-shadow:0 0 0 0 rgba(63,224,125,.55)}70%{box-shadow:0 0 0 9px rgba(63,224,125,0)}100%{box-shadow:0 0 0 0 rgba(63,224,125,0)}}
+
+    /* balonul „stilul de condus”: sus, sub siglă, câteva secunde (cât spune serverul) */
+    .balon{position:fixed;z-index:1050;left:50%;top:calc(64px + var(--sat));display:flex;align-items:center;gap:10px;
+      width:max-content;max-width:calc(100% - 28px);padding:9px 14px 9px 9px;border-radius:999px;background:rgba(17,22,27,.96);
+      border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.4);font-weight:700;font-size:14px;line-height:1.3;
+      pointer-events:none;backdrop-filter:blur(6px);opacity:0;visibility:hidden;transform:translate(-50%,-12px);
+      transition:opacity .25s ease,transform .25s ease,visibility 0s linear .25s}
+    .balon.da{opacity:1;visibility:visible;transform:translate(-50%,0);transition-delay:0s}
+    .balon .bi{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      background:rgba(245,165,36,.16);color:var(--warn)}
+    .balon .bi svg{display:none}
+    .balon.frana .bi{background:rgba(248,113,113,.16);color:#F87171}
+    .balon.viraj .bi{background:rgba(96,165,250,.16);color:#60A5FA}
+    .balon.frana .i-frana,.balon.accel .i-accel,.balon.viraj .i-viraj{display:block}
+    .balon .bt{overflow-wrap:anywhere}
 
     /* cartonașul: jos pe telefon, plutind în stânga pe calculator */
     .fisa{position:fixed;z-index:1000;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);
@@ -102,8 +118,9 @@
     @media (min-width:760px){
       .fisa{left:16px;right:auto;bottom:16px;width:360px;border:1px solid var(--border);border-radius:18px;padding:18px}
       .sus{padding:16px}
+      .balon{top:calc(74px + var(--sat))}
     }
-    @media (prefers-reduced-motion:reduce){.live i,.masina .halou{animation:none}.masina .sageata{transition:none}}
+    @media (prefers-reduced-motion:reduce){.live i,.masina .halou{animation:none}.masina .sageata,.balon{transition:none}}
   </style>
 </head>
 <body>
@@ -112,6 +129,15 @@
   <div class="sus">
     <a class="ralogo" href="https://ratrack.ro/" aria-label="RA Track"><img src="/logo-mark.png" alt="RA"><span class="raw">Track</span></a>
     <span class="live" id="live"><i aria-hidden="true"></i><span>Locație live</span></span>
+  </div>
+
+  <div class="balon" id="balon" role="status" aria-live="polite">
+    <span class="bi" aria-hidden="true">
+      <svg class="i-frana" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>
+      <svg class="i-accel" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l7-7 7 7M5 19l7-7 7 7"/></svg>
+      <svg class="i-viraj" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20v-7a6 6 0 0 1 6-6h6"/><path d="M15 4l3 3-3 3"/></svg>
+    </span>
+    <span class="bt" id="balon-t"></span>
   </div>
 
   <section class="fisa" id="fisa" aria-live="polite">
@@ -158,6 +184,9 @@
     var harta = null, marker = null, urma = null, puncte = [];
     var urmareste = true, ultima = null, timer = null, incheiat = false, pasMs = 5000, anim = null;
     var primaData = true;
+    // Balonul: fiecare manevră se arată o dată (`vazute`), pe rând (`coada`), câteva secunde fiecare.
+    var vazute = {}, coada = [], balonPornit = false, balonTimer = null, balonMs = 5000, primaCerere = true;
+    var TIPURI = { frana: 1, accel: 1, viraj: 1 };
 
     function porneste() {
       if (window.L) {
@@ -236,7 +265,39 @@
       } else {
         g.href = '#'; g.setAttribute('aria-disabled', 'true');
       }
+      manevre(j);
     }
+
+    // Manevrele noi intră la coadă. La deschiderea paginii, cele mai vechi decât spune serverul nu se mai arată.
+    function manevre(j) {
+      balonMs = Math.max(2, Number(j.balon) || 5) * 1000;
+      var laDeschidere = Number(j.manevreLaDeschidere) || 30;
+      (j.manevre || []).forEach(function (m) {
+        if (!m || !m.id || vazute[m.id]) return;
+        vazute[m.id] = true;
+        if (primaCerere && Number(m.vechime) > laDeschidere) return;
+        coada.push(m);
+      });
+      primaCerere = false;
+      if (coada.length > 3) coada = coada.slice(-3);   // o rafală nu ține balonul pe ecran un minut
+      if (!balonPornit) urmatorulBalon();
+    }
+
+    function urmatorulBalon() {
+      var b = $('balon'), m = coada.shift();
+      if (!m) { balonPornit = false; return; }
+      balonPornit = true;
+      b.className = 'balon' + (TIPURI[m.tip] ? ' ' + m.tip : '');
+      $('balon-t').textContent = m.text || '';
+      void b.offsetWidth;   // clasa nouă întâi, apoi intrarea, ca tranziția să pornească
+      b.classList.add('da');
+      balonTimer = setTimeout(function () {
+        b.classList.remove('da');
+        balonTimer = setTimeout(urmatorulBalon, 350);
+      }, balonMs);
+    }
+
+    function ascundeBalon() { clearTimeout(balonTimer); balonTimer = null; coada = []; balonPornit = false; $('balon').classList.remove('da'); }
 
     function iconMasina(mers, tacut, unghi) {
       var cls = 'masina' + (mers ? ' mers' : '') + (tacut ? ' tacut' : '');
@@ -283,6 +344,7 @@
     // Linkul nu mai e bun: mașina dispare de pe hartă și nu se mai cere nimic.
     function termina(j) {
       incheiat = true; clearTimeout(timer); timer = null; ultima = null;
+      ascundeBalon();
       if (anim) cancelAnimationFrame(anim);
       if (marker && harta) { harta.removeLayer(marker); marker = null; }
       if (urma && harta) { harta.removeLayer(urma); urma = null; }

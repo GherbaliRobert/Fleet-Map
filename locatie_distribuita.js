@@ -6,6 +6,7 @@
 'use strict';
 const { deNr: _deNr } = require('./public/js/numar.js');
 const crypto = require('crypto');
+const condus = require('./condus.js');
 
 // Duratele, ca pe WhatsApp. Ecranele (web, telefon) le iau de la server — NU le scrie a doua oară.
 const DURATE = [
@@ -104,9 +105,42 @@ const TEXT_INCHEIAT = 'Linkul a expirat sau a fost oprit.';
 // Textul care pleacă odată cu linkul (WhatsApp, SMS, email) — îl scrie serverul, ecranele doar îl copiază.
 function mesaj(nume, expiraLa, link) { return 'Urmărește live ' + nume + ' pe hartă, până la ' + ora(expiraLa) + ': ' + link; }
 
+// Balonul „stilul de condus” (Robert, 20.11: „să apară în partea de sus ca un balon modul de condus (frânare agresivă,
+// accelerare, etc.), afișat câteva secunde”): manevrele bruște ale mașinii, după regula raportului EcoDrive și a lui
+// RA Drive (`condus.manevreIntre`, aceleași praguri). Spre public pleacă doar felul și vitezele: nu locul, nu șoferul.
+const MANEVRE = { frana: 'Frânare bruscă', accel: 'Accelerare bruscă', viraj: 'Viraj brusc' };
+const SECUNDE_BALON = 5;          // cât stă un balon pe ecran
+const SECUNDE_MANEVRE = 120;      // ce manevre primește pagina, după ora pozițiilor (ajunge și când aparatul trimite pe loturi)
+const SECUNDE_LA_DESCHIDERE = 30; // la deschiderea paginii se arată doar manevrele mai noi decât atât
+const MAX_MANEVRE = 5;
+// De când se citesc pozițiile pentru manevre: fereastra plus o pereche de puncte dinaintea ei.
+function deLaManevre(acum) { return acum - (SECUNDE_MANEVRE + condus.BRUSC_MAX_S) * 1000; }
+
+function textManevra(m) {
+  const de = Math.round(Number(m.de) || 0), la = Math.round(Number(m.la) || 0);
+  return m.tip === 'viraj' ? (MANEVRE.viraj + ' la ' + la + ' km/h') : (MANEVRE[m.tip] + ' · de la ' + de + ' la ' + la + ' km/h');
+}
+
+// `pozitii` = pozițiile mașinii de la `deLaManevre(acum)` încoace. → [{ id, tip, text, vechime }] (vechimea în secunde),
+// cele mai vechi întâi, cel mult MAX_MANEVRE. `id` nu se repetă: pagina arată fiecare manevră o singură dată.
+function manevreRecente(pozitii, acum) {
+  const ms = (p) => new Date(p.timestamp).getTime();
+  const sir = (pozitii || []).filter((p) => p && Number.isFinite(ms(p))).sort((a, b) => ms(a) - ms(b));
+  const lim = acum - SECUNDE_MANEVRE * 1000, out = [];
+  for (let i = 1; i < sir.length; i++) {
+    const ts = ms(sir[i]);
+    if (!(ts > lim)) continue;
+    condus.manevreIntre(sir[i - 1], sir[i]).forEach((m) => {
+      out.push({ id: m.tip + '-' + ts, tip: m.tip, text: textManevra(m), vechime: Math.max(0, Math.round((acum - ts) / 1000)) });
+    });
+  }
+  return out.slice(-MAX_MANEVRE);
+}
+
 // Ce primește pagina publică. `poz` = ultima poziție cunoscută (sau null), `semnal` = cuvintele de vechime ale
-// aplicației când mașina tace („fără semnal de 2 ore”), altfel null. Nimic din ce nu e aici nu pleacă spre public.
-function pentruPagina({ link, poz, nume, numar, firma, semnal }, acum) {
+// aplicației când mașina tace („fără semnal de 2 ore”), altfel null; `recente` = pozițiile pentru balon (vezi
+// `manevreRecente`). Nimic din ce nu e aici nu pleacă spre public.
+function pentruPagina({ link, poz, nume, numar, firma, semnal, recente }, acum) {
   const r = {
     activ: true,
     vehicul: numeMasina(nume, numar),
@@ -118,6 +152,9 @@ function pentruPagina({ link, poz, nume, numar, firma, semnal }, acum) {
     pozitie: null,
     stare: 'Mașina n-a transmis încă nicio poziție.',
     actualizat: null,
+    manevre: [],
+    balon: SECUNDE_BALON,
+    manevreLaDeschidere: SECUNDE_LA_DESCHIDERE,
   };
   if (poz && poz.latitude != null && poz.longitude != null) {
     const viteza = Math.max(0, Math.round(Number(poz.speed) || 0));
@@ -129,12 +166,14 @@ function pentruPagina({ link, poz, nume, numar, firma, semnal }, acum) {
     r.stare = semnal ? ('Fără semnal ' + String(semnal).replace(/^(tăcut|fără semnal)\s+/, '') + ' — ultima poziție cunoscută')
       : (r.inMers ? ('În mers · ' + viteza + ' km/h') : 'Oprit');
     r.actualizat = 'Poziție ' + vechime(ts, acum);
+    if (!semnal) r.manevre = manevreRecente(recente, acum);   // mașina tace: nicio manevră „de acum”
   }
   return r;
 }
 
 module.exports = {
   DURATE, MAX_ACTIVE_PE_MASINA, MAX_INAINTE_MINUTE, SECUNDE_REIMPROSPATARE, VITEZA_MERS, TITLU_INCHEIAT, TEXT_INCHEIAT,
-  TEXT_PRELUNGIRE, TEXT_PRELUNGIRE_EXPIRAT,
+  TEXT_PRELUNGIRE, TEXT_PRELUNGIRE_EXPIRAT, MANEVRE, SECUNDE_BALON, SECUNDE_MANEVRE, SECUNDE_LA_DESCHIDERE, MAX_MANEVRE,
+  deLaManevre, textManevra, manevreRecente,
   durata, tokenNou, amprenta, tokenBun, activ, ramas, vechime, ora, numeMasina, mesaj, pentruPagina, poatePrelungi, prelungire,
 };

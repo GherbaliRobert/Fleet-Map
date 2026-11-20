@@ -3731,8 +3731,16 @@ Fișa mașinii (Localizare) → „Distribuie" → 15 minute / 1 oră / 8 ore �
 fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, cartonaș jos pe telefon / în stânga pe calculator).
 - **Regulile și textele stau în `locatie_distribuita.js`** (curat): `DURATE`, `MAX_ACTIVE_PE_MASINA` (10), tokenul (`tokenNou`,
   24 de octeți → 32 de caractere; în bază DOAR `amprenta`, sha256), `ramas`, `vechime`, `mesaj` (textul pentru WhatsApp) și
-  **`pentruPagina` = SINGURUL lucru care pleacă spre public** (numele + numărul mașinii, firma, poziția, starea). NU adăuga acolo
-  IMEI, șofer, istoric sau semnalele mașinii. Ecranele iau duratele și textele de la server.
+  **`pentruPagina` = SINGURUL lucru care pleacă spre public** (numele + numărul mașinii, firma, poziția, starea, manevrele bruște —
+  vezi balonul, mai jos). NU adăuga acolo IMEI, șofer, istoric sau alte semnale ale mașinii. Ecranele iau duratele și textele de la server.
+- **Balonul „stilul de condus" (Robert, 20.11: „să apară în partea de sus ca un balon… frânare agresivă, accelerare… câteva
+  secunde")**: pe pagina publică, sus, sub siglă, fiecare manevră bruscă o dată, `SECUNDE_BALON` (5) secunde, pe rând (o rafală =
+  cel mult ultimele 3). Regula e a raportului EcoDrive și a lui RA Drive: **`condus.manevreIntre(prev, p)`**, O funcție, chemată și de
+  zilele RA Drive (`agregator`) — NU scrie praguri în locatie_distribuita.js. `manevreRecente` (ultimele `SECUNDE_MANEVRE` = 120 de
+  secunde, după ora pozițiilor; cel mult 5) → `manevre: [{ id, tip, text, vechime }]` — spre public doar felul și vitezele („Frânare
+  bruscă · de la 80 la 50 km/h", „Viraj brusc la 62 km/h"), fără loc și fără oră. La deschidere, pagina arată doar cele mai noi de
+  `SECUNDE_LA_DESCHIDERE` (30). Mașina tăcută → nicio manevră. Pozițiile le citește serverul (`_locPozitiiRecente`, cel mult o dată
+  la 4 secunde pe mașină). Textul cu textContent, felul doar dintr-o listă știută (clasă + iconiță din pagină).
 - **Cine:** `_poateDistribuiLocatia` = `_incDispecer` (super-admin, `manageFleet`, dispecerul), pe 4 rute, plus `canAccessImei`;
   `/api/me` dă `poateDistribuiLocatia` (butonul `#detail-share-btn` apare doar atunci). Facerea, prelungirea și oprirea — în audit.
 - **Linkul se vede o singură dată** (la facere): lista din fereastră arată doar până când merge, cine l-a făcut, „Prelungește" și „Oprește".
@@ -3754,7 +3762,7 @@ fără cont (`public/locatie.html`: hartă, mașina care se mișcă singură, ca
   `faLocatieDistribuita` / `prelungesteLocatieDistribuita` / `opresteLocatieDistribuita`). Schimbi fereastra web → schimbi și foaia.
 - Hotărât de Robert (21.10): duratele rămân trei, cine poate rămâne cum e, publicul fără șofer, inclusă la toate firmele.
 - Tabela `locatii_distribuite` e în `BACKUP_EXCLUDED`. Păzit de `verify_locatie_distribuita.js` (în `npm test`, pe server
-  pornit, plus foaia telefonului).
+  pornit, plus foaia telefonului și balonul, rulat).
 
 ## Jurnal de modificări cu etichetă (OBLIGATORIU la orice modificare)
 

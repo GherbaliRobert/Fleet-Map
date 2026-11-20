@@ -616,6 +616,25 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ## 2026-11-20
 
+### CLIENT · „Distribuie locația”: balonul cu stilul de condus, sus pe pagina linkului
+*Robert, 20.11: „vreau ca în modul de distribuire locație să apară în partea de sus ca un balon modul de condus (frânare agresivă,
+accelerare, etc.), dar să fie afișat câteva secunde”.*
+
+**Ce am schimbat:**
+- Pe pagina pe care o deschide cine a primit linkul, sus, sub siglă, apare un balon când mașina face o manevră bruscă: „Frânare bruscă
+  · de la 80 la 50 km/h”, „Accelerare bruscă · de la 50 la 62 km/h”, „Viraj brusc la 62 km/h”. Stă 5 secunde, apoi pleacă; mai multe
+  manevre vin pe rând (o rafală: cel mult ultimele 3).
+- Manevrele se recunosc după aceleași praguri ca raportul EcoDrive și pagina RA Drive (frânare cu peste 9 km/h într-o secundă,
+  accelerare cu peste 7, viraj cu peste 25 de grade pe secundă, peste 25 km/h) — o singură regulă pentru toate trei.
+- Cine deschide linkul vede doar manevrele de acum (ultimul minut-două; la deschidere, doar cele din ultimele 30 de secunde). Nu
+  vede locul unde s-au întâmplat, ora sau șoferul. Cât mașina nu transmite, nu apare nimic.
+
+**Ce vede fondatorul:** nimic nou în aplicație; pe un link făcut de noi, același balon.
+**Ce vede clientul:** cine primește linkul de la firmă vede și balonul. Nimic de instalat: pagina e pe site, nu în APK.
+
+Reper: `condus.js` (`manevreIntre`), `locatie_distribuita.js` (`manevreRecente`, textele), `server.js` (`_locPozitiiRecente`),
+`public/locatie.html` (balonul); probă: `verify_locatie_distribuita.js` (regula, pagina rulată, pe server pornit).
+
 ### AMÂNDOI · „30 de zile”, „25 de vehicule”: cifrele scrise pe românește peste tot; pe telefon, „Email” la intrare
 *Alin, 20.11, la cele două găsite pe drum: „Telefonul, „Utilizator” → „Email”… DA” și „2. DA, fă și A și B” (A = textele scrise fix,
 B = textele în care cifra vine din date).*

@@ -12382,6 +12382,18 @@ app.post('/api/devices/:imei/locatie-distribuita/:id/prelungire', requireAuth, w
       ramas: locatieDistribuita.ramas(nou.expira_la, acum), poatePrelungi: locatieDistribuita.poatePrelungi(nou.expira_la, acum) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Pozițiile pentru balonul „stilul de condus”: aceeași mașină poate fi urmărită de mai mulți oameni deodată, fiecare la
+// 5 secunde — din bază se citesc cel mult o dată la 4 secunde pe mașină.
+const _locPozitii = new Map(); // imei → { t, rows }
+async function _locPozitiiRecente(imei, acum) {
+  const c = _locPozitii.get(imei);
+  if (c && acum - c.t < 4000) return c.rows;
+  const rows = await db.getDeviceHistory(imei, new Date(locatieDistribuita.deLaManevre(acum)).toISOString(),
+    new Date(acum + 60000).toISOString(), 2000);
+  if (_locPozitii.size > 5000) _locPozitii.clear();
+  _locPozitii.set(imei, { t: acum, rows });
+  return rows;
+}
 // Pagina publică: fără sesiune, fără cache, fără indexare. Tokenul stă în adresă; în bază doar amprenta lui.
 app.get('/locatie/:token', (req, res) => {
   res.set('Cache-Control', NO_CACHE);
@@ -12410,8 +12422,12 @@ app.get('/api/public/locatie/:token', async (req, res) => {
     let poz = livePositions.get(l.imei) || null;
     if (!poz) { try { poz = await db.ultimaPozitie(l.imei); } catch (e) { poz = null; } }
     const s = poz && poz.timestamp ? _invSemnalText(poz.timestamp) : null;
+    const semnal = s && s !== 'comunică' ? s : null;
+    // Balonul „stilul de condus” (Robert, 20.11): manevrele din ultimele minute, socotite în locatie_distribuita.js.
+    let recente = [];
+    if (poz && !semnal) { try { recente = await _locPozitiiRecente(l.imei, acum); } catch (e) { recente = []; } }
     res.json(locatieDistribuita.pentruPagina({ link: l, poz, nume: m.dev.name, numar: m.dev.plate, firma: m.firma,
-      semnal: s && s !== 'comunică' ? s : null }, acum));
+      semnal, recente }, acum));
   } catch (e) { res.status(500).json({ activ: true, eroare: true, text: 'Nu am putut citi locația acum. Reîncerc în câteva secunde.' }); }
 });
 

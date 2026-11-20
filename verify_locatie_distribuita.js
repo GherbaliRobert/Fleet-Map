@@ -14,6 +14,8 @@
 //      nu o ține în cache;
 //   3. aplicația (web și telefon): butonul din fișa mașinii (doar cui îl poate folosi), fereastra / foaia, duratele și
 //      textele luate de la server;
+//   5. balonul „stilul de condus” (Robert, 20.11): manevrele bruște după regula EcoDrive (o singură regulă, în condus.js),
+//      spre public doar felul și vitezele, fiecare manevră o dată, câteva secunde (cât spune serverul);
 //   4. pe server pornit: cine poate (admin, dispecer) și cine nu (vizualizatorul, altă firmă), linkul văzut FĂRĂ cont,
 //      un link inventat = unul expirat, „Oprește”, expirarea (rândul se șterge), plafonul pe mașină, mașina arhivată sau
 //      mutată pe altă firmă oprește linkul pe loc.
@@ -31,6 +33,7 @@ const J = (x) => JSON.stringify(x);
 const taie = (src, de, pana) => { const i = src.indexOf(de); if (i < 0) return ''; const j = src.indexOf(pana, i + de.length); return j < 0 ? '' : src.slice(i, j); };
 
 const L = require('./locatie_distribuita.js');
+const condus = require('./condus.js');
 const html = citeste('public/index.html');
 const css = citeste('public/css/app.css');
 const pagina = citeste('public/locatie.html');
@@ -64,7 +67,8 @@ const POZ = { latitude: 45.75, longitude: 21.23, speed: 54.4, angle: 90, timesta
 let p = L.pentruPagina({ link: LINK, poz: POZ, nume: 'Volvo FH', numar: 'B 01 TIR', firma: 'CI Transport', semnal: null }, ACUM);
 T('în mers: „În mers · 54 km/h”, poziția, unghiul, „Poziție acum câteva secunde”', p.activ && p.inMers && !p.tacut && p.stare === 'În mers · 54 km/h' && p.actualizat === 'Poziție acum câteva secunde'
   && p.pozitie.lat === 45.75 && p.pozitie.lng === 21.23 && p.pozitie.unghi === 90 && p.pozitie.viteza === 54 && p.pana === '16:14' && p.ramas === 'încă 14 minute', J(p));
-const CHEI = ['activ', 'vehicul', 'firma', 'expiraLa', 'pana', 'ramas', 'reimprospatare', 'pozitie', 'stare', 'actualizat', 'tacut', 'inMers'];
+const CHEI = ['activ', 'vehicul', 'firma', 'expiraLa', 'pana', 'ramas', 'reimprospatare', 'pozitie', 'stare', 'actualizat', 'tacut', 'inMers',
+  'manevre', 'balon', 'manevreLaDeschidere'];
 T('spre public pleacă DOAR cheile știute — fără IMEI, fără șofer, fără semnalele mașinii', Object.keys(p).every((k) => CHEI.indexOf(k) >= 0) && J(Object.keys(p.pozitie)) === J(['lat', 'lng', 'unghi', 'viteza', 'ts'])
   && J(p).indexOf('861000000123456') < 0 && J(p).indexOf('Ion') < 0 && J(p).indexOf('"io"') < 0, J(p));
 p = L.pentruPagina({ link: LINK, poz: Object.assign({}, POZ, { speed: 2 }), nume: 'Volvo FH', numar: 'B 01 TIR', semnal: null }, ACUM);
@@ -92,6 +96,41 @@ T('butonul „Prelungește” doar cât mai e de câștigat cel puțin un minut'
   && !L.poatePrelungi(ACUM + 479.5 * 60000, ACUM) && !L.poatePrelungi(ACUM + 8 * 3600000, ACUM) && !L.poatePrelungi(ACUM, ACUM));
 T('nota de sub linkuri, din cifra codului (8 ore)', L.MAX_INAINTE_MINUTE === 480 && L.TEXT_PRELUNGIRE === 'Poți prelungi un link de câte ori vrei, cel mult 8 ore înainte.', L.TEXT_PRELUNGIRE);
 
+// ─── 1b. Balonul „stilul de condus” (Robert, 20.11) ───────────────────────────────────────────────────────────────
+sect('1b. Balonul „stilul de condus” — regula');
+const Pz = (sec, v, ang) => ({ timestamp: new Date(ACUM - sec * 1000).toISOString(), speed: v, angle: ang || 0, latitude: 45.7, longitude: 21.2 });
+const SIR = [Pz(50, 80), Pz(49, 50), Pz(30, 50), Pz(29, 62), Pz(20, 62, 0), Pz(19, 62, 40), Pz(10, 40), Pz(9, 30)];
+const MV = L.manevreRecente(SIR, ACUM);
+T('frânare, accelerare, viraj: textele, vitezele, de când (în secunde), cele vechi întâi',
+  J(MV.map((m) => [m.tip, m.text, m.vechime])) === J([['frana', 'Frânare bruscă · de la 80 la 50 km/h', 49], ['accel', 'Accelerare bruscă · de la 50 la 62 km/h', 29],
+    ['viraj', 'Viraj brusc la 62 km/h', 19], ['frana', 'Frânare bruscă · de la 40 la 30 km/h', 9]]), J(MV));
+T('o manevră are doar felul, textul, de când și un id — fără loc, fără oră, fără șofer', MV.every((m) => J(Object.keys(m)) === J(['id', 'tip', 'text', 'vechime'])) && new Set(MV.map((m) => m.id)).size === MV.length, J(MV));
+const PRAG = condus.PRAGURI;
+const LaPrag = L.manevreRecente([Pz(10, 50), Pz(9, 50 - PRAG.frana), Pz(5, 50), Pz(4, 50 + PRAG.accel), Pz(3, 50, 0), Pz(2, 50, PRAG.viraj)], ACUM);
+const PestePrag = L.manevreRecente([Pz(10, 50), Pz(9, 50 - PRAG.frana - 1), Pz(5, 50), Pz(4, 50 + PRAG.accel + 1), Pz(3, 50, 0), Pz(2, 50, PRAG.viraj + 1)], ACUM);
+T('pragurile sunt ale raportului EcoDrive (' + PRAG.frana + ' / ' + PRAG.accel + ' km/h pe secundă, ' + PRAG.viraj + ' de grade pe secundă): fix pe prag nu, peste da',
+  LaPrag.length === 0 && J(PestePrag.map((m) => m.tip)) === J(['frana', 'accel', 'viraj']), J([LaPrag, PestePrag]));
+T('viraj brusc doar peste ' + 25 + ' km/h; două puncte la peste 30 de secunde nu se leagă',
+  L.manevreRecente([Pz(3, 20, 0), Pz(2, 20, 90)], ACUM).length === 0 && L.manevreRecente([Pz(70, 90), Pz(35, 10)], ACUM).length === 0);
+T('doar ultimele ' + L.SECUNDE_MANEVRE + ' de secunde, cel mult ' + L.MAX_MANEVRE + ' manevre',
+  L.manevreRecente([Pz(L.SECUNDE_MANEVRE + 6, 80), Pz(L.SECUNDE_MANEVRE + 5, 40)], ACUM).length === 0
+  && L.manevreRecente(Array.from({ length: 20 }, (_, i) => Pz(60 - i, i % 2 ? 40 : 80)), ACUM).length === L.MAX_MANEVRE);
+T('pozițiile în altă ordine dau același lucru', J(L.manevreRecente(SIR.slice().reverse(), ACUM)) === J(MV));
+T('O SINGURĂ regulă: pagina și zilele RA Drive cheamă `condus.manevreIntre`; locatie_distribuita.js n-are praguri ale lui',
+  /condus\.manevreIntre\(/.test(citeste('locatie_distribuita.js')) && !/praguri|PRAGURI|km\/h pe secundă/.test(citeste('locatie_distribuita.js').replace(/^\s*\/\/.*$/gm, ''))
+  && /manevreIntre\(prev\.p, p, praguri\)\.forEach/.test(citeste('condus.js')));
+const zileRD = condus.agregator({ ajutor: { engineRunning: () => true, ignOn: () => true, haversineKm: () => 0.01, fuelCumul: () => null } });
+SIR.forEach((x) => zileRD.adauga(x));
+const sumeRD = condus.insumeaza(zileRD.gata());
+T('aceleași manevre ca zilele RA Drive (frânări, accelerări, viraje)', sumeRD.frana === 2 && sumeRD.accel === 1 && sumeRD.viraj === 1, J([sumeRD.frana, sumeRD.accel, sumeRD.viraj]));
+let pm = L.pentruPagina({ link: LINK, poz: POZ, nume: 'Volvo FH', recente: SIR }, ACUM);
+T('pagina primește manevrele, cât stă balonul (' + L.SECUNDE_BALON + ' secunde) și ce se arată la deschidere (' + L.SECUNDE_LA_DESCHIDERE + ' de secunde)',
+  J(pm.manevre) === J(MV) && pm.balon === L.SECUNDE_BALON && pm.manevreLaDeschidere === L.SECUNDE_LA_DESCHIDERE && L.SECUNDE_BALON >= 3 && L.SECUNDE_BALON <= 8, J(pm));
+pm = L.pentruPagina({ link: LINK, poz: POZ, nume: 'Volvo FH', semnal: 'fără semnal de 2 ore', recente: SIR }, ACUM);
+T('mașina tace: nicio manevră (nu e „de acum”)', J(pm.manevre) === '[]', J(pm.manevre));
+pm = L.pentruPagina({ link: LINK, poz: null, nume: 'Volvo FH', recente: SIR }, ACUM);
+T('fără poziție: nicio manevră', J(pm.manevre) === '[]');
+
 // ─── 2. Pagina publică ────────────────────────────────────────────────────────────────────────────────────────────
 sect('2. Pagina publică (public/locatie.html)');
 T('pagina există', pagina.length > 2000);
@@ -114,6 +153,41 @@ T('urma de pe hartă = doar ce s-a văzut de când e deschisă pagina (serverul 
 T('„Centrează” și harta mutată de om (nu-l trage înapoi)', /harta\.on\('dragstart', function \(\) \{ urmareste = false;/.test(scriptPag));
 T('Leaflet 1.9.4, ca aplicația', /unpkg\.com\/leaflet@1\.9\.4\/dist\/leaflet\.js/.test(pagina) && /unpkg\.com\/leaflet@1\.9\.4\/dist\/leaflet\.css/.test(pagina));
 T('serviciul offline nu ține pagina în cache (linkul trăiește cel mult 8 ore)', /url\.pathname\.startsWith\('\/locatie\/'\)\) return;/.test(sw));
+
+sect('2b. Pagina publică — balonul „stilul de condus”');
+T('balonul stă sus, sub siglă, deasupra hărții și a cartonașului; anunță cititorul de ecran', /<div class="balon" id="balon" role="status" aria-live="polite">/.test(pagina)
+  && /\.balon\{position:fixed;z-index:1050;left:50%;top:calc\(64px \+ var\(--sat\)\)/.test(pagina) && /\.fisa\{position:fixed;z-index:1000/.test(pagina));
+T('o iconiță pe fel (frânare, accelerare, viraj), arătată din clasă — fără HTML venit de la server',
+  ['i-frana', 'i-accel', 'i-viraj'].every((c) => pagina.indexOf('<svg class="' + c + '"') >= 0) && /\.balon\.frana \.i-frana,\.balon\.accel \.i-accel,\.balon\.viraj \.i-viraj\{display:block\}/.test(pagina)
+  && /TIPURI\[m\.tip\] \? ' ' \+ m\.tip : ''/.test(scriptPag) && /\$\('balon-t'\)\.textContent = m\.text/.test(scriptPag));
+T('fără mișcare pentru cine a cerut-o din telefon (prefers-reduced-motion)', /prefers-reduced-motion:reduce\)\{[^\n]*\.balon\{transition:none\}/.test(pagina));
+T('linkul care nu mai e bun ascunde și balonul', /function termina\(j\) \{[\s\S]*?ascundeBalon\(\);/.test(scriptPag));
+// Bucata paginii, rulată: fiecare manevră o dată, pe rând, câte secunde spune serverul; la deschidere doar cele noi.
+const bucBalon = taie(scriptPag, '    function manevre(j) {', '    function iconMasina(');
+const vmB = require('vm');
+const ctxB = (() => {
+  const cls = new Set(), el = { className: '', classList: { add: (c) => cls.add(c), remove: (c) => cls.delete(c) }, get offsetWidth() { return 1; } };
+  const txt = { textContent: '' }, ceas = [];
+  const c = { el, cls, txt, ceas, $: (id) => (id === 'balon' ? el : txt), setTimeout: (f, ms) => { ceas.push({ f, ms }); return ceas.length; }, clearTimeout: () => {},
+    vazute: {}, coada: [], balonPornit: false, balonTimer: null, balonMs: 5000, primaCerere: true, TIPURI: { frana: 1, accel: 1, viraj: 1 } };
+  vmB.createContext(c); vmB.runInContext(bucBalon, c);
+  return c;
+})();
+const MJ = (lista) => ({ balon: 4, manevreLaDeschidere: 30, manevre: lista });
+ctxB.manevre(MJ([{ id: 'frana-1', tip: 'frana', text: 'Frânare bruscă · de la 80 la 50 km/h', vechime: 45 }, { id: 'accel-2', tip: 'accel', text: 'Accelerare bruscă · de la 50 la 62 km/h', vechime: 12 }]));
+const pas1 = [ctxB.txt.textContent, ctxB.el.className, ctxB.cls.has('da'), ctxB.ceas.length && ctxB.ceas[ctxB.ceas.length - 1].ms];
+ctxB.manevre(MJ([{ id: 'accel-2', tip: 'accel', text: 'Accelerare bruscă · de la 50 la 62 km/h', vechime: 17 }, { id: 'viraj-3', tip: 'viraj', text: 'Viraj brusc la 62 km/h', vechime: 40 }]));
+const coadaDupa = ctxB.coada.map((m) => m.id);
+ctxB.ceas.shift().f();   // trec cele 4 secunde: balonul iese
+const iesit = !ctxB.cls.has('da');
+ctxB.ceas.shift().f();   // vine următorul
+const pas2 = [ctxB.txt.textContent, ctxB.el.className, ctxB.cls.has('da')];
+T('rulat: la deschidere doar manevrele mai noi de ' + L.SECUNDE_LA_DESCHIDERE + ' de secunde; fiecare o dată; câte secunde spune serverul; apoi următoarea',
+  J(pas1) === J(['Accelerare bruscă · de la 50 la 62 km/h', 'balon accel', true, 4000]) && J(coadaDupa) === J(['viraj-3']) && iesit
+  && J(pas2) === J(['Viraj brusc la 62 km/h', 'balon viraj', true]), J([pas1, coadaDupa, iesit, pas2]));
+ctxB.manevre(MJ([{ id: 'x-9', tip: '<img src=x onerror=alert(1)>', text: 'ceva', vechime: 1 }]));
+ctxB.ceas.shift().f(); ctxB.ceas.shift().f();
+T('rulat: un fel necunoscut nu ajunge în clasă', ctxB.el.className === 'balon' && ctxB.txt.textContent === 'ceva', ctxB.el.className);
 
 // ─── 3. Aplicația ─────────────────────────────────────────────────────────────────────────────────────────────────
 sect('3. Aplicația (fișa mașinii)');
@@ -326,6 +400,20 @@ const tokenDin = (link) => String(link || '').split('/locatie/')[1] || '';
   for (let i = 0; i < L.MAX_ACTIVE_PE_MASINA; i++) facute.push(await A2.POST('/api/devices/' + IM2 + '/locatie-distribuita', { minute: 15 }));
   x = await A2.POST('/api/devices/' + IM2 + '/locatie-distribuita', { minute: 15 });
   T('cel mult ' + L.MAX_ACTIVE_PE_MASINA + ' linkuri active pe o mașină, al unsprezecelea: 409', facute.every((r) => r.s === 200) && x.s === 409 && /deja 10 linkuri active/.test(x.j.error), J([facute.map((r) => r.s), x]));
+
+  // balonul „stilul de condus” (20.11): o frânare și o accelerare bruscă, din pozițiile adevărate ale mașinii
+  const fb = await A1.POST('/api/devices/' + IM3 + '/locatie-distribuita', { minute: 15 });
+  const acumB = Date.now();
+  for (const [sec, v] of [[40, 80], [39, 50], [20, 50], [19, 62], [3, 62]]) {
+    await S.POST('/api/test/simulate', { imei: IM3, speed: v, angle: 0, lat: 44.43, lng: 26.1 + sec / 1e4, ts: new Date(acumB - sec * 1000).toISOString() });
+  }
+  pb = await pub(tokenDin(fb.j.link));
+  const mvS = pb.j.manevre || [];
+  T('pe server: pagina publică primește frânarea și accelerarea bruscă, cu vitezele, fără loc și fără IMEI',
+    pb.s === 200 && J(mvS.map((m) => [m.tip, m.text])) === J([['frana', 'Frânare bruscă · de la 80 la 50 km/h'], ['accel', 'Accelerare bruscă · de la 50 la 62 km/h']])
+    && Math.abs(mvS[0].vechime - 39) <= 3 && pb.j.balon === L.SECUNDE_BALON && J(mvS).indexOf(IM3) < 0 && J(mvS).indexOf('44.43') < 0
+    && Object.keys(pb.j).every((k) => CHEI.indexOf(k) >= 0), J(pb.j));
+  await A1.DEL('/api/devices/' + IM3 + '/locatie-distribuita/' + fb.j.id);
 
   // mașina mutată pe altă firmă / arhivată
   const fm = await A1.POST('/api/devices/' + IM3 + '/locatie-distribuita', { minute: 60 });

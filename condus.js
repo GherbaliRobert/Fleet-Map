@@ -88,6 +88,23 @@ function gol(ziStr, sofer) {
   return g;
 }
 
+// O manevră bruscă între două poziții vecine: regula raportului EcoDrive, scrisă O DATĂ. O folosesc zilele RA Drive
+// (`agregator`) și balonul paginii „Distribuie locația” (Robert, 20.11). `[]` = nimic. `de` / `la` = vitezele, în km/h.
+function manevreIntre(prev, p, praguri) {
+  const pr = Object.assign({}, PRAGURI, praguri || {});
+  const dt = (new Date(p.timestamp).getTime() - new Date(prev.timestamp).getTime()) / 1000;
+  if (!(dt > 0) || dt > BRUSC_MAX_S) return [];
+  const sp = p.speed || 0, spPr = prev.speed || 0, a = (sp - spPr) / dt;
+  const out = [];
+  if (a > pr.accel) out.push({ tip: 'accel', de: spPr, la: sp });
+  if (a < -pr.frana) out.push({ tip: 'frana', de: spPr, la: sp });
+  if (sp > VITEZA_VIRAJ) {
+    let da = Math.abs((p.angle || 0) - (prev.angle || 0)); if (da > 180) da = 360 - da;
+    if (da / dt > pr.viraj) out.push({ tip: 'viraj', de: spPr, la: sp });
+  }
+  return out;
+}
+
 // ─── Trecerea prin pozițiile unei mașini ────────────────────────────────────────────────────────────────
 // o = { limita (km/h), soferLa(ms) → id șofer sau 0, ajutor: { ignOn, engineRunning, fuelCumul, haversineKm } (din
 //       reports.js — aceleași citiri ale contactului, motorului și contorului ca rapoartele) }.
@@ -144,15 +161,7 @@ function agregator(o) {
             if (bun) { g.pesteKm += dist; g.pesteF += dist * (Math.pow(sp / limita, 2) - 1); }
           }
           if (sp > MERS) g.condusSec += dt; else if (A.ignOn(p)) g.ralantiSec += dt;
-          if (dt <= BRUSC_MAX_S) {
-            const spPr = prev.p.speed || 0, a = (sp - spPr) / dt;
-            if (a > praguri.accel) manevra(g, 'accel', ms, p);
-            if (a < -praguri.frana) manevra(g, 'frana', ms, p);
-            if (sp > VITEZA_VIRAJ) {
-              let da = Math.abs((p.angle || 0) - (prev.p.angle || 0)); if (da > 180) da = 360 - da;
-              if (da / dt > praguri.viraj) manevra(g, 'viraj', ms, p);
-            }
-          }
+          manevreIntre(prev.p, p, praguri).forEach(function (m) { manevra(g, m.tip, ms, p); });
         }
       }
       prev = { ms: ms, p: p };
@@ -359,8 +368,8 @@ function recomandari(m, s, f) {
 }
 
 module.exports = {
-  PRAGURI, MERS, PAS_MAX_KM, RALANTI_MIN_S, CELULA_GRADE, PARTE_AER, CLASE, PRETURI_IMPLICITE, ZILE_SAPT,
-  scor, notaDin, areScor, scorFlota, zi, ora, ziSapt, soferLa, celula, gol, agregator, insumeaza, manevre, laSuta,
+  PRAGURI, MERS, PAS_MAX_KM, BRUSC_MAX_S, RALANTI_MIN_S, CELULA_GRADE, PARTE_AER, CLASE, PRETURI_IMPLICITE, ZILE_SAPT,
+  scor, notaDin, areScor, scorFlota, zi, ora, ziSapt, soferLa, celula, gol, manevreIntre, agregator, insumeaza, manevre, laSuta,
   clasa, preturi, litri, costuri, adunaCosturi, locuri, ferestre, comparatie, recomandari, explicatii, lei,
   UNDE_PRETURI, BUTON_PRETURI, preturiProprii, textPreturi,
 };
