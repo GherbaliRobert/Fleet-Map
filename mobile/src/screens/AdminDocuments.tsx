@@ -13,6 +13,7 @@ import { type Catalog, catalog, costuri, docStare, flota, modelul, nf, norm, num
 import './detail.css';
 import './admin.css';
 import './flota.css';
+import { nrDe } from '../lib/numar';
 
 export function AdminDocuments() {
   const loc = useLocation();
@@ -70,7 +71,7 @@ export function AdminDocuments() {
           const lei = items.reduce((x, d) => x + (parseFloat(d.cost) || 0), 0);
           return (
             <Grupa open={deschis} onToggle={() => setOpen((p) => ({ ...p, [key]: !deschis }))} title={numar(devs, imei)} sub={modelul(devs, imei)}
-              badge={<span class="fl-gn">{items.length}{items.length === 1 ? ' act' : ' acte'}{lei ? ' · ' + nf(Math.round(lei)) + ' lei' : ''}</span>}>
+              badge={<span class="fl-gn">{nrDe(items.length, 'act', 'acte')}{lei ? ' · ' + nf(Math.round(lei)) + ' lei' : ''}</span>}>
               {items.map((d) => <DocIstRand d={d} req={req} />)}
             </Grupa>
           );
@@ -126,7 +127,7 @@ export function AdminDocuments() {
         banner = (
           <div class={'fl-banner ' + (grav ? 's-over' : 's-soon')}>
             <span class="ic"><Icon name={grav ? 'alert' : 'clock'} size={17} /></span>
-            <div>{arata.map((l) => l.el)}{rest > 0 ? <div class="rest">și încă {rest}{rest === 1 ? ' mașină' : ' mașini'} mai jos</div> : null}</div>
+            <div>{arata.map((l) => l.el)}{rest > 0 ? <div class="rest">și încă {nrDe(rest, 'mașină', 'mașini')} mai jos</div> : null}</div>
           </div>
         );
       }
@@ -146,10 +147,10 @@ export function AdminDocuments() {
               const key = 'valid:' + imei;
               const deschis = open[key] !== undefined ? open[key] : ((exp > 0 || lipReq > 0) || imeis.length === 1);
               let badge;
-              if (exp) badge = <span class="fl-gn al">{exp}{exp === 1 ? ' expirat' : ' expirate'}</span>;
-              else if (lipReq) badge = <span class="fl-gn al">{lipReq}{lipReq === 1 ? ' act lipsă' : ' acte lipsă'}</span>;
+              if (exp) badge = <span class="fl-gn al">{nrDe(exp, 'expirat', 'expirate')}</span>;
+              else if (lipReq) badge = <span class="fl-gn al">{nrDe(lipReq, 'act lipsă', 'acte lipsă')}</span>;
               else if (soon) badge = <span class="fl-gn soon">{soon} expiră curând</span>;
-              else badge = <span class="fl-gn ok">în regulă · {a.length}{a.length === 1 ? ' act' : ' acte'}</span>;
+              else badge = <span class="fl-gn ok">în regulă · {nrDe(a.length, 'act', 'acte')}</span>;
               // Căutarea ascunde și rândurile goale care nu se potrivesc: sloturile vin din lista filtrată.
               const nev = nevoiDe(vehDe(devs, imei), req, cat).filter((m) => a.some((d) => norm(d.doc_type) === norm(m.type)) || l.some((x) => x.type === m.type));
               return (

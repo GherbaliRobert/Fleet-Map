@@ -235,7 +235,7 @@ function ListaFaraSemnal({ d, onClose, onVeh }: { d: any; onClose: () => void; o
             <div class="sf-liniste oprit">
               <Icon name="alert" size={16} color="var(--orange)" />
               <span>
-                {(tac.length ? 'Încă ' : '') + (niciodata === 1 ? (tac.length ? 'un vehicul' : 'Un vehicul') + ' n-a transmis' : niciodata + ' vehicule n-au transmis')}
+                {(tac.length ? 'Încă ' : '') + (niciodata === 1 ? (tac.length ? 'un vehicul' : 'Un vehicul') + ' n-a transmis' : nrDe(niciodata, 'vehicul', 'vehicule') + ' n-au transmis')}
                 {' niciodată: sunt înregistrate, dar n-au trimis nicio poziție până acum.'}
               </span>
             </div>

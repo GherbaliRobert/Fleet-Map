@@ -12,6 +12,7 @@
 //                         singur punct ieșit din șir). Până pe 15.10: „159 km/h — merită verificate”.
 // Curat: fără bază, fără rețea, fără model. Pragurile stau AICI și nicăieri altundeva.
 'use strict';
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const I = require('./insight.js');
 const CE = require('./cereri_echipa.js');   // „Anunță echipa RA Track” (22.10): butonul și nota casetei, un singur loc
 
@@ -159,7 +160,7 @@ function problemaViteza(vd, o) {
   }
   const p0 = _parti(vd.t), zi0 = I.inceputZiRO(+p0.year, +p0.month - 1, +p0.day);
   return { fel: 'viteza', grav: 'rosu', titlu: cine + nr(vd.vmax) + ' km/h pe ' + cand,
-    dovada: 'Viteză reală, nu eroare de GPS: ' + nr(vd.nPeste) + (vd.nPeste === 1 ? ' poziție' : ' poziții la rând') + ' peste ' + nr(o.prag.kmh) + ' km/h' +
+    dovada: 'Viteză reală, nu eroare de GPS: ' + nrDe(vd.nPeste, 'poziție', 'poziții la rând') + ' peste ' + nr(o.prag.kmh) + ' km/h' +
       (vd.km > 0 ? ', pe ' + nr(vd.km, 1) + ' km' : '') + unde + '. ' + o.prag.fraza,
     butoane: [laTraseu, { fel: 'raport', text: 'Raportul Depășiri viteză', tip: 'speeding', imei: o.imei,
       de: new Date(zi0).toISOString(), pana: new Date(I.inceputZiRO(+p0.year, +p0.month - 1, +p0.day + 1)).toISOString() }] };
@@ -186,7 +187,7 @@ function problemaFisa(camp, masini) {
   if (!lista.length) return null;
   return {
     fel: 'fisa', grav: 'galben',
-    titlu: 'Nu e completat în fișa mașinii: ' + camp + (lista.length > 1 ? ' (' + lista.length + ' mașini)' : ''),
+    titlu: 'Nu e completat în fișa mașinii: ' + camp + (lista.length > 1 ? ' (' + nrDe(lista.length, 'mașină', 'mașini') + ')' : ''),
     dovada: lista.slice(0, 8).map(function (m) { return m.nr; }).join(', ') + (lista.length > 8 ? ' și încă ' + (lista.length - 8) : '') +
       '. Se completează din fișa mașinii, fila „' + FILE_FISA[filaCampului(camp)] + '”.',
     butoane: lista.slice(0, 3).map(function (m) { return { fel: 'fisa', text: 'Completează la ' + m.nr, imei: m.imei, fila: filaCampului(camp) }; })

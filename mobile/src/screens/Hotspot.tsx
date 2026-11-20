@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon';
 import './route.css';
 import './admin.css'; // .pf-kpis, .adm-list/item/empty
 import './detail.css'; // .sheet*
+import { nrDe } from '../lib/numar';
 
 // Hotspot & Rutare — paritate cu web (#hotspot-panel): HEATMAP real (L.heatLayer) opriri/poziții cu selector
 // vehicul + mod + interval, PLUS analiză zonă desenată (poligon/cerc) → /api/zone-report. Per-companie (viewReports).
@@ -160,7 +161,7 @@ export function Hotspot() {
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <button style={sel(preset === 'today')} onClick={() => setPreset('today')}>Azi</button>
           <button style={sel(preset === 'week')} onClick={() => setPreset('week')}>7 zile</button>
-          <button style={sel(preset === 'month')} onClick={() => setPreset('month')}>30 zile</button>
+          <button style={sel(preset === 'month')} onClick={() => setPreset('month')}>30 de zile</button>
           <button style={sel(preset === 'custom')} onClick={() => setPreset('custom')}>Custom</button>
         </div>
         {preset === 'custom' && (
@@ -187,7 +188,7 @@ export function Hotspot() {
                 <button style="margin-left:auto;background:transparent;border:0;color:var(--text-muted);font-size:16px;line-height:1;padding:0 4px" onClick={() => setDraw('off')} aria-label="Închide">×</button>
               </div>
               <div style="font-size:11px;color:var(--text-muted);margin-bottom:7px">
-                {drawMode === 'polygon' ? ('Atinge harta: ' + polyCount + ' puncte' + (polyCount < 3 ? ' (min. 3)' : '')) : (circleSet ? ('Rază: ' + (radius >= 1000 ? (radius / 1000).toFixed(1) + ' km' : radius + ' m')) : 'Atinge harta pt. centru')}
+                {drawMode === 'polygon' ? ('Atinge harta: ' + nrDe(polyCount, 'punct', 'puncte') + (polyCount < 3 ? ' (min. 3)' : '')) : (circleSet ? ('Rază: ' + (radius >= 1000 ? (radius / 1000).toFixed(1) + ' km' : radius + ' m')) : 'Atinge harta pt. centru')}
               </div>
               {drawMode === 'circle' && circleSet && (
                 <input type="range" min="100" max="5000" step="100" value={radius} onInput={(e: any) => onRadius(Number(e.target.value))} style="width:100%;margin-bottom:7px" />

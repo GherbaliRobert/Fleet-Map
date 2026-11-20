@@ -15,6 +15,7 @@ import {
 import { useInapoiInchide } from '../lib/inapoiFoaie';
 import './admin.css';
 import './fondator.css';
+import { nrDe } from '../lib/numar';
 
 // „RA Insight · control” (fondatorii), ca pe web (raxLoadAiUsage): patru cifre sus, „Ce cere atenție”, un rând pe firmă cu amănuntul la
 // o apăsare, soldul Anthropic, „Sursă externă” pe toată platforma și istoricul pe 12 luni (buton „Istoric”, oprit din start, alegerea
@@ -250,7 +251,7 @@ export function AiUsage() {
                 </>
               ) : (
                 <>
-                  <div class="fd-sec">Istoric — ultimele {luni.length}{luni.length === 1 ? ' lună' : ' luni'}</div>
+                  <div class="fd-sec">Istoric — ultimele {nrDe(luni.length, 'lună', 'luni')}</div>
                   <div class="fd-kpis">
                     <Kpi cap="Facturat" icon="report" val={<Lei v={st.facturatLei} fx={fx} />} sub="în toată perioada" jos="fără TVA, doar rândurile de RA Insight" />
                     <Kpi cap="Intrat în cont" icon="coins" val={<Lei v={st.incasatLei} fx={fx} />} ton={neincasatTot > 0.01 ? 'warn' : 'ok'}

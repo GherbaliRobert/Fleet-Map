@@ -1,3 +1,4 @@
+import { nrDe, deNr } from './numar';
 // Paginile din RA Insight pe telefon (lotul 2, 02.11): ce arată fiecare, în ce ordine — scoase din ce dă serverul. Fără JSX, fără
 // stare, fără cereri: verify_telefon_insight.js rulează funcțiile paginii web (deseneazaSafeDrive, deseneazaCombustibil,
 // deseneazaOreCondus, deseneazaMentenanta, deseneazaSoferi, deseneazaGhid) pe un DOM de carton, lângă astea, pe
@@ -102,7 +103,7 @@ export function planSafeDrive(j: any): Plan {
   ([['droplet', 'Combustibil', c.accel, 'în plus, din accelerări bruște'],
     ['alertO', 'Frâne și anvelope', c.frane, 'din frânări și viraje bruște'],
     ['gauge', 'Viteză', c.viteza, 'combustibil în plus, peste ' + lim + ' km/h'],
-    ['clock', 'Ralanti', c.ralanti, 'motor pornit pe loc · ' + sdNr(f.ralantiOre, 1) + ' ore']] as any[]).forEach((x) => tiles.push({ ic: x[0], et: x[1], val: sdLei(x[2]), sub: x[3] }));
+    ['clock', 'Ralanti', c.ralanti, 'motor pornit pe loc · ' + sdNr(f.ralantiOre, 1) + deNr(Math.round((f.ralantiOre || 0) * 10) / 10) + (Math.round((f.ralantiOre || 0) * 10) / 10 === 1 ? 'oră' : 'ore')]] as any[]).forEach((x) => tiles.push({ ic: x[0], et: x[1], val: sdLei(x[2]), sub: x[3] }));
   p.blocuri.push({ b: 'tiles', tiles });
   // Prețurile pe manevră (04.11): ale firmei sau de pornire și unde se schimbă — același rând ca pe web, cu textul serverului;
   // din 05.11 și butonul „Editează prețurile” (eticheta de la server), doar la cine le poate schimba.
@@ -246,9 +247,9 @@ export function planOreCondus(j: any): Plan {
   const f = j.flota || {}, fa = j.fata || {}, curenta = (j.soferi || []).some((x: any) => x.azi != null);
   const tot = (f.soferi || 0) + (f.faraSofer || 0);
   const tiles: Tile[] = [{ mare: true, et: 'Ore de condus', val: f.text || '—',
-    sub: 'în ' + (j.eticheta || '') + ' · ' + (f.soferi === 1 ? '1 șofer' : (f.soferi || 0) + ' șoferi') + (f.faraSofer ? ' · ' + (f.faraSofer === 1 ? '1 mașină fără șofer' : f.faraSofer + ' mașini fără șofer') : ''),
+    sub: 'în ' + (j.eticheta || '') + ' · ' + (f.soferi === 1 ? '1 șofer' : nrDe((f.soferi || 0), 'șofer', 'șoferi')) + (f.faraSofer ? ' · ' + (f.faraSofer === 1 ? '1 mașină fără șofer' : nrDe(f.faraSofer, 'mașină', 'mașini') + ' fără șofer') : ''),
     chip: fa.text ? { fel: fa.fel || 'info', text: fa.text } : undefined }];
-  ([['alert', 'Încălcări Reg. 561', String(f.incalcari || 0), f.incalcari ? (f.cuIncalcari === 1 ? 'la un șofer' : 'la ' + f.cuIncalcari + ' șoferi') : (f.supusi ? 'niciuna' : 'nu se aplică la autoturisme'), f.incalcari ? 'rosu' : ''],
+  ([['alert', 'Încălcări Reg. 561', String(f.incalcari || 0), f.incalcari ? (f.cuIncalcari === 1 ? 'la un șofer' : 'la ' + nrDe(f.cuIncalcari, 'șofer', 'șoferi')) : (f.supusi ? 'niciuna' : 'nu se aplică la autoturisme'), f.incalcari ? 'rosu' : ''],
     ['calendar', 'Cea mai lungă zi', f.ziMax ? f.ziMax.text : '—', f.ziMax ? f.ziMax.nume + ' · ' + f.ziMax.cand : '', ''],
     ['clock', 'Condus fără pauză', f.continuuMax ? f.continuuMax.text : '—', f.continuuMax ? f.continuuMax.nume + ' · ' + f.continuuMax.cand : '', ''],
     ['idCard', 'Din tahograf', (f.tahograf || 0) + ' din ' + tot, f.tahograf ? (f.tahograf < tot ? 'restul, estimat din GPS' : 'toate din tahograf') : 'toate estimate din GPS', '']] as any[])

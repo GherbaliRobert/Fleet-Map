@@ -15,6 +15,7 @@
 // milivolți). De-aia formatarea e scrisă pe chei, nu calculată din multiplicator — altfel unele
 // valori ar fi împărțite de două ori.
 
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 function formatIoValue(key, value) {
   if (value === undefined || value === null) return '-';
   // Alimentare
@@ -87,11 +88,11 @@ function formatIoValue(key, value) {
   }
   if (key === 'can_service_time_to_due') {
     if (value <= 0) return '⚠ EXPIRAT';
-    if (value < 30) return '⚠ ' + value + ' zile';
-    return value + ' zile (~' + Math.round(value/30) + ' luni)';
+    if (value < 30) return '⚠ ' + nrDe(value, 'zi', 'zile');
+    return nrDe(value, 'zi', 'zile') + ' (~' + nrDe(Math.round(value/30), 'lună', 'luni') + ')';
   }
   if (key === 'can_service_time_from_last') {
-    return value + ' zile (~' + Math.round(value/30) + ' luni)';
+    return nrDe(value, 'zi', 'zile') + ' (~' + nrDe(Math.round(value/30), 'lună', 'luni') + ')';
   }
   if (key.match(/^can_brake_pad_axle[1-4]$/)) {
     if (value < 20) return '⚠ ' + value + ' %';

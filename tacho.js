@@ -42,6 +42,7 @@
 //           12.. perechi de 2 octeți: [1b slot][1b echipaj][1b card][2b activitate][11b minutul]
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const ACT = ['odihna', 'disponibil', 'munca', 'condus'];   // 00, 01, 10, 11
 const LEN_IDENTIFICATION = 143;                            // card șofer, din specificație
 const MIN_ZI = 12;                                         // antetul unei zile
@@ -446,8 +447,8 @@ function scadenta(ultima, termenZile, acum) {
   else if (ramase <= 5) stare = 'curand';
   return {
     stare, zileDeLaUltima: trecute, zileRamase: ramase, prag,
-    text: ramase < 0 ? (Math.abs(ramase) + (Math.abs(ramase) === 1 ? ' zi întârziere' : ' zile întârziere'))
-      : (ramase + (ramase === 1 ? ' zi rămasă' : ' zile rămase')),
+    text: ramase < 0 ? (nrDe(Math.abs(ramase), 'zi întârziere', 'zile întârziere'))
+      : (nrDe(ramase, 'zi rămasă', 'zile rămase')),
   };
 }
 

@@ -13,6 +13,7 @@ import './admin.css';
 import './detail.css';
 import './firma.css';
 import './companii.css';
+import { nrDe } from '../lib/numar';
 
 // Super-admin: Companii — registrul de clienți, ca pe web (Administrare → Companii).
 // Toate rutele sunt requireSuperadmin pe server; ecranul e oricum învelit în doarSuper (App.tsx).
@@ -83,7 +84,7 @@ export function AdminCompanies() {
           // Tapul duce în Dispozitive; filtrul „Neasignate” îl alege ecranul acela (parametrul e pentru el).
           <button class="co-banda" onClick={() => loc.route('/admin/devices?filtru=neasignate')}>
             <Icon name="cpu" size={18} color="var(--co-warn)" />
-            <span><b>{neadoptate === 1 ? 'Un aparat așteaptă să fie adoptat.' : neadoptate + ' aparate așteaptă să fie adoptate.'}</b>{' '}
+            <span><b>{neadoptate === 1 ? 'Un aparat așteaptă să fie adoptat.' : nrDe(neadoptate, 'aparat', 'aparate') + ' așteaptă să fie adoptate.'}</b>{' '}
               {(neadoptate === 1 ? 'Transmite deja, dar nu e la nicio firmă' : 'Transmit deja, dar nu sunt la nicio firmă')
                 + ' — ori e un client care așteaptă, ori un aparat străin. Apasă ca '
                 + (neadoptate === 1 ? 'să-l rezolvi' : 'să le rezolvi') + ' în Dispozitive.'}</span>

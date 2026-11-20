@@ -8,6 +8,7 @@ import { API_BASE } from '../api/client';
 import { Api } from '../api/endpoints';
 import { token } from '../app/store';
 import type { IconName } from './Icon';
+import { nrDe } from '../lib/numar';
 
 export const LUNI = ['ian', 'feb', 'mar', 'apr', 'mai', 'iun', 'iul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 export function nf(n: any): string { return Number(n).toLocaleString('ro-RO'); }
@@ -22,7 +23,7 @@ export function dataRo(v: any): string {
   const t = new Date(d + 'T12:00:00');
   return isNaN(t.getTime()) ? '' : t.toLocaleDateString('ro-RO');
 }
-export function zile(n: number): string { return n + (n === 1 ? ' zi' : ' zile'); }
+export function zile(n: number): string { return nrDe(n, 'zi', 'zile'); }
 
 // ─── Flota, cu fișa completă (io_data, icon, driver_id, group_id) ───
 // Serverul scoate deja vehiculele demo și, fără ?includeArchived, pe cele arhivate. Un singur cache pe
@@ -239,7 +240,7 @@ export function mntCand(m: any): string {
 export function mntRepeta(m: any): string {
   const p: string[] = [];
   if (m.interval_km) p.push(nf(m.interval_km) + ' km');
-  if (m.interval_months) p.push(m.interval_months + (Number(m.interval_months) === 1 ? ' lună' : ' luni'));
+  if (m.interval_months) p.push(nrDe(Number(m.interval_months), 'lună', 'luni'));
   return p.join(' / ');
 }
 // „12 luni” spus omenește (web: _mntDurata).
@@ -247,9 +248,9 @@ export function durata(luni: any): string {
   const n = parseInt(luni) || 0;
   if (!n) return '';
   if (n === 1) return 'o lună';
-  if (n < 12 || n % 12 !== 0) return n + ' luni';
+  if (n < 12 || n % 12 !== 0) return nrDe(n, 'lună', 'luni');
   const a = n / 12;
-  return a === 1 ? 'un an' : a + ' ani';
+  return a === 1 ? 'un an' : nrDe(a, 'an', 'ani');
 }
 // E un ACT (ITP, RCA…) scris din greșeală ca lucrare? Lista de acte vine din catalog, plus sinonimele vechi.
 export function esteAct(cat: Catalog | null, type: string): boolean {

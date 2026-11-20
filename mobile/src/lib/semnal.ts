@@ -1,3 +1,4 @@
+import { nrDe } from './numar';
 // Semnalul unui aparat GPS — ACELEAȘI praguri și cuvinte ca pe web („Aparate GPS”, agpsStare) și ca în
 // exportul de pe server (_invSemnalText): sub 30 de minute „comunică”, sub 24 de ore „tăcut de …”,
 // peste „fără semnal de …”. Starea se socotește O SINGURĂ dată și servește și la sumar, și la rând, ca să
@@ -12,9 +13,9 @@ export function deCand(ms: number): string {
   if (m < 1) return 'câteva secunde';
   if (m < 60) return m + ' min';
   const h = Math.floor(m / 60);
-  if (h < 24) return h + (h === 1 ? ' oră' : ' ore');
+  if (h < 24) return nrDe(h, 'oră', 'ore');
   const z = Math.floor(h / 24);
-  return z + (z === 1 ? ' zi' : ' zile');
+  return nrDe(z, 'zi', 'zile');
 }
 
 // Momentul vine uneori ca număr (epoch ms), alteori ca text ISO — le recunoaștem pe amândouă.

@@ -10,6 +10,7 @@
 // nu trimite nimic, nu știe de notificări. Așa se poate proba minut cu minut, fără server — iar
 // serverul și interfața citesc aceleași reguli, nu două variante care se despart în timp.
 
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const ZI = 24 * 60 * 60 * 1000;
 
 // Câte zile de grație după scadență, până la suspendare.
@@ -99,7 +100,7 @@ function mesajClient(stare, treapta) {
   const ramase = Math.max(0, stare.zilePanaLaSuspendare);
   return 'Factura ' + (f.numar || '') + (suma ? ' (' + suma + ')' : '') + ' a fost scadentă la ' + zi(f.due_date) + '. ' +
     (ramase <= 0 ? 'Accesul se suspendă azi.'
-      : 'Vă rugăm să achitați în ' + ramase + (ramase === 1 ? ' zi' : ' zile') + ', până la ' + zi(stare.suspendareLa) +
+      : 'Vă rugăm să achitați în ' + nrDe(ramase, 'zi', 'zile') + ', până la ' + zi(stare.suspendareLa) +
         ', altfel accesul la platformă se suspendă.');
   // (Primul avertisment adăuga „Aveți 15 zile de la scadență”, după „achitați în 16 zile” — două cifre pentru același
   //  termen. Rămâne doar cea socotită din ZI_SUSPENDARE, cu data: lista lui Robert, 01.10, pct. 26.)

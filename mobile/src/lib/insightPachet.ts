@@ -1,3 +1,4 @@
+import { nrDe, deNr } from './numar';
 // „Vezi pachetele”, trecerea la alt pachet, „Pachet și conturi” și ce ține de pachet în Utilizatori și în fila „Acces” a firmei, pe
 // telefon. Reguli curate, fără ecran: `verify_telefon_pachete.js` rulează funcțiile paginii web (insightPachete, arataConfirmarea,
 // deseneazaPachetConturi, _usrSeatsHtml, _raxRenderCfg, raxCfgPachet) lângă cele de aici, pe aceleași răspunsuri.
@@ -134,8 +135,8 @@ export function randConturi(toti: any[], pk: any): null | { n: number; cat: stri
   const n = (toti || []).filter((u) => !!u.ai_seat).length;
   if (!n && !pk) return null;
   return {
-    n, cat: n === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight',
-    rest: pk ? '— pachetul ' + pk.nume + (pk.conturi == null ? ', conturi nelimitate' : ', ' + (pk.conturi === 1 ? 'un cont' : pk.conturi + ' conturi')) + '.' : '',
+    n, cat: (deNr(n) === ' de ' ? 'de ' : '') + (n === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight'),
+    rest: pk ? '— pachetul ' + pk.nume + (pk.conturi == null ? ', conturi nelimitate' : ', ' + (pk.conturi === 1 ? 'un cont' : nrDe(pk.conturi, 'cont', 'conturi'))) + '.' : '',
     link: !!pk,
   };
 }

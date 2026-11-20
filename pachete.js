@@ -1,4 +1,5 @@
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
 // ─── Pachetele RA Insight (Alin, 14.10: „Capitolul 1”) — O SINGURĂ regulă ──────────────────────────────────────────────
 // RA Insight nu se mai vinde cont cu cont, ci în patru pachete fixe pe FIRMĂ. Platforma rămâne fără planuri (ofertă →
 // contract → abonament pe mașină); doar RA Insight are pachete. Aici stă tot ce înseamnă un pachet: cât costă, câte conturi,
@@ -31,7 +32,7 @@ const ROLURI_ADMIN = ['company_admin', 'admin'];      // „admin” = numele ve
 const LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
 
 // „10 întrebări”, dar „50 de întrebări”: de la 20 în sus româna cere „de” (ultimele două cifre între 1 și 19 = fără „de”).
-function deNr(n) { const r = Math.abs(Math.round(Number(n) || 0)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function deNr(n) { return _deNr(Math.round(Number(n) || 0)); }   // regula comună (public/js/numar.js)
 // Cifrele se scriu românește, cu punctul miilor (16.11, Alin: „992 din 1.000”, nu „992 din 1000”).
 function cant(n, unu, multe) { return Math.round(n) === 1 ? '1 ' + unu : _nrRo(Math.round(n)) + deNr(n) + multe; }
 function r2(x) { return Math.round((Number(x) || 0) * 100) / 100; }

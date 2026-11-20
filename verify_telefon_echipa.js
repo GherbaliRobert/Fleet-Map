@@ -21,6 +21,8 @@
 // Pornește UN server (PGlite, port 3535, TCP 5535, baza în dosarul temporar, ștearsă la final), fără model și fără email.
 'use strict';
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window) — bucățile ei rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'));
 const os = require('os');
 const path = require('path');
 const vm = require('vm');
@@ -65,6 +67,7 @@ function modul(rel, stubs, globale) {
     require: (id) => {
       if (stubs && Object.prototype.hasOwnProperty.call(stubs, id)) return stubs[id];
       if (/\.css$/.test(id)) return {};
+      if (id === './numar' || id === '../lib/numar') return require('./public/js/numar.js');   // copia telefonului = regula comună (verify_acord.js)
       throw new Error('require neașteptat în ' + rel + ': ' + id);
     },
   }, globale || {}));
@@ -695,6 +698,7 @@ function parteaDesenului(texte) {
         if (Object.prototype.hasOwnProperty.call(stubs, id)) return stubs[id];
         if (/\.css$/.test(id)) return {};
         if (id.charAt(0) === '.') return inc(rezolva(rel, id));
+        if (id === './numar' || id === '../lib/numar') return require('./public/js/numar.js');   // copia telefonului = regula comună (verify_acord.js)
         throw new Error('require neașteptat în ' + rel + ': ' + id);
       } });
     vm.runInContext(tsJs(citeste(rel), rel), ctx, { filename: rel });

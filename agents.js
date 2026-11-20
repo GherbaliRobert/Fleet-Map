@@ -23,6 +23,7 @@ const IDLE_BURN_LPH = 1.5;     // L/h consum la ralanti (estimare)
 // Ore zecimale → „Xh Ym” (userul vrea ore+minute peste tot în texte, nu „1.6 h”).
 // Cifrele din textele agenților se scriu românește: punctul miilor și virgula zecimalelor („1.240 km”, „12,5 L”) — Alin,
 // 17.11: RA Client scria „Azi: 1240 km”. Fără Intl: agenții rulează pe toată flota, o dată pe oră.
+const _numarRo = require('./public/js/numar.js');
 function nrRo(x, zecimale) {
   const v = Number(x);
   if (!Number.isFinite(v)) return String(x);
@@ -33,11 +34,9 @@ function nrRo(x, zecimale) {
 }
 // Un număr lângă cuvântul lui, pe românește (17.11, Alin: „rezolvă” — „expiră în 25 zile”, „1 critice”): singularul la 1,
 // „de” de la 20 în sus, afară de cele care se termină în 01–19 („101 zile”, „25 de zile”, „1.000 de zile”); cifra cu nrRo.
+// Din 20.11 regula stă într-un singur loc, public/js/numar.js (aceeași pentru pagină, server și — prin copie — telefon).
 function cate(n, unu, multe) {
-  const x = Math.abs(Math.round(Number(n) || 0));
-  if (x === 1) return '1 ' + unu;
-  const r = x % 100;
-  return nrRo(x) + ((x < 20 || (r >= 1 && r <= 19)) ? ' ' : ' de ') + multe;
+  return _numarRo.nrDe(Math.abs(Math.round(Number(n) || 0)), unu, multe);
 }
 function hmH(hours) {
   const s = Math.max(0, Math.round((hours || 0) * 3600));

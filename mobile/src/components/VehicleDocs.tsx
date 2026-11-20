@@ -10,6 +10,7 @@ import { Grupa } from './FlotaUi';
 import { DocIstRand, DocRand, nevoiDe, ordoneazaActe, sloturi, tipuriActe, useDocOps } from './ActeVehicul';
 import { type Catalog, catalog, flota, vehDe } from './flotaCommon';
 import '../screens/flota.css';
+import { nrDe } from '../lib/numar';
 
 // Folosite și de alte ecrane (detaliul notificării: „Vezi actul”; contractele: micșorarea scanului).
 // Stau în ActeVehicul.tsx; le dăm mai departe de aici, ca importurile existente să nu se schimbe.
@@ -53,7 +54,7 @@ export function VehicleDocs({ imei, fisa, setFisa }: { imei: string; fisa: any; 
           {!randuri.length && <div style="font-size:12.5px;color:var(--text-muted)">Niciun act încă.</div>}
           {hist.length ? (
             <Grupa open={histOpen} onToggle={() => setHistOpen(!histOpen)} title="Acte înlocuite"
-              badge={<span class="fl-gn">{hist.length}{hist.length === 1 ? ' act' : ' acte'}</span>}>
+              badge={<span class="fl-gn">{nrDe(hist.length, 'act', 'acte')}</span>}>
               {hist.map((d) => <DocIstRand d={d} req={req} />)}
             </Grupa>
           ) : null}

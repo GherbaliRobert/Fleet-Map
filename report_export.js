@@ -1,5 +1,6 @@
 // report_export.js — randează un raport uniform ({ columns, rows, summary, label, from, to })
 // în Excel (.xlsx) sau PDF. Folosit de /api/reports/:type?format=xlsx|pdf.
+const { nrDe, deNr } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -442,9 +443,8 @@ function _bani(n, moneda, zec) {
 }
 // Ce include abonamentul, pe fiecare mașină. Lista se scrie AICI, nu în pagină: hârtia clientului
 // are un singur autor. Modulele apar doar dacă sunt bifate — altfel am promite ce nu vindem.
-function _ofDe(n) {
-  const x = Math.abs(Math.round(Number(n) || 0)); if (x === 0) return '';
-  const r = x % 100; return (r >= 1 && r <= 19) ? '' : 'de ';
+function _ofDe(n) {   // regula comună (public/js/numar.js): „de ” sau nimic
+  return deNr(Math.round(Number(n) || 0)) === ' de ' ? 'de ' : '';
 }
 // Fiecare rând începe cu MAJUSCULĂ și e o propoziție de sine stătătoare — e o ofertă comercială,
 // nu o listă de bifat (Alin, 22.09: „pune și tu începuturile enumerărilor cu majuscule, scrie mai
@@ -956,7 +956,7 @@ function traseuCaRaport(lista, from, to) {
     return { label: 'Traseu ' + x.vehicul, sheetName: 'Poziții', from: from, to: to, columns: TRASEU_COLOANE, rows: x.rows,
       summary: summary, summarySheet: true };
   }
-  return { label: 'Traseu ' + v.length + ' vehicule', from: from, to: to, columns: TRASEU_COLOANE, rows: [],
+  return { label: 'Traseu ' + nrDe(v.length, 'vehicul', 'vehicule'), from: from, to: to, columns: TRASEU_COLOANE, rows: [],
     perVehicle: v.map(function (x) { return { vehicul: x.vehicul, summary: x.sumar, rows: x.rows }; }), noFleetTotal: true };
 }
 // ─── sfârșit „traseul descărcat din ecranul Traseu” ──────────────────────────────────────────────

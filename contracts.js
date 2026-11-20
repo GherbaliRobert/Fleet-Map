@@ -8,6 +8,7 @@
 // acordul GDPR nu se vedea nicăieri. Un client fără acord de prelucrare nu e o scăpare de birou —
 // noi ținem datele de localizare ale șoferilor lui, deci fără actul ăla suntem amândoi în neregulă.
 
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const ZI = 24 * 60 * 60 * 1000;
 
 // Ce lipsește din dosar, în ordinea în care se completează firesc.
@@ -180,11 +181,9 @@ const URMATORUL_PAS = {
 // Un număr cu cuvântul lui, pe românește: „1 lună”, „12 luni”, dar „24 DE luni”, „100 DE întrebări”.
 // Numerele care se termină în 1–19 merg fără „de”, restul cu. Pe o hârtie semnată greșeala asta se
 // vede (până pe 23.09 contractul scria „100 de întrebări”, dar și „15 de întrebări”).
+// Din 20.11 regula stă într-un singur loc, public/js/numar.js (cu punctul miilor: „1.000 de întrebări”; „0 zile”, fără „de”).
 function numar(n, unu, multe) {
-  const x = Math.abs(Math.round(Number(n) || 0));
-  if (x === 1) return '1 ' + unu;
-  const r = x % 100;
-  return x + ((r >= 1 && r <= 19) ? ' ' : ' de ') + multe;
+  return nrDe(Math.abs(Math.round(Number(n) || 0)), unu, multe);
 }
 
 // Sfârșitul contractului, din start + durată. Durata lipsă = perioadă nedeterminată → fără sfârșit.
@@ -288,7 +287,7 @@ function stareDosar(firma, contract, acum) {
       : { nivel: 'expira', eticheta: 'termen depășit', lipsuri: [], text: '', zileRamase: zileRamase };
   }
   if (zileRamase != null && zileRamase <= PRAG_EXPIRA_ZILE && !contract.auto_renew) {
-    return { nivel: 'expira', eticheta: 'expiră în ' + zileRamase + ' zile', lipsuri: [], text: '', zileRamase: zileRamase };
+    return { nivel: 'expira', eticheta: 'expiră în ' + nrDe(zileRamase, 'zi', 'zile'), lipsuri: [], text: '', zileRamase: zileRamase };
   }
   return { nivel: 'ok', eticheta: 'în regulă', lipsuri: [], text: '', zileRamase: zileRamase };
 }

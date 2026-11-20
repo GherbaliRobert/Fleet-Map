@@ -167,13 +167,13 @@ function TahografEcran() {
     const e = (due && due.excluse) || {};
     const fc: string[] = e.soferiFaraCategorie || [];
     const q: string[] = [];
-    if (cuSoferi && e.soferiNeprofesionisti) q.push(e.soferiNeprofesionisti + (e.soferiNeprofesionisti === 1 ? ' șofer fără categorie de tahograf' : ' șoferi fără categorie de tahograf'));
-    if (cuVehicule && e.vehiculeFaraTahograf) q.push(e.vehiculeFaraTahograf + (e.vehiculeFaraTahograf === 1 ? ' vehicul fără tahograf' : ' vehicule fără tahograf'));
+    if (cuSoferi && e.soferiNeprofesionisti) q.push(nrDe(e.soferiNeprofesionisti, 'șofer fără categorie de tahograf', 'șoferi fără categorie de tahograf'));
+    if (cuVehicule && e.vehiculeFaraTahograf) q.push(nrDe(e.vehiculeFaraTahograf, 'vehicul fără tahograf', 'vehicule fără tahograf'));
     return (
       <>
         {cuSoferi && fc.length > 0 && (
           <div class="th-excl name">
-            {fc.length} {fc.length === 1 ? 'șofer nu are' : 'șoferi nu au'} categoriile de pe permis completate: {fc.slice(0, 4).join(', ')}{fc.length > 4 ? ' +' + (fc.length - 4) : ''} — dacă vreunul e profesionist, completează-i categoriile din Șoferi, altfel nu apare aici.
+            {nrDe(fc.length, 'șofer nu are', 'șoferi nu au')} categoriile de pe permis completate: {fc.slice(0, 4).join(', ')}{fc.length > 4 ? ' +' + (fc.length - 4) : ''} — dacă vreunul e profesionist, completează-i categoriile din Șoferi, altfel nu apare aici.
           </div>
         )}
         {q.length > 0 && <div class="th-excl quiet">Acum aveți: {q.join(' și ')}, nimic de descărcat.</div>}
@@ -262,7 +262,7 @@ function TahografEcran() {
                 return a;
               }, { zile: 0, inf: 0, grave: 0 });
               const sub = !ale.length ? 'niciun fișier'
-                : !citite.length ? (ale.length === 1 ? '1 fișier, dar nu s-a putut citi' : ale.length + ' fișiere, niciunul citit')
+                : !citite.length ? (ale.length === 1 ? '1 fișier, dar nu s-a putut citi' : nrDe(ale.length, 'fișier', 'fișiere') + ', niciunul citit')
                 : nrDe(ale.length, 'fișier', 'fișiere') + ' · ' + nrDe(t.zile, 'zi citită', 'zile citite');
               return (
                 <button class="th-card" onClick={() => openIstoric(x.id, null, x.nume)}>
@@ -271,7 +271,7 @@ function TahografEcran() {
                     <div class="nm">{x.nume}</div>
                     <div class="sub">{sub}</div>
                     <div class="th-pills">
-                      {t.grave > 0 && <span class="th-pill p-red">{t.grave} {t.grave === 1 ? 'gravă' : 'grave'}</span>}
+                      {t.grave > 0 && <span class="th-pill p-red">{nrDe(t.grave, 'gravă', 'grave')}</span>}
                       {t.inf - t.grave > 0 && <span class="th-pill p-orange">{t.inf - t.grave} {t.inf - t.grave === 1 ? 'serioasă' : 'serioase'}</span>}
                       {!t.inf && citite.length > 0 && <span class="th-pill p-green">fără abateri</span>}
                       <span class={'th-pill ' + starePill(x.stare)}>{x.text}</span>
@@ -454,7 +454,7 @@ function TahografEcran() {
                           <Icon name={necitit ? 'ban' : 'disc'} size={18} class="ic" />
                           <span class="mid">
                             <div class="nm">{f.filename}</div>
-                            <div class="sub">{per}{necitit ? ' · nu s-a putut citi' : citit ? ` · ${tt.zile === 1 ? '1 zi' : tt.zile + ' zile'} · ${Math.round((tt.conducereMin || 0) / 60)} h condus` : ' · activitatea nu se analizează încă'}</div>
+                            <div class="sub">{per}{necitit ? ' · nu s-a putut citi' : citit ? ` · ${tt.zile === 1 ? '1 zi' : nrDe(tt.zile, 'zi', 'zile')} · ${Math.round((tt.conducereMin || 0) / 60)} h condus` : ' · activitatea nu se analizează încă'}</div>
                           </span>
                           <Icon name="chevronR" size={16} color="var(--text-muted)" />
                         </button>
@@ -469,7 +469,7 @@ function TahografEcran() {
                       {ist.goluri.map((g: any) => (
                         <div class="th-gap">
                           <Icon name="calendar" size={17} color="var(--orange)" />
-                          <span><b>{g.zile} {g.zile === 1 ? 'zi lipsă' : 'zile lipsă'}</b><span>{ziScurta(g.de)} → {ziScurta(g.pana)} — nu există nicio descărcare pentru perioada asta</span></span>
+                          <span><b>{nrDe(g.zile, 'zi lipsă', 'zile lipsă')}</b><span>{ziScurta(g.de)} → {ziScurta(g.pana)} — nu există nicio descărcare pentru perioada asta</span></span>
                         </div>
                       ))}
                     </>
@@ -505,7 +505,7 @@ function TahografEcran() {
                 const citit = !!t.zile;
                 return (
                   <>
-                    {p.kind && <div class="muted" style="font-size:12.5px;margin:0 0 10px">{p.kind}{detail.driver_name && detail.filename ? ' · ' + detail.filename : ''}{citit ? ' · ' + t.zile + (t.zile === 1 ? ' zi citită' : ' zile citite') : ''}</div>}
+                    {p.kind && <div class="muted" style="font-size:12.5px;margin:0 0 10px">{p.kind}{detail.driver_name && detail.filename ? ' · ' + detail.filename : ''}{citit ? ' · ' + nrDe(t.zile, 'zi citită', 'zile citite') : ''}</div>}
                     {p.parseNote && (
                       <div class="th-gap" style="margin-bottom:12px">
                         <Icon name="alertO" size={17} color="var(--orange)" />

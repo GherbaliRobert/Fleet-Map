@@ -3,6 +3,7 @@ import { useLocation } from 'preact-iso';
 import { Api } from '../api/endpoints';
 import { Icon, type IconName } from '../components/Icon';
 import './reports.css'; // .rp-periods / .rp-period / .center-msg
+import { nrDe } from '../lib/numar';
 
 // Rosterul de asistenți AI (kind = eticheta din ai_usage pe server).
 const ASSISTANTS: { kind: string; name: string; icon: IconName; color: string; desc: string }[] = [
@@ -42,7 +43,7 @@ export function AiAssistants() {
       <div class="content has-tabbar">
         <div class="rp-periods" style="padding:12px 14px">
           {([7, 30, 90, 0] as Days[]).map((p) => (
-            <button class={'rp-period' + (days === p ? ' on' : '')} onClick={() => setDays(p)}>{p === 0 ? 'Tot' : p + ' zile'}</button>
+            <button class={'rp-period' + (days === p ? ' on' : '')} onClick={() => setDays(p)}>{p === 0 ? 'Tot' : nrDe(p, 'zi', 'zile')}</button>
           ))}
         </div>
         {loading ? <div class="center-msg"><div class="spin" style="margin:0 auto" /></div>
@@ -90,7 +91,7 @@ export function AiAssistants() {
                   );
                 })}
                 <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:4px">
-                  Utilizarea AI din {days ? `ultimele ${days} zile` : 'tot istoricul'} — <b>{fmtN(totCalls)}</b> apeluri în total{d?.model ? ` · model: ${d.model}` : ''}{d?.enabled === false ? ' · AI neconfigurat (fără cheie)' : ''}. Tokenii sunt însumați (intrare/ieșire) pe fiecare asistent.
+                  Utilizarea AI din {days ? `ultimele ${nrDe(days, 'zi', 'zile')}` : 'tot istoricul'} — <b>{fmtN(totCalls)}</b> apeluri în total{d?.model ? ` · model: ${d.model}` : ''}{d?.enabled === false ? ' · AI neconfigurat (fără cheie)' : ''}. Tokenii sunt însumați (intrare/ieșire) pe fiecare asistent.
                 </div>
               </div>
             )}

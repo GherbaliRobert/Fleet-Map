@@ -158,7 +158,7 @@ export function AdminDrivers() {
           </div>
         )}
         <Cautare value={q} onInput={setQ} placeholder="Caută după nume, telefon, email sau permis…"
-          count={list ? shown.length + (shown.length === 1 ? ' șofer' : ' șoferi') : ''} />
+          count={list ? nrDe(shown.length, 'șofer', 'șoferi') : ''} />
         <div style="display:flex;gap:6px;margin-bottom:12px">
           <button class="fl-ab" style="flex:1" disabled={!!exp} onClick={() => exporta('csv')}><Icon name="download" size={15} /> {exp === 'csv' ? '…' : 'CSV'}</button>
           <button class="fl-ab" style="flex:1" disabled={!!exp} onClick={() => exporta('xlsx')}><Icon name="download" size={15} /> {exp === 'xlsx' ? '…' : 'Excel'}</button>
@@ -177,7 +177,7 @@ export function AdminDrivers() {
               let pill;
               if (L.st === 'none' && !cs.length) pill = <span class="fl-pill s-none">fără permis în fișă</span>;
               else if (L.st === 'nodate' || L.st === 'none') pill = <span class="fl-pill s-none">fără dată de expirare</span>;
-              else if (L.st === 'exp') pill = <span class="fl-pill s-over">expirat de {-(L.days || 0)} zile</span>;
+              else if (L.st === 'exp') pill = <span class="fl-pill s-over">expirat de {nrDe(-(L.days || 0), 'zi', 'zile')}</span>;
               else if (L.st === 'soon') pill = <span class="fl-pill s-soon">{L.days === 0 ? 'expiră azi' : 'mai are ' + nrDe(L.days, 'zi', 'zile')}</span>;
               else pill = <span class="fl-pill s-done">până {L.date}</span>;
               const contact = [d.phone, d.email].filter(Boolean).join(' · ');

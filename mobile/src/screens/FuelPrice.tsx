@@ -4,6 +4,7 @@ import { ReportChart } from '../components/ReportChart';
 import { Icon } from '../components/Icon';
 import './reports.css';
 import './stats.css';
+import { nrDe } from '../lib/numar';
 
 // Etichetă axă X (număr de zile de la epocă → „D lună 'YY”).
 const _MON = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sep.', 'oct.', 'noi.', 'dec.'];
@@ -71,7 +72,7 @@ export function FuelPrice() {
 
                 <div class="rp-periods" style="padding:8px 14px">
                   {[30, 90, 365].map((n) => (
-                    <button class={'rp-period' + (days === n ? ' on' : '')} onClick={() => setDays(n)}>{n === 365 ? '1 an' : n + ' zile'}</button>
+                    <button class={'rp-period' + (days === n ? ' on' : '')} onClick={() => setDays(n)}>{n === 365 ? '1 an' : nrDe(n, 'zi', 'zile')}</button>
                   ))}
                 </div>
 

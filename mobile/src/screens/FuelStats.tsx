@@ -39,7 +39,7 @@ export function FuelStats() {
       <div class="content has-tabbar">
         <div class="rp-periods" style="padding:12px 14px">
           {(['today', 'week', 'month'] as Period[]).map((p) => (
-            <button class={'rp-period' + (period === p ? ' on' : '')} onClick={() => setPeriod(p)}>{p === 'today' ? 'Azi' : p === 'week' ? '7 zile' : '30 zile'}</button>
+            <button class={'rp-period' + (period === p ? ' on' : '')} onClick={() => setPeriod(p)}>{p === 'today' ? 'Azi' : p === 'week' ? '7 zile' : '30 de zile'}</button>
           ))}
         </div>
         {loading ? <div class="center-msg"><div class="spin" style="margin:0 auto" /></div>

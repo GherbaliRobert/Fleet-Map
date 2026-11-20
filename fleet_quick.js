@@ -2,6 +2,7 @@
 // ZERO tokeni AI. /api/ai/chat încearcă întâi asta; doar întrebările libere ajung la Claude.
 // Funcționează chiar și fără cheie AI configurată.
 
+const { deNr: _deNr } = require('./public/js/numar.js');
 function norm(s) {
   return (s || '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
@@ -42,7 +43,7 @@ function moving(v, now) { return online(v, now) && (v.viteza_kmh || 0) > 3; }
 // Fără emoji (Alin, 20.10: răspunsul instant „unde e acum” era plin de 📍 🚚 🟠 și nu arăta profesionist lângă insignele
 // RA Insight). Titlu îngroșat, apoi mașina și câte un rând cu „•”.
 // „19 vehicule”, dar „20 de vehicule”: de la 20 în sus româna cere „de” (ultimele două cifre între 1 și 19 = fără „de”).
-function de(n) { const r = Math.abs(Math.round(Number(n) || 0)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function de(n) { return _deNr(Math.round(Number(n) || 0)); }   // regula comună (public/js/numar.js)
 function cant(n, unu, multe) { return Number(n) === 1 ? '1 ' + unu : n + de(n) + multe; }
 function cine(v) { return '**' + (v.nume || '?') + '**' + (v.nr ? ' (' + v.nr + ')' : ''); }
 function unde(v) { return '• ' + (v.locatie || 'locul nu e cunoscut'); }

@@ -19,6 +19,8 @@
 // Nu pornește serverul și nu are nevoie de rețea. Are nevoie de TypeScript din mobile/node_modules (e acolo
 // oricum pentru `tsc` pe aplicația de telefon).
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window) — bucățile ei rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'));
 const path = require('path');
 const vm = require('vm');
 
@@ -47,6 +49,7 @@ if (!mNrI) { console.log('✗ nu găsesc window._raxNrI în public/index.html');
 const CURS = { v: 5 };
 function webCtx(etichete) {
   const ctx = {
+    ...require('./public/js/numar.js'),   // pagina o are pe window (js/numar.js, în <head>)
     console, Math, Number, String, Date, Array, Object, isFinite,
     esc: (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]),
     document: { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [] },
@@ -81,7 +84,7 @@ catch (e) {
 const SRC = fs.readFileSync(path.join(__dirname, 'mobile', 'src', 'components', 'insightBani.ts'), 'utf8');
 const JS = ts.transpileModule(SRC, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
 const modul = { exports: {} };
-new Function('module', 'exports', 'require', JS)(modul, modul.exports, require);
+new Function('module', 'exports', 'require', JS)(modul, modul.exports, (id) => id === '../lib/numar' ? require('./public/js/numar.js') : require(id));
 const P = modul.exports;
 
 // ── Unelte ───────────────────────────────────────────────────────────────────────────────────────────

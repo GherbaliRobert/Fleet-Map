@@ -6,11 +6,12 @@ import type { ReportTypeInfo } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import './detail.css';
 import './admin.css';
+import { nrDe } from '../lib/numar';
 
 const PERIODS = [
   { v: 'yesterday', label: 'Ziua precedentă' },
   { v: 'last7', label: 'Ultimele 7 zile' },
-  { v: 'last30', label: 'Ultimele 30 zile' },
+  { v: 'last30', label: 'Ultimele 30 de zile' },
   { v: 'thismonth', label: 'Luna curentă' },
   { v: 'lastmonth', label: 'Luna precedentă' },
 ];
@@ -93,7 +94,7 @@ export function ReportSchedules() {
     try {
       const r = await Api.runReportSchedule(s.id);
       const saved = r && r.historyId != null;
-      const parts = ['Generat (' + ((r && r.rows) || 0) + ' rânduri)', saved ? 'salvat în Istoric' : ('nesalvat' + (r && r.reason ? ' (' + r.reason + ')' : ''))];
+      const parts = ['Generat (' + nrDe(((r && r.rows) || 0), 'rând', 'rânduri') + ')', saved ? 'salvat în Istoric' : ('nesalvat' + (r && r.reason ? ' (' + r.reason + ')' : ''))];
       if (r && r.emailSent) parts.push('trimis pe email');
       showToast(parts.join(' · '), !saved);
       await reload();

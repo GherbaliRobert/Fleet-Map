@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { Api } from '../api/endpoints';
 import { showToast } from '../app/store';
 import { Icon } from './Icon';
+import { nrDe } from '../lib/numar';
 
 // Vehiculele (și grupele) pe care le vede un cont care NU are „Vede toată flota”: dispecerul, viewer-ul
 // sau un rol căruia firma i-a tăiat dreptul ăsta. Aceeași rută ca pe web (GET/PUT /api/users/:id/access).
@@ -132,7 +133,7 @@ export function UserVehicleAccess(props: { user: AccessTarget; isSuper: boolean;
                   <label style={rowStyle}>
                     <input type="checkbox" checked={selGrp.has(id)} onChange={() => toggleGrp(id)} style={boxStyle} />
                     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{g.name || ('Grupa #' + id)}</span>
-                    {Number.isFinite(n) && <span class="muted" style="font-size:12px">{n} {n === 1 ? 'vehicul' : 'vehicule'}</span>}
+                    {Number.isFinite(n) && <span class="muted" style="font-size:12px">{nrDe(n, 'vehicul', 'vehicule')}</span>}
                   </label>
                 );
               })}

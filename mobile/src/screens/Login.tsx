@@ -55,9 +55,10 @@ export function Login() {
       </div>
       <form onSubmit={submit} style="display:flex;flex-direction:column;gap:16px">
         <div class="field">
-          <label>Utilizator</label>
-          <input type="text" autocomplete="username" autocapitalize="none" autocorrect="off"
-            value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} placeholder="numele de utilizator" />
+          {/* „Email”, ca pe calculator (20.11, Alin: „DA”): conturile se fac pe adresa de email; „Utilizator” îl lăsa pe om să caute un nume. */}
+          <label>Email</label>
+          <input type="text" inputMode="email" autocomplete="username" autocapitalize="none" autocorrect="off"
+            value={u} onInput={(e) => setU((e.target as HTMLInputElement).value)} placeholder="Introdu emailul" />
         </div>
         <div class="field">
           <label>Parolă</label>

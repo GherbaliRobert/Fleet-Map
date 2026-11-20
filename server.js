@@ -186,6 +186,9 @@ const errortrack = require('./errortrack');
 errortrack.init();
 let anaf = null; try { anaf = require('./anaf'); } catch (e) { /* opțional */ }
 const contracte = require('./contracts');           // dosarul juridic al firmelor client (reguli curate)
+// „1 zi”, „25 de zile”: regula comună cu pagina (public/js/numar.js). `_nrDe` — „nrDe” e un nume local mai jos (șoferii pe mașini).
+const _numarRo = require('./public/js/numar.js');
+const _nrDe = _numarRo.nrDe;
 const neplata = require('./neplata');               // ce se întâmplă când nu se plătește la termen (reguli curate)
 const abonament = require('./abonament');           // de la ce zi plătește clientul o mașină: pe zile, din prima transmisie (reguli curate)
 const montaj = require('./montaj');                 // montajul la client: ce-i facturăm lui, cât ne costă pe noi
@@ -431,9 +434,9 @@ function _pastrareRezumat() {
   const r = u.raport || {};
   const h = Math.round((Date.now() - u.at) / 360000) / 10;
   const sters = (r.pozitii || 0) + (r.curse || 0) + (r.alerte || 0);
-  return 'ultima rulare acum ' + String(h).replace('.', ',') + ' h: ' + (sters ? (r.pozitii + ' poziții, ' + r.curse + ' curse, ' + r.alerte + ' alerte, la ' + r.masini + ' mașini') : 'nimic de șters')
-    + (r.erori ? ' · ' + r.erori + ' mașini amânate (' + r.primaEroare + ')' : '')
-    + (r.sarite ? ' · ' + r.sarite + ' mașini sărite: setările firmei nu se pot citi' : '')
+  return 'ultima rulare acum ' + String(h).replace('.', ',') + ' h: ' + (sters ? (_nrDe(r.pozitii, 'poziție', 'poziții') + ', ' + _nrDe(r.curse, 'cursă', 'curse') + ', ' + _nrDe(r.alerte, 'alertă', 'alerte') + ', la ' + _nrDe(r.masini, 'mașină', 'mașini')) : 'nimic de șters')
+    + (r.erori ? ' · ' + _nrDe(r.erori, 'mașină', 'mașini') + ' amânate (' + r.primaEroare + ')' : '')
+    + (r.sarite ? ' · ' + _nrDe(r.sarite, 'mașină', 'mașini') + ' sărite: setările firmei nu se pot citi' : '')
     + (r.epuizat ? ' · buget de timp epuizat — continuă la următoarea' : '');
 }
 // Agenți „live-only”: stare de MOMENT, calculată la cerere (pagina agentului) — NU se persistă și NU se acumulează
@@ -527,7 +530,7 @@ let _wdAlarma = false; // ca să anunțăm o dată pe incident, nu din 2 în 2 m
 
 async function _anuntaTacereaReceptiei(minute, conexiuni) {
   const title = 'Recepția GPS s-a oprit';
-  const body = conexiuni + ' aparate sunt conectate, dar niciunul n-a trimis nimic de ' + minute + ' minute.'
+  const body = _nrDe(conexiuni, 'aparat', 'aparate') + ' sunt conectate, dar niciunul n-a trimis nimic de ' + _nrDe(minute, 'minut', 'minute') + '.'
     + (WATCHDOG_RESTART ? ' Repornesc serverul acum.' : ' Serverul NU se repornește singur (WATCHDOG_RESTART=false).');
   console.error('[WATCHDOG] ' + title + ' — ' + body);
   // 1. în aplicație și pe telefon, către super-admini
@@ -1912,7 +1915,7 @@ const PAROLA_MIN = 10;
 // Întoarce un mesaj de eroare, sau null dacă parola e acceptabilă.
 function verificaParola(parola, username) {
   const p = String(parola == null ? '' : parola);
-  if (p.length < PAROLA_MIN) return 'Parola trebuie să aibă minim ' + PAROLA_MIN + ' caractere.';
+  if (p.length < PAROLA_MIN) return 'Parola trebuie să aibă minim ' + _nrDe(PAROLA_MIN, 'caracter', 'caractere') + '.';
   if (p.length > 200) return 'Parola e prea lungă (maxim 200 de caractere).';
   const jos = p.toLowerCase();
   if (PAROLE_UZUALE.has(jos)) return 'Parola asta e prea cunoscută. Alege alta.';
@@ -2602,7 +2605,7 @@ async function contractExpiryTick() {
       const dPreaviz = a.preavizPana ? new Date(a.preavizPana).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : null;
       const titlu = a.trecut
         ? 'Contract expirat: ' + (c.company_name || ('#' + c.company_id))
-        : 'Contract care expiră în ' + a.zileRamase + ' zile: ' + (c.company_name || ('#' + c.company_id));
+        : 'Contract care expiră în ' + _nrDe(a.zileRamase, 'zi', 'zile') + ': ' + (c.company_name || ('#' + c.company_id));
       const corp = 'Contractul ' + (c.number || '') + ' ' +
         (a.trecut ? 'a expirat pe ' + dSfarsit : 'expiră pe ' + dSfarsit) +
         ' și NU se reînnoiește automat.' +
@@ -3738,7 +3741,7 @@ app.delete('/api/company-roles/:rol', requireAuth, requireAdmin, withCompany, as
     // dimineața cu alte drepturi, fără să știe nimeni de ce.
     if (propriu) {
       const n = await db.countUsersWithRoleSlug(req.companyId, rol);
-      if (n > 0) return res.status(400).json({ error: 'Rolul e folosit de ' + n + (n === 1 ? ' persoană' : ' persoane') + '. Mută-i pe alt rol întâi.' });
+      if (n > 0) return res.status(400).json({ error: 'Rolul e folosit de ' + _nrDe(n, 'persoană', 'persoane') + '. Mută-i pe alt rol întâi.' });
     }
     await db.resetCompanyRole(req.companyId, rol);
     invalideazaRoluriCo(req.companyId);
@@ -3998,8 +4001,8 @@ async function _fondEpuizat(req) {
   if (sp.st.blocat) return { limited: true, pachet: sp.st.cod, motiv: sp.st.motiv, fondEpuizat: { fond: sp.st.intrebari, motiv: sp.st.motiv }, reply: pachete.textBlocat(sp.st, Date.now()) };
   return null;
 }
-// „10 întrebări”, dar „50 de întrebări”: de la 20 în sus româna cere „de” (la fel ca nDe() din aplicația de telefon).
-function _deNr(n) { const r = Math.abs(Number(n) || 0) % 100; return (r === 0 && Number(n)) || r >= 20 ? ' de ' : ' '; }
+// „10 întrebări”, dar „50 de întrebări”: regula comună (public/js/numar.js).
+function _deNr(n) { return _numarRo.deNr(Math.round(Number(n) || 0)); }
 // Starea contorului = starea pachetului firmei (pachete.js), FĂRĂ bani. `strict` e pentru POARTA întrebărilor (_fondEpuizat): o
 // citire eșuată merge mai departe ca eroare, iar întrebarea nu pleacă. Bara din aplicație rămâne îngăduitoare.
 async function aiQuotaState(companyId, userId, opts) {
@@ -4831,7 +4834,7 @@ function _insightInstructiuni(cuRapoarte) {
       '• list_vehicles — toate mașinile: număr de înmatriculare, nume, șofer, grupă și fișa mașinii (marcă, model, an de fabricație, combustibil, rezervor, consumul trecut în fișă).\n• list_zones — zonele (hotspot) definite.\n' +
       '• cauta_in_ghid — ghidul aplicației RA Track: pașii exacți pentru „cum fac…?” (unde e un buton, cum programezi un raport, cum adaugi un șofer).\n' +
       '• safe_drive — RA Drive (condus & costuri; fostul „Safe Drive”) pe o lună: cât a costat condusul (manevre bruște, viteză, ralanti), pe mașină și pe șofer, unde și când se repetă, discuțiile cu șoferii.' +
-      (cuRapoarte ? '\n• run_report — date pe o perioadă (maximum ' + INSIGHT_MAX_RAPOARTE + ' rapoarte pe întrebare).' : ''),
+      (cuRapoarte ? '\n• run_report — date pe o perioadă (maximum ' + _nrDe(INSIGHT_MAX_RAPOARTE, 'raport', 'rapoarte') + ' pe întrebare).' : ''),
     'MAȘINILE: omul le numește după numărul de înmatriculare (cu sau fără spații: „B 154 UIP”, „b154uip”), după nume („Dacia Logan 3”), ' +
       'după șofer („mașina lui Ion”) sau după grupă. În unelte scrie exact ce a spus omul — aplicația recunoaște mașina. Dacă unealta ' +
       'răspunde că se potrivesc mai multe mașini, întreabă-l scurt pe care o vrea și nu alege tu. Nu spune că o mașină „nu apare” ' +
@@ -4892,9 +4895,9 @@ function _insightContext(fisa, gasite, ctx, peImei, notite, fisaOm) {
     if (v.grupa) parti.push('grupa ' + v.grupa);
     return (v.nr ? v.nr + ' = „' + v.nume + '”' : '„' + v.nume + '”') + (parti.length ? ' (' + parti.join(', ') + ')' : '');
   };
-  const r = ['Acum: ' + z + ' (ora României). Flota la care are acces omul: ' + fisa.length + (fisa.length === 1 ? ' mașină.' : ' mașini.')];
+  const r = ['Acum: ' + z + ' (ora României). Flota la care are acces omul: ' + _nrDe(fisa.length, 'mașină.', 'mașini.')];
   if (gasite.masini.length) r.push('Mașini recunoscute în întrebare: ' + gasite.masini.map(descrie).join('; ') + '.');
-  if (gasite.grupe.length) r.push('Grupe recunoscute în întrebare: ' + gasite.grupe.map(function (g) { return g.nume + ' (' + g.masini.length + ' mașini)'; }).join('; ') + '.');
+  if (gasite.grupe.length) r.push('Grupe recunoscute în întrebare: ' + gasite.grupe.map(function (g) { return g.nume + ' (' + _nrDe(g.masini.length, 'mașină', 'mașini') + ')'; }).join('; ') + '.');
   for (const a of gasite.ambigue) r.push('Pentru „' + a.cheie + '” se potrivesc mai multe mașini: ' + a.variante.map(insight.eticheta).join('; ') + '. Dacă discuția nu lămurește care, întreabă.');
   const disc = [];
   const masiniCtx = (ctx.masini || []).map(function (i) { return peImei[i]; }).filter(Boolean);
@@ -5192,7 +5195,7 @@ async function _insightComanda(req, res, x) {
       (c.gol ? 'În perioada asta nu are niciun rând; l-am pus totuși în Istoric rapoarte, până pe ' + panaTxt + '.' : kpiTxt(c) + '. Îl găsești în Istoric rapoarte până pe ' + panaTxt + '.');
     (c.note || []).forEach(function (n) { reply += '\n\n' + n; });
   } else {
-    reply = 'Am făcut ' + carduri.length + ' rapoarte **„' + label + '”** pentru **' + vehicul + '**: ' +
+    reply = 'Am făcut ' + _nrDe(carduri.length, 'raport', 'rapoarte') + ' **„' + label + '”** pentru **' + vehicul + '**: ' +
       carduri.map(function (c) { return c.perioada + ' (' + kpiTxt(c) + ')'; }).join('; ') + '. Le găsești în Istoric rapoarte până pe ' + panaTxt + '.';
   }
   const inteles = aiRaport.inteles(Object.assign({}, u, { et: label, perioada: Object.assign({}, perioade[0], { eticheta: carduri.map(function (c) { return c.perioada; }).join(' · '), implicita: perioade[0].implicita }) }), x.fisa);
@@ -5538,7 +5541,7 @@ async function _raInsight(req, res, opts) {
             necompletat: nec.length ? nec : undefined };
         }) };
         listaVazuta = out.vehicles;
-        if (fisa.length > INSIGHT_LISTA_MAX) out.atentie = 'Flota are ' + fisa.length + ' mașini; lista arată primele ' + INSIGHT_LISTA_MAX + '. Caută mașina direct în run_report, după număr sau nume.';
+        if (fisa.length > INSIGHT_LISTA_MAX) out.atentie = 'Flota are ' + _nrDe(fisa.length, 'mașină', 'mașini') + '; lista arată primele ' + INSIGHT_LISTA_MAX + '. Caută mașina direct în run_report, după număr sau nume.';
         return out;
       },
       list_zones: async () => { folosite.add('list_zones'); return { zones: zones.map(z => z.name) }; },
@@ -5640,7 +5643,7 @@ async function _raInsight(req, res, opts) {
       },
       run_report: async (input) => {
         if (!cuRapoarte) return { error: 'Omul nu are acces la rapoarte.' };
-        if (reportCalls >= INSIGHT_MAX_RAPOARTE) return { error: 'Ai atins limita de ' + INSIGHT_MAX_RAPOARTE + ' rapoarte pe întrebare. Răspunde cu datele deja adunate.' };
+        if (reportCalls >= INSIGHT_MAX_RAPOARTE) return { error: 'Ai atins limita de ' + _nrDe(INSIGHT_MAX_RAPOARTE, 'raport', 'rapoarte') + ' pe întrebare. Răspunde cu datele deja adunate.' };
         const type = String(input.type || '');
         if (!reports.REPORTS[type]) return { error: 'Tip necunoscut: ' + type + '. Valide: ' + Object.keys(reports.REPORTS).filter(function (k) { return RAPOARTE_FARA_MODEL.indexOf(k) < 0; }).join(', ') };
         if (RAPOARTE_FARA_MODEL.indexOf(type) >= 0) return { error: 'Raportul „' + reports.REPORTS[type].label + '” e lista poziție cu poziție (cel mult 5.000 de poziții) — nu e pentru totaluri sau pentru viteza maximă. Folosește trips (foaia de parcurs), speeding (vitezele) sau utilization.' };
@@ -5711,7 +5714,7 @@ async function _raInsight(req, res, opts) {
           try { loc = (geocode && v.lat && v.lng) ? geocode.peek(Number(v.lat), Number(v.lng)) : null; } catch (e) {}
           const ageMin = v.ultima_actualizare ? (now - new Date(v.ultima_actualizare).getTime()) / 60000 : null;
           let stare;
-          if (ageMin != null && ageMin > 60) stare = 'fără semnal de ' + (ageMin >= 1440 ? (Math.round(ageMin / 1440) + ' zile') : (Math.round(ageMin / 60) + ' h'));
+          if (ageMin != null && ageMin > 60) stare = 'fără semnal de ' + (ageMin >= 1440 ? (_nrDe(Math.round(ageMin / 1440), 'zi', 'zile')) : (Math.round(ageMin / 60) + ' h'));
           else if ((v.viteza_kmh || 0) > 3) stare = 'în mișcare ' + v.viteza_kmh + ' km/h';
           else if (v.contact === 'pornit') stare = 'staționată cu motorul pornit (ralanti)';
           else stare = 'oprită';
@@ -5739,7 +5742,7 @@ async function _raInsight(req, res, opts) {
         // listă tăiată și ar da cifra ca și cum ar fi toată flota.
         const taiate = (snap.totalFlota || vehicles.length) - vehicles.length;
         const out = { acum: new Date().toISOString(), total_flota: snap.totalFlota || vehicles.length, vehicles: vehicles };
-        if (taiate > 0) out.atentie = 'Flota are ' + out.total_flota + ' mașini, dar în lista de mai sus sunt doar primele ' +
+        if (taiate > 0) out.atentie = 'Flota are ' + _nrDe(out.total_flota, 'mașină', 'mașini') + ', dar în lista de mai sus sunt doar primele ' +
           vehicles.length + '. Nu da cifre pe toată flota din lista asta — spune-i omului că ai văzut doar o parte.';
         return out;
       },
@@ -7183,7 +7186,7 @@ app.post('/api/insight/soferi-masini/aplica', requireAuth, requireEdit('vehicule
     const gata = rez.aplicate.map(function (s) { return { imei: s.imei, nr: s.nr, text: s.la != null ? (nume[s.la] || 'Șoferul') + ' e pe ' + s.nr + '.' : s.nr + ' nu mai are șofer trecut.' }; });
     await db.treceActiuneInsight(id, userId, 'aplicata', { stare: 'aplicata', date: { sursa: 'pagina', schimbari: schimbari, aplicate: rez.aplicate, sarite: toateSarite, gataPagina: gata } });
     res.json({ ok: true, actiuneId: id, gata: gata, sarite: toateSarite, ramasMs: Math.max(0, prins.aplicat_la + soferiMasini.ANULARE_MIN * 60000 - Date.now()),
-      text: 'Gata: ' + (gata.length === 1 ? 'o schimbare' : gata.length + ' schimbări') + '. Se ' + (gata.length === 1 ? 'poate' : 'pot') + ' anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.' });
+      text: 'Gata: ' + (gata.length === 1 ? 'o schimbare' : _nrDe(gata.length, 'schimbare', 'schimbări')) + '. Se ' + (gata.length === 1 ? 'poate' : 'pot') + ' anula în următoarele ' + _nrDe(soferiMasini.ANULARE_MIN, 'minut', 'minute') + '.' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // „Da” pe cartonașul din discuție. Drepturile = ale ecranului de care ține propunerea (`_poateActiunea`): șoferul — Vehicule › fișa
@@ -7265,7 +7268,7 @@ app.post('/api/insight/actiuni/:id/anuleaza', requireAuth, withScope, requireFea
     if (!a) return res.status(404).json({ error: 'Schimbarea nu există.' });
     if (!_poateActiunea(req, a.fel)) return res.status(403).json({ error: 'Acces interzis' });
     if (a.stare !== 'aplicata') return res.status(409).json({ error: a.stare === 'anulata' ? 'E deja anulată.' : 'N-a fost aplicată, deci n-am ce anula.', propunere: _cardPublic(a) });
-    if (!a.aplicat_la || Date.now() - a.aplicat_la > soferiMasini.ANULARE_MIN * 60000) return res.status(409).json({ error: 'Au trecut cele ' + soferiMasini.ANULARE_MIN + ' minute: ' + (programari.dupaAnulare(a.fel) || propuneri.dupaAnulare(a.fel)), propunere: _cardPublic(a) });
+    if (!a.aplicat_la || Date.now() - a.aplicat_la > soferiMasini.ANULARE_MIN * 60000) return res.status(409).json({ error: 'Au trecut cele ' + _nrDe(soferiMasini.ANULARE_MIN, 'minut', 'minute') + ': ' + (programari.dupaAnulare(a.fel) || propuneri.dupaAnulare(a.fel)), propunere: _cardPublic(a) });
     if (a.fel === 'alerta' || a.fel === 'discutie') return await _anuleazaPropunere2(req, res, a);
     if (a.fel === 'revizie' || a.fel === 'act' || a.fel === 'raport') return await _anuleazaPropunere3(req, res, a);
     const prins = await db.treceActiuneInsight(a.id, userId, 'aplicata', { stare: 'anulata', anulatLa: Date.now() });
@@ -8244,11 +8247,11 @@ app.get('/api/insight/ramuri', requireAuth, withScope, requireFeature('ai_assist
 // Gated doar pe viewReports (NU pe ai_assistant) → disponibil oricărei companii. AI-ul (text liber) rămâne opțional.
 const INSIGHT_PRESETS = {
   km:       { title: 'Km — săptămâna asta',            type: 'utilization',      period: 'this_week' },
-  consum:   { title: 'Consum — ultimele 30 zile',      type: 'consumption',      period: 'last_30_days' },
+  consum:   { title: 'Consum — ultimele 30 de zile',      type: 'consumption',      period: 'last_30_days' },
   costuri:  { title: 'Costuri combustibil — luna asta', type: 'costs',           period: 'this_month' },
   viteza:   { title: 'Depășiri viteză — 7 zile',       type: 'speeding',         period: 'last_7_days' },
   ralanti:  { title: 'Ralanti (idle) — 7 zile',        type: 'idling',           period: 'last_7_days' },
-  ecodrive: { title: 'EcoDrive — clasament șoferi (30 zile)', type: 'ecodrive_drivers', period: 'last_30_days', top: 3 },
+  ecodrive: { title: 'EcoDrive — clasament șoferi (30 de zile)', type: 'ecodrive_drivers', period: 'last_30_days', top: 3 },
 };
 // Perioadele pe ora României, ca peste tot în RA Insight (23.10): cu setHours pe serverul pe UTC, „săptămâna asta” și „luna
 // asta" începeau la 3 dimineața (vara), iar între miezul nopții și 3 cuprindeau încă ziua / luna de dinainte.
@@ -8510,7 +8513,7 @@ async function _runAgentsWorkerBody() {
       try { await db.setSetting('agents_lastrun_' + co.id, new Date().toISOString()); } catch (e) {} // „ultima rulare” per companie
     }
     try { await db.setSetting('agents_lastrun', new Date().toISOString()); } catch (e) {} // fallback global (super-admin)
-    return _nCo + ' companii · ' + _nFind + ' constatări';
+    return _nrDe(_nCo, 'companie', 'companii') + ' · ' + _nrDe(_nFind, 'constatare', 'constatări');
   }
 }
 
@@ -8623,7 +8626,7 @@ function _randuriExportCompanii(lista, bani, acum) {
   const acces = function (c) {
     const a = c.access || {};
     if (a.status === 'expired') return a.motiv === 'manual' ? 'oprit de noi' : 'suspendat — neplată';
-    if (c.neplata && c.neplata.faza === 'avertisment') return 'restanță · ' + c.neplata.zilePanaLaSuspendare + ' zile până la suspendare';
+    if (c.neplata && c.neplata.faza === 'avertisment') return 'restanță · ' + _nrDe(c.neplata.zilePanaLaSuspendare, 'zi', 'zile') + ' până la suspendare';
     return 'activ';
   };
   return (lista || []).filter(function (c) { return !c.is_demo; }).map(function (c) {
@@ -10849,11 +10852,11 @@ async function _trimiteEmailulDeParola(req, user, link, opts) {
     text = 'Bună' + (user.full_name ? ' ' + user.full_name : '') + ',\n\n'
       + 'Ai fost invitat să administrezi ' + (opts.company ? '„' + opts.company.name + '”' : 'un cont') + ' în RA Track.\n'
       + 'Utilizator: ' + user.username + '\n\n'
-      + 'Setează-ți parola (link valabil ' + Math.round(hours / 24) + ' zile):\n' + link + '\n\n'
+      + 'Setează-ți parola (link valabil ' + _nrDe(Math.round(hours / 24), 'zi', 'zile') + '):\n' + link + '\n\n'
       + 'După ce setezi parola, te autentifici la ' + appBaseUrl(req) + '/app\n\n— RA Track';
   } else {
     subject = 'Resetare parolă RA Track';
-    text = 'Resetare parolă pentru contul „' + user.username + '”.\n\nLink (valabil ' + hours + ' ore):\n' + link + '\n\nDacă nu ai cerut tu resetarea, ignoră acest email.\n\n— RA Track';
+    text = 'Resetare parolă pentru contul „' + user.username + '”.\n\nLink (valabil ' + _nrDe(hours, 'oră', 'ore') + '):\n' + link + '\n\nDacă nu ai cerut tu resetarea, ignoră acest email.\n\n— RA Track';
   }
   return await channels.sendEmailTo(user.email, subject, text, null, null,
     { jurnal: { fel: opts.invite ? 'invitatie' : 'parola', companyId: user.company_id != null ? user.company_id : null } });
@@ -11176,7 +11179,7 @@ function _invSemnalText(lastTx) {
   const d = Math.max(0, Date.now() - new Date(lastTx).getTime());
   if (d < INV_TACUT_MIN * 60000) return 'comunică';
   const m = Math.floor(d / 60000), h = Math.floor(m / 60), z = Math.floor(h / 24);
-  const cat = m < 60 ? (m + ' min') : h < 24 ? (h + (h === 1 ? ' oră' : ' ore')) : (z + (z === 1 ? ' zi' : ' zile'));
+  const cat = m < 60 ? (m + ' min') : h < 24 ? (_nrDe(h, 'oră', 'ore')) : (_nrDe(z, 'zi', 'zile'));
   return (d < INV_MUT_ORE * 3600000 ? 'tăcut de ' : 'fără semnal de ') + cat;
 }
 // Export brandat: trece prin sendReport → nume „RA-Track - Raport ... - data” + logo (regula din CLAUDE.md).
@@ -13031,7 +13034,7 @@ async function _cerereNoua(req, body) {
   if (lip) return { status: 400, error: lip };
   if (req.isSuper || req.companyId == null) return { status: 400, error: 'Cererile le trimit clienții; pe ale lor le vezi în Business › „Cereri de la clienți”.' };
   if ((await db.cereriEchipaOra(a.userId, Date.now() - 3600000)) >= cereriEchipa.LIMITA_ORA) {
-    return { status: 429, error: 'Ai trimis deja ' + cereriEchipa.LIMITA_ORA + ' cereri în ultima oră. Încearcă mai târziu.' };
+    return { status: 429, error: 'Ai trimis deja ' + _nrDe(cereriEchipa.LIMITA_ORA, 'cerere', 'cereri') + ' în ultima oră. Încearcă mai târziu.' };
   }
   let dev = null, aparat = {};
   const acum = Date.now();
@@ -13301,7 +13304,7 @@ async function stergeIstoricArhivate() {
     else {
       raport.sterse.push(Object.assign({ imei: imei }, r));
       console.log('[ARHIVĂ] Istoric șters (' + zile + ' zile de la arhivare) ' + imei + ': ' + r.pozitii + ' poziții, ' +
-        r.arhiva + ' din arhivă, ' + r.curse + ' curse, ' + r.alerte + ' alerte');
+        r.arhiva + ' din arhivă, ' + _nrDe(r.curse, 'cursă', 'curse') + ', ' + _nrDe(r.alerte, 'alertă', 'alerte'));
       // Rând în jurnalul de audit: o ștergere de date personale se poate dovedi, nu doar se afirmă.
       try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'istoric_aparat', entityId: imei, details: r, ip: null, companyId: null }); } catch (e) {}
     }
@@ -13378,7 +13381,7 @@ async function stergeIstoriculVechi(opts) {
   }
   if (raport.pozitii || raport.curse || raport.alerte) {
     console.log('[PĂSTRARE] Istoric mai vechi decât contractul, șters: ' + raport.pozitii + ' poziții, ' + raport.curse +
-      ' curse, ' + raport.alerte + ' alerte, la ' + raport.masini + ' mașini' + (raport.epuizat ? ' (continuă la rularea următoare)' : ''));
+      ' curse, ' + _nrDe(raport.alerte, 'alertă', 'alerte') + ', la ' + _nrDe(raport.masini, 'mașină', 'mașini') + (raport.epuizat ? ' (continuă la rularea următoare)' : ''));
     // Rând în jurnalul de audit: o ștergere de date personale se poate dovedi, nu doar se afirmă.
     try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'istoric_vechi', entityId: null, details: raport, ip: null, companyId: null }); } catch (e) {}
   }
@@ -13701,7 +13704,7 @@ app.get('/api/devices/export', requireAuth, withScope, async (req, res) => {
     const report = {
       type: 'fleet_inventory',
       label: archived ? 'Vehicule arhivate' : 'Situația flotei',
-      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + devices.length + ' vehicule',
+      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + _nrDe(devices.length, 'vehicul', 'vehicule'),
       columns: cols, rows
     };
     auditReq(req, 'export', 'devices', null, { count: devices.length, format: fmt, scope: archived ? 'archived' : 'active' });
@@ -15512,7 +15515,7 @@ function _drvLicRow(d, vehByDriver) {
     const days = Math.round((Date.UTC(e.getFullYear(), e.getMonth(), e.getDate())
       - Date.UTC(ref.getFullYear(), ref.getMonth(), ref.getDate())) / 86400000);
     exp = e.toLocaleDateString('ro-RO');
-    stare = days < 0 ? 'Expirat de ' + (-days) + ' zile' : (days === 0 ? 'Expiră azi' : (days <= 30 ? 'Expiră în ' + days + ' zile' : 'Valabil'));
+    stare = days < 0 ? 'Expirat de ' + _nrDe((-days), 'zi', 'zile') : (days === 0 ? 'Expiră azi' : (days <= 30 ? 'Expiră în ' + _nrDe(days, 'zi', 'zile') : 'Valabil'));
     // „Fără dată de expirare” nu încape în coloana din PDF și se tăia cu „…”. Lângă coloana
     // „Expiră”, care arată „—”, forma scurtă spune exact același lucru.
   } else { stare = (d.license_number || cats.length) ? 'Fără dată' : 'Fără permis în fișă'; }
@@ -15661,8 +15664,8 @@ app.get('/api/drivers/export', requireAuth, withScope, async (req, res) => {
     const report = {
       type: 'drivers_licenses',
       label: 'Situația șoferilor',
-      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + items.length + ' șoferi'
-        + ' · ' + nPro + ' profesioniști, ' + nBas + ' șoferi, ' + nNone + ' neîncadrați'
+      periodLabel: 'Generat: ' + new Date().toLocaleString('ro-RO') + ' · ' + _nrDe(items.length, 'șofer', 'șoferi')
+        + ' · ' + nPro + ' profesioniști, ' + _nrDe(nBas, 'șofer', 'șoferi') + ', ' + nNone + ' neîncadrați'
         + (nExp ? ' · ' + nExp + ' permise expirate' : ''),
       columns: cols, rows
     };
@@ -17018,7 +17021,7 @@ async function _checkExpiriesBody() {
         type: 'document_expiry', severity: days < 0 ? 'critical' : 'warning', companyId: dr.company_id,
         dedupHours: dedupDrv,
         title: `Permis șofer ${days < 0 ? 'EXPIRAT' : 'expiră curând'}: ${dr.name}`,
-        body: `Permisul ${dr.license_number || ''} ${days < 0 ? 'a expirat de ' + (-days) + ' zile' : 'expiră în ' + days + ' zile'} (${new Date(dr.license_expiry).toLocaleDateString('ro-RO')}).`,
+        body: `Permisul ${dr.license_number || ''} ${days < 0 ? 'a expirat de ' + _nrDe((-days), 'zi', 'zile') : 'expiră în ' + _nrDe(days, 'zi', 'zile')} (${new Date(dr.license_expiry).toLocaleDateString('ro-RO')}).`,
         data: { key: 'drv-license-' + dr.id + '-' + bDrv, driverId: dr.id, days }
       };
       await notify(nDrv);
@@ -17044,7 +17047,7 @@ async function _checkExpiriesBody() {
         type: 'maintenance_due', severity: (days < 0 || days <= 3) ? 'critical' : 'warning', imei: m.imei, companyId: m.company_id,
         dedupHours: _mntDateDedup[bucket],
         title: `Mentenanță ${days < 0 ? 'SCADENTĂ' : 'scadentă curând'}: ${m.type}`,
-        body: `${m.type} ${days < 0 ? 'a depășit scadența cu ' + (-days) + ' zile' : 'scade în ' + days + (days === 1 ? ' zi' : ' zile')} (${new Date(m.due_date).toLocaleDateString('ro-RO')}).`,
+        body: `${m.type} ${days < 0 ? 'a depășit scadența cu ' + _nrDe((-days), 'zi', 'zile') : 'scade în ' + _nrDe(days, 'zi', 'zile')} (${new Date(m.due_date).toLocaleDateString('ro-RO')}).`,
         data: { key: 'maint-' + m.id + '-' + bucket, maintenanceId: m.id, days }
       };
       await notify(nMnt);
@@ -17108,8 +17111,8 @@ async function _checkExpiriesBody() {
         type: 'document_expiry', severity: (days < 0 || days <= 3) ? 'critical' : 'warning',
         imei: d.imei || null, companyId: d.company_id,
         dedupHours: dedupH,
-        title: label + (days < 0 ? ' EXPIRAT' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
-        body: label + (d.number ? ' (' + d.number + ')' : '') + (days < 0 ? ' a expirat de ' + (-days) + ' zile' : ' expiră în ' + days + (days === 1 ? ' zi' : ' zile')) + ' — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + '.',
+        title: label + (days < 0 ? ' EXPIRAT' : ' expiră în ' + _nrDe(days, 'zi', 'zile')) + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
+        body: label + (d.number ? ' (' + d.number + ')' : '') + (days < 0 ? ' a expirat de ' + _nrDe((-days), 'zi', 'zile') : ' expiră în ' + _nrDe(days, 'zi', 'zile')) + ' — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + '.',
         // Cheia bucketului vechi „7” devine „lead” — cheile vechi din tabelă nu se mai potrivesc,
         // deci la primul deploy alertele active pot suna o dată în plus. Acceptat: o notificare
         // dublă o singură dată e mai ieftină decât o schemă de migrare pe chei de dedup.
@@ -17133,7 +17136,7 @@ async function _checkExpiriesBody() {
         await notify({
           type: 'document_expiry', severity: 'warning', companyId: cid,
           dedupHours: 7 * 24,
-          title: lista.length === 1 ? 'Un act fără dată de expirare' : lista.length + ' acte fără dată de expirare',
+          title: lista.length === 1 ? 'Un act fără dată de expirare' : _nrDe(lista.length, 'act', 'acte') + ' fără dată de expirare',
           body: 'Nu ești alertat pentru ele — aplicația nu are de unde ști când expiră: ' +
                 lista.slice(0, 5).join(', ') + (lista.length > 5 ? ' și încă ' + (lista.length - 5) : '') +
                 '. Completează data din fișa vehiculului → Documente.',
@@ -17161,8 +17164,8 @@ async function _checkExpiriesBody() {
             const nEarly = {
               type: 'document_expiry', severity: 'warning', imei: d.imei || null, companyId: d.company_id,
               dedupHours: wd * 24, // o singură avertizare timpurie pe toată banda warnDays
-              title: label + ' expiră în ' + days + ' zile' + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
-              body: label + (d.number ? ' (' + d.number + ')' : '') + ' expiră în ' + days + ' zile — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + ' (regula „' + a.name + '”).',
+              title: label + ' expiră în ' + _nrDe(days, 'zi', 'zile') + (d.imei ? ' · ' + _vehLabel(d.imei) : ''),
+              body: label + (d.number ? ' (' + d.number + ')' : '') + ' expiră în ' + _nrDe(days, 'zi', 'zile') + ' — ' + new Date(d.expiry_date).toLocaleDateString('ro-RO') + ' (regula „' + a.name + '”).',
               data: { key: 'vdoc-rule-' + a.id + '-' + d.id, alertId: a.id, docId: d.id, days }
             };
             await notify(nEarly);
@@ -19681,11 +19684,11 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
       : await db.pool.query("SELECT COUNT(*)::int AS n FROM devices WHERE status IS DISTINCT FROM 'archived'");
     const totalDev = _qDev.rows[0].n;
     if (!totalDev) add('ingest', 'Recepție poziții GPS', 'info', 'niciun vehicul înregistrat încă');
-    else if (!newest) add('ingest', 'Recepție poziții GPS', 'crit', totalDev + ' vehicule înregistrate, dar NICIO poziție primită de la pornirea serverului. Verifică portul TCP (' + TCP_PORT + ') și configurarea trackerelor.');
+    else if (!newest) add('ingest', 'Recepție poziții GPS', 'crit', _nrDe(totalDev, 'vehicul', 'vehicule') + ' înregistrate, dar NICIO poziție primită de la pornirea serverului. Verifică portul TCP (' + TCP_PORT + ') și configurarea trackerelor.');
     else {
       const minutes = Math.round((Date.now() - newest) / 60000);
       const lvl = minutes > 60 ? 'crit' : (minutes > 15 ? 'warn' : 'ok');
-      add('ingest', 'Recepție poziții GPS', lvl, live + ' din ' + totalDev + ' vehicule transmit · ultima poziție acum ' + (minutes < 1 ? 'sub un minut' : minutes + ' min')
+      add('ingest', 'Recepție poziții GPS', lvl, live + ' din ' + _nrDe(totalDev, 'vehicul', 'vehicule') + ' transmit · ultima poziție acum ' + (minutes < 1 ? 'sub un minut' : minutes + ' min')
         + (lvl === 'ok' ? '' : ' → verifică portul TCP, SIM-urile sau alimentarea'));
     }
   } catch (e) {}
@@ -19730,7 +19733,7 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   if (ts && ts.usePg) {
     // Măsurat pe 24.09, pe aplicația pornită: istoricul mai vechi de 7 zile iese de 14–19 ori mai mic.
     add('timescale', 'TimescaleDB (compresie poziții)', ts.enabled ? 'ok' : 'warn',
-      ts.enabled ? ('activ · compresie după ' + ts.compressAfterDays + ' zile')
+      ts.enabled ? ('activ · compresie după ' + _nrDe(ts.compressAfterDays, 'zi', 'zile'))
                  : ('INACTIV → pozițiile se stochează NECOMPRIMAT (cu Timescale ies de 14–19 ori mai mici, măsurat): costul de storage crește pe măsură ce adaugi vehicule. Motiv: ' + (ts.reason || 'necunoscut') + '. Remediu: mută baza pe un Postgres cu TimescaleDB (ex. Timescale Cloud).'));
   }
   {
@@ -19738,8 +19741,8 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
     const _nivel = (ts && ts.politicaVeche) ? 'crit' : (!_u ? 'info' : (_u.error ? 'crit' : ((_u.raport && (_u.raport.erori || _u.raport.sarite)) ? 'warn' : 'ok')));
     add('retention', 'Păstrarea istoricului', _nivel,
       ((ts && ts.politicaVeche) ? 'politica veche TimescaleDB (o singură vârstă pentru toți) N-A PUTUT FI SCOASĂ — ar șterge sub ce scrie în contracte: ' + ts.politicaVeche + ' · ' : '')
-      + contracte.LUNI_ISTORIC_INCLUSE + ' luni pentru toți, incluse; mai mult doar unde firma a plătit'
-      + (_u && _u.raport && _u.raport.firmePlatite ? ' (' + _u.raport.firmePlatite + (_u.raport.firmePlatite === 1 ? ' firmă' : ' firme') + ')' : '')
+      + contracte.numar(contracte.LUNI_ISTORIC_INCLUSE, 'lună', 'luni') + ' pentru toți, incluse; mai mult doar unde firma a plătit'
+      + (_u && _u.raport && _u.raport.firmePlatite ? ' (' + _nrDe(_u.raport.firmePlatite, 'firmă', 'firme') + ')' : '')
       + ' · ' + _pastrareRezumat());
   }
   // Variabila veche hotăra o singură vârstă pentru toată lumea. Nu mai e citită — dar dacă a rămas
@@ -19757,7 +19760,7 @@ app.get('/api/admin/health', requireAuth, requireSuperadmin, async (req, res) =>
   add('backup_positions', 'Arhivă poziții (telemetrie)', !bp.enabled ? 'warn' : (bp.error ? 'crit' : (bp.at ? 'ok' : 'info')),
     !bp.enabled ? 'BACKUP_S3_* nesetat → pozițiile șterse de retenție NU au nicio copie; verifică separat ce fereastră de snapshot-uri are baza'
       : bp.error ? ('ultimul export a eșuat: ' + bp.error)
-        : bp.at ? ('ultimul export acum ' + String(bp.ageHours).replace('.', ',') + ' h · ' + bp.days + ' zile, ' + bp.rows + ' rânduri' + (bp.lastDay ? ' (până la ' + bp.lastDay + ')' : ''))
+        : bp.at ? ('ultimul export acum ' + String(bp.ageHours).replace('.', ',') + ' h · ' + _nrDe(bp.days, 'zi', 'zile') + ', ' + _nrDe(bp.rows, 'rând', 'rânduri') + (bp.lastDay ? ' (până la ' + bp.lastDay + ')' : ''))
           : 'programat, dar încă nicio rulare (prima pornește la 8 minute după boot)');
   add('backup_crypt', 'Criptare backup', bk.passphraseSet ? 'ok' : (bk.s3Configured ? 'crit' : 'warn'),
     bk.passphraseSet ? 'BACKUP_PASSPHRASE setat (AES-256-GCM)' : 'BACKUP_PASSPHRASE nesetat → dump-ul (hash-uri de parole, chei API) ar pleca necriptat');
@@ -20371,7 +20374,7 @@ app.post('/api/mail/trimite', requireAuth, requireSuperadmin, async (req, res) =
     const catre = String(b.catre || '').split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
     const cc = String(b.cc || '').split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
     if (!catre.length) return res.status(400).json({ error: 'Scrie cel puțin un destinatar.' });
-    if (catre.length + cc.length > MAIL_DESTINATARI_MAX) return res.status(400).json({ error: 'Cel mult ' + MAIL_DESTINATARI_MAX + ' destinatari într-un email.' });
+    if (catre.length + cc.length > MAIL_DESTINATARI_MAX) return res.status(400).json({ error: 'Cel mult ' + _nrDe(MAIL_DESTINATARI_MAX, 'destinatar', 'destinatari') + ' într-un email.' });
     const rau = catre.concat(cc).filter(function (x) { return !_EMAIL_RE.test(x) || x.length > 200; });
     if (rau.length) return res.status(400).json({ error: 'Adresa „' + rau[0].slice(0, 80) + '” nu arată a email.' });
     // Răspunsul la un email din „Primite” (etapa 2): pleacă de pe adresa pe care a venit emailul, se leagă de el.
@@ -20458,7 +20461,7 @@ const MAIL_ACTIUNI = ['citit', 'necitit', 'stea', 'farastea', 'spam', 'nuspam', 
 const _MAIL_ACT_TEXT = { citit: ['marcat citit', 'marcate citite'], necitit: ['marcat necitit', 'marcate necitite'], stea: ['marcat cu stea', 'marcate cu stea'],
   farastea: ['fără stea', 'fără stea'], spam: ['mutat în Spam', 'mutate în Spam'], nuspam: ['mutat înapoi în Primite', 'mutate înapoi în Primite'],
   sterge: ['mutat în Coș', 'mutate în Coș'], recupereaza: ['recuperat', 'recuperate'], definitiv: ['șters definitiv', 'șterse definitiv'] };
-function _mailDe(n) { const r = n % 100; return r >= 1 && r <= 19 ? ' ' : ' de '; }
+function _mailDe(n) { return _numarRo.deNr(n); }   // regula comună (public/js/numar.js)
 async function _mailActiune(req, elemente, actiune) {
   const vazute = _mailVazute(await _mailAdrese(req)).map(function (a) { return a.adresa; });
   const uid = req.auth.userId;
@@ -21244,6 +21247,8 @@ function _ofPregateste() {
       clearTimeout: () => {},
       localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
       _fxRate: EUR_RON_FALLBACK, _fxDate: '', _fxSursa: '',
+      // „25 de zile”: regula din <head>-ul paginii (js/numar.js) — pagina o are pe `window`, deci și cutia.
+      ...require('./public/js/numar.js'),
     };
     ctx.window = ctx;
     _ofVm.createContext(ctx);
@@ -22694,7 +22699,7 @@ async function start() {
     try { for (const [k, v] of _userEvtCooldown) if (now - v > 24 * 3600000) _userEvtCooldown.delete(k); } catch (e) {}
     try { for (const [k, v] of _wsCooldown) if (now - v > 24 * 3600000) _wsCooldown.delete(k); } catch (e) {}
     db.pruneAgentFindings(parseInt(process.env.FINDINGS_RETENTION_DAYS) || 90)
-      .then(n => { if (n) console.log(`[RETENȚIE] Șterse ${n} constatări de agenți mai vechi de 90 zile`); })
+      .then(n => { if (n) console.log(`[RETENȚIE] Șterse ${n} constatări de agenți mai vechi de 90 de zile`); })
       .catch(() => {});
   }, 6 * 60 * 60 * 1000);
 

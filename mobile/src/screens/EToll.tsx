@@ -10,6 +10,7 @@ import './detail.css'; // .sheet*
 import './tollro.css';
 import './tacho.css'; // .th-up* — blocul care se desface („Vreau să introduc eu kilometrii”)
 import './etoll.css';
+import { nrDe } from '../lib/numar';
 
 // TollRo — taxa rutieră pe kilometru pentru marfă peste 3,5 t. Același ecran ca pe web (openEtollDemo,
 // public/js/demo-modules-ui.js), pe o coloană:
@@ -200,7 +201,7 @@ function FilaFlota({ cfg, flota }: { cfg: any; flota: any }) {
                   {gata.length > 0 && (
                     <div class="tr-tot">
                       <div class="tr-tot-s">{nr(total)}<span>lei</span></div>
-                      <div class="tr-tot-b">{inLucru ? `până acum · ${gata.length} din ${taxabile.length} vehicule` : `${gata.length} vehicule`} · {km1(kmTaxati)} km pe drum cu taxă</div>
+                      <div class="tr-tot-b">{inLucru ? `până acum · ${gata.length} din ${nrDe(taxabile.length, 'vehicul', 'vehicule')}` : `${nrDe(gata.length, 'vehicul', 'vehicule')}`} · {km1(kmTaxati)} km pe drum cu taxă</div>
                     </div>
                   )}
                   {!flota.inVigoare && <NotaInVigoare din={flota.aplicabilDin} />}

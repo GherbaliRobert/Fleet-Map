@@ -10,6 +10,8 @@
 // Ce NU știe aplicația: cine a condus cu adevărat (n-avem identificarea șoferului la bord). Știe cine e TRECUT pe mașină —
 // de aceea textele spun „a mai fost trecut pe ea”, nu „a mai condus-o”.
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 
 const licenseCats = require('./license_cats');
 const { zz, zilePana } = require('./ramuri');
@@ -75,7 +77,7 @@ function categoriaCeruta(m) {
     if (dupaMasa !== cod) { cod = dupaMasa; deCe = 'masa maximă ' + Math.round(masa).toLocaleString('ro-RO') + ' kg'; }
   }
   const loc = Number(x.locuri);
-  if ((k === 'autobuz' || k === 'autocar') && Number.isFinite(loc) && loc > 0 && loc <= 16) { cod = 'D1'; deCe = loc + (loc === 1 ? ' loc' : ' locuri'); }
+  if ((k === 'autobuz' || k === 'autocar') && Number.isFinite(loc) && loc > 0 && loc <= 16) { cod = 'D1'; deCe = nrDe(loc, 'loc', 'locuri'); }
   return { cod: cod, fel: f.fel, art: f.art, deCe: deCe };
 }
 // Categoriile permisului (din fișa șoferului) care acoperă categoria cerută; [] = nu o acoperă.
@@ -103,12 +105,12 @@ function verdict(sofer, ceruta, acum) {
   const are = ac.indexOf(ceruta.cod) >= 0 ? ceruta.cod : ac[0];
   const curand = zile != null && zile <= PERMIS_CURAND_ZILE;
   const text = 'permis ' + are + (are !== ceruta.cod ? ' (cuprinde ' + ceruta.cod + ')' : '') +
-    (s.expira ? (curand ? ', expiră pe ' + zz(s.expira, acum) + (zile === 0 ? ' (azi)' : ' (peste ' + zile + (zile === 1 ? ' zi)' : ' zile)')) : ' valabil până pe ' + zz(s.expira, acum)) : ' · valabilitatea nu e trecută în fișă');
+    (s.expira ? (curand ? ', expiră pe ' + zz(s.expira, acum) + (zile === 0 ? ' (azi)' : ' (peste ' + nrDe(zile, 'zi)', 'zile)')) : ' valabil până pe ' + zz(s.expira, acum)) : ' · valabilitatea nu e trecută în fișă');
   return { stare: 'ok', nivel: curand ? 'w' : 'ok', text: text, curand: curand, faraData: !s.expira };
 }
 
 // ─── Cuvintele care se acordă ───────────────────────────────────────────────────────────────────────
-function de(n) { const r = Math.abs(Math.round(n)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function de(n) { return _deNr(Math.round(Number(n) || 0)); }   // regula comună (public/js/numar.js)
 function cate(n, unu, multe) { return n === 1 ? unu : n + de(n) + multe; }
 function lista(nume, max) { const m = max || 2; return nume.slice(0, m).join(', ') + (nume.length > m ? ' și încă ' + (nume.length - m) : ''); }
 function luna(ms, acum) {
@@ -262,8 +264,8 @@ function rezumat(deRezolvat, inRegula, liberi) {
 const TEXTE = {
   deCand: 'din clipa în care apeși Da',
   faraDa: 'Fără „Da” nu schimb nimic.',
-  anulare: 'Se poate anula în următoarele ' + ANULARE_MIN + ' minute.',
-  sofeiNuPrimesc: 'Fiecare schimbare intră în istoricul mașinii și se poate anula în următoarele ' + ANULARE_MIN + ' minute. Șoferii nu primesc niciun mesaj.',
+  anulare: 'Se poate anula în următoarele ' + nrDe(ANULARE_MIN, 'minut', 'minute') + '.',
+  sofeiNuPrimesc: 'Fiecare schimbare intră în istoricul mașinii și se poate anula în următoarele ' + nrDe(ANULARE_MIN, 'minut', 'minute') + '. Șoferii nu primesc niciun mesaj.',
   intro: 'Din fișele șoferilor (categoriile și valabilitatea permisului) și din cine a mai fost trecut pe fiecare mașină. Nu se schimbă nimic până nu apeși „Aplică”.',
   nuStie: 'Aplicația știe cine e trecut pe mașină, nu cine a condus-o: potrivirea se face pe fișe.'
 };

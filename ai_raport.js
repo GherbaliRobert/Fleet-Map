@@ -10,6 +10,8 @@
 // pun cifrele raportului în propoziții gata scrise, cu sugestii pe reguli. La „de ce”, „compară”, „ce să fac” — nu se
 // preface: trimite la RA Insight. Fără bază, fără rețea, fără model: totul se probează (verify_ai_raport.js).
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const I = require('./insight');
 
 // ─── Numere scrise românește ────────────────────────────────────────────────────────────────────────
@@ -522,7 +524,7 @@ function _raspunde(u, rep, extra) {
       r.tiles = [{ et: 'Km în total', val: nr(tot) }, { et: 'Au mers', val: merse + ' din ' + km.length }];
       if (ord[0] && ord[0].km > 0) r.tiles.push({ et: 'Cei mai mulți', val: et(ord[0].imei) });
       const pe0 = km.filter(function (v) { return v.km <= 0.5; });
-      if (pe0.length && pe0.length < km.length) r.sugestii.push({ fel: 'atentie', text: (pe0.length === 1 ? 'O mașină n-a mers deloc: ' : pe0.length + ' mașini n-au mers deloc: ') + pe0.slice(0, 3).map(function (v) { return et(v.imei); }).join(', ') + (pe0.length > 3 ? '…' : '') + '.' });
+      if (pe0.length && pe0.length < km.length) r.sugestii.push({ fel: 'atentie', text: (pe0.length === 1 ? 'O mașină n-a mers deloc: ' : nrDe(pe0.length, 'mașină', 'mașini') + ' n-au mers deloc: ') + pe0.slice(0, 3).map(function (v) { return et(v.imei); }).join(', ') + (pe0.length > 3 ? '…' : '') + '.' });
     }
     if (x.anterior && Array.isArray(x.anterior.valori)) {
       const ant = x.anterior.valori.filter(function (v) { return v.unitate !== 'ore'; }).reduce(function (a, v) { return a + (v.km || 0); }, 0);
@@ -594,7 +596,7 @@ function _raspunde(u, rep, extra) {
       if (sc.length) {
         const prim = sc[0];
         const zi = new Date(prim.ts).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric' });
-        r.sugestii.push({ fel: 'atentie', text: (sc.length === 1 ? 'Pe ' + zi + ', rezervorul ' + (una ? '' : 'lui ' + et(prim.imei) + ' ') + 'a scăzut cu ' + cant(Math.abs(Math.round(prim.litri)), 'litru', 'litri') + ' fără să se explice prin drum.' : sc.length + ' scăderi suspecte de combustibil în perioada asta.') + ' Vezi raportul „Alimentări & scăderi”.' });
+        r.sugestii.push({ fel: 'atentie', text: (sc.length === 1 ? 'Pe ' + zi + ', rezervorul ' + (una ? '' : 'lui ' + et(prim.imei) + ' ') + 'a scăzut cu ' + cant(Math.abs(Math.round(prim.litri)), 'litru', 'litri') + ' fără să se explice prin drum.' : nrDe(sc.length, 'scădere', 'scăderi') + ' suspecte de combustibil în perioada asta.') + ' Vezi raportul „Alimentări & scăderi”.' });
       }
     }
     deVerificat();
@@ -729,7 +731,7 @@ function _raspunde(u, rep, extra) {
     });
     const ord = Object.keys(peM).sort(function (a, b) { return peM[b].km - peM[a].km; });
     const kmTot = Number(sum['Km total']) || ord.reduce(function (a, k) { return a + peM[k].km; }, 0);
-    r.text = (cine ? '**' + cine + '**' : 'Flota') + ' — ' + per + ': **' + cant(Math.round(kmTot), 'km', 'km') + '**; au mers ' + ord.filter(function (k) { return peM[k].zile > 0; }).length + ' din ' + ord.length + ' mașini' + (sum['Ralanti total (flotă)'] ? ', ralanti în total ' + sum['Ralanti total (flotă)'] : '') + '.';
+    r.text = (cine ? '**' + cine + '**' : 'Flota') + ' — ' + per + ': **' + cant(Math.round(kmTot), 'km', 'km') + '**; au mers ' + ord.filter(function (k) { return peM[k].zile > 0; }).length + ' din ' + nrDe(ord.length, 'mașină', 'mașini') + (sum['Ralanti total (flotă)'] ? ', ralanti în total ' + sum['Ralanti total (flotă)'] : '') + '.';
     r.tabel = { coloane: ['Mașina', 'Km', 'Zile de mers', 'În mers'], randuri: ord.slice(0, 8).map(function (k) { return [et(k), nr(peM[k].km), nr(peM[k].zile), _dur(peM[k].mers)]; }) };
     r.tiles = [{ et: 'Km', val: nr(kmTot) }, { et: 'Au mers', val: ord.filter(function (k) { return peM[k].zile > 0; }).length + ' din ' + ord.length }];
     return r;
@@ -849,7 +851,7 @@ function _raspunde(u, rep, extra) {
     r.text = (cine ? '**' + cine + '**' : 'Flota') + ' — ' + per + ': **' + (rows.length - inact.length) + ' din ' + rows.length + '** au mers în fiecare zi' + (inact.length ? '; **' + cant(inact.length, 'mașină a avut', 'mașini au avut') + '** zile fără mers' : '') + '.';
     if (inact.length) r.tabel = { coloane: ['Mașina', 'Zile fără mers', 'Semnal'], randuri: inact.slice(0, 8).map(function (row) { return [et(c(row, 'Vehicul')), String(zileF(row)), String(c(row, 'Semnal') || '')]; }) };
     r.tiles = [{ et: 'Au mers zilnic', val: nr(rows.length - inact.length) }, { et: 'Cu zile fără mers', val: nr(inact.length) }, { et: 'Fără semnal', val: nr(tac.length) }];
-    if (tac.length) r.sugestii.push({ fel: 'atentie', text: (tac.length === 1 ? 'O mașină nu mai transmite: ' : tac.length + ' mașini nu mai transmit: ') + tac.slice(0, 3).map(function (row) { return et(c(row, 'Vehicul')); }).join(', ') + (tac.length > 3 ? '…' : '') + '. Merită verificat aparatul.' });
+    if (tac.length) r.sugestii.push({ fel: 'atentie', text: (tac.length === 1 ? 'O mașină nu mai transmite: ' : nrDe(tac.length, 'mașină', 'mașini') + ' nu mai transmit: ') + tac.slice(0, 3).map(function (row) { return et(c(row, 'Vehicul')); }).join(', ') + (tac.length > 3 ? '…' : '') + '. Merită verificat aparatul.' });
     return r;
   }
 
@@ -983,7 +985,7 @@ function rezumatTabel(columns, rows) {
   const cols = (Array.isArray(columns) ? columns : []).map(function (c) { return String(c == null ? '' : c); });
   const rs = (Array.isArray(rows) ? rows : []).filter(Array.isArray);
   if (!rs.length) return 'Tabelul e gol: nu am ce rezuma.';
-  const de = function (n) { const r = Math.abs(n) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; };
+  const de = function (n) { return _deNr(n); };   // regula comună (public/js/numar.js)
   const out = ['**' + rs.length + de(rs.length) + (rs.length === 1 ? 'rând' : 'rânduri') + '** în raport.'];
   // Eticheta unui rând: prima coloană care nu e număr (de obicei „Vehicul”).
   let colEt = 0;

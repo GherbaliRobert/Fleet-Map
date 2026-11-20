@@ -8,6 +8,7 @@
 // Curat: fără bază și fără server. Datele le adună serverul (`_asfDate`), cu socotelile care există deja (neplata, contractele,
 // calendarul de montaj, stocul, venitul lunar), și le dă aici. Pagina doar desenează ce primește (textele, ca TEXT).
 'use strict';
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const I = require('./insight');
 const AR = require('./ai_raport');
 const C = require('./cifre');
@@ -429,7 +430,7 @@ const RASPUNS = {
     const fc = l.filter(function (f) { return f.faraContract; }), rs = l.filter(function (f) { return f.restanta; }), su = l.filter(function (f) { return f.suspendata; });
     const pr = l.filter(function (f) { return f.faraContract || f.restanta || f.suspendata; });
     const r = {
-      titlu: numar(l.length, 'firmă', 'firme') + ': ' + fc.length + ' fără contract, ' + rs.length + (rs.length === 1 ? ' restanță, ' : ' restanțe, ') + su.length + (su.length === 1 ? ' suspendată.' : ' suspendate.'),
+      titlu: numar(l.length, 'firmă', 'firme') + ': ' + fc.length + ' fără contract, ' + nrDe(rs.length, 'restanță, ', 'restanțe, ') + nrDe(su.length, 'suspendată.', 'suspendate.'),
       butoane: [BTN.companii]
     };
     if (pr.length) r.tabel = _tabel(['Firma', 'Ce e'], pr.map(function (f) {

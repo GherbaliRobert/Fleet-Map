@@ -110,7 +110,7 @@ export function CostControl() {
             <span style="font-size:11.5px;color:var(--text-muted);margin-right:2px">Perioadă:</span>
             <button style={pb(finMonths === 6)} onClick={() => setFinMonths(6)}>6 luni</button>
             <button style={pb(finMonths === 12)} onClick={() => setFinMonths(12)}>12 luni</button>
-            <button style={pb(finMonths === 24)} onClick={() => setFinMonths(24)}>24 luni</button>
+            <button style={pb(finMonths === 24)} onClick={() => setFinMonths(24)}>24 de luni</button>
           </div>
           <div style="display:flex;gap:14px;font-size:11px;color:var(--text-muted);margin-bottom:8px">
             <span style="color:var(--accent)">■ Venituri</span>
@@ -166,7 +166,7 @@ export function CostControl() {
             </>)}
           </div>
           <div class="pf-card">
-            <h3>Cloudflare (30 zile)</h3>
+            <h3>Cloudflare (30 de zile)</h3>
             {!cf ? <div class="spin" style="margin:6px auto" /> : cf._err ? <div style="color:var(--text-muted);font-size:12.5px">Indisponibil (CLOUDFLARE_ANALYTICS_TOKEN).</div> : (<>
               <div class="adm-kv"><span class="k">Cereri</span><span>{n(cf.totals?.requests).toLocaleString('ro-RO')}</span></div>
               <div class="adm-kv"><span class="k">Trafic</span><span>{fmtBytes(cf.totals?.bytes)}</span></div>
@@ -183,7 +183,7 @@ export function CostControl() {
           </div>
 
           <div class="pf-card">
-            <h3>Google Analytics (30 zile)</h3>
+            <h3>Google Analytics (30 de zile)</h3>
             {!ga ? <div class="spin" style="margin:6px auto" /> : (ga._err || !ga.configured) ? <div style="color:var(--text-muted);font-size:12.5px">Indisponibil (GA4_PROPERTY_ID + service-account pe server).</div> : ga.error ? <div style="color:var(--red);font-size:12.5px">{String(ga.error).slice(0, 80)}</div> : (<>
               <div class="adm-kv"><span class="k">Utilizatori activi</span><span>{n(ga.activeUsers).toLocaleString('ro-RO')}</span></div>
               <div class="adm-kv"><span class="k">Sesiuni</span><span>{n(ga.sessions).toLocaleString('ro-RO')}</span></div>
@@ -191,7 +191,7 @@ export function CostControl() {
             </>)}
           </div>
           <div class="pf-card">
-            <h3>Search Console (30 zile)</h3>
+            <h3>Search Console (30 de zile)</h3>
             {!gsc ? <div class="spin" style="margin:6px auto" /> : (gsc._err || !gsc.configured) ? <div style="color:var(--text-muted);font-size:12.5px">Indisponibil (GSC_SITE_URL + service-account pe server).</div> : gsc.error ? <div style="color:var(--red);font-size:12.5px">{String(gsc.error).slice(0, 80)}</div> : (<>
               <div class="adm-kv"><span class="k">Clicuri</span><span>{n(gsc.clicks).toLocaleString('ro-RO')}</span></div>
               <div class="adm-kv"><span class="k">Afișări</span><span>{n(gsc.impressions).toLocaleString('ro-RO')}</span></div>

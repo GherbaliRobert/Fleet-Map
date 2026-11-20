@@ -1,4 +1,5 @@
 'use strict';
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 // compatibilitate.js — ce aparat se potrivește pe ce mașină, după listele oficiale Teltonika (28.09).
 //
 // Alin: „să introducem o listă cu model și an de fabricație ca să vedem ce se potrivește exact —
@@ -228,7 +229,7 @@ function citesteFoi(foi, numeFisier) {
       if (randuri.length > MAX_RANDURI_LISTA) throw new Error('Lista are prea multe rânduri ca să fie o listă Teltonika.');
     }
   }
-  if (randuri.length < 20) throw new Error('Am găsit doar ' + randuri.length + ' mașini în fișier — nu pare lista întreagă.');
+  if (randuri.length < 20) throw new Error('Am găsit doar ' + nrDe(randuri.length, 'mașină', 'mașini') + ' în fișier — nu pare lista întreagă.');
   return { tip, randuri };
 }
 // Ziua listei, din numele fișierului: „…_2025_07_23_…” (an, lună, zi) sau „…_12_02_2025…” (lună, zi, an,

@@ -7,6 +7,7 @@
 // Curat: fără bază, fără rețea. Serverul adună datele (regulile agenților: agents.esteFaraSemnal / esteLiber, listele de
 // termene: preaviz.js prin _ramMentenanta), aici se scriu rândurile. Păzit de verify_un_singur_insight.js.
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
 
 const NUME = { watch: 'RA Watch', care: 'RA Care', dispatch: 'RA Dispatch', client: 'RA Client', optimize: 'RA Optimize', compliance: 'RA Compliance',
   insight: 'RA Insight' };   // „insight” = șoferii pe mașini (pasul 2, 22.10): nu e un agent, deci nu se oprește odată cu agenții
@@ -15,7 +16,7 @@ const MAX_NUME = 3;         // câte mașini se scriu pe nume într-un rând
 const ORDINE = { r: 0, w: 1, b: 2, g: 3 };
 
 // „15 minute”, dar „24 de ore”: „de” când ultimele două cifre nu sunt între 1 și 19 (ca _raxDe din pagină).
-function de(n) { const r = Math.abs(Math.round(n)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function de(n) { return _deNr(Math.round(Number(n) || 0)); }   // regula comună (public/js/numar.js)
 function masini(n) { return n === 1 ? 'o mașină' : n + de(n) + 'mașini'; }
 function nr(n) { return Math.round(Number(n) || 0).toLocaleString('ro-RO'); }
 // Minute → „45 min”, „3 h”, „1 h 20 min”, „o zi”, „3 zile”.

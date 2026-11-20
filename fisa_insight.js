@@ -1,4 +1,5 @@
 'use strict';
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 // ═══ Fișa lui RA Insight despre fiecare om (11.11) ═══
 // Alin: „mă interesează ca RA Insight să memoreze cam ce discută fiecare user cu el… să-și facă o idee ce i se potrivește”
 // și „ne complicăm… RA Insight este despre simplificare”. Apoi: fișa rămâne cât omul are cont (nu pleacă odată cu conversațiile
@@ -88,7 +89,7 @@ function instructiuni() {
     'CE NU ȚII: cifrele flotei (km, litri, lei, poziții, ore — se schimbă și le citești mereu din aplicație); parole, CNP, telefoane, emailuri, ' +
       'adrese de acasă; sănătatea, religia, politica, viața personală; păreri despre colegi.',
     'CUM: păstrezi ce era în fișă și e încă adevărat; schimbi ce te-a corectat; scoți ce nu mai e adevărat sau nu mai contează. Dacă omul ' +
-      'ți-a cerut să uiți ceva, nu-l pune înapoi. Cel mult ' + MAX_RANDURI + ' rânduri scurte, în română, despre el la persoana a treia ' +
+      'ți-a cerut să uiți ceva, nu-l pune înapoi. Cel mult ' + nrDe(MAX_RANDURI, 'rând', 'rânduri') + ' scurte, în română, despre el la persoana a treia ' +
       '(„Întreabă des de consumul lui B 77 TIR.”). Dacă fișa e plină, păstrezi ce contează mai mult.',
     'RĂSPUNZI DOAR cu JSON, fără alt text: {"randuri": ["…"], "nume": [{"spune": "Loganul", "numar": "B 204 UIP"}]}. La „nume” pui doar mașinile ' +
       'pe care omul le numește altfel decât prin număr, și doar cu numere din lista de mașini.'

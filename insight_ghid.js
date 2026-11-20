@@ -35,7 +35,7 @@ const SECTIUNI = [
     cheie: 'rapoarte', titlu: 'Un raport, descărcat în Excel sau PDF', unde: 'Meniu → Rapoarte → „Generează rapoarte”',
     pasi: [
       'Alege categoria (Monitorizare, Consum carburant, Date CAN, Senzori, Evenimente & zone, Siguranță & EcoDrive) și apasă cardul raportului.',
-      'La „Vehicul” alege o mașină sau „Toată flota”; la „Interval orar” alege perioada (sau „Azi”, „Ieri”, „7 zile”, „30 zile”).',
+      'La „Vehicul” alege o mașină sau „Toată flota”; la „Interval orar” alege perioada (sau „Azi”, „Ieri”, „7 zile”, „30 de zile”).',
       'Apasă „Generează”, apoi „Vezi raportul”.',
       'Sub tabel, la „Descarcă:”, apasă „Excel” sau „PDF” (fișierul are numele și logo-ul RA Track); „Rezumă cu RA Insight” scrie pe scurt, deasupra raportului, ce arată.'
     ],

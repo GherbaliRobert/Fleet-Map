@@ -166,7 +166,7 @@ function Prezenta({ p, zile }: { p: any; zile: number }) {
         );
       })}
       <div class="muted" style="font-size:12px;line-height:1.5;margin-top:10px">
-        Se numără <b>doar timpul petrecut în aplicația web</b>, cu fereastra deschisă și în față, în pași de {pas} minute. <b>Aplicația de telefon nu trimite acest semnal</b>: cine lucrează doar de pe telefon nu apare aici, iar timpul de pe telefon nu se adună la nimeni. Procentul e din totalul echipei, pe perioada aleasă.
+        Se numără <b>doar timpul petrecut în aplicația web</b>, cu fereastra deschisă și în față, în pași de {nrDe(pas, 'minut', 'minute')}. <b>Aplicația de telefon nu trimite acest semnal</b>: cine lucrează doar de pe telefon nu apare aici, iar timpul de pe telefon nu se adună la nimeni. Procentul e din totalul echipei, pe perioada aleasă.
       </div>
     </div>
   );

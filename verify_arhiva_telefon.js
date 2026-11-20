@@ -14,6 +14,8 @@
 // Culoarea diferă dinadins (web: var(--orange), telefon: var(--fd-warn), mai închis pe tema luminoasă),
 // deci se compară doar textul și „e rău / nu e rău”.
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window) — bucățile ei rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'));
 const path = require('path');
 const citeste = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(/\r\n/g, '\n');
 
@@ -49,8 +51,8 @@ if (pragWeb && zileWeb && termenWeb) {
 }
 if (pragTel && termenTel && deNrTel && nrDeTel) {
   try {
-    const deNr = new Function('n', deNrTel[1]);
-    const nrDe = new Function('deNr', 'n', 'unu', 'multe', nrDeTel[1]).bind(null, deNr);
+    // nrDe de pe telefon = regula comună (public/js/numar.js); verify_acord.js le rulează pe aceleași cifre.
+    const nrDe = require('./public/js/numar.js').nrDe;
     const f = new Function('PRAG_ZILE', 'nrDe', 'd', termenTel[1]);
     tel = (d) => f(Number(pragTel[1]), nrDe, d);
     telCuPrag = (prag) => (d) => f(prag, nrDe, d);

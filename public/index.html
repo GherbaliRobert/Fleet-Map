@@ -7,6 +7,8 @@
   <script src="/js/campuri.js"></script>
   <!-- „Ochiul” pe casetele de parolă și sfaturile pentru o parolă puternică (intrarea, „Contul meu”): js/parola.js, ca la „Setează-ți parola”. -->
   <script src="/js/parola.js"></script>
+  <!-- Un număr lângă cuvântul lui, pe românește („1 zi”, „25 de zile”): nrDe / deNr, o regulă pentru pagină și server — js/numar.js. -->
+  <script src="/js/numar.js"></script>
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1979,7 +1981,7 @@ const pozitii = await r.json();</code></pre>
           <label class="rep-f"><span>Vehicul</span><select id="sch-imei"></select></label>
           <label class="rep-f"><span>Perioadă</span><select id="sch-period">
             <option value="yesterday">Ziua precedentă</option><option value="last7">Ultimele 7 zile</option>
-            <option value="last30">Ultimele 30 zile</option><option value="thismonth">Luna curentă</option>
+            <option value="last30">Ultimele 30 de zile</option><option value="thismonth">Luna curentă</option>
             <option value="lastmonth">Luna precedentă</option></select></label>
           <label class="rep-f"><span>Frecvență</span><select id="sch-freq">
             <option value="daily">Zilnic</option><option value="weekly">Săptămânal (luni)</option>
@@ -3114,8 +3116,8 @@ const pozitii = await r.json();</code></pre>
       <div id="fp-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;"></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
         <span style="font-size:12.5px;font-weight:700;color:var(--text-secondary);">Evoluție:</span>
-        <button class="report-period-btn" onclick="fpDays(30,this)">30 zile</button>
-        <button class="report-period-btn active" onclick="fpDays(90,this)">90 zile</button>
+        <button class="report-period-btn" onclick="fpDays(30,this)">30 de zile</button>
+        <button class="report-period-btn active" onclick="fpDays(90,this)">90 de zile</button>
         <button class="report-period-btn" onclick="fpDays(365,this)">1 an</button>
       </div>
       <div class="chart-container h-250" style="position:relative;"><div class="chart-container-title">Preț mediu național (lei/L) <span style="font-weight:400;font-size:10.5px;color:var(--text-muted);">· trage pe grafic pentru zoom · dublu-click = resetare</span></div><button id="fp-zoom-reset" onclick="fpZoomReset()" style="display:none;position:absolute;top:6px;right:10px;z-index:5;background:var(--bg-dark);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="fas fa-rotate-left"></i> Resetează zoom</button><canvas id="chart-fuel-price"></canvas></div>
@@ -3131,8 +3133,8 @@ const pozitii = await r.json();</code></pre>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
         <span style="font-size:12.5px;font-weight:700;color:var(--text-secondary);">Perioadă:</span>
         <button class="report-period-btn" onclick="aiaDays(7,this)">7 zile</button>
-        <button class="report-period-btn active" onclick="aiaDays(30,this)">30 zile</button>
-        <button class="report-period-btn" onclick="aiaDays(90,this)">90 zile</button>
+        <button class="report-period-btn active" onclick="aiaDays(30,this)">30 de zile</button>
+        <button class="report-period-btn" onclick="aiaDays(90,this)">90 de zile</button>
         <button class="report-period-btn" onclick="aiaDays(0,this)">Tot</button>
       </div>
       <div id="aia-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;"></div>
@@ -3426,7 +3428,7 @@ const pozitii = await r.json();</code></pre>
                   <button type="button" class="btn-sm" onclick="setRep2Period('today')">Azi</button>
                   <button type="button" class="btn-sm" onclick="setRep2Period('yesterday')">Ieri</button>
                   <button type="button" class="btn-sm" onclick="setRep2Period('week')">7 zile</button>
-                  <button type="button" class="btn-sm" onclick="setRep2Period('month')">30 zile</button>
+                  <button type="button" class="btn-sm" onclick="setRep2Period('month')">30 de zile</button>
                 </div>
                 <div class="rep-interval-title" style="margin-top:10px;">Zile din săptămână</div>
                 <div id="rep2-days" class="rep2-days"></div>
@@ -3472,7 +3474,7 @@ const pozitii = await r.json();</code></pre>
           <button class="rep-quick" data-period="today" onclick="setRepPeriod('today',this)">Azi</button>
           <button class="rep-quick" data-period="yesterday" onclick="setRepPeriod('yesterday',this)">Ieri</button>
           <button class="rep-quick" data-period="week" onclick="setRepPeriod('week',this)">7 zile</button>
-          <button class="rep-quick" data-period="month" onclick="setRepPeriod('month',this)">30 zile</button>
+          <button class="rep-quick" data-period="month" onclick="setRepPeriod('month',this)">30 de zile</button>
           </div>
         </div>
         <div id="rep-month-picker" style="display:none;margin-bottom:10px;">
@@ -4347,7 +4349,7 @@ const pozitii = await r.json();</code></pre>
     function _adashStareCompanii(c) {
       var fc = Number(c.companies_fara_contract) || 0, rs = Number(c.companies_restante) || 0, su = Number(c.companies_suspendate) || 0;
       if (!fc && !rs && !su) return [{ t: 'toate în regulă', ton: '' }];
-      var parti = [{ t: fc + ' fără contract', ton: fc ? 'r' : 'm' }, { t: rs + (rs === 1 ? ' restanță' : ' restanțe'), ton: rs ? 'w' : 'm' }];
+      var parti = [{ t: fc + ' fără contract', ton: fc ? 'r' : 'm' }, { t: nrDe(rs, 'restanță', 'restanțe'), ton: rs ? 'w' : 'm' }];
       if (su) parti.push({ t: su + (su === 1 ? ' suspendată' : (su % 100 >= 1 && su % 100 <= 19 ? ' ' : ' de ') + 'suspendate'), ton: 'r' });
       return parti;
     }
@@ -4455,7 +4457,7 @@ const pozitii = await r.json();</code></pre>
         + '<div class="arch-main"><div class="arch-name"><strong>' + _ssEsc(d.name || d.plate || d.imei) + '</strong>'
         + (d.plate ? ' <span class="arch-plate">' + _ssEsc(d.plate) + '</span>' : '') + '</div>'
         + '<div class="arch-sub">IMEI ' + _ssEsc(d.imei) + '</div></div>'
-        + '<div class="arch-meta"><div><i class="fas fa-database" style="opacity:.6;"></i> ' + (Number(d.archived_positions) || 0).toLocaleString('ro-RO') + ' poziții</div>'
+        + '<div class="arch-meta"><div><i class="fas fa-database" style="opacity:.6;"></i> ' + nrDe(Number(d.archived_positions) || 0, 'poziție', 'poziții') + '</div>'
         + '<div class="arch-span">' + span + '</div>'
         + (te ? '<div class="arch-term" style="color:' + te.c + ';"><i class="fas fa-hourglass-half"></i> ' + te.t + '</div>' : '')
         + '</div>'
@@ -4479,7 +4481,7 @@ const pozitii = await r.json();</code></pre>
       var cap = '<div class="arch-note"><i class="fas fa-circle-info"></i> Dispozitivele arhivate <strong>nu mai primesc date noi</strong> (contract încheiat). '
           + (zPastrare ? 'Istoricul lor se mai păstrează <strong>' + _arhZile(zPastrare) + '</strong> de la arhivare — cât clientul poate cere datele înapoi — apoi se șterge definitiv, cum scrie în contract.' : '')
           + '</div>'
-        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + peDucă + (peDucă === 1 ? ' aparat are istoricul pe ducă' : ' aparate au istoricul pe ducă') + '.</strong> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: butonul „Descarcă tot istoricul” de pe rândul mașinii (un singur fișier, cu tot istoricul).</div>' : '')
+        + (peDucă ? '<div class="arch-note arch-note-warn"><i class="fas fa-hourglass-half"></i> <strong>' + nrDe(peDucă, 'aparat are istoricul pe ducă', 'aparate au istoricul pe ducă') + '.</strong> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum: butonul „Descarcă tot istoricul” de pe rândul mașinii (un singur fișier, cu tot istoricul).</div>' : '')
         + '<div class="rax-dev-bar"><input class="rax-field rax-dev-search" placeholder="🔎 nume / nr / IMEI / firmă" value="' + _ssEsc(_arhCauta || '') + '" oninput="_arhCautaSet(this.value)"></div>';
       if (!rows.length) {
         host.innerHTML = cap + '<div class="rax-co-meta" style="padding:16px;text-align:center;">Niciun aparat arhivat care să se potrivească.</div>';
@@ -4489,7 +4491,7 @@ const pozitii = await r.json();</code></pre>
         var pb = gr.dev.filter(function (d) { var t = _arhTermen(d); return t && t.rau; }).length;
         // Un grup cu ceva de rezolvat stă MEREU deschis, oricâte firme ar fi (vezi CLAUDE.md).
         var deschis = !!q || pb > 0 || _arhGrupuri(rows).length <= 5;
-        var sumar = gr.dev.length + (gr.dev.length === 1 ? ' aparat' : ' aparate')
+        var sumar = nrDe(gr.dev.length, 'aparat', 'aparate')
           + (pb ? ' · <b style="color:var(--orange)">' + pb + ' cu istoricul pe ducă</b>' : '');
         return '<div class="rax-devgr">'
           + '<div class="rax-devgr-h" onclick="_raxDevToggleGr(this)">'
@@ -4547,7 +4549,7 @@ const pozitii = await r.json();</code></pre>
       var plate = (d.plate || '').trim();
       var label = d.name || plate || imei;
       var cnt = (Number(d.archived_positions) || 0).toLocaleString('ro-RO');
-      if (!await raConfirm('⚠️ ȘTERGERE DEFINITIVĂ\n\n' + label + (plate ? ' (' + plate + ')' : '') + '\n' + cnt + ' poziții + tot istoricul vor fi ȘTERSE PERMANENT din baza de date.\n\nNU se poate anula. Continui?')) return;
+      if (!await raConfirm('⚠️ ȘTERGERE DEFINITIVĂ\n\n' + label + (plate ? ' (' + plate + ')' : '') + '\n' + nrDe(cnt, 'poziție', 'poziții') + ' + tot istoricul vor fi ȘTERSE PERMANENT din baza de date.\n\nNU se poate anula. Continui?')) return;
       var need = plate || imei;
       var typed = prompt('Pentru confirmare, scrie exact ' + (plate ? 'numărul de înmatriculare:' : 'IMEI-ul:') + '\n\n' + need);
       if (typed == null) return;
@@ -4636,7 +4638,7 @@ const pozitii = await r.json();</code></pre>
     function _usrCandVazut(u) {
       var z = _usrZileDe(u.last_login);
       if (z === null) return { text: 'n-a intrat niciodată', niciodata: true, vechi: false };
-      return { text: z <= 0 ? 'azi' : (z === 1 ? 'ieri' : 'acum ' + z + ' zile'), niciodata: false, vechi: z >= USR_LINISTE };
+      return { text: z <= 0 ? 'azi' : (z === 1 ? 'ieri' : 'acum ' + nrDe(z, 'zi', 'zile')), niciodata: false, vechi: z >= USR_LINISTE };
     }
     // „Toată flota” o spune serverul (sees_all), cu tăierile firmei omului — și pe rolul lui propriu.
     // Calculul după rol rămâne doar pentru un server vechi: el arăta „toată flota” și unde firma tăiase dreptul.
@@ -4659,7 +4661,7 @@ const pozitii = await r.json();</code></pre>
       var zile = Math.round((miez(t) - miez(Date.now())) / 86400000);
       if (zile < 0) return { text: 'acces expirat', aproape: true };
       if (zile === 0) return { text: 'expiră azi', aproape: true };
-      if (zile <= 3) return { text: 'expiră în ' + zile + (zile === 1 ? ' zi' : ' zile'), aproape: true };
+      if (zile <= 3) return { text: 'expiră în ' + nrDe(zile, 'zi', 'zile'), aproape: true };
       return { text: 'acces până la ' + new Date(t).toLocaleDateString('ro-RO'), aproape: false };
     }
     function _usrPotrivit(u, q) {
@@ -4706,7 +4708,7 @@ const pozitii = await r.json();</code></pre>
       if (exp) semne += '<span class="rau-semn ' + (exp.aproape ? 'rau-cald' : 'rau-rece') + '">' + esc(exp.text) + '</span>';
       var acces = _usrVedeTot(u)
         ? 'toată flota'
-        : ((Number(u.device_count) + Number(u.group_count) > 0) ? (u.device_count + ' veh. + ' + u.group_count + ' grupe') : 'niciun vehicul');
+        : ((Number(u.device_count) + Number(u.group_count) > 0) ? (u.device_count + ' veh. + ' + nrDe(u.group_count, 'grupă', 'grupe')) : 'niciun vehicul');
       var oraExacta = u.last_login ? new Date(u.last_login).toLocaleString('ro-RO') : '';
       var sfat = '';
       if (faraAcces && eClient) sfat = '<div class="rau-sfat">Nu vede niciun vehicul — atribuie-i din <b>Editează</b>, altfel deschide aplicația și găsește un ecran gol.</div>';
@@ -4811,8 +4813,8 @@ const pozitii = await r.json();</code></pre>
       var d = (avea && avea.devices) || [], g = (avea && avea.groups) || [];
       var nd = (avea && avea.numeDev && avea.numeDev.length) ? avea.numeDev : d;
       var ng = (avea && avea.numeGrp && avea.numeGrp.length) ? avea.numeGrp : g;
-      if (d.length) p.push(d.length + (d.length === 1 ? ' vehicul' : ' vehicule') + ': ' + _usrListaScurta(nd));
-      if (g.length) p.push(g.length + (g.length === 1 ? ' grupă' : ' grupe') + ': ' + _usrListaScurta(ng));
+      if (d.length) p.push(nrDe(d.length, 'vehicul', 'vehicule') + ': ' + _usrListaScurta(nd));
+      if (g.length) p.push(nrDe(g.length, 'grupă', 'grupe') + ': ' + _usrListaScurta(ng));
       return p.join(' · ');
     }
     window._usrScoate = async function (id) {
@@ -4937,9 +4939,9 @@ const pozitii = await r.json();</code></pre>
       var n = toti.filter(function (u) { return !!u.ai_seat; }).length;
       if (!n && !_usrPachet) return '';
       var pk = _usrPachet;
-      return '<div class="rau-seats"><i class="fas fa-wand-magic-sparkles"></i> <b>' + n + '</b> ' +
+      return '<div class="rau-seats"><i class="fas fa-wand-magic-sparkles"></i> <b>' + n + '</b> ' + (deNr(n) === ' de ' ? 'de ' : '') +
         (n === 1 ? 'cont cu RA Insight' : 'conturi cu RA Insight') +
-        (pk ? ' <span>— pachetul ' + esc(pk.nume) + (pk.conturi == null ? ', conturi nelimitate' : ', ' + (pk.conturi === 1 ? 'un cont' : pk.conturi + ' conturi')) + '.</span> ' +
+        (pk ? ' <span>— pachetul ' + esc(pk.nume) + (pk.conturi == null ? ', conturi nelimitate' : ', ' + (pk.conturi === 1 ? 'un cont' : nrDe(pk.conturi, 'cont', 'conturi'))) + '.</span> ' +
           '<button type="button" class="rau-pk" onclick="insightPachetConturi()">Schimbă în Pachet și conturi →</button>'
           : '') + '</div>';
     }
@@ -5009,7 +5011,7 @@ const pozitii = await r.json();</code></pre>
       if (isSuper && keys.length > 1) {
         // Fără stil scris de mână aici: `rax-field` e chipul casei, ținut într-un singur loc.
         html += '<div style="margin-bottom:10px;"><select class="rax-field" onchange="_usersFilter=this.value; renderUsersGrouped();" style="width:100%;">' +
-          '<option value="">Toate companiile (' + users.length + ' utilizatori)</option>' +
+          '<option value="">Toate companiile (' + nrDe(users.length, 'utilizator', 'utilizatori') + ')</option>' +
           keys.map(function (k) { var g = groups[k]; return '<option value="' + k + '"' + (_usersFilter === k ? ' selected' : '') + '>' + esc(g.name) + ' (' + (g.admins.length + g.users.length) + ')</option>'; }).join('') +
           '</select></div>';
       }
@@ -5840,7 +5842,7 @@ const pozitii = await r.json();</code></pre>
       return '<div class="set-firma"><i class="fas fa-eye"></i><span>Te uiți ca admin al firmei</span>' +
         '<select onchange="setSchimbFirma(this.value)">' + firme.map(function (f) {
           return '<option value="' + f.id + '"' + (String(f.id) === String(aleasa) ? ' selected' : '') +
-            '>' + _usEsc(f.nume) + ' · ' + f.n + (f.n === 1 ? ' om' : ' oameni') + '</option>';
+            '>' + _usEsc(f.nume) + ' · ' + nrDe(f.n, 'om', 'oameni') + '</option>';
         }).join('') + '</select></div>';
     }
     // ── sfârșit „Comutatorul de privire” ──
@@ -6013,9 +6015,9 @@ const pozitii = await r.json();</code></pre>
       if (m < 1) return 'câteva secunde';
       if (m < 60) return m + ' min';
       var h = Math.floor(m / 60);
-      if (h < 24) return h + (h === 1 ? ' oră' : ' ore');
+      if (h < 24) return nrDe(h, 'oră', 'ore');
       var z = Math.floor(h / 24);
-      return z + (z === 1 ? ' zi' : ' zile');
+      return nrDe(z, 'zi', 'zile');
     }
     // Starea unui aparat — o SINGURĂ dată, folosită și la sumar, și pe rând. Culoarea vine tot de aici,
     // ca să nu ajungem cu un rând roșu și un contor verde care spun lucruri diferite despre același aparat.
@@ -6252,7 +6254,7 @@ const pozitii = await r.json();</code></pre>
       }).join('');
       return '<div class="ist-prez">' + cap + randuri +
         '<div class="ist-prez-nota">Se numără doar timpul cu aplicația <b>deschisă și în față</b>, în pași de ' +
-        (p.pasMinute || 5) + ' minute. O filă lăsată deschisă în spate nu se pune la socoteală. ' +
+        nrDe((p.pasMinute || 5), 'minut', 'minute') + '. O filă lăsată deschisă în spate nu se pune la socoteală. ' +
         'Procentul e din totalul echipei, pe perioada aleasă. Se numără <b>doar aplicația web</b>: cine lucrează numai de pe telefon nu apare aici.</div></div>';
     }
     function istRender() {
@@ -6284,7 +6286,7 @@ const pozitii = await r.json();</code></pre>
 
       var acum = Date.now(), ziCurenta = null;
       var arataIp = !!(window.currentUser && window.currentUser.isSuper);
-      h += '<div class="ist-total">' + _ist.total + (_ist.total === 1 ? ' acțiune' : ' acțiuni') + ' în perioada aleasă</div>';
+      h += '<div class="ist-total">' + nrDe(_ist.total, 'acțiune', 'acțiuni') + ' în perioada aleasă</div>';
       _ist.randuri.forEach(function (r) {
         var z = istZi(r.created_at, acum);
         if (z !== ziCurenta) { ziCurenta = z; h += '<div class="ist-zi">' + esc(z) + '</div>'; }
@@ -6377,7 +6379,7 @@ const pozitii = await r.json();</code></pre>
       h += _adr.randuri.map(adrRandHtml).join('');
       var neconf = _adr.randuri.filter(function (a) { return !a.confirmed_at; }).length;
       h += '<div class="ag-nota">Bifele spun <b>ce primește</b> fiecare adresă. ' +
-        (neconf ? 'Ai <b>' + neconf + (neconf === 1 ? ' adresă neconfirmată</b> — nu primește nimic până nu se apasă linkul din emailul de confirmare.' : ' adrese neconfirmate</b> — nu primesc nimic până nu se apasă linkul din emailul de confirmare.')
+        (neconf ? 'Ai <b>' + nrDe(neconf, 'adresă neconfirmată</b> — nu primește nimic până nu se apasă linkul din emailul de confirmare.', 'adrese neconfirmate</b> — nu primesc nimic până nu se apasă linkul din emailul de confirmare.')
                 : 'Toate adresele sunt confirmate.') + '</div>';
       host.innerHTML = h;
     }
@@ -7154,8 +7156,8 @@ const pozitii = await r.json();</code></pre>
         if (ales) rows = rows.filter(d => _vehFelul(d) === ales);
       }
       const _nSemi = rows.filter(d => d._remorca && d.fel !== 'remorca').length, _nRem = rows.filter(d => d._remorca && d.fel === 'remorca').length;
-      document.getElementById('veh-count').textContent = (rows.length - _nSemi - _nRem) + ' vehicule'
-        + (_nSemi ? ' · ' + _nSemi + (_nSemi === 1 ? ' semiremorcă' : ' semiremorci') : '') + (_nRem ? ' · ' + _nRem + (_nRem === 1 ? ' remorcă' : ' remorci') : '');
+      document.getElementById('veh-count').textContent = nrDe((rows.length - _nSemi - _nRem), 'vehicul', 'vehicule')
+        + (_nSemi ? ' · ' + nrDe(_nSemi, 'semiremorcă', 'semiremorci') : '') + (_nRem ? ' · ' + nrDe(_nRem, 'remorcă', 'remorci') : '');
       const now = Date.now();
       document.getElementById('veh-rows').innerHTML = rows.map(d => {
         if (d._remorca) return _remRand(d, esc);
@@ -8241,7 +8243,7 @@ const pozitii = await r.json();</code></pre>
           if (!co || !co.value) { alert('Alege întâi compania din filtrul de sus, apoi importă.'); input.value = ''; return; }
           body.company_id = parseInt(co.value);
         }
-        if (!await raConfirm('Imporți ' + objs.length + ' șoferi din „' + file.name + '”?', { okLabel: 'Importă' })) { input.value = ''; return; }
+        if (!await raConfirm('Imporți ' + nrDe(objs.length, 'șofer', 'șoferi') + ' din „' + file.name + '”?', { okLabel: 'Importă' })) { input.value = ''; return; }
         const res = await fetch('/api/drivers/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const out = await res.json().catch(() => ({}));
         if (!res.ok) { alert('Eroare: ' + (out.error || res.status)); input.value = ''; return; }
@@ -8279,7 +8281,7 @@ const pozitii = await r.json();</code></pre>
         const headers = raw[0].map(h => (h || '').trim().toLowerCase());
         if (!headers.includes('imei')) { alert('Lipsește coloana „imei”. Descarcă întâi Template-ul.'); input.value = ''; return; }
         const objs = raw.slice(1).map(r => { const o = {}; headers.forEach((h, idx) => o[h] = (r[idx] || '').trim()); return o; });
-        if (!await raConfirm('Imporți ' + objs.length + ' vehicule din „' + file.name + '”?', { okLabel: 'Importă' })) { input.value = ''; return; }
+        if (!await raConfirm('Imporți ' + nrDe(objs.length, 'vehicul', 'vehicule') + ' din „' + file.name + '”?', { okLabel: 'Importă' })) { input.value = ''; return; }
         const res = await fetch('/api/devices/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: objs }) });
         const out = await res.json().catch(() => ({}));
         if (!res.ok) { alert('Eroare: ' + (out.error || res.status)); input.value = ''; return; }
@@ -8337,7 +8339,7 @@ const pozitii = await r.json();</code></pre>
       if (fco) list = list.filter(d => String(d.company_id) === fco);
       if (q) list = list.filter(d => ((d.name || '') + ' ' + (d.phone || '') + ' ' + (d.email || '') + ' ' + (d.license_number || '')).toLowerCase().includes(q));
       const cEl = document.getElementById('drv-count');
-      if (cEl) cEl.textContent = list.length + (list.length === 1 ? ' șofer' : ' șoferi');
+      if (cEl) cEl.textContent = nrDe(list.length, 'șofer', 'șoferi');
       el.innerHTML = list.length ? list.map((d, i) => {
         const L = driverLicense(d);
         const av = d.photo_b64
@@ -8353,7 +8355,7 @@ const pozitii = await r.json();</code></pre>
           ? '<span class="drv-pill none">fără permis în fișă</span>'
           : `<div class="drv-line"><i class="fas fa-id-card"></i><span>${esc(L.num) || '—'}</span></div>` + catRow
             + (L.st === 'nodate' || L.st === 'none' ? '<span class="drv-pill none" style="margin-top:5px;">fără dată de expirare</span>'
-              : `<div><span class="drv-pill ${L.st}">${L.st === 'exp' ? 'expirat de ' + (-L.days) + ' zile' : L.st === 'soon' ? (L.days === 0 ? 'expiră azi' : 'mai are ' + L.days + (L.days === 1 ? ' zi' : ' zile')) : 'până ' + L.date}</span></div>`);
+              : `<div><span class="drv-pill ${L.st}">${L.st === 'exp' ? 'expirat de ' + nrDe((-L.days), 'zi', 'zile') : L.st === 'soon' ? (L.days === 0 ? 'expiră azi' : 'mai are ' + nrDe(L.days, 'zi', 'zile')) : 'până ' + L.date}</span></div>`);
         const vs = driverVehicles(d.id, d.company_id);
         const veh = vs.length
           ? `<span class="drv-vch">${vehicleSilhouetteSVG(vs[0].cat, 'currentColor', 20)}<span>${esc(vs[0].label)}</span></span>${vs.length > 1 ? `<span class="drv-vmore">+${vs.length - 1}</span>` : ''}`
@@ -8576,7 +8578,7 @@ const pozitii = await r.json();</code></pre>
       const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const list = Array.isArray(_grpAll) ? _grpAll : [];
       const cEl = document.getElementById('grp-count');
-      if (cEl) cEl.textContent = list.length + (list.length === 1 ? ' grupă' : ' grupe');
+      if (cEl) cEl.textContent = nrDe(list.length, 'grupă', 'grupe');
       const el = document.getElementById('admin-groups-list');
       el.innerHTML = list.length ? list.map(g => {
         const col = g.color || '#94a3b8';
@@ -8676,7 +8678,7 @@ const pozitii = await r.json();</code></pre>
       const n = grpVehicles(id).length, u = g.user_count || 0;
       let msg = 'Ștergi grupa „' + (g.name || '') + '”?\n\nVehiculele NU se șterg'
         + (n ? ' — cele ' + n + ' din ea rămân fără grupă.' : '.');
-      if (u) msg += '\n\nATENȚIE: ' + u + (u === 1 ? ' utilizator vede' : ' utilizatori văd') + ' aceste vehicule PRIN grupa asta. După ștergere nu le mai văd, până le dai acces altfel.';
+      if (u) msg += '\n\nATENȚIE: ' + nrDe(u, 'utilizator vede', 'utilizatori văd') + ' aceste vehicule PRIN grupa asta. După ștergere nu le mai văd, până le dai acces altfel.';
       if (!await raConfirm(msg, { okLabel: 'Șterge' })) return;
       await fetch('/api/groups/' + id, { method: 'DELETE' });
       if (String(_grpOpen) === String(id)) _grpOpen = null;
@@ -8844,7 +8846,7 @@ const pozitii = await r.json();</code></pre>
         populateVehicleSelect('alert-imei', true);
       } else if (v) {
         const n = (adminDevicesCache || []).filter(d => String(d.company_id) === String(v)).length;
-        note.textContent = n + (n === 1 ? ' vehicul în această companie.' : ' vehicule în această companie.');
+        note.textContent = nrDe(n, 'vehicul în această companie.', 'vehicule în această companie.');
         populateVehicleSelect('alert-imei', true, v);
       } else {
         note.textContent = 'Alege compania pentru care creezi regula — administratorul ei o va vedea și o va putea edita.';
@@ -8869,7 +8871,7 @@ const pozitii = await r.json();</code></pre>
       const list = Array.isArray(_alertAll) ? _alertAll : [];
       const isSuper = !!(currentUser && currentUser.isSuper);
       const cEl = document.getElementById('alert-count');
-      if (cEl) cEl.textContent = list.length + (list.length === 1 ? ' regulă' : ' reguli');
+      if (cEl) cEl.textContent = nrDe(list.length, 'regulă', 'reguli');
       // Grupăm pe TIP, în ordinea din catalog: tipurile înrudite (intrare/ieșire zonă) rămân vecine,
       // iar ordinea nu sare de la o încărcare la alta.
       const byType = {};
@@ -8884,8 +8886,8 @@ const pozitii = await r.json();</code></pre>
         const m = ALERT_META[tp] || { i: 'fa-bell', f: 'f-neutral' };
         const open = String(_alertOpenType) === String(tp);
         const nOff = rules.filter(a => !a.enabled).length;
-        const sub = rules.length + (rules.length === 1 ? ' regulă' : ' reguli')
-          + (nOff ? ' · <span class="alr-offn">' + nOff + (nOff === 1 ? ' oprită' : ' oprite') + '</span>' : '');
+        const sub = nrDe(rules.length, 'regulă', 'reguli')
+          + (nOff ? ' · <span class="alr-offn">' + nrDe(nOff, 'oprită', 'oprite') + '</span>' : '');
         const body = open ? '<div class="alr-gbody">' + rules.map(a => {
           const c = a.condition || {};
           const zIds = Array.isArray(c.geofenceIds) ? c.geofenceIds : (c.geofenceId ? [c.geofenceId] : []);
@@ -9168,7 +9170,7 @@ const pozitii = await r.json();</code></pre>
       const days = _mntDaysTo(d);
       if (days < 0) return 'depășit cu ' + (-days) + (days === -1 ? ' zi' : ' zile');
       if (days === 0) return 'azi';
-      return 'peste ' + days + (days === 1 ? ' zi' : ' zile');
+      return 'peste ' + nrDe(days, 'zi', 'zile');
     }
     function mntWhen(m) {
       if (mntDone(m)) {
@@ -9182,7 +9184,7 @@ const pozitii = await r.json();</code></pre>
     function mntRepeat(m) {
       const p = [];
       if (m.interval_km) p.push(mntNf(m.interval_km) + ' km');
-      if (m.interval_months) p.push(m.interval_months + (m.interval_months === 1 ? ' lună' : ' luni'));
+      if (m.interval_months) p.push(nrDe(m.interval_months, 'lună', 'luni'));
       return p.join(' / ');
     }
     function mntIcon(m) { return mntDone(m) ? 'fa-check' : ({ over: 'fa-triangle-exclamation', soon: 'fa-clock', none: 'fa-circle-question' })[mntState(m)] || 'fa-calendar-day'; }
@@ -9359,8 +9361,8 @@ const pozitii = await r.json();</code></pre>
         const cuRest = imeis.filter(function (i) { return byVeh.get(i).some(function (m) { return mntState(m) === 'over'; }); }).length;
         const cuCurand = imeis.filter(function (i) { return !byVeh.get(i).some(function (m) { return mntState(m) === 'over'; })
           && byVeh.get(i).some(function (m) { return mntState(m) === 'soon'; }); }).length;
-        if (cuRest) body += '<div class="mnt-banner s-over"><i class="fas fa-triangle-exclamation"></i><span><b>' + cuRest + (cuRest === 1 ? ' mașină are' : ' mașini au') + ' lucrări restante.</b>' + (cuCurand ? (cuCurand === 1 ? ' Încă una se apropie de scadență.' : ' Alte ' + cuCurand + ' se apropie de scadență.') : '') + '</span></div>';
-        else if (cuCurand) body += '<div class="mnt-banner s-soon"><i class="fas fa-clock"></i><span><b>' + cuCurand + (cuCurand === 1 ? ' mașină se apropie' : ' mașini se apropie') + ' de scadență.</b> Nimic restant.</span></div>';
+        if (cuRest) body += '<div class="mnt-banner s-over"><i class="fas fa-triangle-exclamation"></i><span><b>' + nrDe(cuRest, 'mașină are', 'mașini au') + ' lucrări restante.</b>' + (cuCurand ? (cuCurand === 1 ? ' Încă una se apropie de scadență.' : ' Alte ' + cuCurand + ' se apropie de scadență.') : '') + '</span></div>';
+        else if (cuCurand) body += '<div class="mnt-banner s-soon"><i class="fas fa-clock"></i><span><b>' + nrDe(cuCurand, 'mașină se apropie', 'mașini se apropie') + ' de scadență.</b> Nimic restant.</span></div>';
         else body += '<div class="mnt-banner s-done"><i class="fas fa-circle-check"></i><span><b>Toate mașinile sunt la zi.</b></span></div>';
       }
 
@@ -9378,11 +9380,11 @@ const pozitii = await r.json();</code></pre>
         let badge;
         if (istoric) {
           const lei = items.reduce(function (x, m) { return x + (parseFloat(m.cost) || 0); }, 0);
-          badge = '<span class="mnt-gn">' + items.length + (items.length === 1 ? ' lucrare' : ' lucrări')
+          badge = '<span class="mnt-gn">' + nrDe(items.length, 'lucrare', 'lucrări')
             + (lei ? ' · ' + mntNf(Math.round(lei)) + ' lei' : '') + '</span>';
-        } else if (over) badge = '<span class="mnt-gn al">' + over + (over === 1 ? ' restantă' : ' restante') + '</span>';
+        } else if (over) badge = '<span class="mnt-gn al">' + nrDe(over, 'restantă', 'restante') + '</span>';
         else if (soon) badge = '<span class="mnt-gn soon">' + soon + ' curând</span>';
-        else badge = '<span class="mnt-gn ok">la zi · ' + items.length + (items.length === 1 ? ' lucrare' : ' lucrări') + '</span>';
+        else badge = '<span class="mnt-gn ok">la zi · ' + nrDe(items.length, 'lucrare', 'lucrări') + '</span>';
         body += '<div class="mnt-g' + (open ? ' open' : '') + '">'
           + '<div class="mnt-ghead" onclick="mntToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + (istoric ? ' lucrările făcute' : ' lucrările de făcut') + '">'
           + '<i class="fas fa-chevron-right mnt-caret"></i>'
@@ -9473,7 +9475,7 @@ const pozitii = await r.json();</code></pre>
       const cell = function (row, ck) {
         const v = row[ck] || {}, def = (row.def && row.def[ck]) || null;
         const custom = !!(row.custom && row.custom[ck]);
-        const title = def ? 'Implicit: ' + [def.km ? mntNf(def.km) + ' km' : '', def.months ? def.months + ' luni' : ''].filter(Boolean).join(' / ')
+        const title = def ? 'Implicit: ' + [def.km ? mntNf(def.km) + ' km' : '', def.months ? nrDe(def.months, 'lună', 'luni') : ''].filter(Boolean).join(' / ')
           : 'Implicit: la nevoie';
         const inp = function (kind, val, ph) {
           return '<input type="number" inputmode="numeric" data-t="' + esc(row.type) + '" data-c="' + ck + '" data-k="' + kind + '"'
@@ -9560,9 +9562,9 @@ const pozitii = await r.json();</code></pre>
       const n = parseInt(luni) || 0;
       if (!n) return '';
       if (n === 1) return 'o lună';
-      if (n < 12 || n % 12 !== 0) return n + ' luni';
+      if (n < 12 || n % 12 !== 0) return nrDe(n, 'lună', 'luni');
       const a = n / 12;
-      return a === 1 ? 'un an' : a + ' ani';
+      return a === 1 ? 'un an' : nrDe(a, 'an', 'ani');
     }
     function mntProposeSchedule() {
       const prop = document.getElementById('mnt-prop'); if (prop) { prop.style.display = 'none'; prop.innerHTML = ''; }
@@ -9795,7 +9797,7 @@ const pozitii = await r.json();</code></pre>
       if (n == null) return '';
       if (n < 0) return 'expirat de ' + (-n) + (n === -1 ? ' zi' : ' zile');
       if (n === 0) return 'expiră azi';
-      return (st === 'soon' ? 'expiră peste ' : 'mai are ') + n + (n === 1 ? ' zi' : ' zile');
+      return (st === 'soon' ? 'expiră peste ' : 'mai are ') + nrDe(n, 'zi', 'zile');
     }
     function docIcon(d) { const s = docState(d); return s === 'expired' ? 'fa-triangle-exclamation' : s === 'soon' ? 'fa-clock' : s === 'none' ? 'fa-circle-question' : 'fa-circle-check'; }
     function docDateCell(d) {
@@ -9985,7 +9987,7 @@ const pozitii = await r.json();</code></pre>
             + '<div class="mnt-ghead" onclick="docToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' actele înlocuite">'
             + '<i class="fas fa-chevron-right mnt-caret"></i>'
             + '<div><div class="mnt-gp">' + esc(mntPlate(imei)) + '</div><div class="mnt-gm">' + esc(mntModel(imei)) + '</div></div>'
-            + '<span class="mnt-gn">' + items.length + (items.length === 1 ? ' act' : ' acte') + (lei ? ' · ' + mntNf(Math.round(lei)) + ' lei' : '') + '</span></div>'
+            + '<span class="mnt-gn">' + nrDe(items.length, 'act', 'acte') + (lei ? ' · ' + mntNf(Math.round(lei)) + ' lei' : '') + '</span></div>'
             + (open ? '<div class="mnt-gbody">' + items.map(docHistCard).join('') + '</div>' : '')
             + '</div>';
         });
@@ -10048,7 +10050,7 @@ const pozitii = await r.json();</code></pre>
           body += '<div class="mnt-banner doc-alert ' + (grav ? 's-over' : 's-soon') + '">'
             + '<i class="fas ' + (grav ? 'fa-triangle-exclamation' : 'fa-clock') + '"></i>'
             + '<div class="doc-al-list">' + arata.map(function (l) { return '<div>' + l.html + '</div>'; }).join('')
-            + (rest > 0 ? '<div class="doc-al-rest">și încă ' + rest + (rest === 1 ? ' mașină' : ' mașini') + ' mai jos</div>' : '')
+            + (rest > 0 ? '<div class="doc-al-rest">și încă ' + nrDe(rest, 'mașină', 'mașini') + ' mai jos</div>' : '')
             + '</div></div>';
         }
       }
@@ -10066,10 +10068,10 @@ const pozitii = await r.json();</code></pre>
         if (_docOpen[key] === undefined) _docOpen[key] = (exp > 0 || lipReq > 0) || imeis.length === 1;
         const open = _docOpen[key];
         let badge;
-        if (exp) badge = '<span class="mnt-gn al">' + exp + (exp === 1 ? ' expirat' : ' expirate') + '</span>';
-        else if (lipReq) badge = '<span class="mnt-gn al">' + lipReq + (lipReq === 1 ? ' act lipsă' : ' acte lipsă') + '</span>';
+        if (exp) badge = '<span class="mnt-gn al">' + nrDe(exp, 'expirat', 'expirate') + '</span>';
+        else if (lipReq) badge = '<span class="mnt-gn al">' + nrDe(lipReq, 'act lipsă', 'acte lipsă') + '</span>';
         else if (soon) badge = '<span class="mnt-gn soon">' + soon + ' expiră curând</span>';
-        else badge = '<span class="mnt-gn ok">în regulă · ' + acte.length + (acte.length === 1 ? ' act' : ' acte') + '</span>';
+        else badge = '<span class="mnt-gn ok">în regulă · ' + nrDe(acte.length, 'act', 'acte') + '</span>';
         body += '<div class="mnt-g' + (open ? ' open' : '') + '">'
           + '<div class="mnt-ghead" onclick="docToggle(\'' + esc(key) + '\')" title="' + (open ? 'Ascunde' : 'Arată') + ' actele">'
           + '<i class="fas fa-chevron-right mnt-caret"></i>'
@@ -10306,7 +10308,7 @@ const pozitii = await r.json();</code></pre>
       let list = geofenceCache || [];
       if (q) list = list.filter(g => [g.name, g.description, g.address, g.category, g.group_name].some(v => (v||'').toString().toLowerCase().includes(q)));
       const cnt = document.getElementById('gf-count');
-      if (cnt) cnt.textContent = list.length + (list.length === 1 ? ' hotspot' : ' hotspot-uri');
+      if (cnt) cnt.textContent = nrDe(list.length, 'hotspot', 'hotspot-uri');
       if (!list.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:12px;">Niciun hotspot încă. Apasă „Adaugă poligon” sau „Adaugă cerc”.</p>'; return; }
       const pages = Math.max(1, Math.ceil(list.length / GF_PAGE_SIZE));
       if (gfPage > pages) gfPage = pages;
@@ -10537,7 +10539,7 @@ const pozitii = await r.json();</code></pre>
     function fhRedraw() {
       if (fh.preview) { try { map.removeLayer(fh.preview); } catch (e) {} fh.preview = null; }
       if (fh.points.length >= 2) { fh.preview = L.polyline(fh.points, { color: '#f59e0b', weight: 3 }).addTo(map); }
-      const el = document.getElementById('draw-info'); if (el) el.textContent = 'Se desenează… ' + fh.points.length + ' puncte';
+      const el = document.getElementById('draw-info'); if (el) el.textContent = 'Se desenează… ' + nrDe(fh.points.length, 'punct', 'puncte');
     }
     function fhDown(e) {
       if (!drawState || drawState.mode !== 'freehand' || drawState.finished) return;
@@ -10590,7 +10592,7 @@ const pozitii = await r.json();</code></pre>
         const pts = isCorridor ? drawState.points : drawState.points.concat([drawState.points[0]]);
         const pl = L.polyline(pts, { color: '#f59e0b', dashArray: '5,5' }); pl.addTo(map); drawState.layers.push(pl);
       }
-      document.getElementById('draw-info').textContent = drawState.points.length + ' puncte — ' + (isCorridor ? '„Lipește pe străzi” + Finalizează' : 'dublu-click / Finalizează');
+      document.getElementById('draw-info').textContent = nrDe(drawState.points.length, 'punct', 'puncte') + ' — ' + (isCorridor ? '„Lipește pe străzi” + Finalizează' : 'dublu-click / Finalizează');
       updateDrawMetrics();
     }
     function drawUndo() {
@@ -10670,7 +10672,7 @@ const pozitii = await r.json();</code></pre>
       if (drawState.purpose === 'zone') return analyzeDrawnZone();
       if ((drawState.mode === 'polygon' || drawState.mode === 'corridor') && !drawState.finished) {
         const need = drawState.mode === 'corridor' ? 2 : 3;
-        if (drawState.points.length < need) return alert('Minim ' + need + ' puncte');
+        if (drawState.points.length < need) return alert('Minim ' + nrDe(need, 'punct', 'puncte'));
         drawFinishPoly();
       }
       const name = document.getElementById('draw-name').value.trim();
@@ -13095,7 +13097,7 @@ const pozitii = await r.json();</code></pre>
         [['fa-gas-pump', 'Combustibil', c.accel, 'în plus, din accelerări bruște'],
          ['fa-circle-stop', 'Frâne și anvelope', c.frane, 'din frânări și viraje bruște'],
          ['fa-gauge-high', 'Viteză', c.viteza, 'combustibil în plus, peste ' + lim + ' km/h'],
-         ['fa-hourglass-half', 'Ralanti', c.ralanti, 'motor pornit pe loc · ' + sdNr(f.ralantiOre, 1) + ' ore']].forEach(function (x) {
+         ['fa-hourglass-half', 'Ralanti', c.ralanti, 'motor pornit pe loc · ' + sdNr(f.ralantiOre, 1) + deNr(Math.round((f.ralantiOre || 0) * 10) / 10) + (Math.round((f.ralantiOre || 0) * 10) / 10 === 1 ? 'oră' : 'ore')]].forEach(function (x) {
           var t = el('div', 'sdp-tile'), et = el('div', 'et'); et.innerHTML = '<i class="fas ' + x[0] + '"></i> '; et.appendChild(document.createTextNode(x[1]));
           t.appendChild(et); t.appendChild(el('div', 'val', sdLei(x[2]))); t.appendChild(el('div', 'sub', x[3])); tl.appendChild(t);
         });
@@ -13471,11 +13473,11 @@ const pozitii = await r.json();</code></pre>
         var mare = el('div', 'sdp-tile mare');
         mare.appendChild(el('div', 'et', 'Ore de condus'));
         mare.appendChild(el('div', 'val', f.text || '—'));
-        mare.appendChild(el('div', 'sub', 'în ' + (j.eticheta || '') + ' · ' + (f.soferi === 1 ? '1 șofer' : (f.soferi || 0) + ' șoferi') + (f.faraSofer ? ' · ' + (f.faraSofer === 1 ? '1 mașină fără șofer' : f.faraSofer + ' mașini fără șofer') : '')));
+        mare.appendChild(el('div', 'sub', 'în ' + (j.eticheta || '') + ' · ' + (f.soferi === 1 ? '1 șofer' : nrDe((f.soferi || 0), 'șofer', 'șoferi')) + (f.faraSofer ? ' · ' + (f.faraSofer === 1 ? '1 mașină fără șofer' : nrDe(f.faraSofer, 'mașină', 'mașini') + ' fără șofer') : '')));
         if (fa.text) mare.appendChild(el('span', 'sdp-chip ' + (fa.fel || 'info'), fa.text));
         tl.appendChild(mare);
         var tot = (f.soferi || 0) + (f.faraSofer || 0);
-        [['fa-triangle-exclamation', 'Încălcări Reg. 561', String(f.incalcari || 0), f.incalcari ? (f.cuIncalcari === 1 ? 'la un șofer' : 'la ' + f.cuIncalcari + ' șoferi') : (f.supusi ? 'niciuna' : 'nu se aplică la autoturisme'), f.incalcari ? 'rosu' : ''],
+        [['fa-triangle-exclamation', 'Încălcări Reg. 561', String(f.incalcari || 0), f.incalcari ? (f.cuIncalcari === 1 ? 'la un șofer' : 'la ' + nrDe(f.cuIncalcari, 'șofer', 'șoferi')) : (f.supusi ? 'niciuna' : 'nu se aplică la autoturisme'), f.incalcari ? 'rosu' : ''],
          ['fa-calendar-day', 'Cea mai lungă zi', f.ziMax ? f.ziMax.text : '—', f.ziMax ? f.ziMax.nume + ' · ' + f.ziMax.cand : '', ''],
          ['fa-hourglass-half', 'Condus fără pauză', f.continuuMax ? f.continuuMax.text : '—', f.continuuMax ? f.continuuMax.nume + ' · ' + f.continuuMax.cand : '', ''],
          ['fa-id-card', 'Din tahograf', (f.tahograf || 0) + ' din ' + tot, f.tahograf ? (f.tahograf < tot ? 'restul, estimat din GPS' : 'toate din tahograf') : 'toate estimate din GPS', '']].forEach(function (x) {
@@ -14368,7 +14370,7 @@ const pozitii = await r.json();</code></pre>
       tb.innerHTML = list.map(function (h) {
         var period = repFmtDT(h.period_from) + ' – ' + repFmtDT(h.period_to);
         var n = h.imei ? 1 : (h.vehicle_count || 0);
-        var veh = n + ' ' + (n === 1 ? 'vehicul' : 'vehicule');
+        var veh = nrDe(n, 'vehicul', 'vehicule');
         var _isSched = (h.status === 'scheduled') || (h.signature && h.signature.indexOf('sched') === 0);
         var schedTag = _isSched
           ? '<span class="rh-sched" title="Generat automat de o programare"><i class="fas fa-clock"></i> Programat</span> '
@@ -14433,7 +14435,7 @@ const pozitii = await r.json();</code></pre>
     function rhUpdateBulkBar() {
       var boxes = rhCheckboxes(), sel = boxes.filter(function (c) { return c.checked; });
       var bar = document.getElementById('rh-bulkbar'), cnt = document.getElementById('rh-selcount'), btn = document.getElementById('rh-selall-btn');
-      if (cnt) cnt.textContent = sel.length + ' ' + (sel.length === 1 ? 'selectat' : 'selectate');
+      if (cnt) cnt.textContent = nrDe(sel.length, 'selectat', 'selectate');
       if (bar) bar.style.display = sel.length ? 'flex' : 'none';
       if (btn) {
         var allSel = boxes.length && sel.length === boxes.length;
@@ -14451,7 +14453,7 @@ const pozitii = await r.json();</code></pre>
     async function rhBulkDelete() {
       var ids = rhSelectedIds();
       if (!ids.length) return;
-      var msg = ids.length === 1 ? 'Ștergi raportul selectat din istoric?' : 'Ștergi cele ' + ids.length + ' rapoarte selectate din istoric?';
+      var msg = ids.length === 1 ? 'Ștergi raportul selectat din istoric?' : 'Ștergi cele ' + nrDe(ids.length, 'raport', 'rapoarte') + ' selectate din istoric?';
       if (!await raConfirm(msg)) return;
       await Promise.all(ids.map(function (id) {
         return fetch('/api/reports/history/' + id, { method: 'DELETE', credentials: 'same-origin' }).catch(function () {});
@@ -14623,7 +14625,7 @@ const pozitii = await r.json();</code></pre>
         const saved = d.historyId != null;
         try { if (typeof loadReportHistory === 'function') loadReportHistory(); } catch (e) {} // raportul s-a salvat în Istoric → reîmprospătează lista
         try { schedLoad(); } catch (e) {}                                                      // actualizează „Ultima rulare”
-        const parts = ['Generat ' + (saved ? '✓ ' : '') + '(' + (d.rows || 0) + ' rânduri)'];
+        const parts = ['Generat ' + (saved ? '✓ ' : '') + '(' + nrDe((d.rows || 0), 'rând', 'rânduri') + ')'];
         parts.push(saved ? 'salvat în Istoric' : ('NU s-a salvat' + (d.historyError ? ': ' + d.historyError : (d.reason ? ' (' + d.reason + ')' : ''))));
         if (d.emailText) parts.push(d.emailText);   // scris de server (22.10): „trimis pe email” / „emailul n-a plecat…”
         msg.style.color = saved && (d.emailSent || !(d.recipients && d.recipients.length)) ? 'var(--accent)' : 'var(--orange)';
@@ -14744,7 +14746,7 @@ const pozitii = await r.json();</code></pre>
       document.querySelector('#rep-table tbody').innerHTML = pairs.slice(_st, _en).map(p => '<tr data-ri="' + p.ri + '">' + p.r.map((c, ci) => '<td data-label="' + _repEsc(cols[ci] || '') + '">' + _repEsc(c) + '</td>').join('') + '</tr>').join('');
       window._repHoverLbl = null; if (window._repEmphasizeCharts) _repEmphasizeCharts();
       const bar = document.getElementById('rep-filter-bar');
-      if (bar) { if (_repFilter) { bar.style.display = 'flex'; bar.innerHTML = '<span><i class="fas fa-filter"></i> Doar: <strong>' + _repEsc(_repFilter.desc) + '</strong> — ' + pairs.length + ' din ' + allRows.length + ' rânduri</span><button class="btn-sm" onclick="_repClearFilter()"><i class="fas fa-times"></i> Arată tot</button>'; } else bar.style.display = 'none'; }
+      if (bar) { if (_repFilter) { bar.style.display = 'flex'; bar.innerHTML = '<span><i class="fas fa-filter"></i> Doar: <strong>' + _repEsc(_repFilter.desc) + '</strong> — ' + pairs.length + ' din ' + nrDe(allRows.length, 'rând', 'rânduri') + '</span><button class="btn-sm" onclick="_repClearFilter()"><i class="fas fa-times"></i> Arată tot</button>'; } else bar.style.display = 'none'; }
       _repRenderPager(_total, _st, _en, _tp);
       _repFillAddresses();
     }
@@ -14761,7 +14763,7 @@ const pozitii = await r.json();</code></pre>
           + ' <span style="font-variant-numeric:tabular-nums;">' + (st + 1) + '–' + en + ' din ' + total + '</span> '
           + '<button class="btn-sm rep-pg" onclick="_repGoPage(1)"' + (_repPage >= tp - 1 ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button>'
           + ' <span style="opacity:.7;">pag. ' + (_repPage + 1) + '/' + tp + '</span>'
-        : ' · ' + total + ' rânduri';
+        : ' · ' + nrDe(total, 'rând', 'rânduri');
       cnt.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">Rânduri/pagină: '
         + '<select onchange="_repSetPageSize(this.value)" style="padding-top:3px;padding-bottom:3px;font-size:12px;">' + opts + '</select>'
         + '<input type="number" min="1" max="10000" placeholder="custom" value="' + (isCustom ? _repPageSize : '') + '" onchange="if(this.value)_repSetPageSize(this.value)" style="width:66px;padding:3px 6px;font-size:12px;" title="Custom rânduri/pagină">'
@@ -15375,7 +15377,7 @@ const pozitii = await r.json();</code></pre>
       // direct la el. Asta e tot ce vrei să afli când îți sună telefonul că „ITP-ul expiră”.
       var scadHtml = '', scadBtns = '';
       var _dLoc = function (s) { try { return new Date(s).toLocaleDateString('ro-RO'); } catch (e) { return String(s || '—'); } };
-      var _zileTxt = function (z) { return z < 0 ? ('EXPIRAT de ' + (-z) + (z === -1 ? ' zi' : ' zile')) : z === 0 ? 'EXPIRĂ ASTĂZI' : ('mai ' + (z === 1 ? 'este 1 zi' : 'sunt ' + z + ' zile')); };
+      var _zileTxt = function (z) { return z < 0 ? ('EXPIRAT de ' + (-z) + (z === -1 ? ' zi' : ' zile')) : z === 0 ? 'EXPIRĂ ASTĂZI' : ('mai ' + (z === 1 ? 'este 1 zi' : 'sunt ' + nrDe(z, 'zi', 'zile'))); };
       var _zileCol = function (z) { return (z == null) ? 'var(--text-muted)' : (z < 0 || z <= 3) ? '#ef4444' : (z <= 14 ? '#f59e0b' : 'var(--accent)'); };
       var _banner = function (z, sub) {
         var c = _zileCol(z);
@@ -15843,7 +15845,7 @@ const pozitii = await r.json();</code></pre>
         }).join('');
         var totCalls = (d.usage || []).reduce(function (s, u) { return s + (Number(u.calls) || 0); }, 0);
         var note = document.getElementById('aia-note');
-        if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Utilizarea AI din ' + (_aiaDays ? ('ultimele ' + _aiaDays + ' zile') : 'tot istoricul') + ' — <b>' + fmtN(totCalls) + '</b> apeluri în total' + (d.model ? ' · model: <b>' + esc(d.model) + '</b>' : '') + (d.enabled === false ? ' · <span style="color:var(--orange);">AI neconfigurat (fără cheie)</span>' : '') + '. Tokenii sunt însumați (intrare/ieșire) pe fiecare asistent.';
+        if (note) note.innerHTML = '<i class="fas fa-circle-info" style="color:var(--accent);margin-right:5px;"></i>Utilizarea AI din ' + (_aiaDays ? ('ultimele ' + nrDe(_aiaDays, 'zi', 'zile')) : 'tot istoricul') + ' — <b>' + fmtN(totCalls) + '</b> apeluri în total' + (d.model ? ' · model: <b>' + esc(d.model) + '</b>' : '') + (d.enabled === false ? ' · <span style="color:var(--orange);">AI neconfigurat (fără cheie)</span>' : '') + '. Tokenii sunt însumați (intrare/ieșire) pe fiecare asistent.';
       } catch (e) {
         if (host) host.innerHTML = '<div style="padding:16px;color:var(--red);">Eroare la încărcarea statisticilor AI.</div>';
       }
@@ -15965,7 +15967,7 @@ const pozitii = await r.json();</code></pre>
         var d = await fetch(url, { credentials: 'same-origin' }).then(function (x) { return x.json(); });
         if (!d || d.error) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--red);">' + ((d && d.error) || 'Eroare') + '</div>'; return; }
         _fsKpi(d.kpi); _fsTrend(d.series); _fsTop(d.topConsumers); _fsTable(d.perVehicle);
-        var rg = document.getElementById('fs-range'); if (rg) { var _ve = d.kpi.vehiclesEstimated || 0; rg.textContent = (d.kpi.vehiclesTotal || 0) + ' vehicule' + (d.kpi.vehiclesWithData ? ' · ' + d.kpi.vehiclesWithData + ' cu senzor' : '') + (_ve ? ' · ' + _ve + ' estimat' + (_ve > 1 ? 'e' : '') : ''); }
+        var rg = document.getElementById('fs-range'); if (rg) { var _ve = d.kpi.vehiclesEstimated || 0; rg.textContent = nrDe((d.kpi.vehiclesTotal || 0), 'vehicul', 'vehicule') + (d.kpi.vehiclesWithData ? ' · ' + d.kpi.vehiclesWithData + ' cu senzor' : '') + (_ve ? ' · ' + _ve + ' estimat' + (_ve > 1 ? 'e' : '') : ''); }
         // Banner clar când consumul e estimat (fără senzor de combustibil)
         var note = document.getElementById('fs-note');
         if (note) {
@@ -17426,7 +17428,7 @@ const pozitii = await r.json();</code></pre>
           '<span class="grp-pop-plate">' + _esc(plate) + '</span>' +
           '<span class="grp-pop-st">' + st.label + '</span></div>';
       }).join('');
-      bubble.bindPopup('<div class="grp-pop"><div class="grp-pop-title">' + _esc(bubble._zoneName || 'Grup') + ' · ' + imeis.length + ' vehicule</div>' + rows + '</div>',
+      bubble.bindPopup('<div class="grp-pop"><div class="grp-pop-title">' + _esc(bubble._zoneName || 'Grup') + ' · ' + nrDe(imeis.length, 'vehicul', 'vehicule') + '</div>' + rows + '</div>',
         { className: 'grp-pop-wrap', maxHeight: 280 }).openPopup();
     }
 
@@ -17698,7 +17700,7 @@ const pozitii = await r.json();</code></pre>
     // ca lista să rămână vie (vitezele/statusurile se actualizează; mașinile care ies din grup dispar din listă).
     function _renderGroupModal(imeis, zoneName) {
       const titleEl = document.getElementById('grp-modal-title');
-      if (titleEl) titleEl.textContent = zoneName + ' · ' + imeis.length + (imeis.length === 1 ? ' vehicul' : ' vehicule');
+      if (titleEl) titleEl.textContent = zoneName + ' · ' + nrDe(imeis.length, 'vehicul', 'vehicule');
       const listEl = document.getElementById('grp-modal-list');
       if (listEl) {
         listEl.innerHTML = imeis.map(function (imei) {
@@ -19605,7 +19607,7 @@ const pozitii = await r.json();</code></pre>
       if (!b || !t) return;
       if (!(window._mapSel instanceof Set) || !window._mapSel.size) { b.style.display = 'none'; return; }
       var n = window._mapSel.size;
-      t.textContent = n + (n === 1 ? ' vehicul ales' : ' vehicule alese');
+      t.textContent = nrDe(n, 'vehicul ales', 'vehicule alese');
       b.style.display = 'flex';
     }
 
@@ -19867,7 +19869,7 @@ const pozitii = await r.json();</code></pre>
           var msg = withLimit === 0
             ? '<span style="color:var(--text-muted);"><i class="fas fa-info-circle"></i> Fără limite OSM pe acest traseu (drumuri netagate)</span>'
             : (over > 0
-              ? '<span style="color:' + _OSM_TIER_COLORS[_osmOverTier(maxOver)] + ';font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + over + ' puncte peste limita reală</span> · max +' + Math.round(maxOver) + ' km/h · ' + _OSM_TIER_COLORS.map(function (c, ti) { return '<span style="display:inline-flex;align-items:center;gap:3px;margin-left:4px;"><span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:' + c + ';"></span>' + _OSM_TIER_LABELS[ti] + '</span>'; }).join('')
+              ? '<span style="color:' + _OSM_TIER_COLORS[_osmOverTier(maxOver)] + ';font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + nrDe(over, 'punct', 'puncte') + ' peste limita reală</span> · max +' + Math.round(maxOver) + ' km/h · ' + _OSM_TIER_COLORS.map(function (c, ti) { return '<span style="display:inline-flex;align-items:center;gap:3px;margin-left:4px;"><span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:' + c + ';"></span>' + _OSM_TIER_LABELS[ti] + '</span>'; }).join('')
               : '<span style="color:#3FE07D;"><i class="fas fa-check"></i> Fără depășiri vs. limita reală a drumului</span>');
           sumEl.innerHTML = msg + ' · <span style="color:var(--text-muted);font-size:11px;">' + (j.attribution || '© OpenStreetMap contributors') + '</span>';
           sumEl.style.display = 'block';
@@ -20073,7 +20075,7 @@ const pozitii = await r.json();</code></pre>
       var _fmt = function (d) { return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }); };
       var el = document.getElementById('route-active-pill'), lbl = document.getElementById('route-pill-label');
       if (!el || !lbl) return;
-      lbl.textContent = list.length + ' vehicule · ' + _fmt(new Date(hpRange.from)) + ' – ' + _fmt(new Date(hpRange.to));
+      lbl.textContent = nrDe(list.length, 'vehicul', 'vehicule') + ' · ' + _fmt(new Date(hpRange.from)) + ' – ' + _fmt(new Date(hpRange.to));
       el.style.display = 'flex';
     }
 
@@ -20104,7 +20106,7 @@ const pozitii = await r.json();</code></pre>
           + '<span class="km">' + _km(st) + '</span></label>');
       });
       if (n > 1) {
-        out.push('<div class="hp-step2-tot"><span>Total ' + n + ' vehicule încărcate</span><b>'
+        out.push('<div class="hp-step2-tot"><span>Total ' + nrDe(n, 'vehicul', 'vehicule') + ' încărcate</span><b>'
           + String(Math.round(total)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' km</b></div>');
       }
       // Indicația apare cât timp nu e bifată exact una — adică fix atunci când n-ai detalii pe ecran.
@@ -20179,7 +20181,7 @@ const pozitii = await r.json();</code></pre>
         if (summary && summary.overspeedCount > 0) {
           var dur = summary.overspeedDurationSec || 0;
           var durStr = dur < 60 ? dur + ' s' : Math.floor(dur / 60) + ' min ' + (dur % 60) + ' s';
-          sumEl.innerHTML = '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + summary.overspeedCount + ' depășiri</span> · max +' + summary.maxOverKmh + ' km/h · durată ' + durStr + (st.speedLimit ? ' · limită ' + st.speedLimit + ' km/h' : '');
+          sumEl.innerHTML = '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> ' + nrDe(summary.overspeedCount, 'depășire', 'depășiri') + '</span> · max +' + summary.maxOverKmh + ' km/h · durată ' + durStr + (st.speedLimit ? ' · limită ' + st.speedLimit + ' km/h' : '');
         } else if (st.speedLimit) {
           sumEl.innerHTML = '<span style="color:#3FE07D;"><i class="fas fa-check"></i> Fără depășiri (limită ' + st.speedLimit + ' km/h)</span>';
         } else {
@@ -21136,7 +21138,7 @@ const pozitii = await r.json();</code></pre>
           if (mers && nFisa && imeiT) scris = await _salveazaFisaDinAct(imeiT, _fisaPatch);
           if (mers && window.raxToast) raxToast(
             'Act salvat'
-            + (scris ? ' · am completat și fișa mașinii (' + scris + (scris === 1 ? ' câmp)' : ' câmpuri)') : '')
+            + (scris ? ' · am completat și fișa mașinii (' + nrDe(scris, 'câmp)', 'câmpuri)') : '')
             + (!scris && inFisa ? ' · ' + inFisa + ' câmpuri completate în fișă — apasă „Salvează” pentru ele' : ''),
             'success');
         }).catch(() => {});
@@ -21199,7 +21201,7 @@ const pozitii = await r.json();</code></pre>
               + '<div class="mnt-ghead" onclick="vehDocHistToggle()" title="' + (_vehDocHistOpen ? 'Ascunde' : 'Arată') + ' actele înlocuite">'
               + '<i class="fas fa-chevron-right mnt-caret"></i>'
               + '<div><div class="mnt-gp" style="font-size:13px;">Acte înlocuite</div></div>'
-              + '<span class="mnt-gn">' + hist.length + (hist.length === 1 ? ' act' : ' acte') + '</span></div>'
+              + '<span class="mnt-gn">' + nrDe(hist.length, 'act', 'acte') + '</span></div>'
               + (_vehDocHistOpen ? '<div class="mnt-gbody">' + hist.map(docHistCard).join('') + '</div>' : '')
             + '</div>'
             : '');
@@ -22414,8 +22416,8 @@ const pozitii = await r.json();</code></pre>
             return '<button class="fd-rand ' + ton + '" onclick="showView(\'agenti\')" title="Deschide Agenți AI">'
               + '<i class="fas ' + (m.icon || 'fa-robot') + '"></i>'
               + '<span class="t"><b>' + x(m.name || k) + '</b><small>'
-              + g.n + (g.n === 1 ? ' constatare' : ' constatări')
-              + (g.vehicule.length ? ' · ' + g.vehicule.length + (g.vehicule.length === 1 ? ' vehicul' : ' vehicule') : ' · pe toată flota')
+              + nrDe(g.n, 'constatare', 'constatări')
+              + (g.vehicule.length ? ' · ' + nrDe(g.vehicule.length, 'vehicul', 'vehicule') : ' · pe toată flota')
               + '</small></span><i class="fas fa-chevron-right sag"></i></button>';
           }).join('');
         // ─── sfârșit „Constatările, strânse pe categorii” ──
@@ -23936,7 +23938,7 @@ const pozitii = await r.json();</code></pre>
       var wr = (h.workers || []).map(function (w) {
         var when = w.lastAt ? new Date(w.lastAt).toLocaleString('ro-RO') : 'încă n-a rulat';
         var dur = (w.lastMs != null) ? (' · ' + (w.lastMs > 1000 ? Math.round(w.lastMs / 100) / 10 + 's' : w.lastMs + 'ms')) : '';
-        var sk = w.skipped ? ' · <span style="color:#f59e0b">' + w.skipped + ' ture sărite (rulare încă în curs)</span>' : '';
+        var sk = w.skipped ? ' · <span style="color:#f59e0b">' + nrDe(w.skipped, 'tură', 'ture') + ' sărite (rulare încă în curs)</span>' : '';
         var er = w.lastError ? ' · <span style="color:#ef4444">' + esc(w.lastError) + '</span>' : '';
         return '<div class="hcheck"><span class="hd" style="background:' + (w.lastError ? '#ef4444' : (w.running ? '#f59e0b' : 'var(--accent)')) + '"></span>'
           + '<div style="min-width:0;flex:1;"><div class="hl">' + esc(w.label) + (w.running ? ' <span style="color:#f59e0b;font-weight:600;">(rulează acum)</span>' : '') + '</div>'
@@ -24082,7 +24084,7 @@ const pozitii = await r.json();</code></pre>
         var rows = await fetch('/api/admin/errors?limit=50', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
         if (!Array.isArray(rows) || !rows.length) { box.innerHTML = '<div class="rax-co-meta">🟢 Niciun eveniment de eroare înregistrat.</div>'; return; }
         var col = { critical: '#dc2626', error: '#ea580c', warn: '#d97706' };
-        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + rows.length + ' evenimente recente (max 50)</div>' + rows.map(function (e) {
+        box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">' + nrDe(rows.length, 'eveniment', 'evenimente') + ' recente (max 50)</div>' + rows.map(function (e) {
           var when = e.created_at ? new Date(e.created_at).toLocaleString('ro-RO') : '';
           var c = col[e.level] || '#6b7280';
           return '<div style="border-left:3px solid ' + c + ';background:var(--bg-dark);border-radius:6px;padding:6px 10px;margin-bottom:5px;">' +
@@ -24597,7 +24599,7 @@ const pozitii = await r.json();</code></pre>
       }
       // Restanță în derulare: se vede numărătoarea inversă până la suspendare, nu doar „activ”.
       if (np && np.faza === 'avertisment') {
-        return '<span class="raco-pill warn">restanță · ' + np.zilePanaLaSuspendare + ' zile</span>' +
+        return '<span class="raco-pill warn">restanță · ' + nrDe(np.zilePanaLaSuspendare, 'zi', 'zile') + '</span>' +
           '<span class="raco-until">factura ' + esc(np.factura.numar || '') + '</span>';
       }
       // Accesul NU mai are o dată „până la” (ceasul vechi, scos pe 28.09): e activ cât nu e nimic restant.
@@ -25051,7 +25053,7 @@ const pozitii = await r.json();</code></pre>
       if (!(c.device_count || 0)) return '<span style="color:var(--text-muted);">fără vehicule</span>';
       if (!c.ultimaActivitate) return '<span style="color:var(--orange);font-weight:700;">niciodată</span>';
       var zile = Math.floor((Date.now() - c.ultimaActivitate) / 86400000);
-      var text = zile <= 0 ? 'azi' : (zile === 1 ? 'ieri' : 'acum ' + zile + ' zile');
+      var text = zile <= 0 ? 'azi' : (zile === 1 ? 'ieri' : 'acum ' + nrDe(zile, 'zi', 'zile'));
       return zile >= CO_ZILE_LINISTE
         ? '<span style="color:var(--orange);font-weight:700;" title="' + _raxDataOra(c.ultimaActivitate) + '">' + text + '</span>'
         : '<span title="' + _raxDataOra(c.ultimaActivitate) + '">' + text + '</span>';
@@ -25111,7 +25113,7 @@ const pozitii = await r.json();</code></pre>
           '<td class="num" data-et="Lunar">' + _coLunar(c) + '</td>' +
           '<td class="num" data-et="Încasat" title="' + paid.toLocaleString('ro-RO') + ' lei încasați din ' + (c.payment_count || 0) + ' plăți">' +
             (paid ? paid.toLocaleString('ro-RO') + ' lei' : '<span style="color:var(--text-muted);">—</span>') +
-            (c.payment_count ? '<div style="font-size:10px;color:var(--text-muted);font-weight:400;">' + c.payment_count + (c.payment_count === 1 ? ' plată' : ' plăți') + '</div>' : '') + '</td>' +
+            (c.payment_count ? '<div style="font-size:10px;color:var(--text-muted);font-weight:400;">' + nrDe(c.payment_count, 'plată', 'plăți') + '</div>' : '') + '</td>' +
           '<td data-et="Ultima activitate">' + _coActivitate(c) + '</td>' +
           '<td data-et="Acțiuni">' + actions + '</td></tr>';
       }).join('');
@@ -25167,7 +25169,7 @@ const pozitii = await r.json();</code></pre>
       a = a || {};
       var np0 = a.neplata || null;
       var lbl = a.status === 'expired' ? (a.motiv === 'manual' ? 'Oprit de noi' : 'Suspendat — neplată')
-        : (a.status === 'grace' ? ('Restanță — ' + (np0 ? np0.zilePanaLaSuspendare + ' zile până la suspendare' : 'factură neachitată')) : 'Activ');
+        : (a.status === 'grace' ? ('Restanță — ' + (np0 ? nrDe(np0.zilePanaLaSuspendare, 'zi', 'zile') + ' până la suspendare' : 'factură neachitată')) : 'Activ');
       var col = a.status === 'expired' ? 'var(--red)' : (a.status === 'grace' ? 'var(--orange)' : 'var(--accent)');
       var cls = a.status === 'expired' ? 'bad' : (a.status === 'grace' ? 'warn' : 'ok');   // culoarea cu pereche pe tema deschisă
       return [lbl, col, cls];
@@ -25208,7 +25210,7 @@ const pozitii = await r.json();</code></pre>
       var urm = deschise.map(function (f) { return dt(f.due_date); }).filter(Boolean).sort(function (x, y) { return x - y; })[0];
       var pl = (d.payments || []).slice().sort(function (x, y) { return (dt(y.paid_at || y.created_at) || 0) - (dt(x.paid_at || x.created_at) || 0); })[0];
       var n = deschise.length;
-      var fD = (n ? lei(sumaD) + (trecute ? ' · ' + trecute + (trecute === 1 ? ' trecută' : ' trecute') + ' de scadență' : (urm ? ' · scadență: ' + zi(urm.getTime()) : '')) + ' · ' : '') +
+      var fD = (n ? lei(sumaD) + (trecute ? ' · ' + nrDe(trecute, 'trecută', 'trecute') + ' de scadență' : (urm ? ' · scadență: ' + zi(urm.getTime()) : '')) + ' · ' : '') +
         (pl ? 'ultima plată: ' + lei(pl.amount_ron) + ', pe ' + zi(pl.paid_at || pl.created_at) : 'nicio plată încă');
       out.push({ k: 'Facturi și plăți', v: n ? (n === 1 ? '1 document de plată' : n + de(n) + 'documente de plată') : 'Totul e plătit',
         d: fD.charAt(0).toUpperCase() + fD.slice(1), ton: trecute ? 'warn' : (n ? '' : 'ok'), fila: 'facturi' });
@@ -25222,7 +25224,7 @@ const pozitii = await r.json();</code></pre>
       out.push({ k: 'Aparatele', fila: 'vehicule',
         v: veh.length ? veh.length + (veh.length === 1 ? ' aparat' : de(veh.length) + 'aparate') + ' · ' + nr.ok + ' comunică' : 'Niciun aparat',
         d: probl.length ? probl.slice(0, 3).join('; ') + (probl.length > 3 ? ' · și încă ' + (probl.length - 3) : '')
-          : (veh.length ? (nr.tacut ? nr.tacut + (nr.tacut === 1 ? ' tăcut' : ' tăcute') + ' de câteva ore; restul comunică.' : 'Toate comunică.') : 'Aparatele le dăm firmei din „Dispozitive”.'),
+          : (veh.length ? (nr.tacut ? nrDe(nr.tacut, 'tăcut', 'tăcute') + ' de câteva ore; restul comunică.' : 'Toate comunică.') : 'Aparatele le dăm firmei din „Dispozitive”.'),
         ton: probl.length ? 'bad' : (nr.tacut ? 'warn' : (veh.length ? 'ok' : '')) });
       // 5. RA Insight (doar numere — nu cine ce a întrebat)
       var ri = d.insight || null;
@@ -25235,7 +25237,7 @@ const pozitii = await r.json();</code></pre>
       var f = d.features || {};
       var pornite = (dep.module || []).filter(function (m) { return f[m.k]; }).map(function (m) { return m.et; });
       out.push({ k: 'Modulele', fila: 'acces', ton: '', d: pornite.join(', '),
-        v: pornite.length ? (pornite.length === 1 ? '1 modul pornit' : pornite.length + ' module pornite') : 'Niciun modul pornit' });
+        v: pornite.length ? (pornite.length === 1 ? '1 modul pornit' : nrDe(pornite.length, 'modul', 'module') + ' pornite') : 'Niciun modul pornit' });
       return out;
     }
     // ── sfârșit „fila Stare” ──
@@ -25273,7 +25275,7 @@ const pozitii = await r.json();</code></pre>
           '<div class="rax-cod-sect"><h4>Identificare</h4>' + kv('Nume', c.name) + kv('CUI / CIF', c.cui) + kv('Nr. Reg. Com.', c.reg_com) + kv('Adresă', c.address) +
             '<div class="rax-kv"><span class="k">Acces</span><span class="v" style="color:' + accColor + ';font-weight:700">' + esc(accLbl) + '</span></div></div>' +
           '<div class="rax-cod-sect"><h4>Bancă &amp; contact</h4>' + kv('IBAN', c.iban) + kv('Bancă', c.bank_name) + kv('Email', c.contact_email) + kv('Telefon', c.phone) +
-            '<div class="rax-kv"><span class="k">Vehicule</span><span class="v">' + nrVeh + (nrVeh === 1 ? ' vehicul' : ' vehicule') + '</span></div></div>' +
+            '<div class="rax-kv"><span class="k">Vehicule</span><span class="v">' + nrDe(nrVeh, 'vehicul', 'vehicule') + '</span></div></div>' +
         '</div>' +
         '<div class="rax-cod-sect"><h4>Persoane de contact</h4>' + contactsHtml + '</div>' +
         '<div class="rax-cod-actiuni"><button class="rax-btn" onclick="raxEditCompany(' + c.id + ')"><i class="fas fa-pen"></i> Editează datele companiei</button>' +
@@ -25295,7 +25297,7 @@ const pozitii = await r.json();</code></pre>
       if (activi.length) {
         return '<div class="raco-admini">' +
           '<div class="raco-admini-h"><i class="fas fa-user-shield"></i> Administratorii firmei' +
-            '<span class="raco-admini-n">' + activi.length + (activi.length === 1 ? ' activ' : ' activi') + '</span></div>' +
+            '<span class="raco-admini-n">' + nrDe(activi.length, 'activ', 'activi') + '</span></div>' +
           '<div class="raco-admini-lista">' + activi.map(function (u) {
             return '<span class="raco-admini-om">' + esc(u.full_name || u.username) + '</span>';
           }).join('') + '</div>' +
@@ -25468,8 +25470,8 @@ const pozitii = await r.json();</code></pre>
         text += ' Clientul nu poate intra deloc. Aparatele transmit mai departe, datele nu se pierd.';
       } else if (np && np.faza === 'avertisment') {
         fel = 'warn';
-        titlu = 'Factură restantă — ' + np.zilePanaLaSuspendare + ' zile până la suspendare';
-        text = 'Factura ' + esc((np.factura || {}).numar || '') + ' a fost scadentă acum ' + np.zile + ' zile. Suspendarea vine singură dacă nu se plătește.';
+        titlu = 'Factură restantă — ' + nrDe(np.zilePanaLaSuspendare, 'zi', 'zile') + ' până la suspendare';
+        text = 'Factura ' + esc((np.factura || {}).numar || '') + ' a fost scadentă acum ' + nrDe(np.zile, 'zi', 'zile') + '. Suspendarea vine singură dacă nu se plătește.';
       } else {
         fel = ACC_FEL[a.status] || '';
         titlu = 'Acces în regulă';
@@ -25571,12 +25573,12 @@ const pozitii = await r.json();</code></pre>
       return '<div class="rax-abo-sect"><h4>Păstrarea istoricului</h4>' +
         '<div class="rax-abo-grid">' +
           '<div class="rax-abo-f"><label>Cât se păstrează</label><select id="rax-past-luni" class="rax-field" style="margin:0;" onchange="raxPastAlege()">' +
-            opt(String(inc), inc + ' luni (incluse)') + opt('24', '24 de luni') + opt('36', '36 de luni') + opt('alt', 'Alt număr de luni…') +
+            opt(String(inc), nrDe(inc, 'lună', 'luni') + ' (incluse)') + opt('24', '24 de luni') + opt('36', '36 de luni') + opt('alt', 'Alt număr de luni…') +
           '</select></div>' +
           '<div class="rax-abo-f" id="rax-past-alt-wrap"' + (custom ? '' : ' style="display:none;"') + '><label>Luni</label><input type="number" id="rax-past-alt" min="' + (inc + 1) + '" max="' + R.max + '" step="1" value="' + (custom ? P.luni : '') + '" placeholder="ex. 48"></div>' +
           '<div class="rax-abo-f" id="rax-past-pret-wrap"' + (P.platita ? '' : ' style="display:none;"') + '><label>Preț (lei/lună, pe firmă)</label><input type="number" id="rax-past-pret" min="0" step="0.01" value="' + (P.platita ? P.pretRON : '') + '" placeholder="ex. 50"></div>' +
         '</div>' +
-        '<div class="hint" style="margin:8px 0;">' + inc + ' luni sunt incluse pentru toți. Mai mult se plătește lunar și apare pe factură. Aplicația șterge singură tot ce e mai vechi decât scrie aici, la câteva ore.</div>' +
+        '<div class="hint" style="margin:8px 0;">' + nrDe(inc, 'lună', 'luni') + ' sunt incluse pentru toți. Mai mult se plătește lunar și apare pe factură. Aplicația șterge singură tot ce e mai vechi decât scrie aici, la câteva ore.</div>' +
         '<button class="rax-btn primary" onclick="raxSavePastrare(this)"><i class="fas fa-floppy-disk"></i> Salvează</button></div>';
     }
     // ── Chiria echipamentelor (25.09) ────────────────────────────────────────────────────────────
@@ -25623,7 +25625,7 @@ const pozitii = await r.json();</code></pre>
         _raxAbo.pastrare = j.pastrare || _raxAbo.pastrare;
         toast(j.pastrare && j.pastrare.platita
           ? ('Salvat: istoricul se păstrează ' + j.pastrare.luni + _raxDe(j.pastrare.luni) + 'luni, ' + j.pastrare.pretRON + ' lei/lună ✓')
-          : ('Salvat: cele ' + R.incluse + ' luni incluse ✓'), 'success');
+          : ('Salvat: cele ' + nrDe(R.incluse, 'lună', 'luni') + ' incluse ✓'), 'success');
         raxOpenCompanyDetail(_raxAbo.id, 'abonament');
       } catch (e) { toast('Eroare: ' + e.message, 'error'); if (btn) btn.disabled = false; }
     };
@@ -25652,7 +25654,7 @@ const pozitii = await r.json();</code></pre>
         else if (pr.model === 'direct') {
           rows += ln('Fără CAN · ' + pr.n.none + ' veh.', pr.none);
           if (pr.can) rows += ln('Cu CAN · ' + pr.n.can + ' veh.', pr.can);
-        } else { rows += ln('Preset · ' + pr.n.total + ' vehicule', pr.none); }
+        } else { rows += ln('Preset · ' + nrDe(pr.n.total, 'vehicul', 'vehicule'), pr.none); }
         // Pachetul RA Insight (14.10): rândul lui, ca pe factură (numele vine de la server).
         if (pr.pachet) rows += ln('+ ' + esc(_raxAbo.pachetEt || 'RA Insight'), pr.pachet);
         // Păstrarea istoricului peste cele incluse se facturează lunar, pe firmă — deci intră în estimare.
@@ -25713,10 +25715,10 @@ const pozitii = await r.json();</code></pre>
       var fara = _raxCtre.fara, inc = _raxCtre.incheiate;
       if (fara.length || inc.length) {
         h += '<div class="raco-dosbox bad" style="margin-bottom:14px;">' +
-          (fara.length ? '<strong>' + fara.length + (fara.length === 1 ? ' firmă fără niciun contract' : ' firme fără niciun contract') + '</strong>' +
+          (fara.length ? '<strong>' + nrDe(fara.length, 'firmă fără niciun contract', 'firme fără niciun contract') + '</strong>' +
             '<div>' + fara.slice(0, 8).map(link).join(' · ') + (fara.length > 8 ? ' și încă ' + (fara.length - 8) : '') + '</div>' : '') +
-          (inc.length ? '<strong' + (fara.length ? ' style="display:block;margin-top:8px;"' : '') + '>' + inc.length +
-            (inc.length === 1 ? ' firmă are contractul încheiat, dar intră în continuare în aplicație' : ' firme au contractul încheiat, dar intră în continuare în aplicație') + '</strong>' +
+          (inc.length ? '<strong' + (fara.length ? ' style="display:block;margin-top:8px;"' : '') + '>' +
+            nrDe(inc.length, 'firmă are contractul încheiat, dar intră în continuare în aplicație', 'firme au contractul încheiat, dar intră în continuare în aplicație') + '</strong>' +
             '<div>' + inc.slice(0, 8).map(link).join(' · ') + (inc.length > 8 ? ' și încă ' + (inc.length - 8) : '') +
             ' — fă-le contract nou sau oprește-le accesul din „Abonament & plăți”.</div>' : '') +
         '</div>';
@@ -27406,7 +27408,7 @@ const pozitii = await r.json();</code></pre>
             kv('Durata', c.months ? esc(c.months + _raxDe(Number(c.months)) + 'luni') : 'nedeterminată') +
             kv('La termen', c.auto_renew === false ? 'se oprește' : 'se reînnoiește singur') + '</div>' +
           '<div class="rax-cod-sect"><h4>Cine a semnat</h4>' +
-            kv('Preaviz', esc((c.notice_days == null ? 30 : c.notice_days) + ' zile')) +
+            kv('Preaviz', esc(nrDe((c.notice_days == null ? 30 : c.notice_days), 'zi', 'zile'))) +
             kv('Pentru client', rep(c.client_rep)) + kv('Pentru noi', rep(c.our_rep)) +
             kv('Acord GDPR', (c.gdpr || {}).kind === 'separat' ? 'act separat' : 'anexă la contract') + '</div>' +
         '</div>' +
@@ -27648,7 +27650,7 @@ const pozitii = await r.json();</code></pre>
               '<span class="raco-row-s">de la ' + _zile(a.start_at) + (a.signed_at ? ' · semnat ' + _zile(a.signed_at) : '') +
               (a.annex && (a.annex.vehicles || []).length ? ' · anexă nouă de aparate' : '') +
               (a.montaj && (a.montaj.items || []).length ? ' · montaj' : '') +
-              (a.luni_noi ? ' · prelungire ' + a.luni_noi + ' luni' : '') +
+              (a.luni_noi ? ' · prelungire ' + nrDe(a.luni_noi, 'lună', 'luni') : '') +
               (a.has_file ? ' · act semnat atașat' : '') + '</span></span>' +
               '<span class="raco-pill ' + fel + '">' + esc(st) + '</span>' +
               (ACT_PAS[a.status] ? '<button class="rax-btn primary" onclick="raxActTreci(' + a.id + ', \'' + ACT_PAS[a.status][0] + '\')"><i class="fas fa-arrow-right"></i> ' + ACT_PAS[a.status][1] + '</button>' : '') +
@@ -28121,7 +28123,7 @@ const pozitii = await r.json();</code></pre>
         var j = await fetch('/api/contracts/' + _raxCtr.contract.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
           body: JSON.stringify({ annex: { vehicles: lista, currency: 'RON' } }) }).then(function (r) { return r.json(); });
         if (j.error) { (window.raxToast || alert)(j.error, 'error'); return; }
-        (window.raxToast || function () {})('Anexă salvată ✓ (' + lista.length + ' aparate)', 'success');
+        (window.raxToast || function () {})('Anexă salvată ✓ (' + nrDe(lista.length, 'aparat', 'aparate') + ')', 'success');
         raxOpenCompanyDetail(_raxCtr.id, 'contract');
       } catch (e) { (window.raxToast || alert)('Eroare: ' + e.message, 'error'); }
     };
@@ -28201,7 +28203,7 @@ const pozitii = await r.json();</code></pre>
         if (d.error) { document.getElementById('rax-cod-body').innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red)">' + esc(d.error) + '</div>'; return; }
         window._raxCod = d; window._raxCodVechi = false;   // date proaspete
         document.getElementById('rax-cod-title').innerHTML = '<i class="fas fa-building" style="color:var(--accent)"></i> ' + esc(d.company.name) +
-          ' <span style="font-size:12px;font-weight:400;color:var(--text-muted)">· ' + (d.counts.vehicles || 0) + ' vehicule · ' + (d.counts.users || 0) + ' utilizatori</span>';
+          ' <span style="font-size:12px;font-weight:400;color:var(--text-muted)">· ' + nrDe((d.counts.vehicles || 0), 'vehicul', 'vehicule') + ' · ' + nrDe((d.counts.users || 0), 'utilizator', 'utilizatori') + '</span>';
         raxCodTab(tab || 'stare');
       } catch (e) { var b = document.getElementById('rax-cod-body'); if (b) b.innerHTML = '<div class="rax-co-meta" style="padding:20px;color:var(--red)">Eroare: ' + esc(e.message) + '</div>'; }
     };
@@ -28253,7 +28255,7 @@ const pozitii = await r.json();</code></pre>
       var stare = function (a) {
         var np = a.neplata || null;
         if (a.status === 'expired') return [a.motiv === 'manual' ? '🚫 Oprit de noi' : '🚫 Suspendat — neplată', 'var(--red)'];
-        if (a.status === 'grace') return ['⚠ Restanță · ' + (np ? np.zilePanaLaSuspendare + ' zile până la suspendare' : 'factură neachitată'), '#f59e0b'];
+        if (a.status === 'grace') return ['⚠ Restanță · ' + (np ? nrDe(np.zilePanaLaSuspendare, 'zi', 'zile') + ' până la suspendare' : 'factură neachitată'), '#f59e0b'];
         return ['● La zi', 'var(--accent)'];
       };
       var restanta = function (a) {
@@ -28470,7 +28472,7 @@ const pozitii = await r.json();</code></pre>
         kpi((t.marginPct != null ? t.marginPct : 0) + '%', 'Marjă', 'profit / venit', profitColor) +
         kpi(fmt(f.recurringMonthlyRON) + ' lei', 'Burn recurent', '≈RON / lună', '#f59e0b');
       function pbtn(m, lbl) { return '<button class="rax-btn' + (curM === m ? ' primary' : '') + '" style="padding:4px 12px;font-size:12px;" onclick="raxSetFinMonths(' + m + ')">' + lbl + '</button>'; }
-      var periodHtml = '<div style="display:flex;gap:6px;align-items:center;margin:10px 0;"><span style="font-size:11.5px;color:var(--text-muted);margin-right:4px;">Perioadă:</span>' + pbtn(6, '6 luni') + pbtn(12, '12 luni') + pbtn(24, '24 luni') + '</div>';
+      var periodHtml = '<div style="display:flex;gap:6px;align-items:center;margin:10px 0;"><span style="font-size:11.5px;color:var(--text-muted);margin-right:4px;">Perioadă:</span>' + pbtn(6, '6 luni') + pbtn(12, '12 luni') + pbtn(24, '24 de luni') + '</div>';
       var maxBar = 0; months.forEach(function (m) { maxBar = Math.max(maxBar, m.income, m.expenses); }); if (maxBar <= 0) maxBar = 1;
       var rowsHtml = months.map(function (m) {
         var iw = m.income > 0 ? Math.max(2, Math.round(m.income / maxBar * 100)) : 0;
@@ -28719,7 +28721,7 @@ const pozitii = await r.json();</code></pre>
       var grid = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;">' +
         stat(_fmtNum(d.activeUsers), 'Utilizatori activi') + stat(_fmtNum(d.newUsers), 'Utilizatori noi') +
         stat(_fmtNum(d.sessions), 'Sesiuni') + stat(_fmtNum(d.pageViews), 'Afișări pagini') + '</div>';
-      var pages = (d.topPages && d.topPages.length) ? '<h4 style="font-size:12.5px;font-weight:700;margin:6px 0 8px;"><i class="fas fa-file-lines" style="color:var(--accent);margin-right:6px;"></i>Top pagini (30 zile)</h4>' +
+      var pages = (d.topPages && d.topPages.length) ? '<h4 style="font-size:12.5px;font-weight:700;margin:6px 0 8px;"><i class="fas fa-file-lines" style="color:var(--accent);margin-right:6px;"></i>Top pagini (30 de zile)</h4>' +
         '<div style="overflow-x:auto;"><table class="rax-co-table"><thead><tr><th>Pagină</th><th class="num">Afișări</th></tr></thead><tbody>' +
         d.topPages.map(function (p) { return '<tr><td class="mono" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.path) + '</td><td class="num">' + _fmtNum(p.views) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '';
       body.innerHTML = head + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Ultimele 30 de zile</div>' + grid + pages;
@@ -28741,7 +28743,7 @@ const pozitii = await r.json();</code></pre>
       var grid = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;">' +
         stat(_fmtNum(d.clicks), 'Clicuri') + stat(_fmtNum(d.impressions), 'Afișări') +
         stat(ctr, 'CTR mediu') + stat(Number(d.position || 0).toFixed(1), 'Poziție medie') + '</div>';
-      var q = (d.topQueries && d.topQueries.length) ? '<h4 style="font-size:12.5px;font-weight:700;margin:6px 0 8px;"><i class="fas fa-magnifying-glass" style="color:var(--accent);margin-right:6px;"></i>Top căutări (30 zile)</h4>' +
+      var q = (d.topQueries && d.topQueries.length) ? '<h4 style="font-size:12.5px;font-weight:700;margin:6px 0 8px;"><i class="fas fa-magnifying-glass" style="color:var(--accent);margin-right:6px;"></i>Top căutări (30 de zile)</h4>' +
         '<div style="overflow-x:auto;"><table class="rax-co-table"><thead><tr><th>Căutare</th><th class="num">Clicuri</th><th class="num">Afișări</th></tr></thead><tbody>' +
         d.topQueries.map(function (x) { return '<tr><td>' + esc(x.query) + '</td><td class="num">' + _fmtNum(x.clicks) + '</td><td class="num">' + _fmtNum(x.impressions) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '';
       body.innerHTML = head + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">' + (d.start && d.end ? (esc(d.start) + ' → ' + esc(d.end)) : 'Ultimele 30 de zile') + '</div>' + grid + q;
@@ -28817,7 +28819,7 @@ const pozitii = await r.json();</code></pre>
       var httpsPct = t.requests ? Math.round((t.encrypted || 0) / t.requests * 100) : 0;
       function tile(label, val, sub) { return '<div style="background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><div style="font-size:19px;font-weight:800;color:var(--text-primary);">' + val + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + label + (sub ? ' <span style="opacity:.7;">' + sub + '</span>' : '') + '</div></div>'; }
       body.innerHTML = head +
-        '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Ultimele ' + (d.days || 30) + ' zile (' + esc(d.start || '') + ' → ' + esc(d.end || '') + ')</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Ultimele ' + nrDe((d.days || 30), 'zi', 'zile') + ' (' + esc(d.start || '') + ' → ' + esc(d.end || '') + ')</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
           tile('Cereri servite', _fmtNum(t.requests)) +
           tile('Trafic total', _fmtBytes(t.bytes)) +
@@ -29049,7 +29051,7 @@ const pozitii = await r.json();</code></pre>
             ? 'Un singur aparat și mai ieftin, dar merge pe mai puține modele: verifică modelul mașinii în lista Teltonika înainte de ofertă.'
             : 'Merge pe cele mai multe modele, iar modulul ține magistrala mașinii separată de aparat. Mai ieftin: FMC150, dacă modelul e pe lista lui.'))
         + ' Mașini în garanție: citire fără tăiat fire (cititorul ECAN02) — încă nu are rând de preț; îl treci la pasul 6, „Observații”.</li>');
-      if (R.nFms) L.push('<li><b>' + R.nFms + ' camioane cu FMS → FMC650.</b> Citește direct din priza de camion consumul, kilometrajul, orele de motor. '
+      if (R.nFms) L.push('<li><b>' + nrDe(R.nFms, 'camion', 'camioane') + ' cu FMS → FMC650.</b> Citește direct din priza de camion consumul, kilometrajul, orele de motor. '
         + 'Propune și <b>Modulul Tahograf</b> (pasul 3): legea cere descărcarea cardului șoferului la 28 de zile și a tahografului la 90, altfel amendă. '
         + 'Dacă face transport internațional sau mărfuri cu risc fiscal: <b>e-Transport</b>.</li>');
       el.innerHTML = L.length ? '<span class="tag"><i class="fas fa-lightbulb"></i> Ce recomanzi' + (R.dinMasini ? ', din lista mașinilor' : '') + ' · doar pentru tine, nu apare în ofertă</span><ul>' + L.join('') + '</ul>' : '';
@@ -29659,7 +29661,7 @@ const pozitii = await r.json();</code></pre>
         var n = document.getElementById('of-pkn-' + m.cod); if (n) n.textContent = m.nume + (ales ? ' ✓' : '');
         var l = document.getElementById('of-pkl-' + m.cod);
         if (l) { l.textContent = !k ? 'inclus' : (Number(pr[k]) || 0).toLocaleString('ro-RO') + ' lei'; l.style.display = ales && k ? 'none' : ''; }
-        var a = document.getElementById('of-pkm1-' + m.cod); if (a) a.textContent = !m.ai ? 'doar adminul' : (m.conturi == null ? 'conturi nelimitate' : m.conturi + ' conturi');
+        var a = document.getElementById('of-pkm1-' + m.cod); if (a) a.textContent = !m.ai ? 'doar adminul' : (m.conturi == null ? 'conturi nelimitate' : nrDe(m.conturi, 'cont', 'conturi'));
         var b = document.getElementById('of-pkm2-' + m.cod); if (b) b.textContent = _ofPkNr(m.intrebari) + (m.ai ? 'întrebări' : 'răspunsuri pe butoane');
         var slot = document.getElementById('of-pks-' + m.cod);
         if (ales && k && slot && w && w.parentNode !== slot && slot.appendChild) slot.appendChild(w);
@@ -30087,7 +30089,7 @@ const pozitii = await r.json();</code></pre>
           '<div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:13px;color:var(--text-muted);">Total lunar</span><span style="font-size:26px;font-weight:800;color:var(--accent);">' + r.monthly.toFixed(0) + ' lei</span></div>' +
           '<div style="display:flex;justify-content:flex-end;font-size:13px;color:var(--text-muted);margin-top:-2px;">≈ <b style="color:var(--text-secondary);margin-left:4px;">' + _lei2eur(r.monthly).toFixed(2) + ' €</b>/lună</div>' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:4px;"><span>Anual (×12)</span><b>' + _fmtLei(r.annual) + '</b></div>' +
-          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + r.cfg.contractMonths + ' luni</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);"><span>Contract ' + nrDe(r.cfg.contractMonths, 'lună', 'luni') + '</span><b>' + _fmtLei(r.contractTotal) + '</b></div>' +
         '</div>' + montajBlock + hwBlock + _ofBlocPlata(r) + _ofBlocProfit(r)
         // Cursul: scris românește (5,2100, nu 5.2100) ȘI cinstit despre unde vine. Rândul de dinainte
         // NU se mai termină cu „+”: era unul aici și unul la începutul bucății ăsteia, deci `a + +(…)`
@@ -30319,7 +30321,7 @@ const pozitii = await r.json();</code></pre>
       if (r.pachet && !r.pachet.ai) {
         l.push('Pachet <b>Start</b>, inclus: <b>' + window._raxNrI(r.fond).replace('întrebări', 'răspunsuri') + '</b> pe butoane pe lună, doar administratorul. Fără AI — nu ne costă tokeni.');
       } else if (r.pachet) {
-        l.push('Pachet <b>' + esc(r.pachet.nume) + '</b>: <b>' + window._raxNrI(r.fond) + '</b> pe lună, pentru toată firma (' + r.conturi + ' ' + (r.conturi === 1 ? 'cont dat' : 'conturi date') + ').');
+        l.push('Pachet <b>' + esc(r.pachet.nume) + '</b>: <b>' + window._raxNrI(r.fond) + '</b> pe lună, pentru toată firma (' + nrDe(r.conturi, 'cont dat', 'conturi date') + ').');
         l.push('Prețul pachetului: ' + _aiuLei(r.venitLei) + ' pe lună, fix pe firmă. Plasa: RA Insight trece pe butoane când costul real ajunge la 80% din preț.');
       } else {
         l.push('Firma nu are RA Insight.');
@@ -30343,11 +30345,11 @@ const pozitii = await r.json();</code></pre>
     // Ce trebuie văzut, nu căutat.
     function _aiuSemnale(r) {
       var s = [];
-      if (r.folosFaraCont) s.push({ c: 'var(--red)', t: r.folosFaraCont + (r.folosFaraCont === 1 ? ' om a întrebat fără să aibă cont' : ' oameni au întrebat fără să aibă cont') + ' — ar trebui să fie imposibil, verifică.' });
+      if (r.folosFaraCont) s.push({ c: 'var(--red)', t: nrDe(r.folosFaraCont, 'om a întrebat fără să aibă cont', 'oameni au întrebat fără să aibă cont') + ' — ar trebui să fie imposibil, verifică.' });
       if (r.epuizat) s.push({ c: 'var(--red)', t: 'Întrebările lunii s-au terminat: până pe 1, doar răspunsuri pe butoane.' });
       else if (r.pct != null && r.pct >= 80) s.push({ c: 'var(--orange)', t: 'A consumat ' + r.pct + '% din fond — mai are ' + window._raxNrI(r.ramase) + '.' });
-      if (r.contFaraFolos) s.push({ c: 'var(--orange)', t: r.contFaraFolos + (r.contFaraFolos === 1 ? ' cont dat, nefolosit' : ' conturi date, nefolosite') + ' luna asta — merită un telefon.' });
-      if (r.contPeInactiv) s.push({ c: 'var(--text-muted)', t: r.contPeInactiv + (r.contPeInactiv === 1 ? ' cont e pe un om dezactivat' : ' conturi sunt pe oameni dezactivați') + ' — nu ocupă loc în pachet.' });
+      if (r.contFaraFolos) s.push({ c: 'var(--orange)', t: nrDe(r.contFaraFolos, 'cont dat, nefolosit', 'conturi date, nefolosite') + ' luna asta — merită un telefon.' });
+      if (r.contPeInactiv) s.push({ c: 'var(--text-muted)', t: nrDe(r.contPeInactiv, 'cont e pe un om dezactivat', 'conturi sunt pe oameni dezactivați') + ' — nu ocupă loc în pachet.' });
       if (!s.length) return '';
       return s.map(function (x) { return '<div style="color:' + x.c + ';margin-top:5px;"><i class="fas fa-circle-info" style="margin-right:5px;opacity:.8;"></i>' + x.t + '</div>'; }).join('');
     }
@@ -30414,10 +30416,10 @@ const pozitii = await r.json();</code></pre>
         out.push({ ton: 'bad', t: '<b>Nicio firmă nu plătește RA Insight.</b> ' + window._raxNrI(s.totalCalls || 0)
           + ' luna asta ne costă ' + _aiuLei(cost) + ', fără niciun venit. Prețul pachetului se pune pe fiecare firmă, din fila <b>„Acces”</b>.' });
       } else if (cuModul > cuPret) {
-        out.push({ ton: 'warn', t: (cuModul - cuPret) + (cuModul - cuPret === 1 ? ' firmă are un pachet RA Insight cu AI la 0 lei' : ' firme au un pachet RA Insight cu AI la 0 lei')
+        out.push({ ton: 'warn', t: nrDe(cuModul - cuPret, 'firmă are un pachet RA Insight cu AI la 0 lei', 'firme au un pachet RA Insight cu AI la 0 lei')
           + ' — întreabă pe banii noștri. Prețul se pune din fila <b>„Acces”</b> a firmei.' });
       }
-      if (s.epuizate) out.push({ ton: 'bad', t: s.epuizate + (s.epuizate === 1 ? ' firmă și-a terminat' : ' firme și-au terminat')
+      if (s.epuizate) out.push({ ton: 'bad', t: nrDe(s.epuizate, 'firmă și-a terminat', 'firme și-au terminat')
         + ' întrebările lunii — până pe 1 răspund doar pe loc.' });
       if (!out.length) return '';
       return out.map(function (x) {
@@ -30453,7 +30455,7 @@ const pozitii = await r.json();</code></pre>
       var totRamas = tot.facturatLei - tot.costEur * fx;
       var st = _aiuStatistici(luni, fx);
       var neincasatTot = Math.round((tot.facturatLei - tot.incasatLei) * 100) / 100;
-      return '<div class="aiu-grup">Istoric — ultimele ' + luni.length + (luni.length === 1 ? ' lună' : ' luni') + '</div>'
+      return '<div class="aiu-grup">Istoric — ultimele ' + nrDe(luni.length, 'lună', 'luni') + '</div>'
         + '<div class="aiu-kpiuri">'
         + _aiuKpi({ cap: 'Facturat', icon: 'file-invoice', val: _aiuLei(tot.facturatLei),
             sub: 'în toată perioada', jos: 'fără TVA, doar rândurile de RA Insight' })
@@ -30572,7 +30574,7 @@ const pozitii = await r.json();</code></pre>
       (Array.isArray(p.aproape) ? p.aproape : []).forEach(function (x) { l.push({ ton: x.ton === 'bad' ? 'bad' : 'warn', t: esc(x.t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'), b: x.id != null ? deschide(x.id) : '' }); });
       if (Number(p.jos7) > 0) {
         var cine = r.filter(function (x) { return x.jos7 > 0; }).sort(function (a, b) { return b.jos7 - a.jos7; }).slice(0, 4).map(function (x) { return esc(x.name) + ' (' + x.jos7 + ')'; });
-        l.push({ ton: 'warn', t: '<b>' + p.jos7 + (p.jos7 === 1 ? ' răspuns a primit' : ' răspunsuri au primit') + ' 👎</b> în ultimele 7 zile' + (cine.length ? ': ' + cine.join(', ') : '') + '. Textul lor nu-l vedem — e al omului; aflăm doar câte.' });
+        l.push({ ton: 'warn', t: '<b>' + nrDe(p.jos7, 'răspuns a primit', 'răspunsuri au primit') + ' 👎</b> în ultimele 7 zile' + (cine.length ? ': ' + cine.join(', ') : '') + '. Textul lor nu-l vedem — e al omului; aflăm doar câte.' });
       }
       var av = _aiuAvertismente(s || {}, r);
       // Contorul corecturilor (garanția B, 22.10): câte răspunsuri a rescris singură aplicația luna asta și de ce — doar câte.
@@ -30621,7 +30623,7 @@ const pozitii = await r.json();</code></pre>
       }).join('');
       return '<div class="aiu-grup">Firmă cu firmă</div><div class="aiu-tab-w"><table class="aiu-tab"><thead><tr><th>Firma</th><th>Pachet</th><th class="n">Întrebări folosite</th><th class="n">Instant</th><th class="n" title="Întrebări cu căutare pe internet, luna asta · costul lor">Sursă externă</th><th class="n">Ne costă</th><th class="n">Ne rămân</th></tr></thead><tbody>'
         + randuri + '</tbody></table></div>'
-        + (fara.length ? '<div class="rax-co-meta" style="margin-top:6px;">' + fara.length + (fara.length === 1 ? ' firmă fără RA Insight: ' : ' firme fără RA Insight: ') + fara.slice(0, 8).map(function (x) { return esc(x.name); }).join(', ') + (fara.length > 8 ? '…' : '') + '</div>' : '');
+        + (fara.length ? '<div class="rax-co-meta" style="margin-top:6px;">' + nrDe(fara.length, 'firmă fără RA Insight: ', 'firme fără RA Insight: ') + fara.slice(0, 8).map(function (x) { return esc(x.name); }).join(', ') + (fara.length > 8 ? '…' : '') + '</div>' : '');
     }
     // De unde dă firma conturile (rândul de jos din amănunt): din „Pachet și conturi” (din 15.10); pe Start întreabă doar administratorul.
     function _aiuUndeConturi(x) {
@@ -30824,7 +30826,7 @@ const pozitii = await r.json();</code></pre>
       if (!intrebari.length) { alert('Scrie cel puțin o întrebare.'); return; }
       var n = Math.min(intrebari.length, (_pm.meta && _pm.meta.maxIntrebari) || 20);
       var ok = typeof raConfirm === 'function'
-        ? await raConfirm('Pornesc proba: ' + n + (n === 1 ? ' întrebare' : (n % 100 >= 20 || n % 100 === 0 ? ' de întrebări' : ' întrebări')) + ' × ' + modele.length + (modele.length === 1 ? ' model' : ' modele') + ', pe firma „' + (firma.options[firma.selectedIndex] || {}).text + '”. Costul e din contul nostru Anthropic și îl vezi lângă fiecare răspuns.', { okLabel: 'Pornește', danger: false, icon: 'fa-flask', title: 'Proba modelelor' })
+        ? await raConfirm('Pornesc proba: ' + n + (n === 1 ? ' întrebare' : (n % 100 >= 20 || n % 100 === 0 ? ' de întrebări' : ' întrebări')) + ' × ' + nrDe(modele.length, 'model', 'modele') + ', pe firma „' + (firma.options[firma.selectedIndex] || {}).text + '”. Costul e din contul nostru Anthropic și îl vezi lângă fiecare răspuns.', { okLabel: 'Pornește', danger: false, icon: 'fa-flask', title: 'Proba modelelor' })
         : confirm('Pornesc proba?');
       if (!ok) return;
       var r = await fetch('/api/admin/insight/proba-modele', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: firma.value, modele: modele, intrebari: intrebari }) })
@@ -30850,7 +30852,7 @@ const pozitii = await r.json();</code></pre>
       var box = document.getElementById('pm-rez'); if (!box || !p) return;
       var buton = document.getElementById('pm-porneste'); if (buton) buton.disabled = !p.gata;
       var stare = p.gata ? (p.oprita ? 'Oprită' : (p.eroare ? 'Oprită de o eroare: ' + p.eroare : 'Gata')) : 'În lucru';
-      var h = '<div class="pm-stare"><b>' + esc(stare) + '</b> · ' + p.facute + ' din ' + p.total + ' răspunsuri · până acum ' + _pmBani(p.costLei)
+      var h = '<div class="pm-stare"><b>' + esc(stare) + '</b> · ' + p.facute + ' din ' + nrDe(p.total, 'răspuns', 'răspunsuri') + ' · până acum ' + _pmBani(p.costLei)
         + (estimat != null ? ' · estimat la pornire: cam ' + _pmBani(estimat) : '')
         + (p.gata ? '' : ' <button class="rax-btn" style="margin-left:8px;padding:3px 10px;font-size:12px;" onclick="raxProbaModeleOpreste()"><i class="fas fa-stop"></i> Oprește</button>') + '</div>';
       // Sumarul pe model: cât a costat, în cât timp, câte răspunsuri au avut cifre greșite (rescrise sau rămase negăsite).
@@ -30978,7 +30980,7 @@ const pozitii = await r.json();</code></pre>
     window.raxDemoReqApprove = async function (id) {
       // Valoarea selectorului e în ORE (2h … 30 zile) — serverul lucrează tot în ore.
       var sel = $('dq-days-' + id); var hours = sel ? parseInt(sel.value) : 168;
-      var lbl = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : (hours + ' ore');
+      var lbl = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : (nrDe(hours, 'oră', 'ore'));
       if (!await raConfirm('Acorzi acces demo pentru ' + lbl + '?\n\nSe creează un cont pe adresa solicitantului, cu vehiculele demonstrative, și îi trimitem link de setare a parolei — pe email sau, dacă emailul nu poate pleca, ți-l arăt aici, să i-l dai tu.', { okLabel: 'Acordă acces', danger: false })) return;
       try {
         var r = await fetch('/api/admin/demo-requests/' + id + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ hours: hours }) });
@@ -31004,7 +31006,7 @@ const pozitii = await r.json();</code></pre>
     }
     window.raxDemoReqPrelungeste = async function (id) {
       var sel = $('dq-days-' + id); var hours = sel ? parseInt(sel.value) : 168;
-      var lbl = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : (hours + ' ore');
+      var lbl = (sel && sel.options[sel.selectedIndex]) ? sel.options[sel.selectedIndex].text : (nrDe(hours, 'oră', 'ore'));
       if (!await raConfirm('Prelungești contul demo cu ' + lbl + ', de acum?\n\nÎi scriem pe email noua dată. Dacă n-a intrat încă în cont, primește și un link nou de parolă.', { okLabel: 'Prelungește', danger: false })) return;
       try {
         var r = await fetch('/api/admin/demo-requests/' + id + '/prelungeste', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ hours: hours }) });
@@ -31344,7 +31346,7 @@ const pozitii = await r.json();</code></pre>
     // O singură cale pentru acțiuni (rândul, bara, fereastra emailului): serverul le face și scrie textul de după.
     window.raxMailActiune = async function (act, el) {
       if (!el || !el.length) return;
-      if (act === 'definitiv' && !await raConfirm((el.length === 1 ? 'Ștergi definitiv emailul, cu atașamentele lui?' : 'Ștergi definitiv ' + el.length + ' emailuri, cu atașamentele lor?') + ' Nu se mai poate recupera.', { okLabel: 'Șterge definitiv' })) return;
+      if (act === 'definitiv' && !await raConfirm((el.length === 1 ? 'Ștergi definitiv emailul, cu atașamentele lui?' : 'Ștergi definitiv ' + nrDe(el.length, 'email', 'emailuri') + ', cu atașamentele lor?') + ' Nu se mai poate recupera.', { okLabel: 'Șterge definitiv' })) return;
       try {
         var r = await fetch('/api/mail/actiune', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actiune: act, elemente: el }) });
         var j = {}; try { j = await r.json(); } catch (e) {}
@@ -31381,7 +31383,7 @@ const pozitii = await r.json();</code></pre>
       for (var q = 0; q < ids.length; q++) {
         try { var r = await fetch('/api/mail/ciorne/' + Number(ids[q]), { method: 'DELETE', credentials: 'same-origin' }); if (r.ok) n++; } catch (e) {}
       }
-      raxToast(n === 1 ? 'Ciorna a fost ștearsă.' : n + ' ciorne șterse.', n ? 'success' : 'error');
+      raxToast(n === 1 ? 'Ciorna a fost ștearsă.' : nrDe(n, 'ciornă', 'ciorne') + ' șterse.', n ? 'success' : 'error');
       _mail.bifate = {}; raxLoadMail();
     };
     window.raxMailFiltru = function (a) { _mail.filtru = a || ''; raxLoadMail(); };
@@ -32629,7 +32631,7 @@ const pozitii = await r.json();</code></pre>
         var r = await fetch('/api/invoices/' + id + '/status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ status: 'canceled' }) });
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok || j.error) { if (window.raxToast) raxToast(j.error || 'Eroare', 'error'); return; }
-        if (window.raxToast) raxToast('Document anulat' + (j.montajeEliberate ? ' · ' + (j.montajeEliberate === 1 ? 'lucrarea de montaj de pe el se poate' : j.montajeEliberate + ' lucrări de montaj de pe el se pot') + ' factura iar' : ''), 'success');
+        if (window.raxToast) raxToast('Document anulat' + (j.montajeEliberate ? ' · ' + (j.montajeEliberate === 1 ? 'lucrarea de montaj de pe el se poate' : nrDe(j.montajeEliberate, 'lucrare', 'lucrări') + ' de montaj de pe el se pot') + ' factura iar' : ''), 'success');
         raxLoadInvoices();
         if (window._raxCodId && document.getElementById('rax-codetail-overlay') && document.getElementById('rax-codetail-overlay').classList.contains('open')) raxOpenCompanyDetail(window._raxCodId, 'facturi');
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
@@ -32910,10 +32912,10 @@ const pozitii = await r.json();</code></pre>
       var cap;
       if (abo) {
         var bucati = [];
-        if (S.aparateIntregi) bucati.push(S.aparateIntregi + (S.aparateIntregi === 1 ? ' mașină' : ' mașini') + ' pe luna întreagă');
+        if (S.aparateIntregi) bucati.push(nrDe(S.aparateIntregi, 'mașină', 'mașini') + ' pe luna întreagă');
         if (S.aparatePeZile) bucati.push(S.aparatePeZile + ' cu zilele de la montaj (pornite luna trecută)');
         cap = '<div style="font-size:12.5px;margin-bottom:6px;">Abonamentul pe <b>' + esc(_giLunaText(S.luna)) + '</b> · ' + esc(S.client.name || '') + (bucati.length ? ' · ' + bucati.join(', ') : '') + '</div>' +
-          (S.aparateNepornite ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">' + S.aparateNepornite + (S.aparateNepornite === 1 ? ' aparat e' : ' aparate sunt') + ' pe firmă, dar nu transmit încă: nu intră pe factură. Pornesc singure la montaj, la prima transmisie.</div>' : '') +
+          (S.aparateNepornite ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">' + nrDe(S.aparateNepornite, 'aparat e', 'aparate sunt') + ' pe firmă, dar nu transmit încă: nu intră pe factură. Pornesc singure la montaj, la prima transmisie.</div>' : '') +
           (S.preaDevreme ? '<div class="rax-gi-avert"><i class="fas fa-triangle-exclamation"></i> ' + esc(S.preaDevreme) + '</div>' : '') +
           (S.deja ? '<div class="rax-gi-avert"><i class="fas fa-triangle-exclamation"></i> Luna asta e deja facturată: <b>' + esc(S.deja.full_number || '') + '</b>. O a doua factură pe aceeași lună se refuză — dacă vrei s-o refaci, anuleaz-o întâi pe cea veche.</div>' : '');
       } else {
@@ -33042,7 +33044,7 @@ const pozitii = await r.json();</code></pre>
       try {
         var r = await fetch('/api/admin/billing/run-auto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: '{}' }).then(function (x) { return x.json(); });
         var n = (r.issued || []).length;
-        if (window.raxToast) raxToast(n ? (n + ' facturi emise automat ✓') : 'Nicio factură de emis acum', 'success');
+        if (window.raxToast) raxToast(n ? (nrDe(n, 'factură', 'facturi') + ' emise automat ✓') : 'Nicio factură de emis acum', 'success');
         raxLoadBilling();
       } catch (e) { if (window.raxToast) raxToast('Eroare: ' + e.message, 'error'); }
       finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Rulează acum'; } }
@@ -33066,7 +33068,7 @@ const pozitii = await r.json();</code></pre>
     function _coBandaNeasignate(n) {
       var b = $('rax-co-alerta'); if (!b) return;
       b.innerHTML = n ? '<div class="aiu-alerta warn" style="cursor:pointer;" onclick="raxDevDeschideNeasignate()">'
-        + '<i class="fas fa-inbox"></i><span><b>' + (n === 1 ? 'Un aparat așteaptă să fie adoptat.' : n + ' aparate așteaptă să fie adoptate.') + '</b> '
+        + '<i class="fas fa-inbox"></i><span><b>' + (n === 1 ? 'Un aparat așteaptă să fie adoptat.' : nrDe(n, 'aparat', 'aparate') + ' așteaptă să fie adoptate.') + '</b> '
         + (n === 1 ? 'Transmite deja, dar nu e la nicio firmă' : 'Transmit deja, dar nu sunt la nicio firmă')
         + ' — ori e un client care așteaptă, ori un aparat străin. Apasă ca ' + (n === 1 ? 'să-l rezolvi' : 'să le rezolvi') + ' în Dispozitive.</span></div>' : '';
     }
@@ -33276,7 +33278,7 @@ const pozitii = await r.json();</code></pre>
           // Deschis sau închis: cu puține firme, toate deschise. Cu multe, închise — DAR niciodată una
           // care are ceva de rezolvat și niciodată „Neasignate”. O problemă nu stă ascunsă după un rând închis.
           var deschis = (gr.k === '_neas') ? true : (gr.k === '_arh') ? false : (!!q || pb > 0 || grupuri.length <= 5);
-          var sumar = gr.dev.length + (gr.dev.length === 1 ? ' aparat' : ' aparate') +
+          var sumar = nrDe(gr.dev.length, 'aparat', 'aparate') +
             (pb ? ' · <b style="color:var(--orange)">' + pb + (pb === 1 ? ' de rezolvat' : ' de rezolvat') + '</b>' : '');
           return '<div class="rax-devgr">' +
             '<div class="rax-devgr-h" onclick="_raxDevToggleGr(this)">' +
@@ -33330,7 +33332,7 @@ const pozitii = await r.json();</code></pre>
       var propusa = _raxDevBlocFirma ? ((companiesCache || []).filter(function (c) { return String(c.id) === String(_raxDevBlocFirma); })[0] || null) : null;
       return '<div class="rax-dev-bulk">' +
         '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox"' + (toate ? ' checked' : '') + ' onchange="raxDevBifaToate(this.checked)"> Toate (' + lista.length + ')</label>' +
-        '<span style="color:var(--text-muted);">' + n + (n === 1 ? ' bifat' : ' bifate') + '</span>' +
+        '<span style="color:var(--text-muted);">' + nrDe(n, 'bifat', 'bifate') + '</span>' +
         '<select class="rax-field" id="rax-dev-bulk-co" onchange="raxDevBlocFirma(this.value)">' + _raxDevCoOptions(_raxDevBlocFirma).replace('— neasignat —', '— alege firma —') + '</select>' +
         '<button class="rax-btn primary"' + (n ? '' : ' disabled') + ' onclick="raxDevTreceBloc()"><i class="fas fa-arrow-right"></i> Trece pe firmă</button>' +
         (propusa && n ? '<div class="rax-dev-propus"><i class="fas fa-calendar-check"></i> Firma e propusă de montajul din calendar: <b>' + esc(propusa.name) + '</b>. Verifică aparatele bifate și apasă „Trece pe firmă”.</div>' : '') +
@@ -33351,7 +33353,7 @@ const pozitii = await r.json();</code></pre>
       if (!Number.isFinite(cid)) { if (window.raxToast) raxToast('Alege firma.', 'error'); return; }
       var co = (companiesCache || []).filter(function (c) { return c.id === cid; })[0] || {};
       var n = imeis.length;
-      if (!await raConfirm('Treci ' + n + (n === 1 ? ' aparat' : _raxDe(n) + 'aparate') + ' pe firma ' + (co.name || '') + '?\n\nClientul le vede pe hartă de îndată ce transmit, iar abonamentul fiecăruia pornește la prima transmisie pe firmă.', { okLabel: 'Trece pe firmă', danger: false })) return;
+      if (!await raConfirm('Treci ' + nrDe(n, 'aparat', 'aparate') + ' pe firma ' + (co.name || '') + '?\n\nClientul le vede pe hartă de îndată ce transmit, iar abonamentul fiecăruia pornește la prima transmisie pe firmă.', { okLabel: 'Trece pe firmă', danger: false })) return;
       try {
         var r = await fetch('/api/devices/company-bulk', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ company_id: cid, imeis: imeis }) });
         var j = await r.json().catch(function () { return {}; });
@@ -33708,7 +33710,7 @@ const pozitii = await r.json();</code></pre>
       var z = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
       if (z <= 0) return 'azi';
       if (z === 1) return 'ieri';
-      if (z < 30) return 'acum ' + z + ' zile';
+      if (z < 30) return 'acum ' + nrDe(z, 'zi', 'zile');
       return new Date(iso).toLocaleDateString('ro-RO');
     }
 
@@ -33725,9 +33727,9 @@ const pozitii = await r.json();</code></pre>
       if (!f.modul) return f.deVandut
         ? { t: 'are camioane, n-are modulul', c: 'var(--text-muted)', rau: false, vanzare: true }
         : { t: 'fără modul', c: 'var(--text-muted)', rau: false };
-      if (f.depasite) return { t: f.depasite + (f.depasite === 1 ? ' termen depășit' : ' termene depășite'), c: 'var(--red)', rau: true };
-      if (f.niciodata) return { t: f.niciodata + (f.niciodata === 1 ? ' niciodată descărcat' : ' niciodată descărcate'), c: 'var(--red)', rau: true };
-      if (f.necitite) return { t: f.necitite + (f.necitite === 1 ? ' fișier necitit' : ' fișiere necitite'), c: 'var(--orange)', rau: true };
+      if (f.depasite) return { t: nrDe(f.depasite, 'termen depășit', 'termene depășite'), c: 'var(--red)', rau: true };
+      if (f.niciodata) return { t: nrDe(f.niciodata, 'niciodată descărcat', 'niciodată descărcate'), c: 'var(--red)', rau: true };
+      if (f.necitite) return { t: nrDe(f.necitite, 'fișier necitit', 'fișiere necitite'), c: 'var(--orange)', rau: true };
       if (f.platitDegeaba) return { t: 'plătește modulul, n-are ce descărca', c: 'var(--orange)', rau: true };
       if (f.zileFaraFisier == null) return { t: 'niciun fișier încărcat', c: 'var(--orange)', rau: true };
       if (f.zileFaraFisier > 60) return { t: 'niciun fișier de ' + f.zileFaraFisier + ' de zile', c: 'var(--orange)', rau: true };
@@ -33761,9 +33763,9 @@ const pozitii = await r.json();</code></pre>
       if (p.stare === 'niciodata') return { t: 'niciodată descărcat', c: 'var(--red)' };
       if (p.stare === 'depasit') {
         var z = Math.abs(p.zile || 0);
-        return { t: z + (z === 1 ? ' zi întârziere' : ' zile întârziere'), c: 'var(--red)' };
+        return { t: nrDe(z, 'zi întârziere', 'zile întârziere'), c: 'var(--red)' };
       }
-      return { t: 'mai are ' + p.zile + (p.zile === 1 ? ' zi' : ' zile'), c: 'var(--orange)' };
+      return { t: 'mai are ' + nrDe(p.zile, 'zi', 'zile'), c: 'var(--orange)' };
     }
     function _thfSchelet(host) {
       host.innerHTML = '<div id="thf-sumar" class="thf-sumar"></div>'
@@ -33819,7 +33821,7 @@ const pozitii = await r.json();</code></pre>
           ? '<span class="thf-p on">pornit</span>'
           : '<span class="thf-p' + (f.deVandut ? ' vinde' : '') + '">oprit</span>';
         var cate = f.deDescarcat
-          ? (f.soferi + (f.soferi === 1 ? ' șofer' : ' șoferi') + ' · ' + f.vehicule + (f.vehicule === 1 ? ' camion' : ' camioane'))
+          ? (nrDe(f.soferi, 'șofer', 'șoferi') + ' · ' + nrDe(f.vehicule, 'camion', 'camioane'))
           : 'nimic de descărcat';
         var ultim = f.ultimulFisier ? 'ultimul fișier ' + _raxCand(f.ultimulFisier) : 'niciun fișier';
         var are = (f.probleme || []).length;
@@ -33887,8 +33889,8 @@ const pozitii = await r.json();</code></pre>
       // active · 2 transporturi de rezolvat" se citea de două ori același cuvânt.
       if (f.probleme) return { t: f.probleme + ' de rezolvat acum', c: 'var(--red)', rau: true };
       if (f.platitDegeaba) return { t: 'plătește modulul, n-a introdus niciun cod', c: 'var(--orange)', rau: true };
-      if (f.curand) return { t: f.curand + (f.curand === 1 ? ' cod expiră curând' : ' coduri expiră curând'), c: 'var(--orange)', rau: false };
-      if (f.necunoscut) return { t: f.necunoscut + (f.necunoscut === 1 ? ' cod fără termen' : ' coduri fără termen'), c: 'var(--orange)', rau: true };
+      if (f.curand) return { t: nrDe(f.curand, 'cod expiră curând', 'coduri expiră curând'), c: 'var(--orange)', rau: false };
+      if (f.necunoscut) return { t: nrDe(f.necunoscut, 'cod fără termen', 'coduri fără termen'), c: 'var(--orange)', rau: true };
       if (f.active) return { t: 'toate în regulă', c: 'var(--accent)', rau: false };
       if (f.zileFaraCod == null) return { t: 'niciun cod introdus', c: 'var(--orange)', rau: true };
       if (f.zileFaraCod > 60) return { t: 'niciun cod de ' + f.zileFaraCod + ' de zile', c: 'var(--orange)', rau: true };
@@ -33994,7 +33996,7 @@ const pozitii = await r.json();</code></pre>
           ? '<span class="thf-p on">pornit</span>'
           : '<span class="thf-p' + (f.deVandut ? ' vinde' : '') + '">oprit</span>';
         var cate = f.active
-          ? (f.active + (f.active === 1 ? ' transport activ' : ' transporturi active'))
+          ? (nrDe(f.active, 'transport activ', 'transporturi active'))
           : 'niciun transport activ';
         // Când firma n-a introdus niciun cod, o spune deja semnul din stânga („n-a introdus niciun
         // cod" / „fără modul”). Scris și aici, cartonașul se termina cu „… niciun cod · niciun cod”.
@@ -34030,7 +34032,7 @@ const pozitii = await r.json();</code></pre>
       var pr = d.praguri || {};
       // Toate cifrele de mai jos vin din răspunsul serverului (deci din `etransport.js`). Nicio
       // durată scrisă aici: „codul ține 5 zile” e lege, nu decor de ecran.
-      if (nota) nota.innerHTML = 'Codul UIT ține <b>' + pr.zileNational + ' zile</b> (' + pr.zileIntracomunitar
+      if (nota) nota.innerHTML = 'Codul UIT ține <b>' + nrDe(pr.zileNational, 'zi', 'zile') + '</b> (' + pr.zileIntracomunitar
         + ' la achiziții intracomunitare), iar un camion care tace mai mult de <b>' + pr.tacereMinute
         + _raxDe(pr.tacereMinute) + 'minute</b> intră la „de rezolvat”. „Expiră curând” = sub <b>'
         + pr.curandOre + _raxDe(pr.curandOre) + 'ore</b>. '
@@ -34117,12 +34119,12 @@ const pozitii = await r.json();</code></pre>
       if (cuSoferi && fc.length) {
         var l = fc.length <= 4 ? fc.join(', ') : fc.slice(0, 4).join(', ') + ' +' + (fc.length - 4);
         h += '<div class="th-b b-open" style="display:flex;margin:6px 0 2px"><i class="fas fa-circle-question"></i> ' +
-          fc.length + (fc.length === 1 ? ' șofer nu are' : ' șoferi nu au') + ' categoriile de pe permis completate: ' +
+          nrDe(fc.length, 'șofer nu are', 'șoferi nu au') + ' categoriile de pe permis completate: ' +
           esc(l) + ' — dacă vreunul e profesionist, completează-i categoriile în Administrare → Șoferi, altfel nu apare aici.</div>';
       }
       var q = [];
-      if (cuSoferi && e.soferiNeprofesionisti) q.push(e.soferiNeprofesionisti + (e.soferiNeprofesionisti === 1 ? ' șofer fără categorie de tahograf' : ' șoferi fără categorie de tahograf'));
-      if (cuVehicule && e.vehiculeFaraTahograf) q.push(e.vehiculeFaraTahograf + (e.vehiculeFaraTahograf === 1 ? ' vehicul fără tahograf' : ' vehicule fără tahograf'));
+      if (cuSoferi && e.soferiNeprofesionisti) q.push(nrDe(e.soferiNeprofesionisti, 'șofer fără categorie de tahograf', 'șoferi fără categorie de tahograf'));
+      if (cuVehicule && e.vehiculeFaraTahograf) q.push(nrDe(e.vehiculeFaraTahograf, 'vehicul fără tahograf', 'vehicule fără tahograf'));
       if (q.length) h += '<div class="rax-co-meta" style="margin-top:6px">Acum aveți: ' + q.join(' și ') + ', nimic de descărcat.</div>';
       return h;
     }
@@ -34158,8 +34160,8 @@ const pozitii = await r.json();</code></pre>
             !ale.length ? 'niciun fișier'
             // „1 fișier · 0 zile citite” e derutant lângă „niciodată descărcat”. Dacă niciunul dintre
             // fișiere n-a putut fi citit, o spunem pe șleau — altfel pare că avem date și n-avem.
-            : !citite.length ? (ale.length + (ale.length === 1 ? ' fișier, dar nu s-a putut citi' : ' fișiere, niciunul citit'))
-            : (ale.length + (ale.length === 1 ? ' fișier' : ' fișiere') + ' · ' + t.zile + ' zile citite')
+            : !citite.length ? (nrDe(ale.length, 'fișier, dar nu s-a putut citi', 'fișiere, niciunul citit'))
+            : (nrDe(ale.length, 'fișier', 'fișiere') + ' · ' + nrDe(t.zile, 'zi', 'zile') + ' citite')
           ) + '</span></div>' +
           (t.grave ? '<span class="th-pill p-red">' + t.grave + ' grave</span>' : '') +
           (t.inf - t.grave > 0 ? '<span class="th-pill p-orange">' + (t.inf - t.grave) + ' serioase</span>' : '') +
@@ -34214,7 +34216,7 @@ const pozitii = await r.json();</code></pre>
             '<i class="fas ' + (necitit ? 'fa-ban' : 'fa-file-arrow-down') + '"></i>' +
             '<div class="th-rt"><b>' + esc(f.filename) + '</b><span>' + esc(per) +
               (necitit ? ' · nu s-a putut citi — nu contează ca descărcare'
-                : (tt.zile ? ' · ' + (tt.zile === 1 ? '1 zi' : tt.zile + ' zile') + ' · ' + Math.round((tt.conducereMin || 0) / 60) + ' h condus' : '')) + '</span></div>' +
+                : (tt.zile ? ' · ' + (tt.zile === 1 ? '1 zi' : nrDe(tt.zile, 'zi', 'zile')) + ' · ' + Math.round((tt.conducereMin || 0) / 60) + ' h condus' : '')) + '</span></div>' +
             '<button class="rax-btn" onclick="event.stopPropagation();raxViewTacho(' + f.id + ')">Detalii</button>' +
             '<button class="rax-btn" onclick="event.stopPropagation();raxDelTacho(' + f.id + ')">Șterge</button></div>';
         }).join('') || '<div class="rax-co-meta">Nicio descărcare.</div>';
@@ -34223,7 +34225,7 @@ const pozitii = await r.json();</code></pre>
           h += '<div class="th-gh"><i class="fas fa-circle-exclamation"></i> ZILE PE CARE NU LE POȚI DOVEDI</div>';
           h += r.goluri.map(function (g) {
             return '<div class="th-row s-soon"><i class="fas fa-calendar-days"></i>' +
-              '<div class="th-rt"><b>' + g.zile + (g.zile === 1 ? ' zi lipsă' : ' zile lipsă') + '</b>' +
+              '<div class="th-rt"><b>' + nrDe(g.zile, 'zi lipsă', 'zile lipsă') + '</b>' +
               '<span>' + esc(g.de) + ' → ' + esc(g.pana) + ' — nu există nicio descărcare pentru perioada asta</span></div></div>';
           }).join('');
         } else if (r.acoperit > 1) {
@@ -34260,7 +34262,7 @@ const pozitii = await r.json();</code></pre>
             msg.textContent = 'Înregistrat. ' + (p.parseNote || '');
           } else {
             msg.style.color = 'var(--accent)';
-            msg.textContent = 'Citit ✓ — ' + ((p.totals && p.totals.zile) || 0) + ' zile, ' +
+            msg.textContent = 'Citit ✓ — ' + nrDe(((p.totals && p.totals.zile) || 0), 'zi', 'zile') + ', ' +
               ((p.totals && p.totals.infractiuni) || 0) + ' abateri.';
           }
           inp.value = '';
@@ -34423,7 +34425,7 @@ const pozitii = await r.json();</code></pre>
       if (sd) sd.innerHTML = '<option value="">— șofer (opțional) —</option>' + (_etDrv || []).map(function (d) {
         return '<option value="' + d.id + '">' + esc(d.name) + '</option>';
       }).join('');
-      if (stip) stip.innerHTML = _etTipuri.map(function (t) { return '<option value="' + esc(t.cod) + '">' + esc(t.label) + ' (' + t.zile + ' zile)</option>'; }).join('');
+      if (stip) stip.innerHTML = _etTipuri.map(function (t) { return '<option value="' + esc(t.cod) + '">' + esc(t.label) + ' (' + nrDe(t.zile, 'zi', 'zile') + ')</option>'; }).join('');
       var s = $('rax-et-start');
       if (s && !s.value) s.value = _etZiLocala(new Date());
       raxEtRecalc();
@@ -34443,7 +34445,7 @@ const pozitii = await r.json();</code></pre>
       var d = new Date(start + 'T00:00:00');
       d.setDate(d.getDate() + t.zile);
       $('rax-et-pana').value = _etZiLocala(d);
-      $('rax-et-hint').textContent = 'Propus: ' + t.zile + ' zile de la începerea transportului. Corectează data dacă ANAF ți-a dat alt termen.';
+      $('rax-et-hint').textContent = 'Propus: ' + nrDe(t.zile, 'zi', 'zile') + ' de la începerea transportului. Corectează data dacă ANAF ți-a dat alt termen.';
     };
 
     window.raxCreateEt = async function () {
@@ -34954,24 +34956,24 @@ const pozitii = await r.json();</code></pre>
     var AGP_THRESH = {
       watch: { fields: [
         { key: 'offlineMin', label: 'Fără semnal', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de atâta timp.',
-          options: [{ v: 15, t: '15 minute' }, { v: 30, t: '30 minute' }, { v: 60, t: '1 oră (recomandat)' }, { v: 120, t: '2 ore' }, { v: 360, t: '6 ore' }, { v: 720, t: '12 ore' }] },
+          options: [{ v: 15, t: '15 minute' }, { v: 30, t: '30 de minute' }, { v: 60, t: '1 oră (recomandat)' }, { v: 120, t: '2 ore' }, { v: 360, t: '6 ore' }, { v: 720, t: '12 ore' }] },
         { key: 'idleMaxMin', label: 'Ralanti prelungit', unit: 'min', min: 5, max: 1440, def: 120, hint: 'Alertă când motorul merge staționat (pe loc) de atâta timp.',
-          options: [{ v: 15, t: '15 minute' }, { v: 30, t: '30 minute' }, { v: 60, t: '1 oră' }, { v: 120, t: '2 ore (recomandat)' }, { v: 180, t: '3 ore' }] },
+          options: [{ v: 15, t: '15 minute' }, { v: 30, t: '30 de minute' }, { v: 60, t: '1 oră' }, { v: 120, t: '2 ore (recomandat)' }, { v: 180, t: '3 ore' }] },
         { key: 'fuelDropL', label: 'Scădere combustibil', unit: 'L', min: 1, max: 1000, def: 15, hint: 'Alertă la o cădere bruscă de nivel.',
-          options: [{ v: 10, t: '10 litri' }, { v: 15, t: '15 litri (recomandat)' }, { v: 20, t: '20 litri' }, { v: 30, t: '30 litri' }, { v: 50, t: '50 litri' }] },
+          options: [{ v: 10, t: '10 litri' }, { v: 15, t: '15 litri (recomandat)' }, { v: 20, t: '20 de litri' }, { v: 30, t: '30 de litri' }, { v: 50, t: '50 de litri' }] },
         { key: 'fuelTheftL', label: 'Furt combustibil — prag', unit: 'L', min: 1, max: 1000, def: '', hint: 'Scădere la parcare sau în mers, confirmată dacă nu revine în ~1h.',
-          options: [{ v: '', t: 'Dezactivat (recomandat)' }, { v: 15, t: '15 litri' }, { v: 20, t: '20 litri' }, { v: 30, t: '30 litri' }, { v: 50, t: '50 litri' }] }
+          options: [{ v: '', t: 'Dezactivat (recomandat)' }, { v: 15, t: '15 litri' }, { v: 20, t: '20 de litri' }, { v: 30, t: '30 de litri' }, { v: 50, t: '50 de litri' }] }
       ] },
       care: { fields: [
         { key: 'serviceSoonKm', label: 'Avertisment service (bord/CAN)', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de service-ul indicat de BORDUL mașinii să apară alerta.',
           options: [{ v: 500, t: '500 km înainte' }, { v: 1000, t: '1.000 km înainte' }, { v: 1500, t: '1.500 km înainte (recomandat)' }, { v: 2000, t: '2.000 km înainte' }, { v: 3000, t: '3.000 km înainte' }, { v: 5000, t: '5.000 km înainte' }] },
         { key: 'careDaysLead', label: 'Avertisment lucrări service (zile)', unit: 'zile înainte', min: 1, max: 365, def: 14, hint: 'Cu câte zile înainte de scadența unei LUCRĂRI pe dată să se aprindă. Aceeași cifră colorează rândul în Mentenanță ȘI trimite notificarea.',
-          options: [{ v: 7, t: '7 zile înainte' }, { v: 14, t: '14 zile înainte (recomandat)' }, { v: 21, t: '3 săptămâni înainte' }, { v: 30, t: '30 zile înainte (o lună)' }, { v: 60, t: '60 zile înainte' }] },
+          options: [{ v: 7, t: '7 zile înainte' }, { v: 14, t: '14 zile înainte (recomandat)' }, { v: 21, t: '3 săptămâni înainte' }, { v: 30, t: '30 de zile înainte (o lună)' }, { v: 60, t: '60 de zile înainte' }] },
         { key: 'careKmLead', label: 'Avertisment lucrări service (km)', unit: 'km înainte', min: 50, max: 50000, def: 500, hint: 'Cu câți km înainte de scadența pe KILOMETRI să se aprindă. Aceeași cifră colorează rândul ȘI trimite notificarea.',
           options: [{ v: 250, t: '250 km înainte' }, { v: 500, t: '500 km înainte (recomandat)' }, { v: 1000, t: '1.000 km înainte' }, { v: 1500, t: '1.500 km înainte' }, { v: 2000, t: '2.000 km înainte' }] },
         // Actele au preavizul lor: un RCA sau un ITP nu se rezolvă într-o zi, un schimb de ulei da.
         { key: 'docDaysLead', label: 'Avertisment acte (ITP, RCA, rovinietă)', unit: 'zile înainte', min: 1, max: 365, def: 30, hint: 'Cu câte zile înainte de expirarea unui ACT să se aprindă. Aceeași cifră colorează rândul în Documente ȘI trimite notificarea.',
-          options: [{ v: 7, t: '7 zile înainte' }, { v: 14, t: '14 zile înainte' }, { v: 30, t: '30 zile înainte (recomandat)' }, { v: 45, t: '45 zile înainte' }, { v: 60, t: '60 zile înainte (două luni)' }] }
+          options: [{ v: 7, t: '7 zile înainte' }, { v: 14, t: '14 zile înainte' }, { v: 30, t: '30 de zile înainte (recomandat)' }, { v: 45, t: '45 de zile înainte' }, { v: 60, t: '60 de zile înainte (două luni)' }] }
       ] },
       optimize: { fields: [
         { key: 'ecoScoreMin', label: 'Scor eco minim', unit: '/100', min: 0, max: 100, def: 60, hint: 'Alertă când scorul eco al unui vehicul scade sub această valoare.',
@@ -34979,7 +34981,7 @@ const pozitii = await r.json();</code></pre>
       ] },
       dispatch: { fields: [
         { key: 'dispOnlineMin', label: 'Disponibil — ultimul semnal sub', unit: 'min', min: 5, max: 240, def: 65, hint: 'Un vehicul e „disponibil” dacă a transmis semnal mai recent de atât și e oprit.',
-          options: [{ v: 30, t: '30 minute' }, { v: 45, t: '45 minute' }, { v: 65, t: '65 minute (recomandat)' }, { v: 90, t: '90 minute' }, { v: 120, t: '2 ore' }] },
+          options: [{ v: 30, t: '30 de minute' }, { v: 45, t: '45 de minute' }, { v: 65, t: '65 de minute (recomandat)' }, { v: 90, t: '90 de minute' }, { v: 120, t: '2 ore' }] },
         { key: 'dispIdleHour', label: 'Verifică „subutilizat” după', unit: 'ora zilei', min: 0, max: 23, def: 12, hint: 'De la ce oră a zilei semnalăm vehiculele disponibile dar fără rulaj azi.',
           options: [{ v: 10, t: '10:00' }, { v: 11, t: '11:00' }, { v: 12, t: '12:00 (recomandat)' }, { v: 13, t: '13:00' }, { v: 14, t: '14:00' }] },
         { key: 'dispIdleKm', label: 'Nefolosit azi — sub', unit: 'km', min: 1, max: 100, def: 1, hint: 'Sub câți km parcurși azi un vehicul disponibil e considerat neutilizat.',

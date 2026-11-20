@@ -8,6 +8,7 @@
 import { raCauta } from './format';
 import { DOSAR_FEL, de } from './contracte';
 import { adresaFirmei } from '../components/FondatorUi';
+import { nrDe } from './numar';
 
 // Adresa dosarului juridic al unei firme (ecranele Contracte). UN SINGUR loc, ca toate intrările
 // (pastila din registru, fila Contract, „Deschide dosarul” după Client nou, oferta care a devenit client)
@@ -118,7 +119,7 @@ export function accesPastila(c: any): { et: string; fel: Fel; sub: string } {
     return { et, fel: 'bad', sub: np && np.factura ? 'factura ' + (np.factura.numar || '') : '' };
   }
   if (np && np.faza === 'avertisment') {
-    return { et: 'restanță · ' + np.zilePanaLaSuspendare + ' zile', fel: 'warn', sub: 'factura ' + ((np.factura && np.factura.numar) || '') };
+    return { et: 'restanță · ' + nrDe(np.zilePanaLaSuspendare, 'zi', 'zile'), fel: 'warn', sub: 'factura ' + ((np.factura && np.factura.numar) || '') };
   }
   if (a.status === 'active') return { et: 'activ', fel: 'ok', sub: '' };
   return { et: '—', fel: '', sub: '' };
@@ -159,7 +160,7 @@ export function accesDetalii(a: any): { et: string; culoare: string } {
   a = a || {};
   const np = a.neplata || null;
   const et = a.status === 'expired' ? (a.motiv === 'manual' ? 'Oprit de noi' : 'Suspendat — neplată')
-    : (a.status === 'grace' ? 'Restanță — ' + (np ? np.zilePanaLaSuspendare + ' zile până la suspendare' : 'factură neachitată') : 'Activ');
+    : (a.status === 'grace' ? 'Restanță — ' + (np ? nrDe(np.zilePanaLaSuspendare, 'zi', 'zile') + ' până la suspendare' : 'factură neachitată') : 'Activ');
   const culoare = a.status === 'expired' ? 'var(--red)' : (a.status === 'grace' ? 'var(--co-warn)' : 'var(--co-ok)');
   return { et, culoare };
 }
@@ -243,7 +244,7 @@ export function cartonaseStare(o: any, acum: number, dep: StareDep): Cartonas[] 
   const urm = deschise.map((f: any) => dt(f.due_date)).filter(Boolean).sort((x: any, y: any) => x - y)[0] as Date | undefined;
   const pl = ((o && o.payments) || []).slice().sort((x: any, y: any) => ((dt(y.paid_at || y.created_at) as any) || 0) - ((dt(x.paid_at || x.created_at) as any) || 0))[0];
   const n = deschise.length;
-  const fD = (n ? lei(sumaD) + (trecute ? ' · ' + trecute + (trecute === 1 ? ' trecută' : ' trecute') + ' de scadență' : (urm ? ' · scadență: ' + zi(urm.getTime()) : '')) + ' · ' : '') +
+  const fD = (n ? lei(sumaD) + (trecute ? ' · ' + nrDe(trecute, 'trecută', 'trecute') + ' de scadență' : (urm ? ' · scadență: ' + zi(urm.getTime()) : '')) + ' · ' : '') +
     (pl ? 'ultima plată: ' + lei(pl.amount_ron) + ', pe ' + zi(pl.paid_at || pl.created_at) : 'nicio plată încă');
   out.push({ k: 'Facturi și plăți', v: n ? (n === 1 ? '1 document de plată' : n + deN(n) + 'documente de plată') : 'Totul e plătit',
     d: fD.charAt(0).toUpperCase() + fD.slice(1), ton: trecute ? 'warn' : (n ? '' : 'ok'), fila: 'facturi' });
@@ -259,7 +260,7 @@ export function cartonaseStare(o: any, acum: number, dep: StareDep): Cartonas[] 
   out.push({ k: 'Aparatele', fila: 'vehicule',
     v: veh.length ? veh.length + (veh.length === 1 ? ' aparat' : deN(veh.length) + 'aparate') + ' · ' + nr.ok + ' comunică' : 'Niciun aparat',
     d: probl.length ? probl.slice(0, 3).join('; ') + (probl.length > 3 ? ' · și încă ' + (probl.length - 3) : '')
-      : (veh.length ? (nr.tacut ? nr.tacut + (nr.tacut === 1 ? ' tăcut' : ' tăcute') + ' de câteva ore; restul comunică.' : 'Toate comunică.') : 'Aparatele le dăm firmei din „Dispozitive”.'),
+      : (veh.length ? (nr.tacut ? nrDe(nr.tacut, 'tăcut', 'tăcute') + ' de câteva ore; restul comunică.' : 'Toate comunică.') : 'Aparatele le dăm firmei din „Dispozitive”.'),
     ton: probl.length ? 'bad' : (nr.tacut ? 'warn' : (veh.length ? 'ok' : '')) });
   // 5. RA Insight (doar numere — nu cine ce a întrebat)
   const ri = (o && o.insight) || null;
@@ -272,6 +273,6 @@ export function cartonaseStare(o: any, acum: number, dep: StareDep): Cartonas[] 
   const f = (o && o.features) || {};
   const pornite = (dep.module || []).filter((m) => f[m.k]).map((m) => m.et);
   out.push({ k: 'Modulele', fila: 'acces', ton: '', d: pornite.join(', '),
-    v: pornite.length ? (pornite.length === 1 ? '1 modul pornit' : pornite.length + ' module pornite') : 'Niciun modul pornit' });
+    v: pornite.length ? (pornite.length === 1 ? '1 modul pornit' : nrDe(pornite.length, 'modul', 'module') + ' pornite') : 'Niciun modul pornit' });
   return out;
 }

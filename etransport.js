@@ -14,6 +14,7 @@
 // PROPUNERE — se salvează ca dată explicită pe transport și omul o poate corecta. Aplicația nu
 // trebuie să ghicească tăcut o convenție legală.
 
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const insight = require('./insight');   // ziua României: miezul nopții de la noi, nu cel al serverului (UTC)
 
 const ZILE_NATIONAL = 5;
@@ -106,9 +107,9 @@ function scadenta(valabil, acum) {
     return { stare: 'necunoscut', oreRamase: null, text: 'termen necunoscut' };
   }
   const ore = Math.floor((v.getTime() - azi.getTime()) / 3600000);
-  if (ore < 0) return { stare: 'expirat', oreRamase: ore, text: Math.abs(ore) + ' ore de când a expirat' };
-  if (ore < CURAND_ORE) return { stare: 'curand', oreRamase: ore, text: ore + ' ore rămase' };
-  return { stare: 'ok', oreRamase: ore, text: ore + ' ore rămase' };
+  if (ore < 0) return { stare: 'expirat', oreRamase: ore, text: nrDe(Math.abs(ore), 'oră', 'ore') + ' de când a expirat' };
+  if (ore < CURAND_ORE) return { stare: 'curand', oreRamase: ore, text: nrDe(ore, 'oră', 'ore') + ' rămase' };
+  return { stare: 'ok', oreRamase: ore, text: nrDe(ore, 'oră', 'ore') + ' rămase' };
 }
 
 // De câte minute tace vehiculul. null = n-avem nicio poziție (altceva decât „tace de 0 minute”).

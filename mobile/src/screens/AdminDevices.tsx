@@ -68,7 +68,7 @@ function grupuri(rows: any[]): Grup[] {
   const firme = Object.keys(g).filter((k) => k !== '_neas' && k !== '_arh').map((k) => g[k]).sort((a, b) => a.nume.localeCompare(b.nume, 'ro'));
   return (g._neas ? [g._neas] : []).concat(firme, g._arh ? [g._arh] : []);
 }
-const nApar = (n: number) => n + (n === 1 ? ' aparat' : ' aparate');
+const nApar = (n: number) => nrDe(n, 'aparat', 'aparate');
 
 // ── începe „trecerea în bloc și ziua abonamentului” ──
 // Bucata e fără JSX și fără stare: proba o decupează, o rulează și o pune lângă pagina web (aceleași cuvinte) și lângă

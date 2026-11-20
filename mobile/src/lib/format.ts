@@ -1,9 +1,10 @@
+import { nrDe } from './numar';
 // Format uman: „X ore și Y minute” (ex. „1 oră și 59 minute”, „0 minute”, „2 ore”).
 export function fmtDuration(sec?: number): string {
   if (!sec || sec < 0) return '0 minute';
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-  const hp = h === 1 ? '1 oră' : h + ' ore';
-  const mp = m === 1 ? '1 minut' : m + ' minute';
+  const hp = h === 1 ? '1 oră' : nrDe(h, 'oră', 'ore');
+  const mp = m === 1 ? '1 minut' : nrDe(m, 'minut', 'minute');
   if (h > 0 && m > 0) return hp + ' și ' + mp;
   if (h > 0) return hp;
   return mp;
@@ -21,7 +22,7 @@ export function fmtAgo(iso?: string): string {
   if (m < 60) return `acum ${m} min`;
   const h = Math.floor(m / 60);
   if (h < 24) return `acum ${h} h`;
-  return `acum ${Math.floor(h / 24)} zile`;
+  return `acum ${nrDe(Math.floor(h / 24), 'zi', 'zile')}`;
 }
 export function gpsQuality(sats?: number): { label: string; level: number } {
   const s = sats || 0;

@@ -5,6 +5,7 @@
 // ce se păstrează (corpul, atașamentele, cât de mari), pe ce adresă a venit, dacă expeditorul pare fals, subiectul și
 // citatul răspunsului, anunțul. Ecranele (web, telefon) doar arată ce le dă serverul.
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
 let simpleParser = null; try { ({ simpleParser } = require('mailparser')); } catch (e) { /* fără el, ruta răspunde 500 */ }
 // Textul unui email scris doar în HTML (pentru căutare, citat și pentru telefonul fără HTML). mailparser îl face singur
 // doar când HTML-ul stă la suprafață; într-un email cu imagini în corp (multipart/related) nu-l face. Unealta e chiar cea
@@ -187,7 +188,7 @@ function imaginiAtasate(html, atasamente) {
 // Anunțul din aplicație: fără nume, fără subiect (ca la cererile demo: datele omului stau doar în panou, nu și în
 // telefoanele noastre, prin serverele de notificări).
 function anunt(adresa, n) {
-  const de = (n % 100 >= 1 && n % 100 <= 19) ? ' ' : ' de ';   // „3 emailuri”, „20 de emailuri”
+  const de = _deNr(n);   // „3 emailuri”, „20 de emailuri” — regula comună (public/js/numar.js)
   return { titlu: (n > 1 ? n + de + 'emailuri noi' : 'Email nou') + ' pe ' + adresa,
     corp: n > 1 ? 'Deschide panoul Mail ca să le citești.' : 'Deschide panoul Mail ca să-l citești.' };
 }

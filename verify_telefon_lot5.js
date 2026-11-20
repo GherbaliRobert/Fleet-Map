@@ -35,6 +35,8 @@
 // chiar DESENEAZĂ un ecran în HTML (preact-render-to-string) se sar, cu un rând „⤼ sărit” pe ecran; restul rulează.
 // Pe calculatorul nostru, `PROBA_CA_IN_CI=1 node verify_telefon_lot5.js` face la fel (dosarul nu se atinge).
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window) — bucățile ei rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'));
 const path = require('path');
 const vm = require('vm');
 const net = require('net');
@@ -289,7 +291,7 @@ async function parteaFacturare() {
     function webFereastra(draft) {
       const el = {};
       const nou = (id) => (el[id] = el[id] || { id, value: '', innerHTML: '', style: {}, disabled: false });
-      const ctx = vm.createContext({ console, JSON, Math, Number, String, Date, Array, Object, Promise, parseInt });
+      const ctx = vm.createContext({ ...require('./public/js/numar.js'), console, JSON, Math, Number, String, Date, Array, Object, Promise, parseInt });
       ctx.window = ctx;
       ctx.document = { getElementById: (id) => el[id] || null, querySelectorAll: () => [] };
       ctx.companiesCache = [{ id: 7, name: 'Transport SRL' }, { id: 8, name: 'Alta SRL' }];
@@ -367,7 +369,7 @@ async function parteaFacturare() {
     sect('1.3 Secțiunile listei: „Facturi · N” / „Proforme · N (M de încasat)” / „Montaj de facturat · N” (raxRenderInvoices, rulat)');
     function webLista(docs, mf, sectiune) {
       const box = { innerHTML: '' };
-      const ctx = vm.createContext({ console, JSON, Math, Number, String, Date, _DOCS: docs, _MF: mf, _SECT: sectiune });
+      const ctx = vm.createContext({ ...require('./public/js/numar.js'), console, JSON, Math, Number, String, Date, _DOCS: docs, _MF: mf, _SECT: sectiune });
       ctx.window = ctx;
       ctx.document = { getElementById: (id) => (id === 'rax-invoices' ? box : null) };
       vm.runInContext([W.esc, W.luni, W.luna, W.invFmtD, W.invMoney, W.hartieBtns, W.invSt,
@@ -507,7 +509,7 @@ async function parteaFacturare() {
     // Pagina: _giRenderLines, rulat pe abonament și pe factura unică, factură și proformă.
     function webRand(stare, tip) {
       const res = { innerHTML: '' };
-      const ctx = vm.createContext({ console, JSON, Math, Number, String, Date, _S: stare, _T: tip });
+      const ctx = vm.createContext({ ...require('./public/js/numar.js'), console, JSON, Math, Number, String, Date, _S: stare, _T: tip });
       ctx.document = { getElementById: (id) => (id === 'rax-gi-result' ? res : null) };
       vm.runInContext([W.esc, W.luni, W.luna, W.invFmtD, W.invMoney, W.raxDe, W.recalc, W.bloc, W.surse, W.renderLines, 'var _giState = _S, _giTip = _T;', '_giRenderLines();'].join('\n'), ctx);
       return res.innerHTML;

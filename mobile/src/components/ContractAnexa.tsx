@@ -16,6 +16,7 @@ import { showToast } from '../app/store';
 import { RUTA_NEASIGNATE, lei, nrAparate, nrMasini, verdictComparatie } from '../lib/contracte';
 import { Icon } from './Icon';
 import '../screens/contracte.css';
+import { nrDe } from '../lib/numar';
 
 // ── Contract ↔ factură, pe bucăți (nu apare la un contract încheiat — decide fișa) ──
 export function Comparatie({ cmp, semnat }: { cmp: any; semnat: boolean }) {
@@ -169,7 +170,7 @@ export function AnexaEditor({ contract, vehicles, onSalvat }: { contract: any; v
     const lipsa = faraPret(rd);
     if (lipsa.length) {
       const nume = lipsa.map((v) => (v.name || v.imei) + (v.plate ? ' (' + v.plate + ')' : ''));
-      setMsg('Scrie abonamentul lunar pentru ' + (nume.length === 1 ? nume[0] : nume.length + ' aparate: ' + nume.join(', ')) +
+      setMsg('Scrie abonamentul lunar pentru ' + (nume.length === 1 ? nume[0] : nrDe(nume.length, 'aparat', 'aparate') + ': ' + nume.join(', ')) +
         '. Fără el, aparatul intră în contract cu 0 lei și totalul lunar iese greșit. Dacă nu se plătește separat, scrie 0.');
       return;
     }
@@ -182,7 +183,7 @@ export function AnexaEditor({ contract, vehicles, onSalvat }: { contract: any; v
     setBusy(true);
     try {
       await Api.updateContract(Number(contract.id), { annex: { vehicles: lista, currency: 'RON' } });
-      showToast('Anexă salvată ✓ (' + lista.length + ' aparate)');
+      showToast('Anexă salvată ✓ (' + nrDe(lista.length, 'aparat', 'aparate') + ')');
       onSalvat();
     } catch (e: any) { showToast(e?.message || 'Eroare', true); }
     finally { setBusy(false); }

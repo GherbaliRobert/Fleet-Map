@@ -1,4 +1,6 @@
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 // cont_demo.js — textele CONTULUI DEMO (19.11; Alin: „după ce îi dăm cont demo… să vadă cum funcționează RA Insight… cel de pe
 // Start”; „1. varianta 2”; „3. cele găsite pe drum rezolvă acum”). CURAT: fără bază, fără ceas propriu.
 // Aici stau: emailul cu linkul de parolă (spune că e un cont demo, cât ține și ce poate încerca), banda din aplicație
@@ -20,7 +22,7 @@ const ZILE_DUPA_EXPIRARE = 30;
 const TEXT_INLOCUIT = 'Pe adresa asta era un cont demo: l-am înlocuit cu contul nou.';
 
 // „20 de zile”, dar „12 zile”: numerele care se termină în 1–19 merg fără „de” (ca _rDe din pagină).
-function de(n) { const x = Math.abs(Math.round(Number(n) || 0)); if (x === 0) return ''; const r = x % 100; return (r >= 1 && r <= 19) ? '' : 'de '; }
+function de(n) { return _deNr(Math.round(Number(n) || 0)) === ' de ' ? 'de ' : ''; }   // regula comună (public/js/numar.js)
 function cate(n, unu, multe) { const x = Math.round(Number(n) || 0); return x === 1 ? '1 ' + unu : x.toLocaleString('ro-RO') + ' ' + de(x) + multe; }
 // Durata unui cont demo, din ore: „2 ore”, „24 de ore”, „7 zile”, „30 de zile”, „2 zile și 6 ore”.
 function durata(ore) {
@@ -59,7 +61,7 @@ function banda(pana, acum) {
 
 // Ce găsește omul în contul demo — o singură listă, pentru email.
 const CE_GASESTI = [
-  'harta live și traseele celor ' + flota.MASINI.length + ' mașini de probă, cu ' + flota.ZILE_ISTORIC + ' de zile de istoric;',
+  'harta live și traseele celor ' + nrDe(flota.MASINI.length, 'mașină', 'mașini') + ' de probă, cu ' + flota.ZILE_ISTORIC + ' de zile de istoric;',
   'rapoartele: km, consum, opriri, alimentări;',
   'RA Insight, pe butoane: unde e o mașină, câți km a făcut, ce acte expiră;',
   'agenții AI: ce au găsit azi la mașinile de probă (motorină, ralanti, acte, ore de condus).'

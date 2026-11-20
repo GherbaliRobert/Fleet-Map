@@ -26,6 +26,8 @@
 // și 5: trecerea în bloc și ziua abonamentului prin clientul HTTP adevărat al telefonului, apoi o firmă cu o
 // factură restantă, suspendată, reactivată și plătită, văzută de dispecer și de administrator ca de pe telefon.
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window) — bucățile ei rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'));
 const path = require('path');
 const vm = require('vm');
 const { spawn } = require('child_process');
@@ -961,6 +963,7 @@ async function pachetNeasignate() {
       raxLoadDevices: () => { rec.incarcat++; },
     };
     ctx.window = ctx;
+    Object.assign(ctx, require('./public/js/numar.js'));   // pagina o are pe window (js/numar.js, în <head>)
     vm.createContext(ctx);
     vm.runInContext([web.rDe, web.raxDe, bucketSrc, vizibilSrc, treceSrc].join('\n'), ctx, { filename: 'index.html#raxDevTreceBloc' });
     await ctx.raxDevTreceBloc();

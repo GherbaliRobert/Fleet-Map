@@ -6,6 +6,7 @@ import { Icon } from '../components/Icon';
 import { salveazaDeLaServer } from '../lib/export';
 import './detail.css';
 import './admin.css';
+import { nrDe } from '../lib/numar';
 
 // Panoul Mail (Robert, 12.10: „noi adminii să avem un panou de mail” — „și pe telefon, bineînțeles”), ca pe web
 // (Business → Mail): etapa 1 „Trimise” + „Scrie”, etapa 2 „Primite” + „Răspunde”; 13.10: „Răspunde tuturor”, „Redirecționează”,
@@ -149,7 +150,7 @@ export function Mail() {
   // O singură cale pentru acțiuni (rândul, bara cu bifele, fereastra emailului): serverul le face și scrie textul de după.
   async function actiune(act: string, el: El[]) {
     if (!el.length) return;
-    if (act === 'definitiv' && !confirm((el.length === 1 ? 'Ștergi definitiv emailul, cu atașamentele lui?' : 'Ștergi definitiv ' + el.length + ' emailuri, cu atașamentele lor?') + ' Nu se mai poate recupera.')) return;
+    if (act === 'definitiv' && !confirm((el.length === 1 ? 'Ștergi definitiv emailul, cu atașamentele lui?' : 'Ștergi definitiv ' + nrDe(el.length, 'email', 'emailuri') + ', cu atașamentele lor?') + ' Nu se mai poate recupera.')) return;
     try {
       const r = await Api.mailActiune(act, el);
       showToast(r?.text || 'Gata.');
@@ -159,7 +160,7 @@ export function Mail() {
   async function stergeCiorne(ids: number[]) {
     let n = 0;
     for (const id of ids) { try { await Api.mailStergeCiorna(id); n++; } catch (e) { /* se numără doar cele șterse */ } }
-    showToast(n === 1 ? 'Ciorna a fost ștearsă.' : n + ' ciorne șterse.', !n);
+    showToast(n === 1 ? 'Ciorna a fost ștearsă.' : nrDe(n, 'ciornă', 'ciorne') + ' șterse.', !n);
     reload();
   }
   function nou(pre?: any) {

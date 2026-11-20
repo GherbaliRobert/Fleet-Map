@@ -15,6 +15,7 @@
 // Le citesc serverul (validarea, rutele) și ecranele, prin GET /api/incarcare/meta — pagina și telefonul NU scriu a doua
 // oară cifrele obișnuite. Legat prin verify_flota_incarcare.js.
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
 
 const FELURI_VEHICUL = [
   { id: 'autotractor', et: 'Autotractor', caroserie: false, ampatament: 3.7, sa: 0.55, taraFata: 5200, taraSpate: 2600, limFata: 8000, limSpate: 11500, masaMax: 40000 },
@@ -151,7 +152,7 @@ const MODURI = [
 const nf0 = (n) => Math.round(n).toLocaleString('ro-RO');
 const nf1 = (n) => (Math.round(n * 10) / 10).toLocaleString('ro-RO', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const nf2 = (n) => Number(n).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const de = (n) => { const r = Math.abs(Math.round(n)) % 100; return (n !== 0 && (r === 0 || r >= 20)) ? ' de ' : ' '; };
+const de = (n) => _deNr(Math.round(Number(n) || 0));   // regula comună (public/js/numar.js)
 const _pozitiv = (v) => { if (v == null || v === '') return null; const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
 const _numar = (v) => { if (v == null || v === '') return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
 const _ton = (pct) => (pct == null ? 'gri' : (pct > 100 ? 'rosu' : (pct > PRAG_ATENTIE ? 'galben' : 'verde')));

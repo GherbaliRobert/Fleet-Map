@@ -17,13 +17,13 @@ export type Prag = { k: string; label: string; unit: string; min: number; max: n
 export const PRAGURI: { agent: string; nume: string; campuri: Prag[] }[] = [
   { agent: 'watch', nume: 'RA Watch', campuri: [
     { k: 'offlineMin', label: 'Fără semnal', unit: 'min', min: 5, max: 1440, def: 60, hint: 'Alertă dacă un vehicul nu trimite date de atâta timp.',
-      options: [[15, '15 minute'], [30, '30 minute'], [60, '1 oră (recomandat)'], [120, '2 ore'], [360, '6 ore'], [720, '12 ore']] },
+      options: [[15, '15 minute'], [30, '30 de minute'], [60, '1 oră (recomandat)'], [120, '2 ore'], [360, '6 ore'], [720, '12 ore']] },
     { k: 'idleMaxMin', label: 'Ralanti prelungit', unit: 'min', min: 5, max: 1440, def: 120, hint: 'Alertă când motorul merge staționat (pe loc) de atâta timp.',
-      options: [[15, '15 minute'], [30, '30 minute'], [60, '1 oră'], [120, '2 ore (recomandat)'], [180, '3 ore']] },
+      options: [[15, '15 minute'], [30, '30 de minute'], [60, '1 oră'], [120, '2 ore (recomandat)'], [180, '3 ore']] },
     { k: 'fuelDropL', label: 'Scădere combustibil', unit: 'L', min: 1, max: 1000, def: 15, hint: 'Alertă la o cădere bruscă de nivel.',
-      options: [[10, '10 litri'], [15, '15 litri (recomandat)'], [20, '20 litri'], [30, '30 litri'], [50, '50 litri']] },
+      options: [[10, '10 litri'], [15, '15 litri (recomandat)'], [20, '20 de litri'], [30, '30 de litri'], [50, '50 de litri']] },
     { k: 'fuelTheftL', label: 'Furt combustibil — prag', unit: 'L', min: 1, max: 1000, def: '', hint: 'Scădere la parcare sau în mers, confirmată dacă nu revine în ~1h.',
-      options: [['', 'Dezactivat (recomandat)'], [15, '15 litri'], [20, '20 litri'], [30, '30 litri'], [50, '50 litri']] },
+      options: [['', 'Dezactivat (recomandat)'], [15, '15 litri'], [20, '20 de litri'], [30, '30 de litri'], [50, '50 de litri']] },
   ] },
   { agent: 'care', nume: 'RA Care', campuri: [
     { k: 'serviceSoonKm', label: 'Avertisment service (bord/CAN)', unit: 'km înainte', min: 100, max: 50000, def: 1500, hint: 'Cu câți km înainte de service-ul indicat de BORDUL mașinii să apară alerta.',
@@ -31,11 +31,11 @@ export const PRAGURI: { agent: string; nume: string; campuri: Prag[] }[] = [
     // Lucrările (schimb de ulei, revizie) au preavizul lor; ACTELE îl au pe al lor, mai jos. Înainte, pe telefon,
     // se numeau „Avertisment scadențe” și omul credea că reglează și ITP-ul, și RCA-ul.
     { k: 'careDaysLead', label: 'Avertisment lucrări service (zile)', unit: 'zile înainte', min: 1, max: 365, def: 14, hint: 'Cu câte zile înainte de scadența unei LUCRĂRI pe dată să se aprindă. Aceeași cifră colorează rândul în Mentenanță ȘI trimite notificarea.',
-      options: [[7, '7 zile înainte'], [14, '14 zile înainte (recomandat)'], [21, '3 săptămâni înainte'], [30, '30 zile înainte (o lună)'], [60, '60 zile înainte']] },
+      options: [[7, '7 zile înainte'], [14, '14 zile înainte (recomandat)'], [21, '3 săptămâni înainte'], [30, '30 de zile înainte (o lună)'], [60, '60 de zile înainte']] },
     { k: 'careKmLead', label: 'Avertisment lucrări service (km)', unit: 'km înainte', min: 50, max: 50000, def: 500, hint: 'Cu câți km înainte de scadența pe KILOMETRI să se aprindă. Aceeași cifră colorează rândul ȘI trimite notificarea.',
       options: [[250, '250 km înainte'], [500, '500 km înainte (recomandat)'], [1000, '1.000 km înainte'], [1500, '1.500 km înainte'], [2000, '2.000 km înainte']] },
     { k: 'docDaysLead', label: 'Avertisment acte (ITP, RCA, rovinietă)', unit: 'zile înainte', min: 1, max: 365, def: 30, hint: 'Cu câte zile înainte de expirarea unui ACT să se aprindă. Aceeași cifră colorează rândul în Documente ȘI trimite notificarea.',
-      options: [[7, '7 zile înainte'], [14, '14 zile înainte'], [30, '30 zile înainte (recomandat)'], [45, '45 zile înainte'], [60, '60 zile înainte (două luni)']] },
+      options: [[7, '7 zile înainte'], [14, '14 zile înainte'], [30, '30 de zile înainte (recomandat)'], [45, '45 de zile înainte'], [60, '60 de zile înainte (două luni)']] },
   ] },
   { agent: 'optimize', nume: 'RA Optimize', campuri: [
     { k: 'ecoScoreMin', label: 'Scor eco minim', unit: '/100', min: 0, max: 100, def: 60, hint: 'Alertă când scorul eco al unui vehicul scade sub această valoare.',
@@ -43,7 +43,7 @@ export const PRAGURI: { agent: string; nume: string; campuri: Prag[] }[] = [
   ] },
   { agent: 'dispatch', nume: 'RA Dispatch', campuri: [
     { k: 'dispOnlineMin', label: 'Disponibil — ultimul semnal sub', unit: 'min', min: 5, max: 240, def: 65, hint: 'Un vehicul e „disponibil” dacă a transmis semnal mai recent de atât și e oprit.',
-      options: [[30, '30 minute'], [45, '45 minute'], [65, '65 minute (recomandat)'], [90, '90 minute'], [120, '2 ore']] },
+      options: [[30, '30 de minute'], [45, '45 de minute'], [65, '65 de minute (recomandat)'], [90, '90 de minute'], [120, '2 ore']] },
     { k: 'dispIdleHour', label: 'Verifică „subutilizat” după', unit: 'ora zilei', min: 0, max: 23, def: 12, hint: 'De la ce oră a zilei semnalăm vehiculele disponibile dar fără rulaj azi.',
       options: [[10, '10:00'], [11, '11:00'], [12, '12:00 (recomandat)'], [13, '13:00'], [14, '14:00']] },
     { k: 'dispIdleKm', label: 'Nefolosit azi — sub', unit: 'km', min: 1, max: 100, def: 1, hint: 'Sub câți km parcurși azi un vehicul disponibil e considerat neutilizat.',

@@ -27,6 +27,7 @@ import './admin.css';
 import './detail.css';
 import './firma.css';
 import './companii.css';
+import { nrDe } from '../lib/numar';
 
 // Fișa unei firme (fondatori), ca fereastra de pe web (raxOpenCompanyDetail), pe file:
 // Stare · Detalii · Utilizatori · Vehicule · Facturi · Abonament & plăți · Contract · Acces.
@@ -276,7 +277,7 @@ function Utilizatori({ o, onReload }: { o: any; onReload: () => void }) {
     <>
       <div class="fm-card pad">
         <h3 style="margin-top:0"><Icon name="shield" size={14} /> Administratorii firmei
-          <span class="co-pill" style="margin-left:auto">{activi.length ? activi.length + (activi.length === 1 ? ' activ' : ' activi') : 'niciunul'}</span></h3>
+          <span class="co-pill" style="margin-left:auto">{activi.length ? nrDe(activi.length, 'activ', 'activi') : 'niciunul'}</span></h3>
         {activi.length > 0 ? (
           <>
             <div class="co-tags" style="margin-top:4px">{activi.map((u) => <span class="co-pill ok">{u.full_name || u.username}</span>)}</div>

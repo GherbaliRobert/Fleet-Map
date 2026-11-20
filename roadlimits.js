@@ -7,6 +7,7 @@
 // Configurabil (una sau mai multe adrese, separate prin virgulă), ca să se poată trece pe o instanță
 // proprie fără atins codul. Implicit rămân cele publice: aici volumul NU crește cu flota, ci cu numărul de
 // click-uri pe „Limite reale”, și e deja plafonat structural (1 cerere/s, cache 7 zile, max 25 vehicule/raport).
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const ENDPOINTS = (process.env.OVERPASS_URL || '').split(',').map(s => s.trim()).filter(Boolean).length
   ? process.env.OVERPASS_URL.split(',').map(s => s.trim()).filter(Boolean)
   : [
@@ -243,7 +244,7 @@ async function classesForPoints(points) {
   if (points.length > MAX_POINTS) points = points.slice(0, MAX_POINTS);
   const bucati = _bucati(points);
   if (bucati.length > MAX_TILES) {
-    const err = new Error('Perioada aleasă acoperă un traseu prea lung pentru datele OSM (' + bucati.length + ' zone, maxim ' + MAX_TILES + '). Alege un interval mai scurt.');
+    const err = new Error('Perioada aleasă acoperă un traseu prea lung pentru datele OSM (' + nrDe(bucati.length, 'zonă', 'zone') + ', maxim ' + MAX_TILES + '). Alege un interval mai scurt.');
     err.code = 'AREA';
     throw err;
   }

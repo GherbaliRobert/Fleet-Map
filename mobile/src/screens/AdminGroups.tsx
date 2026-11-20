@@ -14,6 +14,7 @@ import { flota, numar, uitaFlota } from '../components/flotaCommon';
 import './detail.css';
 import './admin.css';
 import './flota.css';
+import { nrDe } from '../lib/numar';
 
 // Pluralizare corectă: 1 vehicul / 2..19 vehicule / 20+ de vehicule.
 function nrVehicule(n: number): string {
@@ -102,7 +103,7 @@ export function AdminGroups() {
         <div style="width:36px" />
       </header>
       <div class="content has-tabbar marg" style="padding-bottom:96px">
-        {list != null && !err && <div class="fl-count" style="margin:0 2px 10px">{n}{n === 1 ? ' grupă' : ' grupe'}</div>}
+        {list != null && !err && <div class="fl-count" style="margin:0 2px 10px">{nrDe(n, 'grupă', 'grupe')}</div>}
         {err && <div class="fl-empty" style="color:var(--red)">{err}</div>}
         {list == null && !err && <div class="fl-empty"><div class="spin" style="margin:0 auto" /></div>}
         {list != null && !err && (list.length ? (
@@ -112,7 +113,7 @@ export function AdminGroups() {
               const vs = vehDin(g.id);
               const deschis = open === g.id;
               const meta: string[] = [];
-              if (g.user_count) meta.push(g.user_count + (g.user_count === 1 ? ' om vede mașinile prin grupă' : ' oameni văd mașinile prin grupă'));
+              if (g.user_count) meta.push(nrDe(g.user_count, 'om vede mașinile prin grupă', 'oameni văd mașinile prin grupă'));
               if (g.work_schedule) meta.push('program propriu');
               const libere = devs.filter((d) => String(d.group_id) !== String(g.id))
                 .sort((a, b) => numar(devs, a.imei).localeCompare(numar(devs, b.imei), 'ro'));
@@ -188,7 +189,7 @@ export function AdminGroups() {
       {del && (() => {
         const nv = vehDin(del.id).length, u = del.user_count || 0;
         let msg = 'Ștergi grupa „' + (del.name || '') + '”?\n\nVehiculele NU se șterg' + (nv ? ' — cele ' + nv + ' din ea rămân fără grupă.' : '.');
-        if (u) msg += '\n\nATENȚIE: ' + u + (u === 1 ? ' utilizator vede' : ' utilizatori văd') + ' aceste vehicule PRIN grupa asta. După ștergere nu le mai văd, până le dai acces altfel.';
+        if (u) msg += '\n\nATENȚIE: ' + nrDe(u, 'utilizator vede', 'utilizatori văd') + ' aceste vehicule PRIN grupa asta. După ștergere nu le mai văd, până le dai acces altfel.';
         return <Confirma title="Confirmare ștergere" okLabel="Șterge" danger busy={busy} text={msg} onCancel={() => setDel(null)} onOk={() => sterge(del)} />;
       })()}
     </div>

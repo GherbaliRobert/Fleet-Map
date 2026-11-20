@@ -2,6 +2,7 @@
 // regulile și textele, curate (fără bază, fără rețea), ca să se probeze singure (verify_ramuri.js). Serverul adună datele
 // cu funcțiile care există deja (stările listelor, rapoartele) și le dă aici; pagina și RA Insight doar arată ce iese.
 'use strict';
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const { nr, cant } = require('./ai_raport');
 
 const ZI = 86400000;
@@ -234,7 +235,7 @@ function recomandariOreCondus(x) {
   });
   if (x.soferi.length && !x.flota.supusi) out.push({ fel: 'info', text: 'Reg. 561 (orele de condus ale camioanelor și autobuzelor) nu se aplică la autoturisme și dube — orele de mai jos arată doar cât a condus fiecare. Dacă un camion apare aici, trece-i tipul în fișa mașinii („Camion”, „Autotractor”…).' });
   const gps = x.soferi.filter(function (s) { return s.supus && s.sursa === 'GPS'; }).length;
-  if (gps) out.push({ fel: 'info', text: (gps === 1 ? 'La un șofer' : 'La ' + gps + ' șoferi') + ' orele sunt estimate din GPS (mașina nu trimite datele tahografului): în mers = condus. Pentru un control oficial contează tahograful.' });
+  if (gps) out.push({ fel: 'info', text: (gps === 1 ? 'La un șofer' : 'La ' + nrDe(gps, 'șofer', 'șoferi')) + ' orele sunt estimate din GPS (mașina nu trimite datele tahografului): în mers = condus. Pentru un control oficial contează tahograful.' });
   if (x.flota.faraSofer) out.push({ fel: 'info', text: (x.flota.faraSofer === 1 ? 'O mașină a mers' : cant(x.flota.faraSofer, 'mașină a mers', 'mașini au mers')) + ' fără șofer trecut în aplicație — orele nu se pot pune pe un om. Șoferul se trece din Management → Șoferi.' });
   if (x.flota.supusi && !x.flota.incalcari) out.push({ fel: 'bun', text: 'Nicio încălcare a Reg. 561 în ' + (x.eticheta || 'perioada asta') + '.' });
   return out;

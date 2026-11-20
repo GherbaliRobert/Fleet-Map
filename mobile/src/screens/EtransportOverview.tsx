@@ -6,6 +6,7 @@ import { de } from '../lib/contracte'; // „15 minute”, dar „24 de ore” �
 import { AntetFondator, Banda, Cifra, adresaFirmei, cand, numar } from '../components/FondatorUi';
 import './admin.css';
 import './fondator.css';
+import { nrDe } from '../lib/numar';
 
 // e-Transport, privirea FONDATORULUI — o firmă pe cartonaș (ca pe web, _etfRandeaza). Aici NU se adaugă și NU se
 // șterge niciun transport: noi vedem cine are modulul, cine are coduri expirate sau camioane care tac (amendă),
@@ -16,8 +17,8 @@ function semn(f: any): Semn {
   if (!f.modul) return f.deVandut ? { t: 'are mașini, n-are modulul', c: 'var(--text-muted)', rau: false } : { t: 'fără modul', c: 'var(--text-muted)', rau: false };
   if (f.probleme) return { t: f.probleme + ' de rezolvat acum', c: 'var(--fd-bad)', rau: true };
   if (f.platitDegeaba) return { t: 'plătește modulul, n-a introdus niciun cod', c: 'var(--fd-warn)', rau: true };
-  if (f.curand) return { t: f.curand + (f.curand === 1 ? ' cod expiră curând' : ' coduri expiră curând'), c: 'var(--fd-warn)', rau: false };
-  if (f.necunoscut) return { t: f.necunoscut + (f.necunoscut === 1 ? ' cod fără termen' : ' coduri fără termen'), c: 'var(--fd-warn)', rau: true };
+  if (f.curand) return { t: nrDe(f.curand, 'cod expiră curând', 'coduri expiră curând'), c: 'var(--fd-warn)', rau: false };
+  if (f.necunoscut) return { t: nrDe(f.necunoscut, 'cod fără termen', 'coduri fără termen'), c: 'var(--fd-warn)', rau: true };
   if (f.active) return { t: 'toate în regulă', c: 'var(--fd-ok)', rau: false };
   if (f.zileFaraCod == null) return { t: 'niciun cod introdus', c: 'var(--fd-warn)', rau: true };
   if (f.zileFaraCod > 60) return { t: 'niciun cod de ' + f.zileFaraCod + ' de zile', c: 'var(--fd-warn)', rau: true };
@@ -98,7 +99,7 @@ export function EtransportOverview() {
               const sg = semn(f);
               const are = (f.lista || []).length;
               const e = !!deschise[f.id];
-              const cate = f.active ? f.active + (f.active === 1 ? ' transport activ' : ' transporturi active') : 'niciun transport activ';
+              const cate = f.active ? nrDe(f.active, 'transport activ', 'transporturi active') : 'niciun transport activ';
               return (
                 <div class="fd-card" key={f.id}>
                   <div class="fd-card-h">
@@ -137,7 +138,7 @@ export function EtransportOverview() {
             {/* Toate cifrele de aici vin de la server (etransport.js): „codul ține 5 zile” e lege, nu decor de ecran. */}
             {pr.zileNational != null && (
               <div class="fd-note" style="margin-top:12px">
-                Codul UIT ține <b>{pr.zileNational} zile</b> ({pr.zileIntracomunitar} la achiziții intracomunitare), iar un camion care tace mai mult
+                Codul UIT ține <b>{nrDe(pr.zileNational, 'zi', 'zile')}</b> ({pr.zileIntracomunitar} la achiziții intracomunitare), iar un camion care tace mai mult
                 de <b>{pr.tacereMinute}{de(pr.tacereMinute)}minute</b> intră la „de rezolvat”. „Expiră curând” = sub <b>{pr.curandOre}{de(pr.curandOre)}ore</b>.
                 Codurile și transporturile rămân la client — noi vedem cine e în urmă, ca să-l sunăm.
               </div>

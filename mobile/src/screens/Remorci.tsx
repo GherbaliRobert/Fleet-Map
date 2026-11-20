@@ -12,6 +12,7 @@ import { modulIncarcare, remorcaText, remorcaObisnuite, remorcaDinRand, REM_CAMP
 import './detail.css';
 import './admin.css';
 import './flota.css';
+import { nrDe } from '../lib/numar';
 
 export function Remorci() {
   const loc = useLocation();
@@ -127,7 +128,7 @@ export function Remorci() {
       <div class="content has-tabbar" style="padding:12px 14px 96px">
         {list != null && !err && (
           <div class="fl-count" style="margin:0 2px 10px">
-            {nSemi + (nSemi === 1 ? ' semiremorcă' : ' semiremorci')} · {nRem + (nRem === 1 ? ' remorcă' : ' remorci')}
+            {nrDe(nSemi, 'semiremorcă', 'semiremorci')} · {nrDe(nRem, 'remorcă', 'remorci')}
           </div>
         )}
         {err && <div class="fl-empty" style="color:var(--red)">{err}</div>}

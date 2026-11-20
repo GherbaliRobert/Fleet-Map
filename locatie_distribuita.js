@@ -4,6 +4,7 @@
 // Aici stau DOAR regulile și textele (curat: fără bază, fără server, fără ceas propriu — `acum` vine de la cine cheamă):
 // cât poate ține un link, cum arată tokenul, ce se păstrează în bază și ce vede omul pe pagina publică.
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
 const crypto = require('crypto');
 
 // Duratele, ca pe WhatsApp. Ecranele (web, telefon) le iau de la server — NU le scrie a doua oară.
@@ -37,7 +38,7 @@ function tokenBun(t) { return typeof t === 'string' && /^[A-Za-z0-9_-]{32}$/.tes
 function activ(link, acum) { return !!link && Number(link.expira_la) > acum; }
 
 // „20 de minute”, dar „15 minute”: fără „de” când ultimele două cifre sunt între 1 și 19 (regula din pagină, _raxDe).
-function _de(n) { const r = n % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function _de(n) { return _deNr(n); }   // regula comună (public/js/numar.js)
 function _cate(n, unu, multe) { return n === 1 ? ('1 ' + unu) : (n + _de(n) + multe); }
 
 const _fmtOra = new Intl.DateTimeFormat('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' });

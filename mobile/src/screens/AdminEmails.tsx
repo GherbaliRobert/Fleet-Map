@@ -3,6 +3,7 @@ import { Api } from '../api/endpoints';
 import { Icon } from '../components/Icon';
 import { FmMsg, FmScreen, poartaFirma, type FmMesaj } from '../components/FirmaUi';
 import './admin.css'; // .frm, .fld
+import { nrDe } from '../lib/numar';
 
 // „Adrese de email” (web: Setări → Notificări), pentru adminul firmei: agenda firmei — dispecerat@,
 // contabilitate@ — care primește alerte și rapoarte pe lângă conturile oamenilor. O adresă NU primește nimic
@@ -161,7 +162,7 @@ function AdminEmailsEcran() {
           <p class="fm-foot">
             Bifele spun <b>ce primește</b> fiecare adresă.{' '}
             {neconf
-              ? <>Ai <b>{neconf}{neconf === 1 ? ' adresă neconfirmată' : ' adrese neconfirmate'}</b> — {neconf === 1 ? 'nu primește' : 'nu primesc'} nimic până nu se apasă linkul din emailul de confirmare.</>
+              ? <>Ai <b>{nrDe(neconf, 'adresă neconfirmată', 'adrese neconfirmate')}</b> — {neconf === 1 ? 'nu primește' : 'nu primesc'} nimic până nu se apasă linkul din emailul de confirmare.</>
               : 'Toate adresele sunt confirmate.'}
           </p>
         </>

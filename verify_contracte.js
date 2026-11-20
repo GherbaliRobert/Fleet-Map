@@ -72,7 +72,7 @@ T('compania demo nu are dosar juridic', s({ is_demo: true }, null).nivel === 'de
 // Expirarea: contează doar dacă NU se reînnoiește singur.
 const cuSfarsit = (zile, reinnoire) => Object.assign({}, ACTIV, { end_at: ACUM + zile * ZI, auto_renew: reinnoire });
 T('la 30 de zile de expirare, fără reînnoire → avertisment', s(FIRMA, cuSfarsit(30, false)).nivel === 'expira', s(FIRMA, cuSfarsit(30, false)).eticheta);
-T('și spune în câte zile', /30 zile/.test(s(FIRMA, cuSfarsit(30, false)).eticheta), s(FIRMA, cuSfarsit(30, false)).eticheta);
+T('și spune în câte zile', /30 de zile/.test(s(FIRMA, cuSfarsit(30, false)).eticheta), s(FIRMA, cuSfarsit(30, false)).eticheta);
 T('la 30 de zile, dar CU reînnoire → nu e nimic de făcut', s(FIRMA, cuSfarsit(30, true)).nivel === 'ok');
 T('la 200 de zile nu deranjează pe nimeni', s(FIRMA, cuSfarsit(200, false)).nivel === 'ok');
 T('termen depășit fără reînnoire → avertisment', s(FIRMA, cuSfarsit(-5, false)).nivel === 'expira', s(FIRMA, cuSfarsit(-5, false)).eticheta);

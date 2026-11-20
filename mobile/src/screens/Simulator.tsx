@@ -12,6 +12,7 @@ import { simSvg } from '../lib/simDesen';
 import { modulIncarcare, RUTA_PLANURI, type IncMeta } from '../lib/incarcare';
 import './detail.css';
 import './simulator.css';
+import { nrDe } from '../lib/numar';
 
 const CHEIE = 'ra_sim_plan_tel';   // planul în lucru, în telefonul omului (o comoditate, nu o salvare)
 type Marfa = { nume: string; lungime: number; latime: number; inaltime: number; kg: number; buc: number; oprire: number; suprapus: boolean };
@@ -253,7 +254,7 @@ export function Simulator() {
             </div>
 
             <div class="ts-card">
-              <div class="ts-row" style="justify-content:space-between"><b style="font-size:15px">Marfa</b><span class="ts-mut">{R ? R.incarcate + ' din ' + R.total + ' colete' : ''}</span></div>
+              <div class="ts-row" style="justify-content:space-between"><b style="font-size:15px">Marfa</b><span class="ts-mut">{R ? R.incarcate + ' din ' + nrDe(R.total, 'colet', 'colete') : ''}</span></div>
               {marfa.map((x, i) => (
                 <div class="ts-it">
                   <div class="ts-row"><span class="ts-dot" style={'color:' + culoare(x.oprire)} /><span class="ts-itn">{x.nume}</span>

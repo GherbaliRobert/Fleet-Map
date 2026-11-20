@@ -7,6 +7,7 @@ import { Grupa } from '../components/FlotaUi';
 import './detail.css';
 import './admin.css';
 import './flota.css';
+import { nrDe } from '../lib/numar';
 
 // Iconița și familia de culoare a fiecărui tip — ca pe web (ALERT_META), ca tipurile să se recunoască
 // dintr-o privire: vitezometru roșu la viteză, picătură la combustibil, pin la zone, cheie la service.
@@ -159,7 +160,7 @@ export function AdminAlerts() {
     const ids: any[] = Array.isArray(c.geofenceIds) ? c.geofenceIds : (c.geofenceId ? [c.geofenceId] : []);
     if (!ids.length) return '';
     if (ids.length === 1) return ' · ' + zName(ids[0]);
-    return ' · ' + ids.length + ' zone: ' + ids.slice(0, 2).map(zName).join(', ') + (ids.length > 2 ? ' +' + (ids.length - 2) : '');
+    return ' · ' + nrDe(ids.length, 'zonă', 'zone') + ': ' + ids.slice(0, 2).map(zName).join(', ') + (ids.length > 2 ? ' +' + (ids.length - 2) : '');
   }
   // Vehiculele companiei alese; pentru „toată platforma” rămân toate, cu compania scrisă lângă nume.
   // Cele NEASIGNATE (fără company_id) rămân vizibile oricum — altfel ar dispărea din toate listele
@@ -334,7 +335,7 @@ export function AdminAlerts() {
           const deschis = openType === null && order.length === 1 ? order[0] : openType;
           return (
             <>
-              <div class="fl-count" style="margin:0 2px 10px">{items.length}{items.length === 1 ? ' regulă' : ' reguli'}</div>
+              <div class="fl-count" style="margin:0 2px 10px">{nrDe(items.length, 'regulă', 'reguli')}</div>
               <div class="fl-list">
                 {order.map((tp) => {
                   const rules = byType[tp];
@@ -345,7 +346,7 @@ export function AdminAlerts() {
                     <Grupa open={open} onToggle={() => setOpenType(open ? '' : tp)}
                       lead={<span class={'fl-ic ' + m.f}><Icon name={m.i} size={17} /></span>}
                       title={typeLabel(tp)}
-                      sub={<>{rules.length}{rules.length === 1 ? ' regulă' : ' reguli'}{nOff ? <span style="color:var(--orange,#f59e0b)"> · {nOff}{nOff === 1 ? ' oprită' : ' oprite'}</span> : null}</>}>
+                      sub={<>{nrDe(rules.length, 'regulă', 'reguli')}{nOff ? <span style="color:var(--orange,#f59e0b)"> · {nrDe(nOff, 'oprită', 'oprite')}</span> : null}</>}>
                       {rules.map((a) => {
                         const prag = pragText(a);
                         const z = zoneText(a).replace(/^ · /, '');
@@ -418,7 +419,7 @@ export function AdminAlerts() {
                       {form.co === '__all__'
                         ? 'Regula se aplică vehiculelor tuturor companiilor și nu va fi vizibilă administratorilor lor.'
                         : form.co
-                          ? formVehicles.length + ' vehicule în această companie.'
+                          ? nrDe(formVehicles.length, 'vehicul', 'vehicule') + ' în această companie.'
                           : 'Alege compania pentru care creezi regula — administratorul ei o va vedea și o va putea edita.'}
                     </div>
                   </div>

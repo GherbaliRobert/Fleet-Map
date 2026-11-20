@@ -18,6 +18,8 @@
 //   6. cartonașele „Stării” — socoteala paginii și a telefonului, RULATE pe aceleași firme, dau același rezultat;
 //   7. pe server pornit: un camion pornește simulatorul, alegerea noastră îl oprește, „înapoi la automat” îl repornește.
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window) — bucățile ei rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'));
 const path = require('path');
 const vm = require('vm');
 const { spawn } = require('child_process');
@@ -118,7 +120,7 @@ const tsJs = (cod, fisier) => ts.transpileModule(cod, { compilerOptions: { targe
 function modul(cod, fisier, cereri) {
   const m = { exports: {} };
   vm.runInContext(tsJs(cod, fisier), vm.createContext({ module: m, exports: m.exports, console,
-    require: (id) => { if (cereri && cereri[id]) return cereri[id]; throw new Error('require neașteptat: ' + id); } }), { filename: fisier });
+    require: (id) => { if (cereri && cereri[id]) return cereri[id]; if (id === './numar') return require('./public/js/numar.js'); throw new Error('require neașteptat: ' + id); } }), { filename: fisier });
   return m.exports;
 }
 const SEMNAL = modul(libSemnal, 'semnal.ts', {});
@@ -147,7 +149,7 @@ T('„Automat, după flotă: pornit / oprit — …” — aceleași vorbe',
 sect('6. „Stare”: pagina și telefonul, pe aceleași firme, același rezultat');
 const iB = html.indexOf('// ── începe „fila Stare” ──'), jB = html.indexOf('// ── sfârșit „fila Stare” ──');
 T('blocul paginii e între repere', iB > 0 && jB > iB);
-const WEB = vm.runInNewContext(html.slice(iB, jB) + '\n;({ cart: _raxStareCartonase, acces: _raxAccesEt })');
+const WEB = vm.runInNewContext(html.slice(iB, jB) + '\n;({ cart: _raxStareCartonase, acces: _raxAccesEt })', Object.assign({}, require('./public/js/numar.js')));
 const iSt = html.indexOf('var CTR_STARI = {');
 const CTR_STARI = vm.runInNewContext('(' + html.slice(iSt + 'var CTR_STARI = '.length, html.indexOf('};', iSt) + 1) + ')');
 const ACUM = Date.UTC(2026, 9, 12, 9, 0, 0);

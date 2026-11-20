@@ -10,6 +10,7 @@ import { exportReport, exportHistoryReport } from '../lib/export';
 import { raCauta } from '../lib/format';
 import './reports.css';
 import '../screens/detail.css'; // pentru .sheet*
+import { nrDe } from '../lib/numar';
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 function range(p: Period): { from: string; to: string } {
@@ -19,7 +20,7 @@ function range(p: Period): { from: string; to: string } {
   if (p === 'month') from.setDate(from.getDate() - 30);
   return { from: from.toISOString(), to: now.toISOString() };
 }
-const PERIOD_LABEL: Record<Period, string> = { today: 'Azi', yesterday: 'Ieri', week: '7 zile', month: '30 zile', custom: 'Interval…' };
+const PERIOD_LABEL: Record<Period, string> = { today: 'Azi', yesterday: 'Ieri', week: '7 zile', month: '30 de zile', custom: 'Interval…' };
 // Zilele săptămânii pentru filtrul zile/ore (token server = mon..sun).
 const WDAYS: { k: string; l: string }[] = [{ k: 'mon', l: 'Lu' }, { k: 'tue', l: 'Ma' }, { k: 'wed', l: 'Mi' }, { k: 'thu', l: 'Jo' }, { k: 'fri', l: 'Vi' }, { k: 'sat', l: 'Sâ' }, { k: 'sun', l: 'Du' }];
 // YYYY-MM-DD → DD.MM (pentru axa graficului de consum zilnic)
@@ -153,7 +154,7 @@ export function Reports() {
   const list = vehicles.value;
   const selLabel = sel.length === 0 ? 'Toată flota' : sel.length === 1
     ? (list.find((v) => v.imei === sel[0])?.name || sel[0])
-    : `${sel.length} vehicule`;
+    : `${nrDe(sel.length, 'vehicul', 'vehicule')}`;
 
   // Graficul de consum zilnic (doar pt. raportul „consumption”), din /api/fuel-stats.
   async function loadFuelSeries() {

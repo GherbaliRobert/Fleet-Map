@@ -8,6 +8,7 @@
 // Datele NOASTRE (Prestatorul) vin din „Date emitent” (setarea `invoice_issuer`), aceleași care
 // apar pe facturi — ca să nu existe două versiuni ale firmei noastre în aceeași aplicație.
 
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
@@ -421,7 +422,7 @@ function scrieContract(doc, date) {
   _p(doc, 'Abonamentul fiecărui vehicul începe din ziua în care echipamentul montat pe acesta transmite prima dată date către platformă. ' +
     'Pentru luna în care începe, abonamentul se datorează proporțional cu zilele rămase din lună și se facturează împreună cu luna următoare; ' +
     'de atunci, fiecare factură cuprinde luna în curs, integral. Serviciile lunare care nu țin de un anumit vehicul încep odată cu primul vehicul monitorizat.');
-  _p(doc, 'Factura se emite în data de ' + ziFactura + ' a fiecărei luni, iar plata se face în termen de ' + termenPlata + ' zile de la emitere, prin transfer bancar în contul Prestatorului indicat mai sus.');
+  _p(doc, 'Factura se emite în data de ' + ziFactura + ' a fiecărei luni, iar plata se face în termen de ' + nrDe(termenPlata, 'zi', 'zile') + ' de la emitere, prin transfer bancar în contul Prestatorului indicat mai sus.');
   _p(doc, 'Neplata facturii la scadență dă dreptul Prestatorului să suspende accesul la platformă, după o perioadă de grație de 15 zile de la expirarea termenului, cu notificarea prealabilă a Beneficiarului. Suspendarea nu înlătură obligația de plată a sumelor datorate.');
   // Costurile UNICE din Anexa nr. 2 (decizie Alin, 29.09): aparatele integral în avans, pe proformă; montajul
   // după executare, pe vehiculele montate efectiv. Aceleași cuvinte ca în Anexa nr. 2 și în ofertă.

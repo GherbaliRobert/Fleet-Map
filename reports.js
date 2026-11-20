@@ -1,6 +1,7 @@
 // reports.js — Motor de rapoarte flotă (calcule din tabela positions).
 // Toate funcțiile primesc (db, imeis[], from, to, opts) și întorc { columns, rows, summary }.
 
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const IDLE_SPEED = 3;        // km/h sub care vehiculul e considerat oprit
 const MAX_STEP_KM = 10;      // ignoră salturi GPS mai mari (puncte aberante)
 let geocode = null; try { geocode = require('./geocode'); } catch (e) {} // reverse-geocode (adrese în Foaie de parcurs)
@@ -34,7 +35,7 @@ function _ageStr(ms, isNow) {
   const h = Math.floor(m / 60);
   if (h < 24) return pre + h + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
   const d = Math.floor(h / 24);
-  return pre + d + (d === 1 ? ' zi' : ' zile');
+  return pre + nrDe(d, 'zi', 'zile');
 }
 // Calitatea fix-ului GPS după numărul de sateliți (ca userul să înțeleagă coloana „Sateliți”).
 function _satQ(n) {
@@ -2126,7 +2127,7 @@ async function rDocServiceDue(db, imeis, from, to, opts, devMap) {
   const horizon = showAll ? null : (to ? new Date(to) : null); // filtrează doar scadențele pe DATĂ; km + efectuate rămân mereu
   const items = [];
   const rank = { 'Depășit': 0, 'Critic': 1, 'Curând': 2, 'OK': 3, '—': 4, 'Efectuat': 5 };
-  const ramasZile = (days) => days < 0 ? Math.abs(days) + ' zile în urmă' : (days === 0 ? 'azi' : days + ' zile');
+  const ramasZile = (days) => days < 0 ? nrDe(Math.abs(days), 'zi', 'zile') + ' în urmă' : (days === 0 ? 'azi' : nrDe(days, 'zi', 'zile'));
   // Odometru curent per vehicul (pt. km rămași la service pe km)
   const odoMap = {};
   try {
@@ -2196,7 +2197,7 @@ async function rFleetUptime(db, imeis, from, to, opts, devMap) {
     // Zile active / inactive cu DATE exacte (DD.MM.YYYY), sortate cronologic.
     const activeKeys = Array.from(moveDays).sort();
     const inactiveKeys = uniqDays.filter(k => !moveDays.has(k));
-    const listTxt = (keys) => keys.length ? keys.length + ' zile: ' + keys.map(_dayLabelFull).join(', ') : '0 zile'; // separat, fiecare dată (cerut)
+    const listTxt = (keys) => keys.length ? nrDe(keys.length, 'zi', 'zile') + ': ' + keys.map(_dayLabelFull).join(', ') : '0 zile'; // separat, fiecare dată (cerut)
     // Semnal pe perioadă: Inexistent (nimic / tăcut pe a doua jumătate = offline) · Bun (fix GPS bun + transmisie constantă) · Slab (rest).
     const avgSat = satN ? Math.round(satSum / satN) : 0;
     const tailFrac = lastTs ? (toMs - lastTs) / span : 1;

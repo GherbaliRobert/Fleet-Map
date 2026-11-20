@@ -22,6 +22,7 @@ import { Icon } from './Icon';
 import '../screens/admin.css';
 import '../screens/detail.css';
 import '../screens/contracte.css';
+import { nrDe } from '../lib/numar';
 
 type Form = {
   id: number; nr: string; status: string; obiect: string; signed: string; start: string; luni: string;
@@ -108,7 +109,7 @@ export function ContractActe({ contract, vehicles, onFisa }: { contract: any; ve
         return r && r.bifat && (r.pret.trim() === '' || !isFinite(parseFloat(r.pret)));
       }).map((v) => (v.name || v.imei) + (v.plate ? ' (' + v.plate + ')' : ''));
       if (lipsa.length) {
-        setMsg('Scrie abonamentul lunar pentru ' + (lipsa.length === 1 ? lipsa[0] : lipsa.length + ' aparate: ' + lipsa.join(', ')) +
+        setMsg('Scrie abonamentul lunar pentru ' + (lipsa.length === 1 ? lipsa[0] : nrDe(lipsa.length, 'aparat', 'aparate') + ': ' + lipsa.join(', ')) +
           '. Fără el, aparatul intră în anexă cu 0 lei. Dacă nu se plătește separat, scrie 0.');
         return;
       }

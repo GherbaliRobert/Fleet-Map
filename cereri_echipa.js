@@ -1,4 +1,5 @@
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
 // ─── „Anunță echipa RA Track” (capitolul 4 al machetei din 21.10; Alin, 22.10: „da” la flux, termenul „te sunăm în cel mult
 // o zi lucrătoare", cererile le preiau amândoi, cu „Preiau”) ─────────────────────────────────────────────────────────────
 // Aparatul e treaba NOASTRĂ (19.10): clientul nu e trimis să verifice nimic. Butonul îi dă un singur lucru de făcut — „ne
@@ -70,7 +71,7 @@ function ziLucratoareDupa(z) {
 }
 const _sus = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 // „3 zile”, „21 de ore”, „45 de minute” (cu „de” de la 20 în sus).
-function _de(n) { const r = Math.abs(n) % 100; return (n === 0 || r >= 20 || r === 0) ? ' de ' : ' '; }
+function _de(n) { return _deNr(n); }   // regula comună (public/js/numar.js)
 function _cate(n, unu, multe) { return n === 1 ? (unu === 'oră' || unu === 'zi' ? 'o ' + unu : 'un ' + unu) : n + _de(n) + multe; }
 function durata(min) {
   const m = Math.max(0, Math.round(Number(min) || 0));

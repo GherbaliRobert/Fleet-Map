@@ -16,9 +16,9 @@ type Semn = { t: string; c: string; rau: boolean };
 // Ce e de rezolvat la firmă, într-o propoziție. Ordinea contează: amenda bate vânzarea.
 function semn(f: any): Semn {
   if (!f.modul) return f.deVandut ? { t: 'are camioane, n-are modulul', c: 'var(--text-muted)', rau: false } : { t: 'fără modul', c: 'var(--text-muted)', rau: false };
-  if (f.depasite) return { t: f.depasite + (f.depasite === 1 ? ' termen depășit' : ' termene depășite'), c: 'var(--fd-bad)', rau: true };
-  if (f.niciodata) return { t: f.niciodata + (f.niciodata === 1 ? ' niciodată descărcat' : ' niciodată descărcate'), c: 'var(--fd-bad)', rau: true };
-  if (f.necitite) return { t: f.necitite + (f.necitite === 1 ? ' fișier necitit' : ' fișiere necitite'), c: 'var(--fd-warn)', rau: true };
+  if (f.depasite) return { t: nrDe(f.depasite, 'termen depășit', 'termene depășite'), c: 'var(--fd-bad)', rau: true };
+  if (f.niciodata) return { t: nrDe(f.niciodata, 'niciodată descărcat', 'niciodată descărcate'), c: 'var(--fd-bad)', rau: true };
+  if (f.necitite) return { t: nrDe(f.necitite, 'fișier necitit', 'fișiere necitite'), c: 'var(--fd-warn)', rau: true };
   if (f.platitDegeaba) return { t: 'plătește modulul, n-are ce descărca', c: 'var(--fd-warn)', rau: true };
   if (f.zileFaraFisier == null) return { t: 'niciun fișier încărcat', c: 'var(--fd-warn)', rau: true };
   if (f.zileFaraFisier > 60) return { t: 'niciun fișier de ' + f.zileFaraFisier + ' de zile', c: 'var(--fd-warn)', rau: true };
@@ -28,7 +28,7 @@ function semn(f: any): Semn {
 // Un șofer sau un camion, în cuvinte. `zile` vine de la server (zile rămase; negativ = întârziere).
 function problema(p: any): { t: string; c: string } {
   if (p.stare === 'niciodata') return { t: 'niciodată descărcat', c: 'var(--fd-bad)' };
-  if (p.stare === 'depasit') { const z = Math.abs(p.zile || 0); return { t: z + (z === 1 ? ' zi întârziere' : ' zile întârziere'), c: 'var(--fd-bad)' }; }
+  if (p.stare === 'depasit') { const z = Math.abs(p.zile || 0); return { t: nrDe(z, 'zi întârziere', 'zile întârziere'), c: 'var(--fd-bad)' }; }
   return { t: 'mai are ' + nrDe(p.zile, 'zi', 'zile'), c: 'var(--fd-warn)' };
 }
 
@@ -98,7 +98,7 @@ export function TachoOverview() {
               const are = (f.probleme || []).length;
               const e = !!deschise[f.id];
               const cate = f.deDescarcat
-                ? f.soferi + (f.soferi === 1 ? ' șofer' : ' șoferi') + ' · ' + f.vehicule + (f.vehicule === 1 ? ' camion' : ' camioane')
+                ? nrDe(f.soferi, 'șofer', 'șoferi') + ' · ' + nrDe(f.vehicule, 'camion', 'camioane')
                 : 'nimic de descărcat';
               return (
                 <div class="fd-card" key={f.id}>

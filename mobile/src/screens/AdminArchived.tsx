@@ -107,7 +107,7 @@ export function AdminArchived() {
         <div style="min-width:0">
           <div class="nm">{d.name || d.plate || d.imei}{d.name && d.plate ? ' · ' + d.plate : ''}</div>
           <div class="sub">IMEI {d.imei}</div>
-          <div class="sub">{poz} poziții{per ? ' · ' + per : ''}</div>
+          <div class="sub">{nrDe(poz, 'poziție', 'poziții')}{per ? ' · ' + per : ''}</div>
           {te && <div class="sub" style={'font-weight:700;color:' + te.c}>{te.t}</div>}
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -141,7 +141,7 @@ export function AdminArchived() {
             </div>
             {peDuca > 0 && (
               <Banda ton="warn" icon="clock">
-                <b>{peDuca}{peDuca === 1 ? ' aparat are istoricul pe ducă.' : ' aparate au istoricul pe ducă.'}</b> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum, de pe calculator: butonul „Descarcă tot istoricul” de pe rândul mașinii (un singur fișier, cu tot istoricul).
+                <b>{nrDe(peDuca, 'aparat are istoricul pe ducă.', 'aparate au istoricul pe ducă.')}</b> Se șterge definitiv în câteva zile — dacă clientul îl cere înapoi, scoate-l acum, de pe calculator: butonul „Descarcă tot istoricul” de pe rândul mașinii (un singur fișier, cu tot istoricul).
               </Banda>
             )}
             <input class="fd-search" value={q} onInput={(e: any) => setQ(e.target.value)} placeholder="Caută nume / număr / IMEI / firmă…" />
@@ -154,7 +154,7 @@ export function AdminArchived() {
                 <GrupFirma key={g.k} nume={g.nume} deschis={deschis}
                   onToggle={() => setManual((m) => ({ ...m, [g.k]: !deschis }))}
                   onFirma={g.coId != null ? () => loc.route(adresaFirmei(g.coId as number)) : undefined}
-                  sumar={<>{g.dev.length}{g.dev.length === 1 ? ' aparat' : ' aparate'}{pb ? <> · <b>{pb} cu istoricul pe ducă</b></> : null}</>}>
+                  sumar={<>{nrDe(g.dev.length, 'aparat', 'aparate')}{pb ? <> · <b>{pb} cu istoricul pe ducă</b></> : null}</>}>
                   {g.dev.map(rand)}
                 </GrupFirma>
               );

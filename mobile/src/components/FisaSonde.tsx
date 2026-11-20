@@ -5,6 +5,7 @@
 // trimite mereu, dar el are câmpurile deja umplute. Pe telefon se trimit DOAR după ce secțiunea a fost
 // încărcată din server ȘI omul a schimbat ceva în ea — un apel făcut orbește ar șterge calibrarea.
 import { Icon } from './Icon';
+import { nrDe } from '../lib/numar';
 
 // Variantele de sondă — COPIE a listei FUEL_PRESETS din public/index.html (serverul nu are încă un catalog).
 // Dacă schimbi o variantă, schimb-o în AMBELE locuri.
@@ -199,7 +200,7 @@ export function SenzoriVedere({ sensors, calib }: { sensors: any[]; calib: { vol
             </div>
             {kv('Tip', numeSursa(s && s.source, s && s.mode))}
             {s && s.source && numeSursa(s.source, s.mode) !== s.source ? kv('Sursă', s.source) : null}
-            {kv('Mod', s && s.mode === 'calibration' ? 'Calibrare (tabel) · ' + cal.length + (cal.length === 1 ? ' punct' : ' puncte') : 'Direct (deja litri)')}
+            {kv('Mod', s && s.mode === 'calibration' ? 'Calibrare (tabel) · ' + nrDe(cal.length, 'punct', 'puncte') : 'Direct (deja litri)')}
             {s && s.capacity ? kv('Capacitate', Number(s.capacity) + ' L') : null}
           </div>
         );

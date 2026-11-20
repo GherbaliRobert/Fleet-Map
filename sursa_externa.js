@@ -1,4 +1,6 @@
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 // sursa_externa.js — „Sursă externă” în RA Insight (28.10; Alin, la propunerea „Internetul în RA Insight”: „da — dar nu-l
 // numim internet, îl numim sursă externă, și explicăm că caută pe internet"). RA Insight răspunde din aplicație; cu butonul
 // „Sursă externă” pornit, caută și pe internet ce nu e în aplicație: prețuri, reguli, legi, informații generale.
@@ -21,7 +23,7 @@ const LUNGIME_MAX = 200;   // caractere într-o căutare
 const SURSE_MAX = 5;       // surse arătate sub răspuns
 const REFUZATE_MAX = 2;    // căutări refuzate la o întrebare, după care unealta nu mai încearcă
 
-function _de(n) { const r = Math.abs(Math.round(Number(n) || 0)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function _de(n) { return _deNr(Math.round(Number(n) || 0)); }   // regula comună (public/js/numar.js)
 function cant(n, unu, multe) { return Math.round(n) === 1 ? '1 ' + unu : Math.round(n) + _de(n) + multe; }
 const LUNI = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
 const _fmtZi = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Bucharest', day: 'numeric', month: 'numeric', year: 'numeric' });
@@ -290,7 +292,7 @@ function textFirma(st, oprita, acum) {
   if (!st || !st.vede) return '';
   if (oprita) return 'Oprită pentru toată firma: butonul nu apare nimănui.';
   const tot = st.total || 0, fol = st.folosite || 0;
-  return 'Pornită: oricine are RA Insight o poate porni într-o discuție. ' + fol + ' din ' + tot + ' întrebări cu sursă externă folosite luna asta; ' +
+  return 'Pornită: oricine are RA Insight o poate porni într-o discuție. ' + fol + ' din ' + nrDe(tot, 'întrebare', 'întrebări') + ' cu sursă externă folosite luna asta; ' +
     'se reîncarcă ' + reincarcare(acum) + '.';
 }
 

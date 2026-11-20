@@ -228,7 +228,7 @@
       if (gata.length) {
         h += '<div class="tr-tot">' +
           '<div class="tr-tot-s">' + trNum(total) + '<span>lei</span></div>' +
-          '<div class="tr-tot-b">' + (inLucru ? 'până acum · ' + gata.length + ' din ' + taxabile.length + ' vehicule' : gata.length + ' vehicule') +
+          '<div class="tr-tot-b">' + (inLucru ? 'până acum · ' + gata.length + ' din ' + nrDe(taxabile.length, 'vehicul', 'vehicule') : nrDe(gata.length, 'vehicul', 'vehicule')) +
           ' · ' + trKm(kmTaxati) + ' km pe drum cu taxă</div></div>';
       }
       // Avertismentul despre data intrării în vigoare are sens doar dacă există sume de citit.
@@ -783,13 +783,13 @@
     el('tahograf-view-mode').innerHTML = modeBadge((cfg.tahograf && cfg.tahograf.mode) || 'demo');
     var drivers = await api('/api/tacho-status').catch(function () { return []; }); if (!Array.isArray(drivers)) drivers = [];
     el('tahograf-view-body').innerHTML =
-      '<div class="dm-card"><h3>Șoferi — descărcare card (ciclu 28 zile)</h3>' +
+      '<div class="dm-card"><h3>Șoferi — descărcare card (ciclu 28 de zile)</h3>' +
       (drivers.length ? drivers.map(tachoDriverRow).join('') : '<div class="dm-muted">Niciun șofer. Adaugă șoferi în Administrare → Șoferi.</div>') + '</div>' +
       '<div class="dm-card" id="tacho-analysis" style="margin-top:14px;display:none;"></div>';
   };
   function tachoDriverRow(d) {
     var col = d.status === 'overdue' ? 'var(--red)' : (d.status === 'due_soon' ? 'var(--orange)' : 'var(--accent)');
-    var label = d.status === 'overdue' ? 'DEPĂȘIT' : (d.lastDownload ? (d.daysLeft + ' zile rămase') : 'niciodată descărcat');
+    var label = d.status === 'overdue' ? 'DEPĂȘIT' : (d.lastDownload ? (nrDe(d.daysLeft, 'zi', 'zile') + ' rămase') : 'niciodată descărcat');
     return '<div class="dm-driver">' +
       '<div class="dm-driver-top"><b>' + esc(d.driver) + '</b><span class="dm-pill" style="background:' + col + '22;color:' + col + '">' + esc(label) + '</span></div>' +
       '<div class="dm-progress"><div class="dm-progress-bar" style="width:' + d.progressPct + '%;background:' + col + '"></div></div>' +

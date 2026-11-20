@@ -1,4 +1,5 @@
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
 // email_raport.js — emailul cu raportul programat (29.10; Alin: „da, e o idee bună”). Până atunci emailul avea două rânduri
 // și un Excel atașat — exact forma pe care filtrele de spam o bănuiesc la un expeditor nou (raportul lui Alin ajungea în Spam
 // la Yahoo). Acum spune ce raport e, pe ce perioadă și pe ce mașini, cifrele de sus ale raportului (aceleași ca pe cartonașul
@@ -12,7 +13,7 @@ const FRECVENTA = { daily: 'zilnic', weekly: 'în fiecare luni', monthly: 'pe 1 
 function _esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
 }
-function _de(n) { const r = Math.abs(Math.round(Number(n) || 0)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function _de(n) { return _deNr(Math.round(Number(n) || 0)); }   // regula comună (public/js/numar.js)
 function _cant(n, unu, multe) { n = Math.round(Number(n) || 0); return n === 1 ? '1 ' + unu : n + _de(n) + multe; }
 function _ora(h) { const x = Math.min(23, Math.max(0, Math.round(Number(h) || 0))); return (x < 10 ? '0' : '') + x + ':00'; }
 

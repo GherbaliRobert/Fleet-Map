@@ -4,6 +4,8 @@
 // fără model), cartonașele, textele și socoteala „din ultimele 30 de zile” — de câte ori ar fi sunat alerta, cu regula MOTORULUI
 // de alerte (pragul + marja lui, o dată la 5 minute pe mașină; serverul îi dă cifrele). Serverul adună datele și aplică.
 'use strict';
+const { deNr: _deNr } = require('./public/js/numar.js');
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const insight = require('./insight');
 const soferiMasini = require('./soferi_masini');   // aceleași 10 minute pentru „Anulează”, aceeași zi pentru o propunere veche
 const condus = require('./condus');
@@ -44,7 +46,7 @@ const TEXTE = {
 function dupaAnulare(fel) { return TEXTE.dupaAnulare[fel] || TEXTE.dupaAnulare.sofer; }
 
 function _n(t) { return insight.norm(t || ''); }
-function _de(n) { const r = Math.abs(Math.round(n)) % 100; return (r >= 1 && r <= 19) ? ' ' : ' de '; }
+function _de(n) { return _deNr(Math.round(Number(n) || 0)); }   // regula comună (public/js/numar.js)
 function _ori(n) { return n === 1 ? 'o dată' : 'de ' + n + _de(n) + 'ori'; }
 // Ziua României a unei clipe: „14.10” (anul doar dacă nu e cel de acum).
 function _zi(ms, acum) {
@@ -202,7 +204,7 @@ function cardAlerta(o) {
     randuri: [{ l: 'Ce urmăresc', v: 'Depășire viteză', b: true }, { l: 'Peste', v: o.prag + ' km/h' }, { l: 'Pe', v: opt.t }, { l: 'Numele alertei', v: nume }],
     campuri: { prag: o.prag, imei: String(o.imei || ''), nume: nume, optiuni: o.optiuni || [], min: PRAG_MIN, max: PRAG_MAX },
     dovT: 'Din ultimele ' + ZILE_ISTORIC + _de(ZILE_ISTORIC) + 'zile', dovezi: doveziViteza(o),
-    sub: o.poate ? 'Se face exact ca din Management › Alerte › Adaugă regulă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. O oprești oricând din lista de alerte; se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute.'
+    sub: o.poate ? 'Se face exact ca din Management › Alerte › Adaugă regulă, cu drepturile tale. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. O oprești oricând din lista de alerte; se poate anula în următoarele ' + nrDe(soferiMasini.ANULARE_MIN, 'minut', 'minute') + '.'
       : 'Doar cine poate schimba alertele apasă „Da”' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, pune alerta', poate: !!o.poate
   };
@@ -280,7 +282,7 @@ function cardDiscutie(o) {
     randuri: [{ l: 'Șoferul', v: s.nume, b: true }, { l: 'Când', v: 'azi, din clipa în care apeși Da' }, { l: 'Despre', v: o.despre || '—' }],
     campuri: { nota: o.despre || '', max: NOTA_MAX },
     dovT: 'Din RA Drive', dovezi: dov,
-    sub: o.poate ? 'Se face exact ca din RA Drive › „Am vorbit cu el”. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula în următoarele ' + soferiMasini.ANULARE_MIN + ' minute. Șoferul nu primește niciun mesaj.'
+    sub: o.poate ? 'Se face exact ca din RA Drive › „Am vorbit cu el”. În jurnal: „' + (o.cine || 'tu') + ', prin RA Insight”. Se poate anula în următoarele ' + nrDe(soferiMasini.ANULARE_MIN, 'minut', 'minute') + '. Șoferul nu primește niciun mesaj.'
       : 'Doar cine conduce flota apasă „Da”' + (o.aproba ? ': ' + o.aproba : '') + '.',
     butonDa: 'Da, notează', poate: !!o.poate
   };

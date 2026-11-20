@@ -11,6 +11,7 @@ import './admin.css';
 import './detail.css';
 import './firma.css';
 import './companii.css';
+import { nrDe } from '../lib/numar';
 
 // Fișa firmei → „Abonament & plăți” (fondatori), ca pe web (_raxCodAbonament / _raxAboHtml):
 //   • starea accesului + suspendarea manuală (motiv obligatoriu) / reactivarea;
@@ -190,7 +191,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
       const p = (r && r.pastrare) || null;
       showToast(p && p.platita
         ? 'Salvat: istoricul se păstrează ' + p.luni + de(p.luni) + 'luni, ' + (Number(p.pretRON) || 0).toLocaleString('ro-RO', { maximumFractionDigits: 2 }) + ' lei/lună ✓'
-        : 'Salvat: cele ' + inc + ' luni incluse ✓');
+        : 'Salvat: cele ' + nrDe(inc, 'lună', 'luni') + ' incluse ✓');
       setPastCob(null);
       pastAtins.current = false; // selecția se reface din ce a rămas scris pe server
       onReload();
@@ -299,7 +300,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
           <div class="frm">
             <div class="fld"><label>Cât se păstrează</label>
               <select value={past.sel} onChange={(e: any) => sp2('sel', e.target.value)}>
-                <option value={String(PR.incluse)}>{PR.incluse} luni (incluse)</option>
+                <option value={String(PR.incluse)}>{nrDe(PR.incluse, 'lună', 'luni')} (incluse)</option>
                 <option value="24">24 de luni</option>
                 <option value="36">36 de luni</option>
                 <option value="alt">Alt număr de luni…</option>
@@ -316,7 +317,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
                     value={past.pret} placeholder="ex. 50" onInput={(e: any) => sp2('pret', e.target.value)} /></div>
               </div>
             )}
-            <div class="co-note" style="margin:0">{PR.incluse} luni sunt incluse pentru toți. Mai mult se plătește lunar și apare pe factură. Aplicația șterge singură tot ce e mai vechi decât scrie aici, la câteva ore.</div>
+            <div class="co-note" style="margin:0">{nrDe(PR.incluse, 'lună', 'luni')} sunt incluse pentru toți. Mai mult se plătește lunar și apare pe factură. Aplicația șterge singură tot ce e mai vechi decât scrie aici, la câteva ore.</div>
             <button class="fm-btn acc" disabled={busy === 'past'} onClick={salveazaPastrarea}><Icon name="check" size={15} /> {busy === 'past' ? 'Se salvează…' : 'Salvează'}</button>
           </div>
         </div>
@@ -359,7 +360,7 @@ export function CompanyAbonament({ ov, onReload, onFacturi }: { ov: any; onReloa
                 {Number(bd.fmsAddon) ? <div class="co-ln"><span>Spor FMS</span><span>{lei2(bd.fmsAddon)}</span></div> : null}
               </>
             )}
-            {(pr.model === 'pe-vehicul' || pr.model === 'fara-oferta') && <div class="co-ln"><span>Preț pe vehicul · {(Number(bc.none) || 0) + (Number(bc.can) || 0)} vehicule</span><span>{lei2(bd.base)}</span></div>}
+            {(pr.model === 'pe-vehicul' || pr.model === 'fara-oferta') && <div class="co-ln"><span>Preț pe vehicul · {nrDe((Number(bc.none) || 0) + (Number(bc.can) || 0), 'vehicul', 'vehicule')}</span><span>{lei2(bd.base)}</span></div>}
           </>
         )}
         {/* Aceleași rânduri ca pe web și ca pe factură: pachetul RA Insight (13.11; numele, ca „RA Insight Pro”, vine de la server),

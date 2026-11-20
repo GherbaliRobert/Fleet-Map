@@ -520,7 +520,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (`confirmare`) și `DELETE /api/insight/fisa` (răspunsul are `mesaj`). Doar pentru cine are cont RA Insight (`aiCont`) și doar cu
   `activ: true` (pe Start blocul lipsește — Alin, 11.11). Tot cu APK-ul ăsta pleacă și textele corectate pe 11.11: actul citit fără
   „gratuit" / „citire AI", exemplul din notițele firmei, mesajul de la capătul lunii pe regula veche.
-- [ ] **Robert: telefonul și contul demo (APK-ul următor). Adăugat pe 19.11.** Codul e gata: în „Cereri demo”, butonul „Prelungește” pe cererile aprobate (aceleași durate ca la aprobare), duratele „24 de ore” / „30 de zile” și rolul „Vizualizare” (nu „Viewer”). Pe web sunt deja pe ratrack.ro; banda „Cont demo · îl ai până pe…” e doar pe web (contul demo se folosește de pe calculator). **20.11:** și rândul „Pe adresa asta era un cont demo: l-am înlocuit cu contul nou.” la „Client nou”, „Adaugă administrator” și Utilizatori. Tot cu APK-ul următor: ochiul pe parolă la intrare și în „Contul meu”, cu sfaturile pentru o parolă puternică.
+- [ ] **Robert: telefonul și contul demo (APK-ul următor). Adăugat pe 19.11.** Codul e gata: în „Cereri demo”, butonul „Prelungește” pe cererile aprobate (aceleași durate ca la aprobare), duratele „24 de ore” / „30 de zile” și rolul „Vizualizare” (nu „Viewer”). Pe web sunt deja pe ratrack.ro; banda „Cont demo · îl ai până pe…” e doar pe web (contul demo se folosește de pe calculator). **20.11:** și rândul „Pe adresa asta era un cont demo: l-am înlocuit cu contul nou.” la „Client nou”, „Adaugă administrator” și Utilizatori. Tot cu APK-ul următor: ochiul pe parolă la intrare și în „Contul meu”, cu sfaturile pentru o parolă puternică. Și „Email” (nu „Utilizator”) pe ecranul de intrare, plus cifrele scrise pe românește („30 de zile”, „25 de vehicule”).
 - [x] **FĂCUT (19.11): contul demo și RA Insight** (Alin: „1. varianta 2; 2. fără întrebări taxate… doar predefinite conform planului Start”). **Alin: contul demo și RA Insight — de discutat ce presupune. Adăugat pe 17.11** (Alin: „hai să-l lăsăm după ce facem astea
   două… trebuie să-l discutăm ce presupune, ce face"). Azi, cine cere cont demo de pe site (butonul stă acum chiar după secțiunea RA
   Insight și în banda de la final) primește un cont doar de vizualizare, în firma demo, care e pe Start. Deschide RA Insight și primește:
@@ -615,6 +615,29 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-20
+
+### AMÂNDOI · „30 de zile”, „25 de vehicule”: cifrele scrise pe românește peste tot; pe telefon, „Email” la intrare
+*Alin, 20.11, la cele două găsite pe drum: „Telefonul, „Utilizator” → „Email”… DA” și „2. DA, fă și A și B” (A = textele scrise fix,
+B = textele în care cifra vine din date).*
+
+**Ce am schimbat:**
+- **Regula limbii:** de la 20 în sus se pune „de” („19 zile”, „20 de zile”, „101 zile”, „120 de zile”), la 1 singularul („1 zi”), iar
+  cifrele mari cu punctul miilor („1.000 de zile”). Zero și zecimalele fără „de” („0 zile”, „2,5 litri”).
+- **A — textele fixe (cam 60):** butoanele de perioadă („30 de zile”, „90 de zile”) din Rapoarte, Statistici, Hotspot, Asistenți AI,
+  Control costuri; „Ultimele 30 de zile” la Programări; pragurile agenților („30 de minute”, „20 de litri”, „30 de zile înainte”);
+  „ciclu 28 de zile” la tahograf; ghidul lui RA Insight (numele butoanelor).
+- **B — textele cu cifra din date (cam 330, calculator + server + telefon):** permisele șoferilor („expirat de 43 de zile”), ultima
+  intrare („acum 25 de zile”), numărul de vehicule, bulele de pe hartă, Traseu, Rapoarte („Generat (120 de rânduri)”), importul din
+  Excel, tahograful, contractele („Preaviz 30 de zile”), mentenanța, arhivele, facturarea, mesajele din emailuri și din RA Insight.
+- **O singură regulă:** pagina și serverul o iau din același loc; telefonul are copia ei, legată prin verificare. Vreo 15 copii mici
+  ale regulii, rămase prin server (unele scriau „0 de mașini”), cheamă acum regula comună.
+- **Telefonul, la intrare:** „Email” și „Introdu emailul” în loc de „Utilizator” / „numele de utilizator”, ca pe calculator (și
+  tastatura de email).
+
+**Ce vede fondatorul / clientul:** aceleași ecrane, cu textele corecte. Pe telefon, cu APK-ul următor (Robert).
+
+Reper: `public/js/numar.js` (pagina + serverul: `nrDe`, `deNr`), `mobile/src/lib/numar.ts` (telefonul); probă: `verify_acord.js`
+(regula pe aceleași cifre în trei locuri, nicio copie a ei pe server, nicio formă veche în pagină, server și telefon).
 
 ### AMÂNDOI · „Ochiul” și la intrarea în aplicație și în „Contul meu”, pe calculator și pe telefon
 *Alin, 20.11: „aș vrea să punem ochiul ăla la vizualizare când scrie cineva parola și la logare, nu doar la creare”; la ce am înțeles

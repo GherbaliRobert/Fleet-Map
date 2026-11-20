@@ -16,6 +16,9 @@
 //
 // Codul nu se copiază aici: se decupează din sursă și se execută.
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window) — bucățile ei rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'));
+global._nrDe = global.nrDe;   // numele ei în server.js
 const P = (f) => require('path').join(__dirname, f);
 const html = fs.readFileSync(P('public/index.html'), 'utf8');
 const server = fs.readFileSync(P('server.js'), 'utf8');
@@ -93,7 +96,8 @@ if (ts) {
   const srcTel = fs.readFileSync(P('mobile/src/lib/semnal.ts'), 'utf8');
   const js = ts.transpileModule(srcTel, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const mod = { exports: {} };
-  new Function('module', 'exports', 'require', js)(mod, mod.exports, require);
+  // `./numar` (cifrele pe românește) = copia telefonului; aceeași regulă ca public/js/numar.js (legate de verify_acord.js).
+  new Function('module', 'exports', 'require', js)(mod, mod.exports, (id) => id === './numar' ? require('./public/js/numar.js') : require(id));
   const tel = mod.exports;
   T('pragurile telefonului = ale paginii',
     'var AGPS_TACUT_MIN = ' + tel.TACUT_MIN + ';var AGPS_MUT_ORE = ' + tel.MUT_ORE + ';' === declPag, tel.TACUT_MIN + ' / ' + tel.MUT_ORE + ' vs ' + declPag);

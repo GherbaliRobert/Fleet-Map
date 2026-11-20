@@ -17,6 +17,7 @@ import {
   type Catalog, DOC_CLS, clasaServis, dataRo, docCatMaiE, docStare, iconFa, nf, norm, numar, optiuniVehicule,
   uitaFlota, vehDe, vehDupaNumar, zi10,
 } from './flotaCommon';
+import { nrDe } from '../lib/numar';
 
 // ─── Fișierul actului ───────────────────────────────────────────────────────────────────────────
 // Pozele de telefon au 5-12 MB; limita serverului e 4. Micșorăm în WebView înainte de trimitere.
@@ -343,7 +344,7 @@ export function DocForm({ imei0, tip0, edit, lockImei, devs, tipuri, ctxImei, fi
     if (n && inFormular(imei)) { onFisa!(patch); inFisa = n; deScris = {}; }
     setF(f2); setProp(null); setFisaPending(deScris);
     if (f2.doc_type && imei) await salveaza(f2, deScris, false, inFisa);
-    else showToast((inFisa ? 'Completat: ' + inFisa + (inFisa === 1 ? ' câmp' : ' câmpuri') + ' în fișă — apasă „Salvează” pentru ele. ' : 'Completat în formular. ')
+    else showToast((inFisa ? 'Completat: ' + nrDe(inFisa, 'câmp', 'câmpuri') + ' în fișă — apasă „Salvează” pentru ele. ' : 'Completat în formular. ')
       + 'Pentru act, alege ' + (!imei ? 'vehiculul' : 'tipul actului') + ' și apasă „Adaugă actul”.');
   }
 
@@ -366,13 +367,13 @@ export function DocForm({ imei0, tip0, edit, lockImei, devs, tipuri, ctxImei, fi
         if (vechi) { setRenew({ vechi, f: x, patch: pf, inFisa: dejaInFisa }); return; }
       }
       if (edit) await Api.updateDocument(edit.id, body); else await Api.createDocument(body);
-      let coada = dejaInFisa ? ' · ' + dejaInFisa + (dejaInFisa === 1 ? ' câmp completat' : ' câmpuri completate') + ' în fișă — apasă „Salvează” pentru ele' : '';
+      let coada = dejaInFisa ? ' · ' + nrDe(dejaInFisa, 'câmp completat', 'câmpuri completate') + ' în fișă — apasă „Salvează” pentru ele' : '';
       const n = Object.keys(pf || {}).length;
       if (n) {
-        if (inFormular(imei)) { onFisa!(pf); coada = ' · ' + n + (n === 1 ? ' câmp completat' : ' câmpuri completate') + ' în fișă — apasă „Salvează” pentru ele'; }
+        if (inFormular(imei)) { onFisa!(pf); coada = ' · ' + nrDe(n, 'câmp completat', 'câmpuri completate') + ' în fișă — apasă „Salvează” pentru ele'; }
         else if (poateFisa) {
           // Ruta face actualizare PARȚIALĂ: atinge doar coloanele trimise, restul fișei rămâne neatins.
-          try { await Api.updateDeviceDetails(imei, pf); uitaFlota(); coada = ' · am completat și fișa mașinii (' + n + (n === 1 ? ' câmp)' : ' câmpuri)'); }
+          try { await Api.updateDeviceDetails(imei, pf); uitaFlota(); coada = ' · am completat și fișa mașinii (' + nrDe(n, 'câmp)', 'câmpuri)'); }
           catch { coada = ' · fișa mașinii nu s-a putut completa'; }
         }
       }

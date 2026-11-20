@@ -20,6 +20,8 @@
 //
 // Codul nu se copiază aici: se decupează din public/index.html, între sentinele, și se execută.
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window) — bucățile ei rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'));
 const P = (f) => require('path').join(__dirname, f);
 const html = fs.readFileSync(P('public/index.html'), 'utf8');
 const server = fs.readFileSync(P('server.js'), 'utf8');

@@ -13,6 +13,7 @@ import { vehCatDin } from './vehCategorii';
 import { uiPrefs, urcaUiPrefs, showToast } from '../app/store';
 import { VehicleCard } from './VehicleCard';
 import './locFlota.css'; // .vmk-bubble
+import { nrDe } from '../lib/numar';
 
 const HEX: Record<Status, string> = { moving: '#3FE07D', idle: '#eab308', stopped: '#ef4444', offline: '#8A93A3' };
 
@@ -342,7 +343,7 @@ export function VehicleMap({ vehicles, offlineMin, onSelect, focusImei, focusSeq
         b.imeis = g.imeis;
         b.mk.setLngLat([g.lng, g.lat]);
         b.el.textContent = String(g.imeis.length);
-        b.el.setAttribute('aria-label', g.imeis.length + ' vehicule apropiate');
+        b.el.setAttribute('aria-label', nrDe(g.imeis.length, 'vehicul', 'vehicule') + ' apropiate');
       }
       for (const [k, b] of bule.current) if (!buleVazute.has(k)) { b.mk.remove(); bule.current.delete(k); }
 

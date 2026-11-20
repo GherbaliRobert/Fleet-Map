@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon';
 import './route.css';
 import './admin.css';
 import './detail.css';
+import { nrDe } from '../lib/numar';
 
 // Zone (geofence) — CRUD complet pe telefon. Până acum aplicația mobilă avea DOAR citire, deci zonele
 // se puteau crea exclusiv de pe web, iar alertele de intrare/ieșire rămâneau cu lista goală.
@@ -191,8 +192,8 @@ export function AdminGeofences() {
   const descriere = (z: Zone) => {
     const c = coordZona(z);
     if (z.type === 'circle' && c?.center) return 'cerc · rază ' + fmtRaza(Number(c.radius) || 0);
-    if (c && Array.isArray(c.line)) return 'pe străzi · ' + c.line.length + ' puncte';
-    if (Array.isArray(c)) return 'poligon · ' + c.length + ' puncte';
+    if (c && Array.isArray(c.line)) return 'pe străzi · ' + nrDe(c.line.length, 'punct', 'puncte');
+    if (Array.isArray(c)) return 'poligon · ' + nrDe(c.length, 'punct', 'puncte');
     return z.type;
   };
 
@@ -299,7 +300,7 @@ export function AdminGeofences() {
 
               {!doarNumeCuloare && tip === 'polygon' && (
                 <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
-                  <span style="font-size:12.5px;color:var(--text-muted)">{puncte.length} {puncte.length === 1 ? 'punct' : 'puncte'}{puncte.length > 0 && puncte.length < 3 ? ' (minim 3)' : ''}</span>
+                  <span style="font-size:12.5px;color:var(--text-muted)">{nrDe(puncte.length, 'punct', 'puncte')}{puncte.length > 0 && puncte.length < 3 ? ' (minim 3)' : ''}</span>
                   <button disabled={!puncte.length} onClick={() => setPuncte((p) => p.slice(0, -1))}
                     style="margin-left:auto;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-primary);border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:700;font-family:inherit">Șterge ultimul</button>
                   <button disabled={!puncte.length} onClick={() => setPuncte([])}

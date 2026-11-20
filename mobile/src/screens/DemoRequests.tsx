@@ -7,6 +7,7 @@ import { LinkParolaSheet, pregatesteLinkul } from '../components/LinkParolaSheet
 import type { LinkParola } from '../components/LinkParolaSheet';
 import './detail.css';
 import './admin.css';
+import { nrDe } from '../lib/numar';
 
 // Cereri de cont demo (super-admin). Demo-ul nu se mai ia singur de pe site: vizitatorul completează
 // formularul public, iar aici se acordă accesul, cu termen ales. Paritate cu tabul „Cereri demo” de pe web.
@@ -62,7 +63,7 @@ export function DemoRequests() {
     try {
       const r: any = await Api.approveDemoRequest(approving.id, { hours });
       // „Acordat” nu înseamnă și „a plecat emailul”: dacă SMTP nu e configurat, o spunem explicit.
-      const lbl = r?.duration || (DURATIONS.find((d) => d.h === hours)?.label || hours + ' ore');
+      const lbl = r?.duration || (DURATIONS.find((d) => d.h === hours)?.label || nrDe(hours, 'oră', 'ore'));
       // Emailul n-a plecat, dar serverul a întors linkul de parolă (de la 23.09): îl arătăm, copiat deja, ca să-l
       // duci tu omului. Fără link (server vechi) rămâne avertismentul.
       if (r?.link) {
@@ -196,7 +197,7 @@ export function DemoRequests() {
               <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px">
                 Expiră la <b>{new Date(Date.now() + hours * 3600 * 1000).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</b>
               </div>
-              <button class="btn btn-primary" disabled={busy} onClick={prel ? doPrelungeste : doApprove} style="width:100%">{busy ? (prel ? 'Se prelungește…' : 'Se acordă…') : (prel ? 'Prelungește cu ' : 'Acordă ') + (DURATIONS.find((d) => d.h === hours)?.label || hours + ' ore')}</button>
+              <button class="btn btn-primary" disabled={busy} onClick={prel ? doPrelungeste : doApprove} style="width:100%">{busy ? (prel ? 'Se prelungește…' : 'Se acordă…') : (prel ? 'Prelungește cu ' : 'Acordă ') + (DURATIONS.find((d) => d.h === hours)?.label || nrDe(hours, 'oră', 'ore'))}</button>
             </div>
           </div>
         </div>

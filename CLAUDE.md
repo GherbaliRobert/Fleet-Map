@@ -3579,6 +3579,25 @@ lista flotei și rândul de sub „Total vehicule” din „Statistici flotă”
 - Păzit de `test_agents.js` (pasul „Unit" al porții): `nrRo`, `cate`, „service DEPĂȘIT cu 1.240 km", „ITP expiră în 25 de zile", nicio cifră lipită
   direct în text, nimic „24/7" / „non-stop"; plus `verify_statistici_flota.js` („Ce urmăresc pe").
 
+## Un număr lângă cuvântul lui: „25 de zile” (20.11; Alin: „2. DA, fă și A și B”)
+De la 20 în sus se pune „de” („19 zile”, „20 de zile”, „101 zile”, „120 de zile”), la 1 singularul, cifrele mari cu punctul miilor
+(„1.000 de zile”); zero și zecimalele fără „de”. Până pe 20.11: „30 zile” scris fix (perioade, pragurile agenților) și „expirat de 43 zile”,
+„25 vehicule”, „Generat (120 rânduri)” peste tot unde cifra vine din date.
+- **O regulă: `public/js/numar.js`** → `nrDe(n, 'zi', 'zile')` și `deNr(n)` („ ” / „ de ”), pentru pagină (în `<head>`, pe `window`) ȘI server
+  (`require('./public/js/numar.js')`; în server.js `_nrDe` — „nrDe” e un nume local în `_aplicaSoferi`). Telefonul: copia ei,
+  `mobile/src/lib/numar.ts`, legată de `verify_acord.js`. `agents.cate`, `contracts.numar` și `de` / `_de` / `_ofDe` / `_mailDe` din module
+  o CHEAMĂ — NU scrie o copie nouă. Pe pagină mai stau copiile vechi `_rDe` / `_raxDe` / `istZileDe` (aceeași regulă; `_raxDe` intră în cutia
+  ofertei) — un text NOU folosește `nrDe`.
+- **Un text nou cu o cifră din date = `nrDe(n, unu, multe)`**, nu `n + ' zile'` și nici `n + (n === 1 ? ' zi' : ' zile')`. Un cuvânt după cifră
+  care începe cu un verb („n-au intrat”) sau cu „de” rămâne fără regulă.
+- **Unde se rulează bucăți din pagină în altă parte, regula trebuie dată și acolo:** cutia ofertei pentru telefon (`_ofPregateste`, `...require`),
+  `io_format.formatIoValue` (trimisă în pagină ca text — `nrDe` e cel de pe `window`), probele care taie bucăți din pagină
+  (`Object.assign(global, require('./public/js/numar.js'))` sau în contextul lor) și cele care traduc fișiere de telefon (`./numar` →
+  `require('./public/js/numar.js')`). Paginile publice NU încarcă `numar.js` (`agenti-demo.js`, `parola.js` au cifre fixe sub 20, lăsate în probă).
+- **Telefonul, la intrare: „Email” / „Introdu emailul”** (nu „Utilizator” / „numele de utilizator”), ca pe calculator.
+- Păzit de **`verify_acord.js`** (în `npm test`): regula pe aceleași cifre în trei locuri, nicio copie pe server, `<script>` în `<head>`, nicio formă
+  veche în pagină, server și telefon (rândurile de jurnal ale serverului sunt lăsate: nu le citește clientul).
+
 ## Duratele pe românește: „3 h 10 min” (17.11; Alin: „5. da" — „„3h 10m” → „3 h 10 min”, pe site și în aplicație")
 „m" e simbolul metrului. Peste tot — rapoarte (ecran, Excel, PDF), Traseu (ecran + fișier), balonul de pe hartă, tahograf, RA Insight, cursele,
 graficele, dispecerizarea, telefonul — o durată se scrie **„3 h 10 min”, „2 h”, „45 min”, „40 s”, „5 min 30 s”, „2 zile 3 h”, „sub 1 min”**, fără

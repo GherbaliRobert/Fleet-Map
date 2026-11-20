@@ -10,6 +10,7 @@ import { salveazaText } from '../components/salveazaText';
 import './route.css';
 import './detail.css'; // .sheet-ov / .sheet (foaia „Exportă traseul”)
 import '../components/locFlota.css'; // .loc-exp (butoanele mari din foaie)
+import { nrDe } from '../lib/numar';
 
 type Period = 'today' | 'yesterday' | 'week' | 'custom';
 interface Range { from: string; to: string }
@@ -381,7 +382,7 @@ export function RouteScreen() {
       setOsmOn(true);
       setOsmOver(over > 0);
       setOsmInfo(withLimit === 0 ? 'Fără limite OSM pe acest traseu (drumuri netagate)'
-        : (over > 0 ? `${over} puncte peste limită${sel != null ? ' (ruta selectată)' : ''} · max +${maxOver} km/h` : 'Fără depășiri vs. limita reală' + (sel != null ? ' (ruta selectată)' : '')));
+        : (over > 0 ? `${nrDe(over, 'punct', 'puncte')} peste limită${sel != null ? ' (ruta selectată)' : ''} · max +${maxOver} km/h` : 'Fără depășiri vs. limita reală' + (sel != null ? ' (ruta selectată)' : '')));
     } catch (e: any) {
       showToast(e?.message || 'Limite OSM indisponibile');
     } finally { setOsmBusy(false); }
@@ -549,7 +550,7 @@ export function RouteScreen() {
           </span>
           <span style="margin-left:4px">
             · {ext.overCount > 0
-              ? `${ext.overCount} depășiri · max +${ext.maxOver} km/h (limită ${limit} km/h)`
+              ? `${nrDe(ext.overCount, 'depășire', 'depășiri')} · max +${ext.maxOver} km/h (limită ${limit} km/h)`
               : `Fără depășiri (limită ${limit} km/h)`}
           </span>
         </div>
@@ -594,7 +595,7 @@ export function RouteScreen() {
         ) : (
           <>
             <div class="rt-listhead">
-              <span>{nRoutes} {nRoutes === 1 ? 'rută' : 'rute'} · apasă o rută pentru a o vedea pe hartă</span>
+              <span>{nrDe(nRoutes, 'rută', 'rute')} · apasă o rută pentru a o vedea pe hartă</span>
               {sel != null && <button class="rt-allbtn" onClick={() => setSel(null)}><Icon name="layers" size={14} /> Toate</button>}
             </div>
             {routes!.map((r, i) => (

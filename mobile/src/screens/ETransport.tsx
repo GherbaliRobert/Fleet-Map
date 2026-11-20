@@ -8,6 +8,7 @@ import './detail.css';
 import './admin.css';
 import './tacho.css'; // .th-badge / .th-due / .th-gh — aceleași benzi și rânduri ca la Tahograf
 import './flota.css'; // --fl-ok: verdele care se citește și pe tema deschisă
+import { nrDe } from '../lib/numar';
 
 // e-Transport = SCADENȚARUL codurilor UIT, ca pe web (raxEtRender): cine trebuie rezolvat acum, cine expiră
 // curând, cine e în regulă și ce s-a încheiat. Starea fiecărui transport (ore rămase, motive, cât s-a consumat
@@ -267,7 +268,7 @@ function TransportNou({ onClose, onGata }: { onClose: () => void; onGata: () => 
           <div class="fld">
             <label>Tipul operațiunii</label>
             <select value={f.tip} onChange={(e: any) => set({ tip: e.target.value })}>
-              {tipuri.map((t) => <option value={t.cod}>{t.label} ({t.zile} zile)</option>)}
+              {tipuri.map((t) => <option value={t.cod}>{t.label} ({nrDe(t.zile, 'zi', 'zile')})</option>)}
             </select>
           </div>
           <div class="fld"><label>Începe pe</label><input type="date" value={f.start} onInput={(e: any) => set({ start: e.target.value })} /></div>
@@ -275,7 +276,7 @@ function TransportNou({ onClose, onGata }: { onClose: () => void; onGata: () => 
             <label>Codul UIT e valabil până la</label>
             <input type="date" value={f.pana} onInput={(e: any) => { set({ pana: e.target.value }); setPanaAtins(true); }} />
           </div>
-          {tip && <div class="th-et-hint">{panaAtins ? 'Data scrisă de tine — rămâne așa cum ai pus-o.' : `Propus: ${tip.zile} zile de la începerea transportului. Corectează data dacă ANAF ți-a dat alt termen.`}</div>}
+          {tip && <div class="th-et-hint">{panaAtins ? 'Data scrisă de tine — rămâne așa cum ai pus-o.' : `Propus: ${nrDe(tip.zile, 'zi', 'zile')} de la începerea transportului. Corectează data dacă ANAF ți-a dat alt termen.`}</div>}
           <button class="btn btn-primary btn-block" disabled={busy} onClick={trimite}>{busy ? 'Se adaugă…' : 'Adaugă transportul'}</button>
           {msg && <div style="color:var(--red);font-size:13px;font-weight:700;line-height:1.5">{msg}</div>}
         </div>

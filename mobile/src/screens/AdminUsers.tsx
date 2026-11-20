@@ -56,7 +56,7 @@ function expira(u: any): { text: string; aproape: boolean } | null {
   const zile = Math.round((miez(t) - miez(Date.now())) / 86400000);
   if (zile < 0) return { text: 'acces expirat', aproape: true };
   if (zile === 0) return { text: 'expiră azi', aproape: true };
-  if (zile <= 3) return { text: 'expiră în ' + zile + (zile === 1 ? ' zi' : ' zile'), aproape: true };
+  if (zile <= 3) return { text: 'expiră în ' + nrDe(zile, 'zi', 'zile'), aproape: true };
   return { text: 'acces până la ' + new Date(t).toLocaleDateString('ro-RO'), aproape: false };
 }
 // Lista din „Avea: …” se taie la opt, ca pe web (_usrListaScurta).
@@ -141,7 +141,7 @@ export function AdminUsers() {
   function accessText(u: any) {
     if (vedeTot(u)) return 'toată flota';
     const dc = Number(u.device_count) || 0, gc = Number(u.group_count) || 0;
-    return dc + gc > 0 ? dc + ' veh. + ' + gc + ' grupe' : 'niciun vehicul';
+    return dc + gc > 0 ? dc + ' veh. + ' + nrDe(gc, 'grupă', 'grupe') : 'niciun vehicul';
   }
   // Rolurile pe care serverul le acceptă de la contul ăsta (COMPANY_ASSIGNABLE_ROLES / VALID_ROLES):
   //  • adminul firmei → Admin companie (delegare în firma lui, decizie 16.09) + manager/dispecer/viewer + rolurile
@@ -372,7 +372,7 @@ export function AdminUsers() {
       } catch { /* rămân IMEI-urile / numerele grupelor */ }
     }
     if (devices.length) p.push(nrDe(devices.length, 'vehicul', 'vehicule') + ': ' + listaScurta(numeDev));
-    if (groups.length) p.push(groups.length + (groups.length === 1 ? ' grupă' : ' grupe') + ': ' + listaScurta(numeGrp));
+    if (groups.length) p.push(nrDe(groups.length, 'grupă', 'grupe') + ': ' + listaScurta(numeGrp));
     return p.join(' · ');
   }
   async function deschideScoate(u: any) {
@@ -519,7 +519,7 @@ export function AdminUsers() {
         {isSuper && coKeys.length > 1 && (
           <div class="adm-filter">
             <select value={coFilter} onChange={(e) => setCoFilter((e.target as HTMLSelectElement).value)}>
-              <option value="">Toate companiile ({(items || []).length} utilizatori)</option>
+              <option value="">Toate companiile ({nrDe((items || []).length, 'utilizator', 'utilizatori')})</option>
               {coKeys.map((k) => <option value={k}>{coGroups[k].name} ({coGroups[k].n})</option>)}
             </select>
           </div>

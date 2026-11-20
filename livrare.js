@@ -6,6 +6,7 @@
 // Numele evenimentelor nu le citim întocmai: le aducem la o formă (litere mici, fără semne), ca o altă scriere („hardBounces”,
 // „hard_bounce”) să însemne același lucru, iar un eveniment necunoscut să nu ne facă să spunem ceva ce nu știm.
 
+const { nrDe } = require('./public/js/numar.js');   // „1 zi”, „25 de zile” — regula comună cu pagina
 const ORE_URMARIRE = 72;          // după 3 zile fără răspuns de la Brevo, nu mai întrebăm
 const PAUZA_VERIFICARE_MIN = 10;  // același email nu se întreabă mai des de o dată la 10 minute
 
@@ -125,7 +126,7 @@ function rezumat(randuri, laNoi) {
 function anunt(randuri) {
   const l = (Array.isArray(randuri) ? randuri : []).filter(function (r) { return r && rea(r.stare); });
   if (!l.length) return null;
-  const titlu = l.length === 1 ? 'Un email n-a ajuns la destinatar' : l.length + ' emailuri n-au ajuns la destinatar';
+  const titlu = l.length === 1 ? 'Un email n-a ajuns la destinatar' : nrDe(l.length, 'email', 'emailuri') + ' n-au ajuns la destinatar';
   const body = l.slice(0, 3).map(function (r) { return (r.unde ? r.unde + ': ' : '') + textPentruNoi(r); }).join(' · ') +
     (l.length > 3 ? ' · și încă ' + (l.length - 3) : '') + '. ' + ceFacem(l[0], true);
   return { titlu: titlu, body: body };

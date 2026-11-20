@@ -15,6 +15,7 @@ import {
 import './detail.css';
 import './admin.css';
 import './flota.css';
+import { nrDe } from '../lib/numar';
 
 const RANG: Record<string, number> = { over: 0, soon: 1, ok: 2, none: 3, done: 4 };
 
@@ -78,11 +79,11 @@ export function AdminMaintenance() {
     const cuCurand = imeis.filter((i) => !byVeh.get(i)!.some((m) => mntStare(m) === 'over') && byVeh.get(i)!.some((m) => mntStare(m) === 'soon')).length;
     if (cuRest) banner = (
       <div class="fl-banner s-over"><span class="ic"><Icon name="alert" size={17} /></span>
-        <span><b>{cuRest}{cuRest === 1 ? ' mașină are' : ' mașini au'} lucrări restante.</b>{cuCurand ? (cuCurand === 1 ? ' Încă una se apropie de scadență.' : ' Alte ' + cuCurand + ' se apropie de scadență.') : ''}</span></div>
+        <span><b>{nrDe(cuRest, 'mașină are', 'mașini au')} lucrări restante.</b>{cuCurand ? (cuCurand === 1 ? ' Încă una se apropie de scadență.' : ' Alte ' + cuCurand + ' se apropie de scadență.') : ''}</span></div>
     );
     else if (cuCurand) banner = (
       <div class="fl-banner s-soon"><span class="ic"><Icon name="clock" size={17} /></span>
-        <span><b>{cuCurand}{cuCurand === 1 ? ' mașină se apropie' : ' mașini se apropie'} de scadență.</b> Nimic restant.</span></div>
+        <span><b>{nrDe(cuCurand, 'mașină se apropie', 'mașini se apropie')} de scadență.</b> Nimic restant.</span></div>
     );
     else banner = <div class="fl-banner s-done"><span class="ic"><Icon name="check" size={17} /></span><span><b>Toate mașinile sunt la zi.</b></span></div>;
   }
@@ -125,10 +126,10 @@ export function AdminMaintenance() {
                       let badge;
                       if (istoric) {
                         const lei = items.reduce((x, m) => x + (parseFloat(m.cost) || 0), 0);
-                        badge = <span class="fl-gn">{items.length}{items.length === 1 ? ' lucrare' : ' lucrări'}{lei ? ' · ' + nf(Math.round(lei)) + ' lei' : ''}</span>;
-                      } else if (over) badge = <span class="fl-gn al">{over}{over === 1 ? ' restantă' : ' restante'}</span>;
+                        badge = <span class="fl-gn">{nrDe(items.length, 'lucrare', 'lucrări')}{lei ? ' · ' + nf(Math.round(lei)) + ' lei' : ''}</span>;
+                      } else if (over) badge = <span class="fl-gn al">{nrDe(over, 'restantă', 'restante')}</span>;
                       else if (soon) badge = <span class="fl-gn soon">{soon} curând</span>;
-                      else badge = <span class="fl-gn ok">la zi · {items.length}{items.length === 1 ? ' lucrare' : ' lucrări'}</span>;
+                      else badge = <span class="fl-gn ok">la zi · {nrDe(items.length, 'lucrare', 'lucrări')}</span>;
                       return (
                         <Grupa open={deschis} onToggle={() => setOpen((p) => ({ ...p, [key]: !deschis }))}
                           title={numar(devs, imei)} sub={sub} badge={badge}>

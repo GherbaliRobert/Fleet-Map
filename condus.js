@@ -14,6 +14,7 @@
 //     corectură în fișa mașinii se vede pe loc, fără să refacem zilele.
 //   • `insumeaza` / `scor` / `costuri` fac din zile o lună (sau orice fereastră: „înainte” și „după” o discuție).
 'use strict';
+const { deNr: _deNrC } = require('./public/js/numar.js');   // „25 de ore” — regula comună cu pagina
 const { nr, cant } = require('./ai_raport');
 
 // ─── Pragurile (ale raportului EcoDrive) ────────────────────────────────────────────────────────────────
@@ -333,7 +334,7 @@ function recomandari(m, s, f) {
   const medie = laSuta(flotaMan, flotaKm);
   // 1. Cel mai scump ralanti
   const ral = m.filter(function (x) { return x.cost.ralanti >= 30; }).sort(function (a, b) { return b.cost.ralanti - a.cost.ralanti; })[0];
-  if (ral) out.push({ fel: 'atentie', text: ral.eticheta + ' a stat cu motorul pornit, pe loc, ' + nr(ral.t.ralantiEpSec / 3600, 1) + ' ore — cam ' + lei(ral.cost.ralanti) + ' arși degeaba. O regulă simplă („motorul se oprește după 5 minute de stat”) îi recuperează pe cei mai mulți.' });
+  if (ral) out.push({ fel: 'atentie', text: ral.eticheta + ' a stat cu motorul pornit, pe loc, ' + nr(ral.t.ralantiEpSec / 3600, 1) + _deNrC(Math.round(ral.t.ralantiEpSec / 360) / 10) + (Math.round(ral.t.ralantiEpSec / 360) / 10 === 1 ? 'oră' : 'ore') + ' — cam ' + lei(ral.cost.ralanti) + ' arși degeaba. O regulă simplă („motorul se oprește după 5 minute de stat”) îi recuperează pe cei mai mulți.' });
   // 2. Viteza
   const vit = m.filter(function (x) { return x.cost.viteza >= 20 || (x.t.pesteSec || 0) >= 3600; }).sort(function (a, b) { return b.cost.viteza - a.cost.viteza; })[0];
   if (vit) out.push({ fel: 'atentie', text: vit.eticheta + ' a mers ' + cant(Math.round((vit.t.pesteSec || 0) / 60), 'minut', 'minute') + ' peste ' + PRAGURI.limita + ' km/h (cel mai repede ' + nr(vit.t.vmax) + ' km/h) — cam ' + lei(vit.cost.viteza) + ' de combustibil în plus, pe lângă risc.' });

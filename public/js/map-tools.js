@@ -23,7 +23,7 @@
     var ddOpen = (el('msb-dropdown') || {}).style && el('msb-dropdown').style.display === 'block';
     if (hidden > 0 && !ddOpen) {
       if (!note) { note = document.createElement('div'); note.id = 'msb-note'; note.className = 'msb-note'; bar.appendChild(note); }
-      note.textContent = hidden === 1 ? '1 vehicul ascuns' : (hidden + ' vehicule ascunse');
+      note.textContent = hidden === 1 ? '1 vehicul ascuns' : (nrDe(hidden, 'vehicul', 'vehicule') + ' ascunse');
     } else if (note) { note.remove(); }
   }
 
