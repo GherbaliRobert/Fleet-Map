@@ -266,10 +266,10 @@ export function ClientNou() {
       try {
         const a: any = await Api.addCompanyAdmin(id, { username: email });
         adminCont = email;
-        if (a && a.nota) av.push(String(a.nota));   // pe adresă era un cont demo: serverul l-a înlocuit (20.11)
         if (a && a.invited) adminInvitat = true;
         else if (a && a.link) { adminLink = String(a.link); adminMotiv = cnMotivLink(a); }
         else av.push((a && a.warning) || 'Contul de administrator e făcut, dar linkul nu a venit.');
+        if (a && a.nota) av.push(String(a.nota));   // pe adresă era un cont demo: serverul l-a înlocuit (20.11)
       } catch (e: any) { av.push('Firma e creată, dar contul de admin nu: ' + (e?.message || 'eroare')); }
     }
 
