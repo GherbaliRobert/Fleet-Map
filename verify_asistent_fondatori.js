@@ -7,6 +7,8 @@
 //   node verify_asistent_fondatori.js --fara-server
 'use strict';
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window), serverul îl cere (_numarRo, _nrDe) — bucățile lor rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'), { _numarRo: require('./public/js/numar.js'), _nrDe: require('./public/js/numar.js').nrDe });
 const path = require('path');
 const vm = require('vm');
 
@@ -170,7 +172,7 @@ const bucati = NUME.map((n) => taieFunctia(html, n));
 T('funcțiile comune se găsesc în pagină', bucati.every(Boolean), NUME.filter((n, i) => !bucati[i]).join(', '));
 const prag = (html.match(/(?:var|const|let) ARH_PRAG_ZILE = (\d+);/) || [])[1];
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-const lume = { esc, ARH_PRAG_ZILE: Number(prag) || 7 };
+const lume = { esc, ARH_PRAG_ZILE: Number(prag) || 7, ...require('./public/js/numar.js') };   // nrDe: pagina îl are pe window
 try { vm.runInNewContext(bucati.join('\n') + '\nthis.f = { _adashStareCompanii, _adashStareHtml, _usrStareAcasa, _adashStareArhiva };', lume); } catch (e) { T('funcțiile comune rulează', false, e.message); }
 const f = lume.f || {};
 // Ce scriau cartonașele ÎNAINTE de 30.10 (copiat întocmai din codul vechi), pe aceleași cazuri.

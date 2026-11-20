@@ -10,6 +10,8 @@
 //   3. un supraveghetor care sună degeaba (flota doarme, aparatele sunt deconectate) sau care NU sună când
 //      aparatele sunt conectate și tac — plus repornirea automată care n-ar mai porni.
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window), serverul îl cere (_numarRo, _nrDe) — bucățile lor rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'), { _numarRo: require('./public/js/numar.js'), _nrDe: require('./public/js/numar.js').nrDe });
 const path = require('path');
 const src = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
 

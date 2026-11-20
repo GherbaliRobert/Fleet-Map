@@ -161,7 +161,7 @@ sect('6. Ce se vede pe ecran');
 T('rândul firmei arată SUSPENDAT, cu motivul, nu doar „expirat”',
   /oprit de noi/.test(html) && /suspendat — neplată/.test(html));
 T('și nu mai există „suspendat — abonament” (ceasul vechi, scos pe 28.09)', !/suspendat — abonament/.test(html) && !/abonament expirat/i.test(html));
-T('o restanță în derulare arată numărătoarea inversă', /restanță · ' \+ np\.zilePanaLaSuspendare \+ ' zile/.test(html));
+T('o restanță în derulare arată numărătoarea inversă', /restanță · ' \+ nrDe\(np\.zilePanaLaSuspendare, 'zi', 'zile'\)/.test(html));
 T('în fila „Abonament & plăți” e starea și butonul de suspendare', /function _raxSuspendHtml\(\)/.test(html));
 T('motivul se scrie în pagină, nu în fereastra gri a browserului',
   /id="rax-susp-motiv"/.test(html) && !/prompt\('De ce/.test(html));

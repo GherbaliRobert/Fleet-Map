@@ -19,6 +19,8 @@
 //
 // Codul nu se copiază aici: se decupează din public/index.html și se execută.
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window), serverul îl cere (_numarRo, _nrDe) — bucățile lor rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'), { _numarRo: require('./public/js/numar.js'), _nrDe: require('./public/js/numar.js').nrDe });
 const P = (f) => require('path').join(__dirname, f);
 const html = fs.readFileSync(P('public/index.html'), 'utf8');
 const server = fs.readFileSync(P('server.js'), 'utf8');
@@ -255,7 +257,7 @@ function gata(cod) {
   T('și nici butoanele ei (șterse, nu ascunse)',
     !/raxAssignDevice\s*=/.test(html) && !/raxRejectDevice\s*=/.test(html));
   T('banda de pe „Companii” a rămas',
-    /function _coBandaNeasignate\(n\)[\s\S]{0,700}aparate așteaptă să fie adoptate/.test(html));
+    /function _coBandaNeasignate\(n\)[\s\S]{0,700}'aparate'\) \+ ' așteaptă să fie adoptate/.test(html));
   T('și trimite în „Dispozitive”, nu mai jos în pagină',
     /_coBandaNeasignate\(n\)[\s\S]{0,700}onclick="raxDevDeschideNeasignate\(\)"/.test(html) &&
     !/raxCoSariLaNeasignate/.test(html));

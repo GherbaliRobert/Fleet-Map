@@ -113,7 +113,7 @@ sect('4. Grupate pe firme, cu căutare');
 T('grupurile se fac pe firmă', /function _arhGrupuri\(rows\)/.test(blocArhiva));
 T('„Fără firmă” stă la urmă, restul alfabetic', /if \(a\.k === '_fara'\) return 1;[\s\S]{0,120}localeCompare\(b\.nume, 'ro'\)/.test(blocArhiva));
 T('poartă același chenar ca „Dispozitive”', /rax-devgr/.test(blocArhiva));
-T('fiecare grup are sumar', /' aparat' : ' aparate'/.test(blocArhiva));
+T('fiecare grup are sumar', /nrDe\(gr\.dev\.length, 'aparat', 'aparate'\)/.test(blocArhiva));
 T('și buton „Deschide firma”', /Deschide firma/.test(blocArhiva));
 T('un grup cu ceva de rezolvat stă MEREU deschis', /var deschis = !!q \|\| pb > 0/.test(blocArhiva));
 T('există căutare', /rax-dev-search[\s\S]{0,140}_arhCautaSet/.test(blocArhiva));

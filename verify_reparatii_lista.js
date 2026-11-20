@@ -13,6 +13,8 @@
 // Proba citește codul (fără server) și apoi pornește un server adevărat, cu legături live adevărate.
 const { spawn } = require('child_process');
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window), serverul îl cere (_numarRo, _nrDe) — bucățile lor rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'), { _numarRo: require('./public/js/numar.js'), _nrDe: require('./public/js/numar.js').nrDe });
 const path = require('path');
 const os = require('os');
 const vm = require('vm');
@@ -169,7 +171,7 @@ sect('9. Abonamentul unei luni se emite de pe 1 ale ei (codul, rulat)');
   T('…iar pe 1 noiembrie, la miezul nopții, noiembrie se emite', ctx.f({ an: 2026, luna: 11 }, new Date(2026, 10, 1, 0, 0).getTime()) === null);
   // Fereastra web cu o lună neîncepută: refuzul sus, butoanele stinse (serverul refuză oricum).
   const res = { innerHTML: '' };
-  const c2 = vm.createContext({ console, JSON, Math, Number, String, Date, _S: { companyId: 7, fel: 'abonament', luna: '2026-11', lines: [{ desc: 'Abonament', qty: 1, unitPrice: 29, net: 29, vat: 6.09 }],
+  const c2 = vm.createContext({ ...require('./public/js/numar.js'), console, JSON, Math, Number, String, Date, _S: { companyId: 7, fel: 'abonament', luna: '2026-11', lines: [{ desc: 'Abonament', qty: 1, unitPrice: 29, net: 29, vat: 6.09 }],
     issuer: {}, vatRate: 21, client: { name: 'T' }, deja: null, preaDevreme: msg, aparateIntregi: 1, aparatePeZile: 0, aparateNepornite: 0, dinContract: null, adaugate: [], nota: '' } });
   c2.document = { getElementById: (id) => (id === 'rax-gi-result' ? res : null) };
   vm.runInContext([web.esc, web.luni, web.luna, web.invFmtD, web.invMoney, web.raxDe, web.recalc, web.bloc, web.surse, web.render,

@@ -886,7 +886,7 @@ const TRASEU_MAX_POZITII = 10000;
 // null = încape; altfel, fraza pentru om. O singură regulă, chemată de ruta de export.
 function traseuPreaMare(total) {
   if (!(Number(total) > TRASEU_MAX_POZITII)) return null;
-  return 'Traseul ales are peste ' + contracte.numar(TRASEU_MAX_POZITII, 'poziție', 'poziții').replace(/^\d+/, _miiTraseu(TRASEU_MAX_POZITII)) +
+  return 'Traseul ales are peste ' + contracte.numar(TRASEU_MAX_POZITII, 'poziție', 'poziții') +
     ' — prea multe pentru un singur fișier Excel. Alege o perioadă mai scurtă sau mai puține mașini.';
 }
 // Un vehicul: rândurile (o poziție pe rând) și sumarul, ca perechi [etichetă, valoare] cu etichete FIXE

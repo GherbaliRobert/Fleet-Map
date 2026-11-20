@@ -11,6 +11,8 @@
 // nesemnalată, rândul firmei care nu mai arată amândouă monedele, și oricine ar întreba fără să aibă cont.
 
 const fs = require('fs');
+// Pagina încarcă js/numar.js în <head> („25 de zile”: nrDe / deNr / nrRo pe window), serverul îl cere (_numarRo, _nrDe) — bucățile lor rulate aici le găsesc la fel.
+Object.assign(global, require('./public/js/numar.js'), { _numarRo: require('./public/js/numar.js'), _nrDe: require('./public/js/numar.js').nrDe });
 let ok = 0, rele = 0;
 const T = (n, c, d) => { if (c) { ok++; console.log('  ✓ ' + n); } else { rele++; console.log('  ✗ ' + n + (d !== undefined ? '  → ' + d : '')); } };
 const sect = (s) => console.log('\n' + s);

@@ -97,7 +97,7 @@ if (faza === 'golire') {
     'Aici ajung singure emailurile expeditorilor pe care i-ați marcat ca spam', '. „Nu e spam” le mută înapoi în Primite.', 'Emailurile șterse stau aici',
     '. „Recuperează” le pune înapoi de unde au venit.', 'Ciornele se salvează singure cât scrii (fără atașamente) și sunt doar ale tale.',
     'Ce scrii se salvează singur în Ciorne (fără atașamente).', 'Ciornă deschisă: se salvează singură cât scrii.', 'Ciornă salvată la ', 'Ciorna nu s-a putut salva.',
-    'Ciorna a fost ștearsă.', ' ciorne șterse.', 'Ștergi definitiv emailul, cu atașamentele lui?', ' emailuri, cu atașamentele lor?', 'Funcția și telefonul se iau', 'Funcția se ia',
+    'Ciorna a fost ștearsă.', "'ciorne') + ' șterse.'", 'Ștergi definitiv emailul, cu atașamentele lui?', "'emailuri') + ', cu atașamentele lor?'", 'Funcția și telefonul se iau', 'Funcția se ia',
     ' din fișa ta (Gestiune → Utilizatori → rândul tău) sau din Setări → Contul meu.', 'Marchează citit', 'Marchează necitit', 'Scoate steaua', 'Pune stea', 'selectat', 'selectate', 'Renunță'];
   const lipsa = CUVINTE.filter((t) => MOB.indexOf(t) < 0 || BLOC.indexOf(t) < 0);
   T('telefonul: aceleași cuvinte ca pagina', !lipsa.length, lipsa.join(' | '));

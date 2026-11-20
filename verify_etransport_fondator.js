@@ -122,7 +122,7 @@ T('scheletul se face o singură dată (cursorul nu sare din casetă)',
 sect('5b. Un CARTONAȘ pe firmă, ca la tahograf și la Dispozitive');
 T('e o listă de cartonașe', /id="etf-lista"/.test(F) && /class="rax-devgr"/.test(F));
 T('cu aceleași chenare', /rax-devgr-h/.test(F) && /rax-devgr-b/.test(F));
-T('pe cartonaș scrie câte transporturi active are', /' transport activ' : ' transporturi active'/.test(F));
+T('pe cartonaș scrie câte transporturi active are', /'transport activ', 'transporturi active'\)/.test(F));
 T('și când a intrat ultimul cod', /ultimul cod ' \+ _raxCand/.test(F));
 T('ajutoarele comune nu s-au copiat a doua oară',
   !/function _raxCand\(/.test(F) && !/function _raxNumar\(/.test(F)
