@@ -6,6 +6,8 @@ export type IconName =
   | 'x' | 'check' | 'logout' | 'layers' | 'alert' | 'calendar' | 'zap' | 'mapPin' | 'map' | 'wifiOff'
   | 'menu' | 'moon' | 'sun' | 'headset' | 'settings' | 'wrench' | 'user' | 'truck' | 'robot' | 'flame' | 'fileBar'
   | 'plus' | 'trash' | 'edit' | 'phone' | 'mail' | 'idCard' | 'sparkles' | 'coins' | 'maximize' | 'eye'
+  // „Ochiul” de pe casetele de parolă (20.11): ochiul tăiat = „Ascunde parola”.
+  | 'eyeOff'
   | 'compass'
   // Contracte (fondatori): contractul, descărcarea și urcarea unei hârtii semnate.
   | 'fileSignature' | 'download' | 'upload' | 'camera'
@@ -37,9 +39,7 @@ export type IconName =
   | 'cruiseGauge' | 'washerFluid' | 'adblueDrop' | 'stopHand' | 'warnCircle' | 'steeringEps'
   | 'brakePad' | 'lightBulbOut' | 'personSeat' | 'ptoGear' | 'sleepMoon' | 'startStop'
   | 'gasCanister' | 'plugCharge' | 'trailerHitch' | 'diffLock' | 'lightExtra'
-  | 'reply' | 'forward' | 'star' | 'starFill' | 'inbox' | 'undo' | 'mailOpen' | 'share'
-  // „Ochiul” de pe casetele de parolă (20.11): ochiul tăiat = „Ascunde parola”.
-  | 'eyeOff';
+  | 'reply' | 'forward' | 'star' | 'starFill' | 'inbox' | 'undo' | 'mailOpen' | 'share';
 
 const P: Record<IconName, string> = {
   car: '<path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11M5 11h14M5 11v6m14-6v6M6 17h2m8 0h2M7 14h.01M17 14h.01"/>',
