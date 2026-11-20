@@ -614,6 +614,49 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 
 ---
 
+## 2026-11-20
+
+### AMÂNDOI · Contul demo nu mai blochează contul adevărat; conturile demo expirate se șterg după 30 de zile
+*Alin, 20.11, la cele găsite pe drum: „3. DA” (conturile demo expirate rămâneau în bază la nesfârșit, cu nume, email și telefon) și
+„4. O REZOLVĂM ACUM” (clientul care a încercat demo-ul semnează, iar contul lui adevărat nu se putea face: „Există deja un cont cu acest
+email”).*
+
+**Ce am schimbat:**
+- **Contul adevărat ia locul contului demo.** Când facem un cont pe o adresă care are un cont demo (administratorul unei firme noi la
+  „Client nou”, „Adaugă administrator” din fișa firmei, Utilizatori — pe calculator și pe telefon), contul demo se șterge (cu discuțiile lui
+  din RA Insight și accesul la mașinile de probă), iar cel nou se face și primește invitația obișnuită. Pe ecran apare „Pe adresa asta era un
+  cont demo: l-am înlocuit cu contul nou.” Pe adresa unui cont ADEVĂRAT refuzul rămâne. Mesajul refuzului din Utilizatori spune acum
+  „Există deja un cont cu acest email” (scria „Username-ul există deja” — rămășiță a „Username” de pe 19.11).
+- **Contul demo expirat se mai ține 30 de zile** (cât să-l putem prelungi), apoi se șterge singur, o dată pe zi; în jurnalul de audit, un
+  rând cu câte au plecat (fără nume sau adrese). Cererea din „Cereri demo” rămâne (se șterge la 12 luni, cu formularul), dar fără cont, deci
+  fără „Prelungește”.
+- **Confidențialitatea** spune asta: „Contul demonstrativ: cât ține accesul primit, plus 30 de zile după ce expiră, apoi se șterge automat,
+  cu tot ce s-a făcut în el. Dacă devii client, contul tău nou îl înlocuiește.” (Ultima actualizare: 20.11.2026.)
+
+**Ce vede fondatorul:** la „Client nou” sau „Adaugă administrator” pe adresa unui om care a avut cont demo, contul se face, cu rândul de mai
+sus; în „Cereri demo”, cererea lui rămâne fără „Prelungește”.
+
+**Ce vede clientul:** omul care a încercat demo-ul primește invitația de administrator și își pune parola, ca orice client nou; pe site,
+rândul nou din Confidențialitate.
+
+Reper: `cont_demo.js` (`ZILE_DUPA_EXPIRARE`, `TEXT_INLOCUIT`), `server.js` (`_faLocContuluiNou`, `_stergeContDemo`,
+`stergeConturiDemoExpirate`, `POST /api/admin/demo/sterge-expirate`), `db.js` (`stergeContDemo`, `conturiDemoExpirate`); probă:
+`verify_demo.js` (pe server pornit: expirat de 31 de zile șters, de 10 zile rămas; administratorul și omul din Utilizatori pe adresa
+contului demo; refuzul pe un cont adevărat).
+
+### AMÂNDOI · Harta: numărul mașinii și viteza nu se mai rup pe două rânduri
+*Alin, 20.11: „2. DA” — în lista din stânga a hărții, la 1280 px, lângă „Mercedes Sprinter” numărul se rupea în „B 63 / FRG” și viteza în
+„0 / km/h”.*
+
+**Ce am schimbat:** numărul și viteza stau mereu pe un rând. Numele stă lângă număr cât încape; un nume lung trece pe rândul de dedesubt,
+întreg, și se rupe doar între cuvinte. La fel în fereastra cu mașinile dintr-o bulă de pe hartă. Măsurat în browser pe liste de 240–400 px.
+
+**Ce vede fondatorul / clientul:** lista de pe hartă, curată și la nume lungi.
+
+Reper: `public/css/app.css` (`.device-card-*`); probă: `verify_ecrane.js` (10, cu măsurătoarea în browser).
+
+---
+
 ## 2026-11-19
 
 ### AMÂNDOI · Pagina „Setează-ți parola”: „ochiul” și sfaturile pentru o parolă puternică

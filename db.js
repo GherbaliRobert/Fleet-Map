@@ -6273,6 +6273,20 @@ async function closeDb() {
 async function deleteUser(id) {
   await pool.query('DELETE FROM users WHERE id = $1', [id]);
 }
+// Un cont DEMO pleacă (20.11; Alin: „o rezolvăm acum” / „da”): înlocuit de contul adevărat făcut pe aceeași adresă, sau expirat de
+// peste cont_demo.ZILE_DUPA_EXPIRARE zile. Cererea lui din „Cereri demo” rămâne (se șterge la 12 luni, cu formularul), dar fără cont —
+// deci fără „Prelungește”. Ce ține de cont (accesul la mașini, discuțiile și fișa RA Insight) pleacă odată cu el, ca la „Scoate din firmă”.
+async function stergeContDemo(id) {
+  await pool.query('UPDATE demo_requests SET user_id = NULL, updated_at = $2 WHERE user_id = $1', [id, Date.now()]);
+  await pool.query('DELETE FROM users WHERE id = $1', [id]);
+}
+// Conturile din firma demo al căror acces a expirat înainte de `pana` (ms). Contul partajat „demo” nu are termen și nu intră.
+async function conturiDemoExpirate(companyId, pana) {
+  const r = await pool.query(
+    "SELECT id, username FROM users WHERE company_id = $1 AND access_until IS NOT NULL AND access_until < $2 AND username <> 'demo' AND role <> 'superadmin' ORDER BY id",
+    [companyId, pana]);
+  return r.rows;
+}
 
 async function updateUserPassword(id, passwordHash) {
   await pool.query('UPDATE users SET password_hash = $2 WHERE id = $1', [id, passwordHash]);
@@ -7487,7 +7501,7 @@ module.exports = {
   setUserContact,
   getPasswordHash,
   setUserLastLogin,
-  deleteUser,
+  deleteUser, stergeContDemo, conturiDemoExpirate,
   updateUserPassword,
   setUserResetToken,
   getUserByResetToken,

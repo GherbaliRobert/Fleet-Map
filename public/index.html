@@ -5088,9 +5088,12 @@ const pozitii = await r.json();</code></pre>
       ['new-username','new-fullname','new-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       // Omul trebuie să afle DACĂ a plecat linkul — altfel așteaptă degeaba un email care n-a plecat.
       // Când n-a plecat, serverul întoarce chiar linkul: îl duce adminul mai departe cum poate.
+      // Pe adresa asta era un cont demo (20.11): serverul l-a înlocuit și o spune (`nota`).
+      var notaDemo = created.nota ? created.nota + ' ' : '';
       if (created.invitat) {
-        if (window.raxToast) raxToast('Cont creat. I-am trimis linkul pe ' + username + ' — își pune singur parola.', 'success');
+        if (window.raxToast) raxToast(notaDemo + 'Cont creat. I-am trimis linkul pe ' + username + ' — își pune singur parola.', 'success', notaDemo ? 7000 : undefined);
       } else if (created.link) {
+        if (notaDemo && window.raxToast) raxToast(created.nota, 'success', 7000);
         await _usrAratLinkul(username, created.link, created.motiv);
       } else if (window.raxToast) {
         raxToast('Cont creat, dar linkul de parolă NU a plecat. Trimite-i-l din listă, cu „Trimite link de parolă”.', 'error');
@@ -24927,6 +24930,8 @@ const pozitii = await r.json();</code></pre>
             // linkul îl duci tu. Până pe 29.09 linkul era aruncat, iar panoul scria „Fără administrator
             // încă" — deși contul era făcut și nimeni nu mai avea cum să-i pună parola.
             adminOk = s.admin.username;
+            // Pe adresa asta era un cont demo (20.11): serverul l-a înlocuit și o spune.
+            if (a && a.nota && window.raxToast) raxToast(a.nota, 'success', 7000);
             if (a && !a.invited && a.link) {
               adminLink = a.link;
               adminMotiv = a.inviteEmailConfigured ? 'Emailul de invitație n-a putut pleca.' : 'Serverul nu are email configurat, deci invitația n-a plecat.';
@@ -25295,8 +25300,9 @@ const pozitii = await r.json();</code></pre>
         j = await r.json().catch(function () { return {}; });
       } catch (err) { if (window.raxToast) raxToast('Eroare: ' + err.message, 'error'); return; }
       if (!r.ok || (j && j.error)) { if (window.raxToast) raxToast((j && j.error) || ('Eroare ' + r.status), 'error'); return; }
-      if (j.invited) { if (window.raxToast) raxToast('Administrator adăugat. I-am trimis linkul pe ' + email + '.', 'success'); }
-      else if (j.link && window._usrAratLinkul) { await window._usrAratLinkul(email, j.link, j.warning); }
+      // Pe adresa asta era un cont demo (20.11): serverul l-a înlocuit și o spune (`nota`).
+      if (j.invited) { if (window.raxToast) raxToast((j.nota ? j.nota + ' ' : '') + 'Administrator adăugat. I-am trimis linkul pe ' + email + '.', 'success', j.nota ? 7000 : undefined); }
+      else if (j.link && window._usrAratLinkul) { if (j.nota && window.raxToast) raxToast(j.nota, 'success', 7000); await window._usrAratLinkul(email, j.link, j.warning); }
       else if (window.raxToast) raxToast(j.warning || 'Cont creat, dar linkul nu a plecat.', 'error');
       if (window.raxOpenCompanyDetail) raxOpenCompanyDetail(coId, 'utilizatori');
       if (window.raxLoadCompanies) raxLoadCompanies();

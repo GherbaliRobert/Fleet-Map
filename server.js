@@ -1503,7 +1503,7 @@ const PAGINI_PUBLICE = [
   { cale: '/pachete-ra-insight', fisier: 'pachete-ra-insight.html', modificat: '2026-11-18', amprenta: 'a894272e9db2', prio: '0.8', freq: 'monthly' },
   { cale: '/intrebari-frecvente', fisier: 'faq.html', modificat: '2026-11-18', amprenta: '61224572cb62', prio: '0.7', freq: 'monthly' },
   { cale: '/termeni', fisier: 'termeni.html', modificat: '2026-11-18', amprenta: '051224d9e52a', prio: '0.3', freq: 'yearly' },
-  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-18', amprenta: 'c07d8bc79a51', prio: '0.3', freq: 'yearly' },
+  { cale: '/confidentialitate', fisier: 'confidentialitate.html', modificat: '2026-11-20', amprenta: 'b45b1a53b683', prio: '0.3', freq: 'yearly' },
 ];
 function _adresaSite(req) {
   const dinEnv = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -3342,9 +3342,10 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
       return res.status(400).json({ error: 'Selectează compania pentru utilizator' });
     }
 
-    const existing = await db.getUserByUsername(username);
-    if (existing) {
-      return res.status(409).json({ error: 'Username-ul există deja' });
+    // Pe adresa unui cont DEMO, contul demo pleacă și îi ia locul cel nou (20.11); pe un cont adevărat, refuzul rămâne.
+    const loc = await _faLocContuluiNou(req, username);
+    if (!loc.liber) {
+      return res.status(409).json({ error: 'Există deja un cont cu acest email' });
     }
 
     // Parola din bază e una aleatoare pe care n-o știe NIMENI — contul se deschide doar prin link.
@@ -3362,8 +3363,9 @@ app.post('/api/users', requireAuth, requireAdmin, withCompany, async (req, res) 
       ? { trimis: false, link: await linkDeParola(req, user, { hours: 24 * 7 }), motiv: 'Din contul demo nu pleacă emailuri.' }
       : await trimiteLinkParola(req, user, { invite: true, company: co });
     if (!rez.trimis) console.warn('[INVITAȚIE] Nu a plecat pentru „' + username + '”: ' + (rez.motiv || 'trimitere eșuată'));
-    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, rolPropriu: slugNou || undefined, company_id: companyId, invitat: rez.trimis });
-    res.json(Object.assign({}, user, { invitat: rez.trimis, link: rez.link || undefined, motiv: rez.trimis ? undefined : rez.motiv }));
+    auditReq(req, 'create', 'user', user.id, { username, role: finalRole, rolPropriu: slugNou || undefined, company_id: companyId, invitat: rez.trimis, demoInlocuit: loc.demoInlocuit || undefined });
+    res.json(Object.assign({}, user, { invitat: rez.trimis, link: rez.link || undefined, motiv: rez.trimis ? undefined : rez.motiv,
+      demoInlocuit: loc.demoInlocuit || undefined, nota: loc.demoInlocuit ? contDemo.TEXT_INLOCUIT : undefined }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -10866,7 +10868,9 @@ app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req,
     const full_name = String(req.body.full_name == null ? '' : req.body.full_name).trim();
     if (!username) return res.status(400).json({ error: 'Emailul administratorului e obligatoriu' });
     if (!EMAIL_RE.test(username)) return res.status(400).json({ error: 'Utilizatorul trebuie să fie o adresă de email validă (pe ea pleacă și invitația)' });
-    if (await db.getUserByUsername(username)) return res.status(409).json({ error: 'Există deja un cont cu acest email' });
+    // Pe adresa unui cont DEMO, contul demo pleacă și îi ia locul cel adevărat (20.11) — clientul care a încercat demo-ul semnează.
+    const loc = await _faLocContuluiNou(req, username);
+    if (!loc.liber) return res.status(409).json({ error: 'Există deja un cont cu acest email' });
     const email = (req.body.email && String(req.body.email).trim()) || username; // emailul = username-ul
     // PAROLA NU EXISTĂ (CLAUDE.md): contul se naște cu o parolă aleatoare pe care n-o știe nimeni, iar
     // adminul firmei și-o pune singur din link. Dacă emailul nu poate pleca, linkul se întoarce aici,
@@ -10877,8 +10881,9 @@ app.post('/api/companies/:id/admin', requireAuth, requireSuperadmin, async (req,
     // Eșecul era TĂCUT: contul rămânea cu parolă random, fără email și fără cale de recuperare
     // → cont inaccesibil, iar cel care l-a creat nu afla niciodată. Acum se vede în log + în răspuns.
     if (!rez.trimis) console.warn('[INVITE] Emailul de invitație NU a plecat pentru „' + username + '” (companie ' + companyId + '): ' + (rez.motiv || 'trimitere eșuată'));
-    auditReq(req, 'create', 'company_admin', u.id, { companyId, invited: rez.trimis });
+    auditReq(req, 'create', 'company_admin', u.id, { companyId, invited: rez.trimis, demoInlocuit: loc.demoInlocuit || undefined });
     res.json(Object.assign({}, u, {
+      demoInlocuit: loc.demoInlocuit || undefined, nota: loc.demoInlocuit ? contDemo.TEXT_INLOCUIT : undefined,
       invited: rez.trimis,
       inviteEmailConfigured: !!(channels.emailConfigured && channels.emailConfigured()),
       link: rez.link || undefined,
@@ -20877,6 +20882,48 @@ app.delete('/api/admin/demo-requests/:id', requireAuth, requireSuperadmin, async
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ─── Conturile demo care pleacă (20.11; Alin: „4. o rezolvăm acum”, „3. da”) ─────────────────────────────────────────────────────
+// Un cont demo pleacă în DOUĂ cazuri, pe aceeași cale (`_stergeContDemo`): (1) facem contul adevărat pe aceeași adresă (clientul din
+// demo a semnat) — până pe 20.11 cererea primea „Există deja un cont cu acest email”; (2) accesul lui a expirat de peste
+// cont_demo.ZILE_DUPA_EXPIRARE zile (numele, emailul și telefonul stăteau în bază la nesfârșit).
+function _eContDemo(u) { return !!u && demoCompanyId != null && u.company_id === demoCompanyId && u.username !== 'demo' && !isSuper(u.role); }
+async function _stergeContDemo(u) {
+  await db.stergeContDemo(u.id);
+  await _taieAccesulUtilizatorului(u.id, 'Neautorizat');   // sesiunile și harta live ale contului demo
+  roleCache.delete(u.id);
+}
+// Înaintea oricărui cont NOU (Utilizatori, administratorul unei firme, „Client nou”): adresa unui cont demo nu-l mai blochează — contul
+// demo pleacă, iar cel nou îi ia locul. `liber: false` = pe adresă e un cont adevărat (rămâne refuzul de până acum).
+async function _faLocContuluiNou(req, username) {
+  const u = await db.getUserByUsername(username);
+  if (!u) return { liber: true };
+  if (!_eContDemo(u)) return { liber: false };
+  await _stergeContDemo(u);
+  await syncDemoSim('cont demo înlocuit de un cont adevărat').catch(() => {});
+  auditReq(req, 'delete', 'user', u.id, { username: u.username, motiv: 'cont demo înlocuit de un cont adevărat' });
+  return { liber: true, demoInlocuit: true };
+}
+// Zilnic: conturile demo expirate de peste ZILE_DUPA_EXPIRARE zile. Rând în jurnal cu câte au plecat (fără nume sau adrese).
+async function stergeConturiDemoExpirate(acum) {
+  const zile = contDemo.ZILE_DUPA_EXPIRARE;
+  if (demoCompanyId == null) return { sterse: 0, zile: zile };
+  const t = Number(acum) || Date.now();
+  const lista = await db.conturiDemoExpirate(demoCompanyId, t - zile * 86400000);
+  let n = 0;
+  for (const u of lista) {
+    try { await _stergeContDemo(u); n++; }
+    catch (e) { console.warn('[DEMO] contul expirat ' + u.id + ' nu s-a putut șterge:', e.message); }
+  }
+  if (n) {
+    await syncDemoSim('conturi demo expirate șterse').catch(() => {});
+    console.log('[DEMO] Șterse ' + n + ' conturi demo expirate de peste ' + zile + ' de zile');
+    try { db.logAudit({ userId: null, username: 'sistem', action: 'delete', entity: 'conturi_demo_expirate', entityId: null, details: { conturi: n, expirateDeZile: zile }, ip: null, companyId: null }); } catch (e) {}
+  }
+  return { sterse: n, zile: zile };
+}
+app.post('/api/admin/demo/sterge-expirate', requireAuth, requireSuperadmin, async (req, res) => {
+  try { res.json(await stergeConturiDemoExpirate()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // Prelungire / revocare a TERMENULUI unui cont (conturi demo). Calea e 'access-until', NU 'access':
 // '/api/users/:id/access' înseamnă deja ALTCEVA (acces la vehicule/grupe) și, fiind definită mai sus,
 // ar fi câștigat ea — ștergând ACL-ul utilizatorului în loc să-i schimbe termenul.
@@ -22675,6 +22722,11 @@ async function start() {
   const runFormularPurge = () => stergeCereriFormularVechi().catch(e => console.warn('[FORMULAR] ștergere amânată:', e.message));
   setTimeout(runFormularPurge, 100 * 1000);
   setInterval(runFormularPurge, 24 * 60 * 60 * 1000);
+
+  // Conturile demo expirate de peste 30 de zile se șterg (zilnic). Vezi `stergeConturiDemoExpirate`.
+  const runDemoPurge = () => stergeConturiDemoExpirate().catch(e => console.warn('[DEMO] ștergere amânată:', e.message));
+  setTimeout(runDemoPurge, 105 * 1000);
+  setInterval(runDemoPurge, 24 * 60 * 60 * 1000);
 
   // Panoul Mail: Spamul și Coșul se golesc singure după 30 de zile (zilnic). Vezi `golesteMailVechi`.
   const runMailPurge = () => golesteMailVechi().catch(e => console.warn('[MAIL] golire amânată:', e.message));

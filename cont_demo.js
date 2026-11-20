@@ -13,6 +13,11 @@ const MIN = 60000, ORA = 3600000, ZI = 86400000;
 const LINK_MAX_ORE = 7 * 24;
 // Unde duce „Cere ofertă”: formularul de pe site, cu bifa de cont demo scoasă (omul are deja cont).
 const LINK_OFERTA = '/?oferta=1#contact';
+// Contul demo expirat se mai ține atâtea zile (cât să-l putem prelungi), apoi se șterge singur (20.11; Alin: „3. da”). Pagina de
+// confidențialitate spune aceeași cifră (legată prin verify_demo.js).
+const ZILE_DUPA_EXPIRARE = 30;
+// Ce scrie pe ecranul nostru când contul adevărat ia locul unui cont demo pe aceeași adresă (20.11; Alin: „4. o rezolvăm acum”).
+const TEXT_INLOCUIT = 'Pe adresa asta era un cont demo: l-am înlocuit cu contul nou.';
 
 // „20 de zile”, dar „12 zile”: numerele care se termină în 1–19 merg fără „de” (ca _rDe din pagină).
 function de(n) { const x = Math.abs(Math.round(Number(n) || 0)); if (x === 0) return ''; const r = x % 100; return (r >= 1 && r <= 19) ? '' : 'de '; }
@@ -106,4 +111,4 @@ function dupaPrelungire(o) {
   return cine + (o.trimis ? ' I-am scris pe email.' : ' Emailul n-a plecat; spune-i tu.');
 }
 
-module.exports = { LINK_MAX_ORE, LINK_OFERTA, CE_GASESTI, de, cate, durata, conturiActive, cand, ramas, banda, email, emailPrelungire, dupaPrelungire };
+module.exports = { LINK_MAX_ORE, LINK_OFERTA, ZILE_DUPA_EXPIRARE, TEXT_INLOCUIT, CE_GASESTI, de, cate, durata, conturiActive, cand, ramas, banda, email, emailPrelungire, dupaPrelungire };

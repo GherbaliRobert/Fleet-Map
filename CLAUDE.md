@@ -613,6 +613,15 @@ era login fără parolă, fără limitare de rată și fără regenerarea sesiun
   **Omul care n-a intrat încă** (`last_login` gol: linkul n-a ajuns sau a expirat după 7 zile) primește din nou emailul contului demo, cu un link
   NOU (`trimiteLinkParola` cu `demo`), nu „aceeași parolă”; dacă emailul nu pleacă, `link` în răspuns (web: `_usrAratLinkul`; telefon: copiat).
   E singura cale a fondatorului spre el: în Utilizatori vede doar colegii noștri — de aceea mesajul de la „Aprobă” trimite la „Prelungește”.
+- **Contul adevărat ia locul contului demo (20.11; Alin: „4. o rezolvăm acum”):** orice cont NOU (`POST /api/users`,
+  `POST /api/companies/:id/admin` — deci și „Client nou”, web și telefon) trece întâi prin `_faLocContuluiNou(req, username)`: pe adresa unui
+  cont demo (`_eContDemo`: firma demo, nu „demo”, nu super-admin) contul demo pleacă și cel nou se face; pe un cont adevărat, 409 „Există deja
+  un cont cu acest email”. Răspunsul poartă `demoInlocuit` + `nota` (`cont_demo.TEXT_INLOCUIT`), pe care ecranele doar o arată. O cale NOUĂ
+  care face conturi trece și ea prin `_faLocContuluiNou`.
+- **Contul demo expirat se șterge după `cont_demo.ZILE_DUPA_EXPIRARE` = 30 de zile (20.11; Alin: „3. da”):** `stergeConturiDemoExpirate`
+  (zilnic; de mână `POST /api/admin/demo/sterge-expirate`) → `db.conturiDemoExpirate`. O SINGURĂ ștergere pentru amândouă cazurile:
+  `_stergeContDemo` → `db.stergeContDemo` (cererea din „Cereri demo” rămâne, cu `user_id` NULL — fără „Prelungește”; se șterge la 12 luni, cu
+  formularul) + `_taieAccesulUtilizatorului`. Confidențialitatea spune cifra (legată prin `verify_demo.js`).
 - Păzit de **`verify_demo.js`** (în `npm test`; agenții adevărați pe o zi de lucru fixă, la 15:00; pe server pornit, fără cheie de AI, Brevo fals).
 
 ## RA Insight — vedeta: un singur asistent, cu memorie (Alin, 02.10: „da, fă tot")
@@ -3511,6 +3520,12 @@ lista flotei și rândul de sub „Total vehicule” din „Statistici flotă”
   puse (altfel Leaflet aruncă o eroare și fișa nu se mai deschidea pe calculator); adresa din fișă scrie atunci „—".
 - `getTimeAgo` scrie românește: „o oră", „21 de ore", „o zi", „25 de zile" (de la 20 în sus, cu „de").
 - Păzit de `verify_harta_transmisie.js` (în `npm test`), care rulează regula decupată din pagină.
+
+## Harta: lista din stânga — numărul și viteza pe un rând (20.11; Alin: „2. DA” — „B 63 / FRG” și „0 / km/h” lângă „Mercedes Sprinter”)
+- `.device-card-plate` și `.device-card-speed`: `white-space: nowrap; flex: 0 0 auto`; `.device-card-name`: `flex-wrap: wrap; min-width: 0`;
+  `.name`: `flex: 1 1 auto; min-width: 0; overflow-wrap: break-word`. Numele stă lângă număr cât încape, altfel trece dedesubt, întreg.
+  NU pune `overflow-wrap: anywhere` pe nume (se strângea literă cu literă — măsurat). Aceleași clase în fereastra unei bule de pe hartă.
+- Păzit de `verify_ecrane.js` (10, cu măsurătoarea în browser pe 240–400 px; se sare fără Chromium).
 
 ## Harta: balonul unei mașini — numărul în titlu (05.11; Alin: „o flotă poate avea 10 Caddy, omul din grabă nu se uită jos")
 - Balonul de la clic pe o mașină (Localizare, `public/js/vehicle-popup.js`): **titlul = numărul de înmatriculare** (`titluVehicul`: numărul →

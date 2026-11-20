@@ -261,7 +261,9 @@ function Utilizatori({ o, onReload }: { o: any; onReload: () => void }) {
     try {
       const j: any = await Api.addCompanyAdmin(Number(c.id), n ? { username: e, full_name: n } : { username: e });
       setIntreb(false);
-      if (j && j.invited) showToast('Administrator adăugat. I-am trimis linkul pe ' + e + '.');
+      // Pe adresa asta era un cont demo (20.11): serverul l-a înlocuit și o spune (`nota`).
+      if (j && j.invited) showToast((j.nota ? j.nota + ' ' : '') + 'Administrator adăugat. I-am trimis linkul pe ' + e + '.');
+      else if (j && j.link && j.nota) { showToast(String(j.nota)); setLink(await pregatesteLinkul({ email: e, link: j.link, motiv: 'Emailul de invitație NU a plecat' })); }
       else if (j && j.link) setLink(await pregatesteLinkul({ email: e, link: j.link, motiv: 'Emailul de invitație NU a plecat' }));
       else showToast((j && j.warning) || 'Cont creat, dar linkul nu a plecat.', true);
       setEmail(''); setNume('');

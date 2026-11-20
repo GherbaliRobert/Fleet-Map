@@ -159,5 +159,49 @@ T('Facturare (fondator), pe telefon: numele firmei întreg, „auto” și „Fa
   /<div class="adm-item bill-co"/.test(BI) && /<div class="bill-co-act">[\s\S]{0,400}auto<\/label>[\s\S]{0,700}Facturile firmei<\/button>\s*<\/div>/.test(BI) &&
   /\.bill-co \.nm, \.bill-co \.sub \{ white-space: normal; overflow-wrap: anywhere; \}/.test(BC) && /\.bill-co-act \{[^}]*flex: 1 1 100%;[^}]*\}/.test(BC));
 
-console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
-process.exit(rele ? 1 : 0);
+// 20.11 (Alin: „2. DA”). Lista mașinilor de pe hartă, la 1280 px: lângă „Mercedes Sprinter” numărul se rupea în „B 63 / FRG” și
+// viteza în „0 / km/h”. Acum numărul și viteza nu se rup niciodată; numele stă lângă număr cât încape, altfel trece dedesubt, întreg,
+// și se rupe doar între cuvinte. Aceeași regulă și în fereastra cu mașinile dintr-o bulă de pe hartă (aceleași clase).
+console.log('\n10. Lista mașinilor de pe hartă: numărul și viteza pe un rând, numele se rupe');
+const _regula = (sel) => { const m = CSS.match(new RegExp('\\n\\s*' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\{([^}]*)\\}')); return m ? m[1] : ''; };
+const _plac = _regula('.device-card-plate'), _vit = _regula('.device-card-speed'), _blocNume = _regula('.device-card-name'), _nume = _regula('.device-card-name .name');
+T('numărul (.device-card-plate) nu se rupe și nu se strânge', /white-space: nowrap;/.test(_plac) && /flex: 0 0 auto;/.test(_plac));
+T('viteza (.device-card-speed) nu se rupe și nu se strânge', /white-space: nowrap;/.test(_vit) && /flex: 0 0 auto;/.test(_vit));
+T('blocul cu numele se strânge (min-width: 0) și lasă numele să treacă dedesubt (flex-wrap)', /min-width: 0;/.test(_blocNume) && /flex-wrap: wrap;/.test(_blocNume));
+T('numele: lângă număr cât încape, altfel dedesubt; se rupe doar între cuvinte (nu literă cu literă)',
+  /flex: 1 1 auto;/.test(_nume) && /min-width: 0;/.test(_nume) && /overflow-wrap: break-word;/.test(_nume) && !/anywhere/.test(_nume));
+
+// Măsurat în browser (se sare fără Chromium): lista pe 240–400 px, cu nume scurte și lungi.
+let _pw = null; try { _pw = require('playwright'); } catch (e) { _pw = null; }
+(async () => {
+  let br = null; if (_pw) { try { br = await _pw.chromium.launch(); } catch (e) { br = null; } }
+  if (!br) console.log('  (fără Chromium: măsurătoarea din browser se sare)');
+  else {
+    const masini = [['B 63 FRG', 'Mercedes-Benz Sprinter 316 CDI Frigorific', '30'], ['B 63 FRG', 'Mercedes Sprinter', '0'], ['B 77 TIR', 'Iveco Stralis', '102'],
+      ['CJ 123 ABC', 'Dacia Logan', '0'], ['IF 10 XYZ', 'Ford Transit Custom Kombi Lung', '118']];
+    const card = (p, n, s) => '<div class="device-card"><div class="device-card-top"><div class="device-card-name"><span class="status-dot moving"></span>' +
+      '<span class="device-card-icon"><svg width="26" height="26"></svg></span><span class="device-card-plate">' + p + '</span><span class="name">' + n + '</span></div>' +
+      '<span class="device-card-speed moving">' + s + ' km/h</span></div><div class="device-card-meta"><span>acum 2 min</span></div></div>';
+    const pg = await br.newPage({ viewport: { width: 1280, height: 900 } });
+    await pg.setContent('<!doctype html><html><head><meta charset="utf-8"><style>' + CSS + '</style></head><body><div id="cutie"><div id="device-list">' +
+      masini.map((m) => card(m[0], m[1], m[2])).join('') + '</div></div></body></html>');
+    const rauri = [];
+    for (const w of [240, 280, 320, 340, 400]) {
+      const r = await pg.evaluate((w) => {
+        document.getElementById('cutie').style.width = w + 'px';
+        const randuri = (el) => { const rg = document.createRange(); rg.selectNodeContents(el); const tops = []; for (const x of rg.getClientRects()) { if (x.width < 1) continue; if (!tops.some((t) => Math.abs(t - x.top) < 4)) tops.push(x.top); } return tops.length; };
+        return Array.from(document.querySelectorAll('.device-card')).map((c) => {
+          const cb = c.getBoundingClientRect(), p = c.querySelector('.device-card-plate'), s = c.querySelector('.device-card-speed'), n = c.querySelector('.name');
+          const iese = [p, s, n].some((el) => { const b = el.getBoundingClientRect(); return b.right > cb.right + 0.5; });
+          // „literă cu literă”: niciun rând al numelui mai îngust decât cel mai lung cuvânt al lui ar trebui să existe → numele are cel puțin 80 px
+          return { nr: p.textContent, numar: randuri(p), viteza: randuri(s), latNume: Math.round(n.getBoundingClientRect().width), iese };
+        });
+      }, w);
+      r.forEach((x) => { if (x.numar > 1 || x.viteza > 1 || x.iese || x.latNume < 80) rauri.push(w + ' px · ' + x.nr + ' (număr ' + x.numar + ' rânduri, viteză ' + x.viteza + ', nume ' + x.latNume + ' px' + (x.iese ? ', iese' : '') + ')'); });
+    }
+    await br.close();
+    T('pe 240–400 px: numărul și viteza pe UN rând, nimic nu iese din cartonaș, numele cel puțin 80 px lat', !rauri.length, rauri.join('; '));
+  }
+  console.log('\n' + ok + ' verificări trecute, ' + rele + ' picate.');
+  process.exit(rele ? 1 : 0);
+})().catch((e) => { console.log('  ✗ proba a crăpat: ' + e.message); process.exit(1); });

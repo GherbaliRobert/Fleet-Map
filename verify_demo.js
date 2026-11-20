@@ -155,6 +155,18 @@ const cont = require('./cont_demo');
       && /N-a intrat încă în cont: emailul n-a plecat; trimite-i tu linkul nou de parolă\.$/.test(cont.dupaPrelungire({ nume: 'Ion', pana: z0 + 86400000, trimis: false, linkNou: true }))
       && /I-am scris pe email\.$/.test(cont.dupaPrelungire({ nume: 'Ion', pana: z0 + 86400000, trimis: true })));
 
+    // 20.11: contul demo expirat se șterge după ZILE_DUPA_EXPIRARE zile — pagina de confidențialitate spune ACEEAȘI cifră.
+    const conf = fs.readFileSync(P('public/confidentialitate.html'), 'utf8');
+    const mz = conf.match(/<li>Contul demonstrativ: cât ține accesul primit, plus <b>(\d+) de zile<\/b> după ce expiră, apoi se șterge automat/);
+    T('Confidențialitatea spune câte zile se mai ține contul demo expirat (= cont_demo.ZILE_DUPA_EXPIRARE) și că devine contul tău la semnare',
+      !!mz && Number(mz[1]) === cont.ZILE_DUPA_EXPIRARE && /Dacă devii client, contul tău nou îl înlocuiește\./.test(conf), mz && mz[1]);
+    T('ștergerea rulează zilnic, pe o singură cale cu înlocuirea (_stergeContDemo)', /const runDemoPurge = \(\) => stergeConturiDemoExpirate\(\)/.test(srvSrc)
+      && /setInterval\(runDemoPurge, 24 \* 60 \* 60 \* 1000\)/.test(srvSrc) && (srvSrc.match(/await _stergeContDemo\(u\)/g) || []).length === 2
+      && (srvSrc.match(/await _faLocContuluiNou\(req, username\)/g) || []).length === 2);
+    T('ecranele arată nota de la server (web: Utilizatori, „Client nou”, administratorii firmei; telefon: aceleași trei)',
+      (html.match(/\.nota/g) || []).length >= 5 && /a\.nota/.test(fs.readFileSync(P('mobile/src/screens/ClientNou.tsx'), 'utf8'))
+      && /j\.nota/.test(fs.readFileSync(P('mobile/src/screens/CompanySheet.tsx'), 'utf8')) && /created\.nota/.test(fs.readFileSync(P('mobile/src/screens/AdminUsers.tsx'), 'utf8')));
+
     sect('4. Pe server pornit (fără cheie de AI, Brevo fals)');
     await peServer();
   } catch (e) { rele++; console.log('  ✗ proba a crăpat: ' + (e && e.stack || e)); }
@@ -272,6 +284,41 @@ async function peServer() {
       && /N-a intrat încă în cont: i-am trimis pe email un link nou de parolă\./.test(pr3.j.text), { j: pr3.j, subiecte: nou3.map((x) => x.subject) });
     T('linkul nou merge: își pune parola și intră', !!tok3 && (await J('POST', '/api/auth/set-password', null, { token: tok3, password: 'Duba-Verde-2026!' })).s === 200
       && !!(await login('ion@nou.ro', 'Duba-Verde-2026!')));
+
+    // 20.11 (Alin: „3. da”): contul demo expirat de peste 30 de zile se șterge; cel expirat de mai puțin rămâne (îl putem prelungi).
+    lst = (await J('GET', '/api/admin/demo-requests', S)).j || [];
+    const uMaria = (lst.find((r) => r.id === id2) || {}).user_id, uIon = (lst.find((r) => r.id === id3) || {}).user_id;
+    const ZI = 86400000;
+    await J('PUT', '/api/users/' + uMaria + '/access-until', S, { until: Date.now() - (cont.ZILE_DUPA_EXPIRARE + 1) * ZI });
+    await J('PUT', '/api/users/' + uIon + '/access-until', S, { until: Date.now() - 10 * ZI });
+    T('ștergerea conturilor expirate cere super-admin', (await J('POST', '/api/admin/demo/sterge-expirate', D)).s === 403);
+    const sx = await J('POST', '/api/admin/demo/sterge-expirate', S);
+    lst = (await J('GET', '/api/admin/demo-requests', S)).j || [];
+    const rqMaria = lst.find((r) => r.id === id2) || {}, rqIon = lst.find((r) => r.id === id3) || {};
+    T('expirat de 31 de zile → șters (cererea rămâne, fără cont și fără „Prelungește”); expirat de 10 zile → rămâne',
+      sx.s === 200 && sx.j.sterse === 1 && sx.j.zile === 30 && rqMaria.id === id2 && rqMaria.user_id == null && rqIon.user_id === uIon
+      && (await J('POST', '/api/admin/demo-requests/' + id2 + '/prelungeste', S, { hours: 24 })).s === 400, { sx: sx.j, maria: rqMaria.user_id, ion: rqIon.user_id });
+    T('…iar contul șters nu mai intră', !(await login('maria@exemplu.ro', 'Duba-Rosie-2026!')));
+    const jur = (await J('GET', '/api/audit?limit=50', S)).j || [];
+    const rj = (Array.isArray(jur) ? jur : (jur.rows || jur.items || [])).find((a) => a.entity === 'conturi_demo_expirate');
+    T('rând în jurnal cu câte au plecat, fără nume sau adrese', !!rj && !/maria/i.test(JSON.stringify(rj)), rj);
+
+    // 20.11 (Alin: „4. o rezolvăm acum”): contul adevărat pe adresa unui cont demo — contul demo pleacă, cel nou îi ia locul.
+    const firma = (await J('POST', '/api/companies', S, { name: 'Transport Pop SRL' })).j || {};
+    const inainteAdm = emailuri.length;
+    const adm = await J('POST', '/api/companies/' + firma.id + '/admin', S, { username: 'andrei@transportpop.ro', full_name: 'Andrei Pop' });
+    T('administratorul firmei, pe adresa contului demo: se face (nu mai „Există deja un cont”) și o spune',
+      adm.s === 200 && adm.j.demoInlocuit === true && adm.j.nota === cont.TEXT_INLOCUIT && adm.j.role === 'company_admin' && adm.j.company_id === firma.id, adm.j);
+    T('…contul demo a plecat: sesiunea lui nu mai merge, cererea rămâne fără cont', (await J('GET', '/api/me', D)).s === 401
+      && (((await J('GET', '/api/admin/demo-requests', S)).j || []).find((r) => r.id === id1) || {}).user_id == null);
+    await sleep(500);
+    T('…omul primește invitația de administrator (nu emailul contului demo)', emailuri.slice(inainteAdm).some((x) => (x.to || []).some((t) => t.email === 'andrei@transportpop.ro') && /^Invitație RA Track/.test(x.subject || '')));
+    T('pe un cont ADEVĂRAT refuzul rămâne (409), oricât s-ar încerca', (await J('POST', '/api/companies/' + firma.id + '/admin', S, { username: 'andrei@transportpop.ro' })).s === 409
+      && (await J('POST', '/api/users', S, { username: 'andrei@transportpop.ro', full_name: 'Andrei', role: 'viewer', company_id: firma.id })).s === 409);
+    const om = await J('POST', '/api/users', S, { username: 'ion@nou.ro', full_name: 'Ion Nou', role: 'dispatcher', company_id: firma.id });
+    T('la fel din Utilizatori: contul demo al lui Ion e înlocuit de contul lui în firmă', om.s === 200 && om.j.demoInlocuit === true && om.j.company_id === firma.id
+      && (((await J('GET', '/api/admin/demo-requests', S)).j || []).find((r) => r.id === id3) || {}).user_id == null, om.j);
+    T('fără conturi demo, simulatorul se oprește', ((await J('GET', '/api/admin/demo-sim', S)).j || {}).running === false);
   } finally {
     try { srv.kill(); } catch (e) {}
     try { fals.close(); } catch (e) {}

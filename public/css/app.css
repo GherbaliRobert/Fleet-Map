@@ -677,17 +677,23 @@
       box-shadow: 0 0 0 1px var(--accent) inset;
     }
 
+    /* Numărul și viteza stau MEREU pe un rând; doar numele se rupe (20.11; Alin: „2. DA” — „B 63 / FRG” și „0 / km/h”
+       se rupeau lângă „Mercedes Sprinter”). Blocul cu numele se strânge (min-width: 0), numărul și viteza nu. */
     .device-card-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
       margin-bottom: 4px;
     }
 
     .device-card-name {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 8px;
+      gap: 2px 8px;
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     .status-dot {
@@ -713,6 +719,10 @@
       font-weight: 600;
       font-size: 13px;
       color: var(--text-primary);
+      /* Încape lângă număr → stă acolo; nu încape → trece pe rândul de dedesubt, întreg, și se rupe doar între cuvinte. */
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-wrap: break-word;
     }
 
     .device-card-plate {
@@ -723,6 +733,8 @@
       padding: 2px 8px;
       border-radius: 4px;
       letter-spacing: 0.5px;
+      white-space: nowrap;
+      flex: 0 0 auto;
     }
 
     /* Mini-pictogramă (line-art) în lista de vehicule */
@@ -812,6 +824,8 @@
     .device-card-speed {
       font-size: 14px;
       font-weight: 700;
+      white-space: nowrap;
+      flex: 0 0 auto;
     }
 
     .device-card-speed.moving { color: var(--green); font-weight: 800; }

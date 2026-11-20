@@ -224,9 +224,11 @@ export function AdminUsers() {
   }
   // Ce s-a întâmplat cu linkul contului nou — același text în anunțul de pe ecran și în cel cu reîncercarea rolului.
   function inviteNoteOf(created: any, username: string): InviteNote {
-    if (created && created.invitat) return { text: 'I-am trimis linkul pe ' + username + ' — își pune singur parola.', err: false };
-    if (created && created.link) return { text: 'Linkul de parolă nu a plecat pe email — ți l-am arătat pe ecran, ca să i-l dai tu.', err: true };
-    return { text: 'Linkul de parolă NU a plecat. Trimite-i-l din listă, cu „Trimite link de parolă”.', err: true };
+    // Pe adresa asta era un cont demo (20.11): serverul l-a înlocuit și o spune (`nota`).
+    const nota = created && created.nota ? String(created.nota) + ' ' : '';
+    if (created && created.invitat) return { text: nota + 'I-am trimis linkul pe ' + username + ' — își pune singur parola.', err: false };
+    if (created && created.link) return { text: nota + 'Linkul de parolă nu a plecat pe email — ți l-am arătat pe ecran, ca să i-l dai tu.', err: true };
+    return { text: nota + 'Linkul de parolă NU a plecat. Trimite-i-l din listă, cu „Trimite link de parolă”.', err: true };
   }
 
   // Rolul propriu n-a putut fi pus pe contul nou: mesajul rămâne pe ecran, cu buton de reîncercare.
