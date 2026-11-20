@@ -1,0 +1,36 @@
+/* Caseta de parolă cu „ochiul”, bara de tărie și sfaturile (20.11; CampParola.tsx). Aceleași culori ca pe web, pe ambele teme. */
+.camp-parola { position: relative; }
+.camp-parola > input { width: 100%; box-sizing: border-box; padding-right: 50px !important; }
+.camp-parola .ochi {
+  position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; margin: 0; padding: 0;
+  border: none; border-radius: 10px; background: transparent; color: var(--text-muted); display: flex; align-items: center; justify-content: center;
+}
+.camp-parola .ochi:active, .camp-parola .ochi:focus-visible { color: var(--text-primary); background: var(--bg-panel); outline: none; }
+
+.pf-forta { margin-top: 2px; display: flex; align-items: center; gap: 10px; }
+.pf-bara { flex: 1; height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.pf-bara i { display: block; height: 100%; width: 0; border-radius: 99px; background: #dc2626; transition: width .2s, background-color .2s; }
+.pf-text { font-size: 12px; font-weight: 800; color: var(--text-muted); min-width: 76px; text-align: right; }
+.pf-acceptabila .pf-bara i { background: #f59e0b; }
+.pf-buna .pf-bara i, .pf-puternica .pf-bara i { background: var(--accent); }
+.pf-slaba .pf-text { color: #f87171; }
+.pf-acceptabila .pf-text { color: #fbbf24; }
+.pf-buna .pf-text, .pf-puternica .pf-text { color: #3FE07D; }
+:root[data-theme="light"] .pf-slaba .pf-text { color: #b91c1c; }
+:root[data-theme="light"] .pf-acceptabila .pf-text { color: #b45309; }
+:root[data-theme="light"] .pf-buna .pf-text, :root[data-theme="light"] .pf-puternica .pf-text { color: #166534; }
+.pf-sfaturi { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-dark); }
+.pf-titlu { font-size: 12.5px; font-weight: 800; color: var(--text-primary); margin: 0 0 4px; }
+.pf-sfaturi ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.pf-sfaturi li { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); line-height: 1.9; }
+.pf-sfaturi li b { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid var(--border-light); color: transparent; font-size: 10px; line-height: 1; flex: 0 0 16px; }
+.pf-sfaturi li.da { color: var(--text-primary); }
+.pf-sfaturi li.da b { background: var(--accent); border-color: var(--accent); color: #06210F; }
+.pf-sfaturi li small { color: var(--text-muted); font-size: 11.5px; }
+.pf-exemplu { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; line-height: 1.45; }
+.pf-potrivire { font-size: 12.5px; font-weight: 700; margin-top: 2px; min-height: 16px; }
+.pf-potrivire.pf-ok { color: #3FE07D; }
+.pf-potrivire.pf-nu { color: #fbbf24; }
+:root[data-theme="light"] .pf-potrivire.pf-ok { color: #166534; }
+:root[data-theme="light"] .pf-potrivire.pf-nu { color: #b45309; }

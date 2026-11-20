@@ -520,7 +520,7 @@ bifați. Când unul e gata, spuneți-mi și îl bifez aici, cu data. Nu scot nim
   (`confirmare`) și `DELETE /api/insight/fisa` (răspunsul are `mesaj`). Doar pentru cine are cont RA Insight (`aiCont`) și doar cu
   `activ: true` (pe Start blocul lipsește — Alin, 11.11). Tot cu APK-ul ăsta pleacă și textele corectate pe 11.11: actul citit fără
   „gratuit" / „citire AI", exemplul din notițele firmei, mesajul de la capătul lunii pe regula veche.
-- [ ] **Robert: telefonul și contul demo (APK-ul următor). Adăugat pe 19.11.** Codul e gata: în „Cereri demo”, butonul „Prelungește” pe cererile aprobate (aceleași durate ca la aprobare), duratele „24 de ore” / „30 de zile” și rolul „Vizualizare” (nu „Viewer”). Pe web sunt deja pe ratrack.ro; banda „Cont demo · îl ai până pe…” e doar pe web (contul demo se folosește de pe calculator). **20.11:** și rândul „Pe adresa asta era un cont demo: l-am înlocuit cu contul nou.” la „Client nou”, „Adaugă administrator” și Utilizatori.
+- [ ] **Robert: telefonul și contul demo (APK-ul următor). Adăugat pe 19.11.** Codul e gata: în „Cereri demo”, butonul „Prelungește” pe cererile aprobate (aceleași durate ca la aprobare), duratele „24 de ore” / „30 de zile” și rolul „Vizualizare” (nu „Viewer”). Pe web sunt deja pe ratrack.ro; banda „Cont demo · îl ai până pe…” e doar pe web (contul demo se folosește de pe calculator). **20.11:** și rândul „Pe adresa asta era un cont demo: l-am înlocuit cu contul nou.” la „Client nou”, „Adaugă administrator” și Utilizatori. Tot cu APK-ul următor: ochiul pe parolă la intrare și în „Contul meu”, cu sfaturile pentru o parolă puternică.
 - [x] **FĂCUT (19.11): contul demo și RA Insight** (Alin: „1. varianta 2; 2. fără întrebări taxate… doar predefinite conform planului Start”). **Alin: contul demo și RA Insight — de discutat ce presupune. Adăugat pe 17.11** (Alin: „hai să-l lăsăm după ce facem astea
   două… trebuie să-l discutăm ce presupune, ce face"). Azi, cine cere cont demo de pe site (butonul stă acum chiar după secțiunea RA
   Insight și în banda de la final) primește un cont doar de vizualizare, în firma demo, care e pe Start. Deschide RA Insight și primește:
@@ -615,6 +615,25 @@ cu 3 pixeli din ecran pe telefon. Le reiau cu el după capitol. (Bara de sus: re
 ---
 
 ## 2026-11-20
+
+### AMÂNDOI · „Ochiul” și la intrarea în aplicație și în „Contul meu”, pe calculator și pe telefon
+*Alin, 20.11: „aș vrea să punem ochiul ăla la vizualizare când scrie cineva parola și la logare, nu doar la creare”; la ce am înțeles
+(ochi la intrare și în „Contul meu”, sfaturile doar unde se pune o parolă nouă): „1. DA”.*
+
+**Ce am schimbat:**
+- **Intrarea în aplicație** (calculator și telefon): ochiul în caseta parolei — arată ce ai scris, ascunde la loc. După intrare, parola
+  se ascunde din nou.
+- **„Contul meu” → „Schimbă-ți parola”** (calculator și telefon): ochiul pe toate trei casetele (parola nouă și confirmarea se arată
+  deodată), sub parola nouă bara „Slabă / Acceptabilă / Bună / Puternică” și lista „Pentru o parolă puternică”, bifată pe loc, iar sub
+  confirmare „Parolele coincid ✓”. Aceleași texte ca pe pagina „Setează-ți parola”.
+- **O singură regulă a tăriei** pentru toate paginile web (și „Setează-ți parola” s-a mutat pe ea); telefonul are copia ei, legată prin
+  verificare. Regula serverului nu s-a schimbat (10 caractere, două feluri): restul sunt sfaturi.
+- Edge nu-și mai pune și ochiul lui lângă al nostru.
+
+**Ce vede fondatorul / clientul:** la fel, oricine intră în aplicație sau își schimbă parola. Pe telefon, cu APK-ul următor (Robert).
+
+Reper: `public/js/parola.js` (web), `mobile/src/lib/parola.ts` + `mobile/src/components/CampParola.tsx` (telefon); probă:
+`verify_utilizatori.js` (ochiul în cele trei locuri, aceeași tărie pe calculator și pe telefon pe 16 parole).
 
 ### AMÂNDOI · Contul demo nu mai blochează contul adevărat; conturile demo expirate se șterg după 30 de zile
 *Alin, 20.11, la cele găsite pe drum: „3. DA” (conturile demo expirate rămâneau în bază la nesfârșit, cu nume, email și telefon) și

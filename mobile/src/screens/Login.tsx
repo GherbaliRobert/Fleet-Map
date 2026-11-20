@@ -2,11 +2,13 @@ import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { login, mesajLaIntrare } from '../app/store';
 import { api } from '../api/client';
+import { CampParola } from '../components/CampParola';
 
 export function Login() {
   const loc = useLocation();
   const [u, setU] = useState('');
   const [p, setP] = useState('');
+  const [vede, setVede] = useState(false);   // „ochiul” (20.11): arată / ascunde parola
   const [busy, setBusy] = useState(false);
   // Pornirea a scos un cont al unei firme oprite (store.ts, accesOprit): mesajul se arată aici o singură dată, ca pe web.
   const [err, setErr] = useState(mesajLaIntrare.value || '');
@@ -36,6 +38,7 @@ export function Login() {
     setErr(''); setBusy(true);
     try {
       await login(u.trim(), p);
+      setVede(false);   // parola nu rămâne la vedere
       loc.route('/vehicles');
     } catch (ex: any) {
       setErr(ex?.message || 'Autentificare eșuată');
@@ -58,8 +61,8 @@ export function Login() {
         </div>
         <div class="field">
           <label>Parolă</label>
-          <input type="password" autocomplete="current-password"
-            value={p} onInput={(e) => setP((e.target as HTMLInputElement).value)} placeholder="parola" />
+          <CampParola autocomplete="current-password" value={p} onInput={setP} placeholder="parola"
+            vizibil={vede} onComuta={() => setVede(!vede)} />
         </div>
         {err && <div style="color:var(--red);font-size:13px;font-weight:600">{err}</div>}
         {info && <div style="color:var(--accent);font-size:13px;font-weight:600;line-height:1.4">{info}</div>}

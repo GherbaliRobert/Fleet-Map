@@ -37,7 +37,9 @@ export type IconName =
   | 'cruiseGauge' | 'washerFluid' | 'adblueDrop' | 'stopHand' | 'warnCircle' | 'steeringEps'
   | 'brakePad' | 'lightBulbOut' | 'personSeat' | 'ptoGear' | 'sleepMoon' | 'startStop'
   | 'gasCanister' | 'plugCharge' | 'trailerHitch' | 'diffLock' | 'lightExtra'
-  | 'reply' | 'forward' | 'star' | 'starFill' | 'inbox' | 'undo' | 'mailOpen' | 'share';
+  | 'reply' | 'forward' | 'star' | 'starFill' | 'inbox' | 'undo' | 'mailOpen' | 'share'
+  // „Ochiul” de pe casetele de parolă (20.11): ochiul tăiat = „Ascunde parola”.
+  | 'eyeOff';
 
 const P: Record<IconName, string> = {
   car: '<path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11M5 11h14M5 11v6m14-6v6M6 17h2m8 0h2M7 14h.01M17 14h.01"/>',
@@ -59,6 +61,7 @@ const P: Record<IconName, string> = {
   x: '<path d="M18 6L6 18M6 6l12 12"/>',
   check: '<path d="M20 6L9 17l-5-5"/>',
   eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="M17.9 17.9A10.4 10.4 0 0 1 12 19c-7 0-11-7-11-7a19.6 19.6 0 0 1 5.1-5.9M9.9 5.2A9.8 9.8 0 0 1 12 5c7 0 11 7 11 7a19.7 19.7 0 0 1-2.3 3.4M14.1 14.1a3 3 0 1 1-4.2-4.2"/><path d="M1 1l22 22"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   layers: '<path d="M12 2l9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5"/>',
   alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/>',

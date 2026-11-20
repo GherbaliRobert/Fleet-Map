@@ -141,12 +141,58 @@ T('„Cereri demo”: pe telefon, la fel (aceeași foaie cu linkul)',
   T('pagina de parolă cere minim ' + pmin + ' caractere, exact ca serverul',
     pmin >= 10 && minl.length === 2 && minl.every((n) => n === pmin) && jsMin === pmin && setp.indexOf('minim ' + pmin + ' caractere') >= 0,
     JSON.stringify({ pmin: pmin, minlength: minl, js: jsMin }));
-  // 19.11, Alin: „ochi” ca să vezi ce scrii + sfaturi pentru o parolă puternică (semne, cifre, litere mari).
-  T('pagina de parolă: „ochiul” pe amândouă casetele (arată / ascunde), cu nume pentru cititoarele de ecran',
-    (setp.match(/<button type="button" class="ochi" aria-label="Arată parola"/g) || []).length === 2 && /i1\.type = i2\.type = da \? 'text' : 'password'/.test(setp));
-  T('pagina de parolă: sfaturile bifate pe loc (10 caractere obligatoriu; litere mari și mici, cifre, semne) și „Parolele coincid”',
-    /Cel puțin 10 caractere <small>\(obligatoriu\)<\/small>/.test(setp) && /Litere mari și mici/.test(setp) && /Cifre \(0–9\)/.test(setp) && /Semne \(/.test(setp)
-    && /bifa\('s-lung', p\.length >= 10\)/.test(setp) && /Parolele coincid ✓/.test(setp));
+  // 19.11, Alin: „ochi” ca să vezi ce scrii + sfaturi pentru o parolă puternică (semne, cifre, litere mari). 20.11: „și la logare, nu
+  // doar la creare” → „1. DA”: aceeași regulă, O DATĂ, în public/js/parola.js (web) și în copia ei de pe telefon (mobile/src/lib/parola.ts).
+  const pj = fs.readFileSync(P('public/js/parola.js'), 'utf8');
+  const vm = require('vm');
+  const ctxW = { window: {}, document: { addEventListener: function () {} } };
+  vm.runInNewContext(pj, ctxW);
+  const RP = ctxW.window.RaParola;
+  T('js/parola.js: aceeași cifră ca serverul (MIN = PAROLA_MIN)', !!RP && RP.MIN === pmin, RP && RP.MIN);
+  T('pagina de parolă: „ochiul” pe amândouă casetele, arătate deodată (data-ochi-grup), cu nume pentru cititoarele de ecran; regula din js/parola.js',
+    (setp.match(/<div class="camp-parola" data-ochi-grup="nou">\s*<input id="p[12]"[^>]*>\s*<button type="button" class="ochi" aria-label="Arată parola"/g) || []).length === 2
+    && /<script src="\/js\/parola\.js"><\/script>/.test(setp) && /RaParola\.umple\(sf\)/.test(setp) && /RaParola\.arata\(sf, i1\.value\)/.test(setp)
+    && /RaParola\.aratPotrivire\(pot, i1\.value, i2\.value\)/.test(setp) && !/function felurile/.test(setp));
+  const sfH = RP ? RP.sfaturiHtml() : '';
+  T('sfaturile: 10 caractere obligatoriu; litere mari și mici, cifre, semne; un exemplu', /Cel puțin 10 caractere <small>\(obligatoriu\)<\/small>/.test(sfH)
+    && /Litere mari și mici/.test(sfH) && /Cifre \(0–9\)/.test(sfH) && /Semne \(/.test(sfH) && /Camionul-Verde-7!/.test(sfH));
+  T('tăria: „Slabă” sub 10 caractere sau cu un singur fel; „Puternică” de la 12, cu toate patru; „Parolele coincid ✓”',
+    !!RP && RP.forta('abc').text === 'Slabă' && RP.forta('abcdefghij').text === 'Slabă' && RP.forta('abcdefghi1').text === 'Acceptabilă'
+    && RP.forta('Abcdefghi1').text === 'Bună' && RP.forta('Camionul-Verde-7!').text === 'Puternică' && RP.forta('').text === '—'
+    && RP.potrivire('a', 'a').text === 'Parolele coincid ✓' && RP.potrivire('a', 'b').text === 'Parolele nu coincid încă.' && RP.potrivire('a', '').text === '');
+  // Intrarea în aplicație și „Contul meu”, pe web.
+  T('intrarea în aplicație: ochiul pe caseta parolei; după intrare, parola se ascunde din nou',
+    /<div class="camp-parola">\s*<input type="password" id="login-password"[^>]*>\s*<button type="button" class="ochi" aria-label="Arată parola"/.test(html)
+    && /RaParola\.ascunde\(document\.getElementById\('login-form'\)\)/.test(html) && /<script src="\/js\/parola\.js"><\/script>/.test(html));
+  T('„Contul meu”: ochiul pe toate trei casetele (parola nouă și confirmarea, deodată), bara de tărie și sfaturile, „Parolele coincid”',
+    /campParola\('pref-p0', 'Parola de acum', '', ' autocomplete="current-password"'\)/.test(html)
+    && /campParola\('pref-p1', 'Parola nouă', [^)]*oninput="prefParolaScrie\(\)"', 'nou'\)/.test(html)
+    && /campParola\('pref-p2', 'Încă o dată parola nouă', [^\n]*'nou',/.test(html)
+    && /id="pref-sfaturi">' \+ \(typeof RaParola !== 'undefined' \? RaParola\.sfaturiHtml\(\) : ''\)/.test(html)
+    && /RaParola\.arata\(document\.getElementById\('pref-sfaturi'\)/.test(html) && /RaParola\.aratPotrivire\(document\.getElementById\('pref-potrivire'\)/.test(html));
+  T('foaia: locul ochiului în casetă bate forma comună a casetelor; Edge nu-și mai pune ochiul lui',
+    /:is\(#ra-campuri, html\) :is\(#ra-campuri, body\) \.camp-parola > input \{ padding-right: 44px !important; \}\s*$/.test(css)
+    && /\.camp-parola > input::-ms-reveal/.test(css) && /input::-ms-reveal/.test(setp));
+  // Telefonul: aceeași regulă (copia), rulată pe aceleași parole.
+  let tsc = null; try { tsc = require('typescript'); } catch (e) { try { tsc = require(P('mobile/node_modules/typescript')); } catch (e2) { tsc = null; } }
+  if (!tsc) T('telefonul: lipsește compilatorul TypeScript (rulează `npm install`)', false);
+  else {
+    const tlib = fs.readFileSync(P('mobile/src/lib/parola.ts'), 'utf8');
+    const js = tsc.transpileModule(tlib, { compilerOptions: { target: tsc.ScriptTarget.ES2020, module: tsc.ModuleKind.CommonJS } }).outputText;
+    const mT = { exports: {} }; vm.runInNewContext(js, { module: mT, exports: mT.exports });
+    const PT = mT.exports;
+    const cazuri = ['', 'a', 'abc', 'abcdefghij', 'ABCDEFGHIJ', '1234567890', 'abcdefghi1', 'Abcdefghi1', 'abcdefgh1!', 'Abcdefgh1!',
+      'Camionul-Verde-7!', 'parola mea lunga', 'ĂÎȘȚâîșț12', 'Aa1!', 'Aa1!Aa1!Aa1!', '            '];
+    const dif = cazuri.filter((p) => JSON.stringify(PT.forta(p)) !== JSON.stringify(RP.forta(p)));
+    T('telefonul (lib/parola.ts) dă aceeași tărie ca web-ul pe ' + cazuri.length + ' parole', PT.MIN === RP.MIN && !dif.length, dif.join(' | '));
+    T('…aceleași sfaturi, același exemplu, aceeași potrivire', JSON.stringify(PT.SFATURI) === JSON.stringify(RP.SFATURI) && PT.EXEMPLU === RP.EXEMPLU
+      && ['', 'a', 'b'].every((b) => JSON.stringify(PT.potrivire('a', b)) === JSON.stringify(RP.potrivire('a', b))));
+  }
+  const tLogin = fs.readFileSync(P('mobile/src/screens/Login.tsx'), 'utf8'), tCont = fs.readFileSync(P('mobile/src/screens/ContulMeu.tsx'), 'utf8');
+  T('telefonul: ochiul la intrare și pe cele trei casete din „Contul meu”, sfaturile sub parola nouă, „Parolele coincid” sub confirmare',
+    /<CampParola autocomplete="current-password" value=\{p\} onInput=\{setP\}/.test(tLogin) && !/<input type="password"/.test(tLogin)
+    && (tCont.match(/<CampParola id="cm-p[012]"/g) || []).length === 3 && /<SfaturiParola parola=\{p1\} \/>/.test(tCont) && /<PotrivireParola a=\{p1\} b=\{p2\} \/>/.test(tCont)
+    && !/<input id="cm-p[012]" type="password"/.test(tCont));
 }
 
 sect('3. Ultimul administrator al unei firme');

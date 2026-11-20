@@ -7,6 +7,7 @@ import { saveUser } from '../lib/storage';
 import { setMapLayerFromAccount } from '../lib/mapLayer';
 import { trimitePrefs } from '../lib/uiPrefsCoada';
 import { Icon } from '../components/Icon';
+import { CampParola, SfaturiParola, PotrivireParola } from '../components/CampParola';
 import './admin.css';
 import './contulmeu.css';
 
@@ -59,6 +60,9 @@ export function ContulMeu() {
   const [p0, setP0] = useState('');
   const [p1, setP1] = useState('');
   const [p2, setP2] = useState('');
+  // „Ochiul” (20.11): parola de acum singură; cele două casete ale parolei noi se arată deodată, ca pe web.
+  const [vedeVeche, setVedeVeche] = useState(false);
+  const [vedeNoua, setVedeNoua] = useState(false);
   const [msgParola, setMsgParola] = useState<Mesaj>(null);
   const [schimb, setSchimb] = useState(false);
 
@@ -117,7 +121,7 @@ export function ContulMeu() {
     setMsgParola({ t: 'Se schimbă…' });
     try {
       const r = await Api.changePassword(p0, p1);
-      setP0(''); setP1(''); setP2('');
+      setP0(''); setP1(''); setP2(''); setVedeVeche(false); setVedeNoua(false);   // parola nu rămâne la vedere
       setMsgParola({ t: (r.mesaj || 'Parola a fost schimbată') + ' ✓', fel: 'bun' });
     } catch (e: any) {
       // 400 / 403 / 429 — niciodată 401, deci omul NU e delogat dacă greșește parola de acum.
@@ -206,21 +210,23 @@ export function ContulMeu() {
           <div class="frm">
             <div class="fld">
               <label for="cm-p0">Parola de acum</label>
-              <input id="cm-p0" type="password" autocomplete="current-password"
-                value={p0} onInput={(e) => setP0((e.target as HTMLInputElement).value)} />
+              <CampParola id="cm-p0" autocomplete="current-password" value={p0} onInput={setP0}
+                vizibil={vedeVeche} onComuta={() => setVedeVeche(!vedeVeche)} />
             </div>
             <div class="fld">
               <label for="cm-p1">Parola nouă</label>
               {/* Regula e a serverului (PAROLA_MIN = 10 + cel puțin două feluri de caractere). NU „minim 8”. */}
-              <input id="cm-p1" type="password" autocomplete="new-password" placeholder="minim 10 caractere"
-                value={p1} onInput={(e) => setP1((e.target as HTMLInputElement).value)} />
+              <CampParola id="cm-p1" autocomplete="new-password" placeholder="minim 10 caractere" value={p1} onInput={setP1}
+                vizibil={vedeNoua} onComuta={() => setVedeNoua(!vedeNoua)} />
+              {/* Bara de tărie și sfaturile (Alin, 19.11: „semne, cifre, litere mari”) — ca pe web (lib/parola.ts). */}
+              <SfaturiParola parola={p1} />
             </div>
             <div class="fld">
               <label for="cm-p2">Încă o dată parola nouă</label>
-              <input id="cm-p2" type="password" autocomplete="new-password"
-                value={p2} onInput={(e) => setP2((e.target as HTMLInputElement).value)} />
+              <CampParola id="cm-p2" autocomplete="new-password" value={p2} onInput={setP2}
+                vizibil={vedeNoua} onComuta={() => setVedeNoua(!vedeNoua)} />
+              <PotrivireParola a={p1} b={p2} />
             </div>
-            <div class="cm-help">Minim 10 caractere, cu cel puțin două feluri: litere și cifre, de exemplu.</div>
           </div>
           <div class="cm-act">
             <button class="btn btn-primary" disabled={schimb} onClick={schimbaParola}><Icon name="key" size={17} /> Schimbă parola</button>

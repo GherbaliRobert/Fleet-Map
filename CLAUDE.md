@@ -2936,6 +2936,13 @@ adresă de email, pleacă un **link cu termen**, iar omul își pune singur paro
   `verify_utilizatori.js`; dacă schimbi cifra într-o parte, proba pică. Din 19.11 (Alin): „ochiul” (`.ochi`, arată / ascunde ambele casete),
   bara de tărie și sfaturile bifate pe loc (10 caractere = obligatoriu; litere mari și mici, cifre, semne = sfaturi — serverul NU le cere,
   dinadins: `verificaParola` cere doar două feluri), „Parolele coincid ✓”. NU face din sfaturi obligații fără Alin.
+- **Ochiul și sfaturile, O DATĂ pentru web: `public/js/parola.js`** (20.11, Alin: „și la logare” → „1. DA”): `RaParola.forta` / `potrivire` /
+  `sfaturiHtml` / `umple` / `arata` / `aratPotrivire` / `ascunde`, plus clicul pe `.camp-parola .ochi` (casetele cu același `data-ochi-grup` se
+  arată deodată). O folosesc „Setează-ți parola”, intrarea în aplicație (`#login-password`, ascunsă din nou după intrare) și „Contul meu”
+  (`campParola` în `prefContHtml`, `prefParolaScrie`). Telefonul: `mobile/src/lib/parola.ts` (COPIA regulii, legată prin `verify_utilizatori.js`,
+  care le rulează pe aceleași parole) + `components/CampParola.tsx` (Login, ContulMeu). Sfaturile — doar unde se pune o parolă NOUĂ, nu la intrare.
+  Locul ochiului în casetă: regula de la capătul `app.css` (`.camp-parola > input { padding-right: 44px !important }`, cu prefixul casetelor);
+  `::-ms-reveal` ascuns (Edge își punea ochiul lui). O casetă de parolă NOUĂ = `.camp-parola` + `.ochi`, nu încă o regulă de tărie.
 - Păzit de `verify_utilizatori.js` (în `npm test`), inclusiv pe server pornit.
 
 ### Parola schimbată închide restul (02.11; Robert: „rezolvă")
